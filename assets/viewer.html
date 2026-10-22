@@ -272,10 +272,39 @@ function render(p) {
     problems.forEach((t) => ul.append(el("li", null, t)));
     box.replaceChildren(el("b", null, "plan.json มีปัญหา"), ul);
   }
+  if (stepIdx >= (plan.steps || []).length) stepIdx = -1;
   renderSteps();
   if (plan.views.length) renderView();
-  const cur = (plan.steps || []).findIndex((s) => s.status === "doing" || s.status === "review");
-  if (cur >= 0) selectStep(cur);
+  if (!rendered) {
+    rendered = true;
+    const cur = (plan.steps || []).findIndex((s) => s.status === "doing" || s.status === "review");
+    if (cur >= 0) selectStep(cur);
+  } else if (nodeId && plan.nodes[nodeId]) {
+    selectNode(nodeId);
+  }
+}
+let rendered = false;
+
+function setConn(on) {
+  const conn = document.getElementById("conn");
+  conn.className = "conn " + (on ? "on" : "off");
+  conn.textContent = on ? "● ต่อกับ agent แล้ว" : "○ หลุดจาก server";
+}
+
+async function fetchPlan() {
+  const r = await fetch("/api/plan?token=" + encodeURIComponent(token));
+  const box = document.getElementById("problems");
+  if (!r.ok) {
+    box.hidden = false;
+    box.textContent = `โหลดแผนไม่ได้ (${r.status}): ${await r.text()}`;
+    return;
+  }
+  try {
+    render(JSON.parse(await r.text()));
+  } catch (e) {
+    box.hidden = false;
+    box.textContent = "plan.json อ่านไม่ได้: " + e.message;
+  }
 }
 
 async function load() {
@@ -283,21 +312,11 @@ async function load() {
     document.getElementById("banner").hidden = false;
     return;
   }
-  const r = await fetch("/api/plan?token=" + encodeURIComponent(token));
-  if (!r.ok) {
-    document.getElementById("problems").hidden = false;
-    document.getElementById("problems").textContent = `โหลดแผนไม่ได้ (${r.status}): ${await r.text()}`;
-    return;
-  }
-  const conn = document.getElementById("conn");
-  conn.className = "conn on";
-  conn.textContent = "● ต่อกับ agent แล้ว";
-  try {
-    render(JSON.parse(await r.text()));
-  } catch (e) {
-    document.getElementById("problems").hidden = false;
-    document.getElementById("problems").textContent = "plan.json อ่านไม่ได้: " + e.message;
-  }
+  await fetchPlan();
+  const events = new EventSource("/api/events?token=" + encodeURIComponent(token));
+  events.onopen = () => setConn(true);
+  events.onerror = () => setConn(false);
+  events.addEventListener("plan", fetchPlan);
 }
 load();
 </script>

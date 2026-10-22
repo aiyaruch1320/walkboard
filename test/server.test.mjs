@@ -99,7 +99,33 @@ test("a reply is stored and pushed to the page", async (t) => {
   t.after(s.close);
   const ev = await nextEvent(s, "reply", () => post(s, "/api/reply", {node: "a", text: "because"}));
   assert.equal(ev.text, "because");
-  assert.deepEqual((await (await call(s, "/api/replies")).json()).map((r) => r.text), ["because"]);
+  const {items} = await (await call(s, "/api/thread")).json();
+  assert.deepEqual(items.map((r) => r.text), ["because"]);
+});
+
+test("the page learns when the agent picks feedback up", async (t) => {
+  const s = await startServer(planDir());
+  t.after(s.close);
+  const item = await (await post(s, "/api/feedback", {node: "a", text: "q"})).json();
+  let thread = await (await call(s, "/api/thread")).json();
+  assert.equal(thread.items[0].delivered, false);
+  assert.equal(thread.waiting, 0);
+  const ev = await nextEvent(s, "delivered", () => call(s, "/api/poll"));
+  assert.deepEqual(ev.ids, [item.id]);
+  thread = await (await call(s, "/api/thread")).json();
+  assert.equal(thread.items[0].delivered, true);
+  assert.equal(thread.items[0].from, "user");
+});
+
+test("the page learns whether the agent is listening", async (t) => {
+  const s = await startServer(planDir());
+  t.after(s.close);
+  const ctrl = new AbortController();
+  const ev = await nextEvent(s, "agent", () => {
+    call(s, "/api/poll", {signal: ctrl.signal}).catch(() => {});
+  });
+  assert.equal(ev.waiting, 1);
+  ctrl.abort();
 });
 
 test("editing plan.json tells the page to reload", async (t) => {

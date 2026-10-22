@@ -1,54 +1,190 @@
 {
   "title": "สร้าง planview",
   "goal": "skill ที่วาดแผนของ agent เป็นภาพ แล้วคลิก component เพื่อคุยกับ agent ได้",
+  "settings": {
+    "teachBack": true,
+    "commit": "auto"
+  },
   "steps": [
-    {"id": "spike", "title": "spike: คลิกแล้ว agent ถูกปลุก", "status": "done", "nodes": ["server", "queue", "poll", "wake"]},
-    {"id": "viewer", "title": "plan.json + viewer ภาพ flow", "status": "doing", "nodes": ["plan", "viewer", "server"]},
-    {"id": "server", "title": "server จริง: reload เอง, คิวไม่หาย, reply, test", "status": "todo", "nodes": ["server", "queue", "reply"]},
-    {"id": "chat", "title": "UI คุย: กล่องพิมพ์ ปุ่มด่วน ทวนต่อขั้น", "status": "todo", "nodes": ["viewer", "reply"]},
-    {"id": "views", "title": "ภาพ k8s, sequence, transform", "status": "todo", "nodes": ["viewer", "plan"]},
-    {"id": "skill", "title": "SKILL.md + คู่มือ", "status": "todo", "nodes": ["skill"]},
-    {"id": "plugin", "title": "plugin + README ให้ทีมติดตั้ง", "status": "todo", "nodes": ["skill"]},
-    {"id": "dogfood", "title": "ลองใช้กับงานจริง", "status": "todo", "nodes": ["skill", "plan", "viewer"]}
+    {
+      "id": "spike",
+      "title": "spike: คลิกแล้ว agent ถูกปลุก",
+      "status": "done",
+      "nodes": [
+        "server",
+        "queue",
+        "poll",
+        "wake"
+      ]
+    },
+    {
+      "id": "viewer",
+      "title": "plan.json + viewer ภาพ flow",
+      "status": "done",
+      "nodes": [
+        "plan",
+        "viewer",
+        "server"
+      ]
+    },
+    {
+      "id": "server",
+      "title": "server จริง: reload เอง, คิวไม่หาย, reply, test",
+      "status": "doing",
+      "nodes": [
+        "server",
+        "queue",
+        "reply"
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "UI คุย: กล่องพิมพ์ ปุ่มด่วน ทวนต่อขั้น (เมื่อเปิด teachBack)",
+      "status": "todo",
+      "nodes": [
+        "viewer",
+        "reply"
+      ]
+    },
+    {
+      "id": "views",
+      "title": "ภาพ k8s, sequence, transform",
+      "status": "todo",
+      "nodes": [
+        "viewer",
+        "plan"
+      ]
+    },
+    {
+      "id": "skill",
+      "title": "SKILL.md: ถามก่อนเริ่ม (ทวน? commit?) + คู่มือ",
+      "status": "todo",
+      "nodes": [
+        "skill"
+      ]
+    },
+    {
+      "id": "plugin",
+      "title": "plugin + README ให้ทีมติดตั้ง",
+      "status": "todo",
+      "nodes": [
+        "skill"
+      ]
+    },
+    {
+      "id": "dogfood",
+      "title": "ลองใช้กับงานจริง",
+      "status": "todo",
+      "nodes": [
+        "skill",
+        "plan",
+        "viewer"
+      ]
+    }
   ],
   "views": [
-    {"id": "flow", "kind": "flow", "title": "ภาพรวม", "lanes": [
-      {"title": "1) agent เขียนแผน", "nodes": ["skill", "plan"]},
-      {"title": "2) วาดภาพ", "nodes": ["server", "viewer"]},
-      {"title": "3) คุยกลับหา agent", "nodes": ["queue", "poll", "wake", "reply"]}
-    ]}
+    {
+      "id": "flow",
+      "kind": "flow",
+      "title": "ภาพรวม",
+      "lanes": [
+        {
+          "title": "1) agent เขียนแผน",
+          "nodes": [
+            "skill",
+            "plan"
+          ]
+        },
+        {
+          "title": "2) วาดภาพ",
+          "nodes": [
+            "server",
+            "viewer"
+          ]
+        },
+        {
+          "title": "3) คุยกลับหา agent",
+          "nodes": [
+            "queue",
+            "poll",
+            "wake",
+            "reply"
+          ]
+        }
+      ]
+    }
   ],
   "nodes": {
-    "skill": {"name": "SKILL.md", "what": "วิธีทำงานของ agent", "status": "todo",
+    "skill": {
+      "name": "SKILL.md",
+      "what": "วิธีทำงานของ agent",
+      "status": "todo",
       "file": "skills/planview/SKILL.md",
-      "in": "/planview หรือคำขอให้วางแผน", "out": "วางแผน → เปิดภาพ → รอ/ตอบ → ทวน → ลงมือ",
-      "why": "ฝังวิธีทำงานที่ใช้อยู่ (ทวนก่อนไปขั้นถัดไป) ให้ทั้งทีมใช้เหมือนกัน"},
-    "plan": {"name": "plan.json", "what": "ข้อมูลแผน", "status": "new",
+      "in": "/planview หรือคำขอให้วางแผน",
+      "out": "ถามก่อนเริ่ม: ทวนทีละขั้นไหม? commit ให้ไหม?\nวางแผน → เปิดภาพ → รอ/ตอบ → (ทวน) → ลงมือ → (commit หรือแนะนำข้อความ)",
+      "why": "ผู้ใช้เลือกได้ว่าจะเข้มแค่ไหน: ไม่ทวนก็ข้าม, ไม่ให้ commit ก็ได้แค่ข้อความ commit ที่แนะนำ · ทุก commit ไม่มี co-author"
+    },
+    "plan": {
+      "name": "plan.json",
+      "what": "ข้อมูลแผน",
+      "status": "done",
       "file": "<โฟลเดอร์แผน>/plan.json",
-      "in": "agent อ่าน context ของงาน", "out": "title, goal, steps, views, nodes\nเป็น JSON ไม่ใช่ HTML",
-      "why": "agent เขียนแค่ข้อมูล viewer เป็นคนวาด ภาพจึงหน้าตาเหมือนกันทุกงานและแก้ง่าย"},
-    "server": {"name": "server ในเครื่อง", "what": "127.0.0.1 + token", "status": "new",
-      "file": "bin/planview.mjs serve <dir>",
-      "in": "GET / , GET /api/plan , POST /api/feedback", "out": "/ → viewer.html\n/api/plan → plan.json (อ่านใหม่ทุกครั้ง)\ntoken ผิด → 403",
-      "why": "หน้าภาพกับหน้าคุยเป็นหน้าเดียวกันที่ server เปิดให้ ไม่มีไฟล์ HTML แยกที่กดแล้วไม่ไปไหน"},
-    "viewer": {"name": "viewer.html", "what": "วาดภาพจาก plan.json", "status": "new",
+      "in": "agent อ่าน context ของงาน",
+      "out": "title, goal, steps, views, nodes\nเป็น JSON ไม่ใช่ HTML",
+      "why": "agent เขียนแค่ข้อมูล viewer เป็นคนวาด ภาพจึงหน้าตาเหมือนกันทุกงานและแก้ง่าย"
+    },
+    "server": {
+      "name": "server ในเครื่อง",
+      "what": "127.0.0.1 + token",
+      "status": "new",
+      "file": "lib/server.mjs · bin/planview.mjs open|serve|status|stop",
+      "in": "GET / , /api/plan , /api/events , /api/poll\nPOST /api/feedback , /api/reply",
+      "out": "แผนเปลี่ยน → แจ้งหน้าเว็บให้โหลดใหม่ (SSE)\nรีสตาร์ทแล้วใช้ port + token เดิม\ntoken ผิด → 403",
+      "why": "agent สั่ง planview open ครั้งเดียว server รันแยกเบื้องหลัง เปิดซ้ำก็ได้ตัวเดิม"
+    },
+    "viewer": {
+      "name": "viewer.html",
+      "what": "วาดภาพจาก plan.json",
+      "status": "done",
       "file": "assets/viewer.html",
-      "in": "plan.json จาก /api/plan", "out": "แถบขั้นตอน, ภาพ flow, กรอบรายละเอียด\nกดขั้น → เน้นกล่องของขั้นนั้น",
-      "why": "ไฟล์เดียว ไม่โหลดอะไรจากภายนอก ใส่ข้อความด้วย textContent กันโค้ดแปลกปลอมจากเนื้อหาแผน"},
-    "queue": {"name": "คิว feedback", "what": ".planview/feedback.jsonl", "status": "done",
+      "in": "plan.json จาก /api/plan",
+      "out": "แถบขั้นตอน, ภาพ flow, กรอบรายละเอียด\nกดขั้น → เน้นกล่องของขั้นนั้น",
+      "why": "ไฟล์เดียว ไม่โหลดอะไรจากภายนอก ใส่ข้อความด้วย textContent กันโค้ดแปลกปลอมจากเนื้อหาแผน"
+    },
+    "queue": {
+      "name": "คิว feedback",
+      "what": ".planview/feedback.jsonl",
+      "status": "new",
       "file": "<โฟลเดอร์แผน>/.planview/feedback.jsonl",
-      "in": "คลิกจากหน้าเว็บ", "out": "หนึ่งบรรทัดต่อหนึ่งรายการ + เวลา",
-      "why": "ถ้า agent ไม่ได้รออยู่ ข้อความรอในคิวจนกว่า agent จะมา poll"},
-    "poll": {"name": "planview poll", "what": "agent รอรับ", "status": "done",
+      "in": "คลิกจากหน้าเว็บ",
+      "out": "เก็บทุกรายการ + จำว่าส่งไปถึงไหน (delivered)\nserver รีสตาร์ทแล้วรายการที่ยังไม่ส่งยังอยู่",
+      "why": "คลิกตอน agent ไม่ได้รอ หรือ server ล่ม ก็ไม่หาย และไม่ส่งซ้ำ"
+    },
+    "poll": {
+      "name": "planview poll",
+      "what": "agent รอรับ",
+      "status": "done",
       "file": "bin/planview.mjs poll <dir>",
-      "in": "agent รันแบบ background", "out": "ค้างจนมี feedback แล้วพิมพ์ JSON และจบ\nserver ตอบว่างทุก 4 นาที poll รอต่อเอง",
-      "why": "การจบของคำสั่ง background คือสัญญาณปลุก agent ไม่ต้องคอยเช็คเอง"},
-    "wake": {"name": "agent ถูกปลุก", "what": "Claude Code", "status": "ext",
-      "in": "poll จบด้วย exit 0", "out": "agent อ่านผล แล้วทำงานต่อ",
-      "why": "ใช้ความสามารถที่ Claude Code มีอยู่แล้ว ไม่ต้องสร้างอะไรเพิ่ม"},
-    "reply": {"name": "planview reply", "what": "agent ตอบขึ้นหน้า", "status": "todo",
+      "in": "agent รันแบบ background",
+      "out": "ค้างจนมี feedback แล้วพิมพ์ JSON และจบ\nserver ตอบว่างทุก 4 นาที poll รอต่อเอง",
+      "why": "การจบของคำสั่ง background คือสัญญาณปลุก agent ไม่ต้องคอยเช็คเอง"
+    },
+    "wake": {
+      "name": "agent ถูกปลุก",
+      "what": "Claude Code",
+      "status": "ext",
+      "in": "poll จบด้วย exit 0",
+      "out": "agent อ่านผล แล้วทำงานต่อ",
+      "why": "ใช้ความสามารถที่ Claude Code มีอยู่แล้ว ไม่ต้องสร้างอะไรเพิ่ม"
+    },
+    "reply": {
+      "name": "planview reply",
+      "what": "agent ตอบขึ้นหน้า",
+      "status": "new",
       "file": "bin/planview.mjs reply",
-      "in": "ข้อความจาก agent", "out": "ขึ้นใน thread ของ component นั้น",
-      "why": "คุยต่อในหน้าภาพได้ ไม่ต้องสลับไปแชต"}
+      "in": "ข้อความจาก agent",
+      "out": "เก็บใน .planview/replies.jsonl + ส่งขึ้นหน้าเว็บทันที\n(ยังไม่แสดงบนหน้า: ขั้น 4)",
+      "why": "คุยต่อในหน้าภาพได้ ไม่ต้องสลับไปแชต"
+    }
   }
 }

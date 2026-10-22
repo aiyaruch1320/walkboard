@@ -77,6 +77,23 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monos
 .controls{display:flex;gap:8px;align-items:center;margin:0 0 14px;flex-wrap:wrap}
 button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
 button:hover{border-color:var(--muted)}
+button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:12px;color:var(--muted)}
+.badges span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
+.badges .listen{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
+.stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
+.talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.talk .quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.talk textarea{width:100%;min-height:56px;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+.talk .send{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
+.thread{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.msg{max-width:88%;border-radius:10px;padding:6px 10px;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:var(--new-bg);color:var(--new-tx)}
+.msg.agent{align-self:flex-start;background:var(--ext-bg);color:var(--ext-tx)}
+.msg .who{display:block;font-size:11px;opacity:.75}
+.count{position:absolute;bottom:-9px;right:8px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
+.err{color:var(--warn-tx)}
 </style>
 </head>
 <body>
@@ -85,6 +102,7 @@ button:hover{border-color:var(--muted)}
     <div><h1 id="title">planview</h1><p class="goal" id="goal"></p></div>
     <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ agent</span>
   </div>
+  <div class="badges" id="badges"></div>
   <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
   <div id="problems" class="problems" hidden></div>
   <div class="legend">
@@ -99,6 +117,7 @@ button:hover{border-color:var(--muted)}
     <button id="play">▶ เล่นทีละขั้น</button>
     <button id="next">ขั้นถัดไป ▶</button>
   </div>
+  <div id="stepcard"></div>
   <div class="tabs" id="tabs"></div>
   <div id="view"></div>
   <div class="panel" id="panel"><h3>กดกล่องเพื่อดูรายละเอียด</h3></div>
@@ -109,6 +128,120 @@ const STEP_STATUS = {done: "done", doing: "doing", review: "doing", todo: "todo"
 const VIEW_KINDS = ["flow"];
 const token = new URLSearchParams(location.search).get("token");
 let plan, viewId, stepIdx = -1, nodeId = null, timer = null;
+let thread = [], waiting = 0, connected = false;
+const drafts = {};
+const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", change: "ขอแก้", question: "ถาม", teachback: "ทวน"};
+
+const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : "plan");
+const inCtx = (m, c) => (c.node ? m.node === c.node : c.step ? m.step === c.step && !m.node : !m.node && !m.step);
+
+function msgEl(m) {
+  const d = el("div", "msg " + (m.from === "agent" ? "agent" : "user"));
+  const who = m.from === "agent" ? "agent" : `คุณ · ${KIND[m.kind] || "ถาม"} · ${m.delivered ? "agent รับแล้ว" : "รอ agent"}`;
+  d.append(el("span", "who", who), document.createTextNode(m.text));
+  return d;
+}
+
+function refreshThreads() {
+  document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
+    const c = JSON.parse(t.dataset.ctx);
+    t.replaceChildren(...thread.filter((m) => inCtx(m, c)).map(msgEl));
+  });
+  document.querySelectorAll(".node[data-id]").forEach((d) => {
+    d.querySelector(".count")?.remove();
+    const n = thread.filter((m) => m.node === d.dataset.id).length;
+    if (n) d.append(el("span", "count", `💬 ${n}`));
+  });
+  renderBadges();
+}
+
+async function send(c, kind, text) {
+  const body = {kind, text};
+  if (c.node) body.node = c.node;
+  if (c.step) body.step = c.step;
+  if (viewId) body.view = viewId;
+  const r = await fetch("/api/feedback?token=" + encodeURIComponent(token), {
+    method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+}
+
+function talkBox(c, {placeholder, kinds}) {
+  const key = ctxKey(c);
+  const box = el("div", "talk");
+  const ta = el("textarea");
+  ta.placeholder = placeholder;
+  ta.value = drafts[key] || "";
+  ta.oninput = () => (drafts[key] = ta.value);
+  const note = el("span", null, connected ? "⌘/Ctrl + Enter เพื่อส่ง" : "ยังไม่ได้ต่อกับ agent");
+  const go = async (kind, fallback) => {
+    const text = ta.value.trim() || fallback;
+    if (!text) {
+      note.textContent = "พิมพ์สิ่งที่อยากให้แก้ก่อน";
+      note.className = "err";
+      return ta.focus();
+    }
+    try {
+      await send(c, kind, text);
+      ta.value = drafts[key] = "";
+      note.textContent = "ส่งแล้ว";
+      note.className = "";
+    } catch (e) {
+      note.textContent = "ส่งไม่สำเร็จ: " + e.message;
+      note.className = "err";
+    }
+  };
+  if (kinds.length > 1) {
+    const quick = el("div", "quick");
+    const fallbacks = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", change: ""};
+    for (const k of kinds.filter((k) => k in fallbacks)) {
+      const b = el("button", null, KIND[k]);
+      b.onclick = () => go(k, fallbacks[k]);
+      quick.append(b);
+    }
+    box.append(quick);
+  }
+  const mainKind = kinds.includes("teachback") ? "teachback" : "question";
+  const sendBtn = el("button", "primary", "ส่ง");
+  sendBtn.onclick = () => go(mainKind, "");
+  ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(mainKind, ""); };
+  const row = el("div", "send");
+  row.append(note, sendBtn);
+  const t = el("div", "thread");
+  t.dataset.ctx = JSON.stringify(c);
+  box.append(ta, row, t);
+  return box;
+}
+
+function renderBadges() {
+  if (!plan) return;
+  const s = plan.settings || {};
+  const items = [
+    el("span", null, `ทวนทีละขั้น: ${s.teachBack ? "เปิด" : "ปิด"}`),
+    el("span", null, `commit: ${s.commit === "auto" ? "agent ทำให้" : "แนะนำข้อความ"}`),
+  ];
+  if (connected) items.push(waiting ? el("span", "listen", "agent กำลังรอฟัง") : el("span", null, "agent ไม่ได้รอฟัง · ข้อความจะรอในคิว"));
+  document.getElementById("badges").replaceChildren(...items);
+}
+
+function renderStepCard() {
+  const card = document.getElementById("stepcard");
+  const step = plan.steps?.[stepIdx];
+  if (!step) {
+    const c = el("div", "stepcard");
+    c.append(el("h3", null, "คุยเรื่องทั้งแผน"), talkBox({}, {placeholder: "ถามหรือสั่งเกี่ยวกับแผนทั้งหมด…", kinds: ["question"]}));
+    card.replaceChildren(c);
+  } else {
+    const c = el("div", "stepcard " + (STEP_STATUS[step.status] || "todo"));
+    c.append(el("h3", null, `ขั้น ${stepIdx + 1}: ${step.title}`));
+    const teach = plan.settings?.teachBack;
+    c.append(talkBox({step: step.id}, teach
+      ? {placeholder: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…", kinds: ["teachback"]}
+      : {placeholder: "ถามหรือสั่งเกี่ยวกับขั้นนี้…", kinds: ["question"]}));
+    card.replaceChildren(c);
+  }
+  refreshThreads();
+}
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -121,6 +254,12 @@ function validate(p) {
   const out = [];
   if (!p || typeof p !== "object") return ["plan.json ไม่ใช่ object"];
   if (!p.title) out.push("ไม่มี title");
+  const s = p.settings;
+  if (!s) out.push('ไม่มี settings (ถามผู้ใช้ก่อนเริ่ม: {"teachBack": true|false, "commit": "auto"|"suggest"})');
+  else {
+    if (typeof s.teachBack !== "boolean") out.push("settings.teachBack ต้องเป็น true หรือ false");
+    if (!["auto", "suggest"].includes(s.commit)) out.push('settings.commit ต้องเป็น "auto" หรือ "suggest"');
+  }
   const nodes = p.nodes || {};
   for (const [id, n] of Object.entries(nodes)) {
     if (!n.name) out.push(`node "${id}" ไม่มี name`);
@@ -210,6 +349,7 @@ function highlight() {
 function selectStep(i) {
   stepIdx = i;
   renderSteps();
+  renderStepCard();
   highlight();
   const step = plan.steps?.[i];
   if (step?.nodes?.length) selectNode(step.nodes[0]);
@@ -236,7 +376,9 @@ function selectNode(id) {
   if (n.why) parts.push(el("p", "why", n.why));
   const steps = (plan.steps || []).map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (steps.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + steps.join(", ")));
+  parts.push(talkBox({node: id}, {placeholder: `ถามหรือสั่งเกี่ยวกับ "${n.name}"…`, kinds: ["ok", "confused", "change", "question"]}));
   p.replaceChildren(...parts);
+  refreshThreads();
 }
 
 function stop() {
@@ -274,7 +416,9 @@ function render(p) {
   }
   if (stepIdx >= (plan.steps || []).length) stepIdx = -1;
   renderSteps();
+  renderStepCard();
   if (plan.views.length) renderView();
+  refreshThreads();
   if (!rendered) {
     rendered = true;
     const cur = (plan.steps || []).findIndex((s) => s.status === "doing" || s.status === "review");
@@ -286,6 +430,8 @@ function render(p) {
 let rendered = false;
 
 function setConn(on) {
+  connected = on;
+  renderBadges();
   const conn = document.getElementById("conn");
   conn.className = "conn " + (on ? "on" : "off");
   conn.textContent = on ? "● ต่อกับ agent แล้ว" : "○ หลุดจาก server";
@@ -314,9 +460,20 @@ async function load() {
   }
   await fetchPlan();
   const events = new EventSource("/api/events?token=" + encodeURIComponent(token));
-  events.onopen = () => setConn(true);
+  events.onopen = async () => {
+    const r = await fetch("/api/thread?token=" + encodeURIComponent(token));
+    if (r.ok) ({items: thread, waiting} = await r.json());
+    thread.sort((a, b) => a.at.localeCompare(b.at));
+    setConn(true);
+    refreshThreads();
+  };
   events.onerror = () => setConn(false);
   events.addEventListener("plan", fetchPlan);
+  const on = (name, fn) => events.addEventListener(name, (e) => { fn(JSON.parse(e.data)); refreshThreads(); });
+  on("feedback", (m) => thread.push({...m, from: "user", delivered: false}));
+  on("reply", (m) => thread.push(m));
+  on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
+  on("agent", (a) => (waiting = a.waiting));
 }
 load();
 </script>

@@ -30,7 +30,7 @@
     {
       "id": "server",
       "title": "server จริง: reload เอง, คิวไม่หาย, reply, test",
-      "status": "doing",
+      "status": "done",
       "nodes": [
         "server",
         "queue",
@@ -40,7 +40,7 @@
     {
       "id": "chat",
       "title": "UI คุย: กล่องพิมพ์ ปุ่มด่วน ทวนต่อขั้น (เมื่อเปิด teachBack)",
-      "status": "todo",
+      "status": "done",
       "nodes": [
         "viewer",
         "reply"
@@ -136,7 +136,7 @@
     "server": {
       "name": "server ในเครื่อง",
       "what": "127.0.0.1 + token",
-      "status": "new",
+      "status": "done",
       "file": "lib/server.mjs · bin/planview.mjs open|serve|status|stop",
       "in": "GET / , /api/plan , /api/events , /api/poll\nPOST /api/feedback , /api/reply",
       "out": "แผนเปลี่ยน → แจ้งหน้าเว็บให้โหลดใหม่ (SSE)\nรีสตาร์ทแล้วใช้ port + token เดิม\ntoken ผิด → 403",
@@ -148,13 +148,13 @@
       "status": "done",
       "file": "assets/viewer.html",
       "in": "plan.json จาก /api/plan",
-      "out": "แถบขั้นตอน, ภาพ flow, กรอบรายละเอียด\nกดขั้น → เน้นกล่องของขั้นนั้น",
+      "out": "แถบขั้นตอน, ภาพ flow, กรอบรายละเอียด\nกล่องพิมพ์ + ปุ่ม เข้าใจแล้ว/ยังงง/ขอแก้ + คำตอบ agent\nช่องทวนต่อขั้น (เมื่อ teachBack เปิด)",
       "why": "ไฟล์เดียว ไม่โหลดอะไรจากภายนอก ใส่ข้อความด้วย textContent กันโค้ดแปลกปลอมจากเนื้อหาแผน"
     },
     "queue": {
       "name": "คิว feedback",
       "what": ".planview/feedback.jsonl",
-      "status": "new",
+      "status": "done",
       "file": "<โฟลเดอร์แผน>/.planview/feedback.jsonl",
       "in": "คลิกจากหน้าเว็บ",
       "out": "เก็บทุกรายการ + จำว่าส่งไปถึงไหน (delivered)\nserver รีสตาร์ทแล้วรายการที่ยังไม่ส่งยังอยู่",
@@ -180,10 +180,10 @@
     "reply": {
       "name": "planview reply",
       "what": "agent ตอบขึ้นหน้า",
-      "status": "new",
+      "status": "done",
       "file": "bin/planview.mjs reply",
       "in": "ข้อความจาก agent",
-      "out": "เก็บใน .planview/replies.jsonl + ส่งขึ้นหน้าเว็บทันที\n(ยังไม่แสดงบนหน้า: ขั้น 4)",
+      "out": "เก็บใน .planview/replies.jsonl + ขึ้นใต้คำถามบนหน้าทันที",
       "why": "คุยต่อในหน้าภาพได้ ไม่ต้องสลับไปแชต"
     }
   }

@@ -1,0 +1,11 @@
+{
+  "name": "planview",
+  "version": "0.1.0",
+  "description": "Draw an agent's plan as an interactive diagram; clicks on it go back to the agent.",
+  "type": "module",
+  "bin": {"planview": "bin/planview.mjs"},
+  "files": ["bin", "lib", "assets"],
+  "engines": {"node": ">=18.18"},
+  "scripts": {"test": "node --test"},
+  "license": "MIT"
+}

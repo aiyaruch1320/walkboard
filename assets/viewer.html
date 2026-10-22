@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>planview</title>
+<style>
+:root{
+  --bg:#f7f6f2;--card:#ffffff;--text:#1f1e1c;--muted:#6b6a65;--line:#d9d7cf;
+  --done-bg:#e1f5ee;--done-bd:#1d9e75;--done-tx:#085041;
+  --new-bg:#faeeda;--new-bd:#ef9f27;--new-tx:#633806;
+  --todo-bg:#f1efe8;--todo-bd:#b4b2a9;--todo-tx:#888780;
+  --ext-bg:#e6f1fb;--ext-bd:#378add;--ext-tx:#0c447c;
+  --warn-bg:#fcebeb;--warn-bd:#d85a5a;--warn-tx:#7a1f1f;
+  --code:#f1efe8;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1c1b19;--card:#262522;--text:#ecebe6;--muted:#a3a19a;--line:#3d3c38;
+  --done-bg:#0b3d31;--done-bd:#5dcaa5;--done-tx:#c8f0e2;
+  --new-bg:#4a3006;--new-bd:#ef9f27;--new-tx:#fae3b8;
+  --todo-bg:#2c2c2a;--todo-bd:#5f5e5a;--todo-tx:#888780;
+  --ext-bg:#0c2a4a;--ext-bd:#85b7eb;--ext-tx:#d6e7f8;
+  --warn-bg:#4a1717;--warn-bd:#e07a7a;--warn-tx:#f8d6d6;
+  --code:#2c2c2a;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Noto Sans Thai","Sarabun",system-ui,sans-serif}
+main{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;font-weight:500;margin:0}
+.goal{color:var(--muted);margin:2px 0 12px}
+.top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.conn{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.conn.on{color:var(--done-tx);background:var(--done-bg);border-color:var(--done-bd)}
+.conn.off{color:var(--warn-tx);background:var(--warn-bg);border-color:var(--warn-bd)}
+.banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
+.problems ul{margin:4px 0 0;padding-left:20px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:4px;border:1.5px solid}
+.stepbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card)}
+.chip.sel{outline:2px solid var(--text);outline-offset:2px}
+.chip.all{border-color:var(--line);color:var(--muted)}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button.on{border-color:var(--text);font-weight:500}
+.lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 14px 16px;margin-bottom:14px}
+.lane-title{font-size:13px;color:var(--muted);margin-bottom:10px}
+.row{display:flex;align-items:stretch;flex-wrap:wrap;row-gap:12px}
+.node{flex:1 1 140px;min-width:140px;border:1.5px solid;border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;transition:transform .25s,opacity .25s}
+.node .name{font-weight:500;font-size:14px}
+.node .what{font-size:12px;margin-top:2px}
+.node .tag{position:absolute;top:-9px;right:8px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid;background:var(--card)}
+.done{background:var(--done-bg);border-color:var(--done-bd);color:var(--done-tx)}
+.new,.doing{background:var(--new-bg);border-color:var(--new-bd);color:var(--new-tx)}
+.node.new{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}
+.todo{background:var(--todo-bg);border-color:var(--todo-bd);color:var(--todo-tx);border-style:dashed}
+.node.todo{opacity:.6}
+.ext{background:var(--ext-bg);border-color:var(--ext-bd);color:var(--ext-tx)}
+.node.dim{opacity:.2}
+.node.active{transform:translateY(-3px);opacity:1;outline:2px solid var(--text);outline-offset:2px}
+.arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.arrow svg{width:26px;height:14px}
+.arrow line{stroke:currentColor;stroke-width:1.6;stroke-dasharray:4 4}
+@media (prefers-reduced-motion:no-preference){.node.new{animation:pulse 1.8s ease-in-out infinite}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--new-bd) 12%,transparent)}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:6px}
+.panel h3{margin:0 0 4px;font-size:16px;font-weight:500}
+.panel .meta{font-size:13px;color:var(--muted);margin-bottom:12px;word-break:break-all}
+.io{display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center}
+@media (max-width:720px){.io{grid-template-columns:1fr}.io .mid{transform:rotate(90deg)}}
+.box{border:1px solid var(--line);border-radius:8px;padding:10px;min-height:70px}
+.box .lbl{font-size:12px;color:var(--muted);margin-bottom:4px}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:6px;padding:8px}
+.mid{text-align:center;color:var(--muted);font-size:20px}
+.why{margin:12px 0 0;font-size:14px}
+.insteps{margin:10px 0 0;font-size:12px;color:var(--muted)}
+.controls{display:flex;gap:8px;align-items:center;margin:0 0 14px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
+button:hover{border-color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div><h1 id="title">planview</h1><p class="goal" id="goal"></p></div>
+    <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ agent</span>
+  </div>
+  <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
+  <div id="problems" class="problems" hidden></div>
+  <div class="legend">
+    <span><i class="sw done"></i>ทำแล้ว</span>
+    <span><i class="sw new"></i>ทำอยู่ / เพิ่งทำ</span>
+    <span><i class="sw todo"></i>ยังไม่ทำ</span>
+    <span><i class="sw ext"></i>ระบบภายนอก</span>
+  </div>
+  <div class="stepbar" id="stepbar"></div>
+  <div class="controls">
+    <button id="prev">◀ ขั้นก่อน</button>
+    <button id="play">▶ เล่นทีละขั้น</button>
+    <button id="next">ขั้นถัดไป ▶</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="view"></div>
+  <div class="panel" id="panel"><h3>กดกล่องเพื่อดูรายละเอียด</h3></div>
+</main>
+<script>
+const NODE_STATUS = {done: "ทำแล้ว", new: "เพิ่งทำ", todo: "ยังไม่ทำ", ext: "ภายนอก"};
+const STEP_STATUS = {done: "done", doing: "doing", review: "doing", todo: "todo"};
+const VIEW_KINDS = ["flow"];
+const token = new URLSearchParams(location.search).get("token");
+let plan, viewId, stepIdx = -1, nodeId = null, timer = null;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function validate(p) {
+  const out = [];
+  if (!p || typeof p !== "object") return ["plan.json ไม่ใช่ object"];
+  if (!p.title) out.push("ไม่มี title");
+  const nodes = p.nodes || {};
+  for (const [id, n] of Object.entries(nodes)) {
+    if (!n.name) out.push(`node "${id}" ไม่มี name`);
+    if (n.status && !NODE_STATUS[n.status]) out.push(`node "${id}" status "${n.status}" ไม่รู้จัก`);
+  }
+  for (const s of p.steps || []) {
+    if (!s.id || !s.title) out.push("step ต้องมี id และ title");
+    if (s.status && !STEP_STATUS[s.status]) out.push(`step "${s.id}" status "${s.status}" ไม่รู้จัก`);
+    for (const k of s.nodes || []) if (!nodes[k]) out.push(`step "${s.id}" อ้าง node "${k}" ที่ไม่มี`);
+  }
+  if (!(p.views || []).length) out.push("ไม่มี views");
+  for (const v of p.views || []) {
+    if (!VIEW_KINDS.includes(v.kind)) out.push(`view "${v.id}" kind "${v.kind}" ยังไม่รองรับ`);
+    for (const l of v.lanes || []) for (const k of l.nodes || []) if (!nodes[k]) out.push(`view "${v.id}" อ้าง node "${k}" ที่ไม่มี`);
+  }
+  return out;
+}
+
+function arrow() {
+  const a = el("div", "arrow");
+  a.innerHTML = '<svg viewBox="0 0 26 14" aria-hidden="true"><line x1="1" y1="7" x2="20" y2="7"/><path d="M17 2l6 5-6 5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+  return a;
+}
+
+function nodeBox(id) {
+  const n = plan.nodes[id];
+  if (!n) return el("div", "node todo", `? ${id}`);
+  const status = NODE_STATUS[n.status] ? n.status : "todo";
+  const d = el("div", "node " + status);
+  d.dataset.id = id;
+  d.tabIndex = 0;
+  d.append(el("span", "tag", NODE_STATUS[status]), el("div", "name", n.name));
+  if (n.what) d.append(el("div", "what", n.what));
+  d.onclick = () => selectNode(id);
+  d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id); };
+  return d;
+}
+
+function renderFlow(v) {
+  const wrap = el("div");
+  for (const lane of v.lanes || []) {
+    const box = el("div", "lane");
+    if (lane.title) box.append(el("div", "lane-title", lane.title));
+    const row = el("div", "row");
+    (lane.nodes || []).forEach((id, i) => {
+      if (i > 0 && lane.arrows !== false) row.append(arrow());
+      row.append(nodeBox(id));
+    });
+    box.append(row);
+    wrap.append(box);
+  }
+  return wrap;
+}
+
+function renderView() {
+  const v = plan.views.find((x) => x.id === viewId) || plan.views[0];
+  const tabs = document.getElementById("tabs");
+  tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
+    const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
+    b.onclick = () => { viewId = x.id; renderView(); };
+    return b;
+  }) : []));
+  document.getElementById("view").replaceChildren(v.kind === "flow" ? renderFlow(v) : el("p", null, `ยังวาด ${v.kind} ไม่ได้`));
+  highlight();
+}
+
+function renderSteps() {
+  const bar = document.getElementById("stepbar");
+  const all = el("span", "chip all" + (stepIdx < 0 ? " sel" : ""), "ทั้งหมด");
+  all.onclick = () => { stop(); selectStep(-1); };
+  bar.replaceChildren(all, ...(plan.steps || []).map((s, i) => {
+    const c = el("span", "chip " + (STEP_STATUS[s.status] || "todo") + (i === stepIdx ? " sel" : ""), `${i + 1}. ${s.title}`);
+    c.onclick = () => { stop(); selectStep(i); };
+    return c;
+  }));
+}
+
+function highlight() {
+  const step = plan.steps?.[stepIdx];
+  const inStep = step ? new Set(step.nodes || []) : null;
+  document.querySelectorAll(".node[data-id]").forEach((d) => {
+    d.classList.toggle("dim", !!inStep && !inStep.has(d.dataset.id));
+    d.classList.toggle("active", d.dataset.id === nodeId);
+  });
+}
+
+function selectStep(i) {
+  stepIdx = i;
+  renderSteps();
+  highlight();
+  const step = plan.steps?.[i];
+  if (step?.nodes?.length) selectNode(step.nodes[0]);
+}
+
+function selectNode(id) {
+  nodeId = id;
+  highlight();
+  const n = plan.nodes[id];
+  const p = document.getElementById("panel");
+  if (!n) return p.replaceChildren(el("h3", null, `ไม่มี node "${id}"`));
+  const parts = [el("h3", null, `${n.name} · ${NODE_STATUS[n.status] || NODE_STATUS.todo}`)];
+  if (n.file) parts.push(el("div", "meta", n.file));
+  if (n.in || n.out) {
+    const io = el("div", "io");
+    for (const [lbl, txt] of [["รับเข้า", n.in], ["ได้ออกมา", n.out]]) {
+      const b = el("div", "box");
+      b.append(el("div", "lbl", lbl), el("pre", null, txt || "—"));
+      io.append(b);
+      if (lbl === "รับเข้า") io.append(el("div", "mid", "→"));
+    }
+    parts.push(io);
+  }
+  if (n.why) parts.push(el("p", "why", n.why));
+  const steps = (plan.steps || []).map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
+  if (steps.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + steps.join(", ")));
+  p.replaceChildren(...parts);
+}
+
+function stop() {
+  clearInterval(timer);
+  timer = null;
+  document.getElementById("play").textContent = "▶ เล่นทีละขั้น";
+}
+function step(d) {
+  const n = (plan.steps || []).length;
+  if (n) selectStep(((stepIdx < 0 ? (d > 0 ? -1 : 0) : stepIdx) + d + n) % n);
+}
+document.getElementById("prev").onclick = () => { stop(); step(-1); };
+document.getElementById("next").onclick = () => { stop(); step(1); };
+document.getElementById("play").onclick = () => {
+  if (timer) return stop();
+  document.getElementById("play").textContent = "❚❚ หยุด";
+  step(1);
+  timer = setInterval(() => step(1), 3200);
+};
+
+function render(p) {
+  plan = p;
+  plan.nodes ||= {};
+  plan.views ||= [];
+  document.title = plan.title ? `${plan.title} · planview` : "planview";
+  document.getElementById("title").textContent = plan.title || "planview";
+  document.getElementById("goal").textContent = plan.goal || "";
+  const problems = validate(plan);
+  const box = document.getElementById("problems");
+  box.hidden = !problems.length;
+  if (problems.length) {
+    const ul = el("ul");
+    problems.forEach((t) => ul.append(el("li", null, t)));
+    box.replaceChildren(el("b", null, "plan.json มีปัญหา"), ul);
+  }
+  renderSteps();
+  if (plan.views.length) renderView();
+  const cur = (plan.steps || []).findIndex((s) => s.status === "doing" || s.status === "review");
+  if (cur >= 0) selectStep(cur);
+}
+
+async function load() {
+  if (location.protocol === "file:" || !token) {
+    document.getElementById("banner").hidden = false;
+    return;
+  }
+  const r = await fetch("/api/plan?token=" + encodeURIComponent(token));
+  if (!r.ok) {
+    document.getElementById("problems").hidden = false;
+    document.getElementById("problems").textContent = `โหลดแผนไม่ได้ (${r.status}): ${await r.text()}`;
+    return;
+  }
+  const conn = document.getElementById("conn");
+  conn.className = "conn on";
+  conn.textContent = "● ต่อกับ agent แล้ว";
+  try {
+    render(JSON.parse(await r.text()));
+  } catch (e) {
+    document.getElementById("problems").hidden = false;
+    document.getElementById("problems").textContent = "plan.json อ่านไม่ได้: " + e.message;
+  }
+}
+load();
+</script>
+</body>
+</html>

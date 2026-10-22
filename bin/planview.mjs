@@ -9,21 +9,8 @@ const dir = path.resolve(dirArg);
 const stateDir = path.join(dir, ".planview");
 const serverFile = path.join(stateDir, "server.json");
 const queueFile = path.join(stateDir, "feedback.jsonl");
-
-const page = `<!doctype html><meta charset="utf-8"><title>planview spike</title>
-<body style="font-family:system-ui;padding:24px">
-<h1>planview spike</h1>
-<button id="b" style="font-size:18px;padding:12px 20px">ยังงง (node: demo)</button>
-<p id="s"></p>
-<script>
-const token = new URLSearchParams(location.search).get("token");
-document.getElementById("b").onclick = async () => {
-  const r = await fetch("/api/feedback?token=" + token, {method: "POST",
-    headers: {"content-type": "application/json"},
-    body: JSON.stringify({node: "demo", kind: "confused", text: "ยังงงตรงนี้"})});
-  document.getElementById("s").textContent = r.ok ? "ส่งแล้ว" : "ส่งไม่สำเร็จ " + r.status;
-};
-</script>`;
+const planFile = path.join(dir, "plan.json");
+const viewerFile = new URL("../assets/viewer.html", import.meta.url);
 
 function serve() {
   const token = crypto.randomBytes(16).toString("hex");
@@ -39,7 +26,13 @@ function serve() {
       return;
     }
     if (req.method === "GET" && url.pathname === "/") {
-      res.writeHead(200, {"content-type": "text/html; charset=utf-8"}).end(page);
+      res.writeHead(200, {"content-type": "text/html; charset=utf-8"}).end(fs.readFileSync(viewerFile));
+    } else if (req.method === "GET" && url.pathname === "/api/plan") {
+      if (!fs.existsSync(planFile)) {
+        res.writeHead(404, {"content-type": "text/plain; charset=utf-8"}).end(`no plan.json in ${dir}`);
+        return;
+      }
+      res.writeHead(200, {"content-type": "application/json; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(planFile));
     } else if (req.method === "POST" && url.pathname === "/api/feedback") {
       let body = "";
       req.on("data", (c) => (body += c));

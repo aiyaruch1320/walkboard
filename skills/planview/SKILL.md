@@ -40,7 +40,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
 
 1. Read the real path: entry points, middleware, services, data access, external calls, deployment files. Do not guess from names.
 2. `"mode": "explain"`, `"root": "<repo path>"`, `"roots": {"deploy": "<path>"}` for other repositories, `"start": "<first stage id>"`. Steps are 3-10 stages in order with `detail` and `done` (what the reader understands there).
-3. Every code box has `file` = `path:line` or `path:from-to` (`deploy:path:line` for a named root). The page shows that code and links it to the editor, so **never paste code into the plan**. `PV check` fails if a file or line does not exist. Mark anything unconfirmed in `why` ("unconfirmed: …", in the user's language). Code is `"done"` (the default), external systems `"ext"`, the parts the question is about `"new"`.
+3. Every code box has `file` = `path:line` or `path:from-to` (`deploy:path:line` for a named root). The page shows that code and links it to the editor, so **never paste code into the plan**. Give a range for context and `highlight` only the lines that make the point (e.g. `"highlight": "146-152"`). `PV check` fails if a file or line does not exist. Mark anything unconfirmed in `why` ("unconfirmed: …", in the user's language). Code is `"done"` (the default), external systems `"ext"`, the parts the question is about `"new"`.
 4. `PV check <dir>` until ok.
 
 ## 3. Show and listen

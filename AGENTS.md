@@ -37,11 +37,13 @@ npm test
 claude plugin validate .
 ```
 
-After a visible change, regenerate the images and look at them:
+After a visible change, regenerate the images and look at them (needs Node 22 and Google Chrome; set `CHROME` to another Chromium binary if needed). If neither is available, leave `docs/images` as it is and say in your summary that the images were not regenerated:
 
 ```bash
 node scripts/screenshots.mjs && node scripts/demo-gif.mjs
 ```
+
+`DEMO_FRAMES=<dir> node scripts/demo-gif.mjs` also writes every GIF frame as a PNG, which is the practical way to review the animation.
 
 The page script can be syntax-checked by extracting the `<script type="module">` block from `viewer.html` and running `node --check` on it.
 

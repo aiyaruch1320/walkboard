@@ -83,6 +83,14 @@ test("explain mode needs no commit setting, and lint asks for evidence", async (
   assert.doesNotMatch(warn, /node "b"/);
 });
 
+test("a step's suggested commits are checked", () => {
+  const p = base();
+  p.steps[0].commits = [{message: "feat: a", files: ["a.go"]}, {message: "test: a"}];
+  assert.deepEqual(validate(p), []);
+  p.steps[0].commits = [{files: ["a.go"]}];
+  assert.match(validate(p).join("\n"), /commits must be/);
+});
+
 test("approval, teach-back records and the glossary are checked", () => {
   const p = {...base(), approved: "yes", glossary: {CronJob: "งานที่ตั้งเวลารันเอง"}};
   p.steps[0].confirmed = "ok";

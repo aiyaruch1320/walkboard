@@ -118,6 +118,9 @@ export function validate(p) {
     }
     if (st.status && !has(STEP_STATUS, st.status)) out.push(`step "${st.id}": unknown status "${st.status}" (${Object.keys(STEP_STATUS).join(", ")})`);
     if (st.confirmed != null && typeof st.confirmed !== "boolean") out.push(`step "${st.id}" confirmed must be true or false`);
+    if (st.commitMessage != null && typeof st.commitMessage !== "string") out.push(`step "${st.id}" commitMessage must be a string`);
+    if (st.commits != null && (!Array.isArray(st.commits) || st.commits.some((c) => !isObj(c) || typeof c.message !== "string" || (c.files != null && !(Array.isArray(c.files) && c.files.every((f) => typeof f === "string"))))))
+      out.push(`step "${st.id}" commits must be [{"message": "…", "files": ["…"]}]`);
     for (const k of list(st.nodes)) if (!known(k)) out.push(`step "${st.id}": no node "${k}"`);
   }
 

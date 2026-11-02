@@ -63,11 +63,35 @@ h1{font-size:22px;font-weight:500;margin:0}
 .sw{width:16px;height:16px;border-radius:5px;border:1.5px solid;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-style:normal;line-height:1}
 .stepbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
+.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
+@media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
+@keyframes blink{50%{opacity:.25}}
+.sbadge{display:inline-block;font-size:12px;font-weight:500;border:1px solid;border-radius:999px;padding:0 9px;margin-left:8px;vertical-align:2px}
+.sbadge.todo{border-style:dashed}
+.implementing{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--new-tx);background:var(--new-bg);border:1px solid var(--new-bd);border-radius:8px;padding:5px 10px;margin:2px 0 8px}
+.implementing .dots i{background:var(--new-bd)}
+.bar .progress{font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.bar .progress.doing{border-color:var(--new-bd);color:var(--new-tx);background:var(--new-bg)}
+.bar .progress.review{border-color:var(--you-bd);color:var(--you-tx);background:var(--you-bg)}
+.bar .progress.done{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
 .chip.sel{outline:2px solid var(--text);outline-offset:1px}
 .chip.all{border-color:var(--line);color:var(--muted)}
 .chip.review{background:var(--you-bg);border-color:var(--you-bd);color:var(--you-tx)}
 .stepcard.review{border-color:var(--you-bd);border-left:5px solid var(--you-bd)}
 .stepcard.review .turn{font-weight:500}
+.commitbox{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.commitbox .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+.commitbox textarea{width:100%;min-height:52px;resize:vertical;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.commitbox .citem{border:1px solid var(--line);border-left:3px solid var(--you-bd);border-radius:8px;background:var(--card);padding:8px 10px 10px;margin-bottom:10px}
+.commitbox .chead{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:6px}
+.commitbox .cnum{min-width:20px;height:20px;border-radius:999px;background:var(--you-bd);color:var(--card);font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
+.commitbox .citem textarea{background:var(--bg)}
+.commitbox textarea{field-sizing:content;min-height:2.6em;max-height:16em}
+.commitbox .flabel{font-size:11.5px;color:var(--muted);margin:8px 0 4px}
+.commitbox .cfiles{display:flex;gap:4px 6px;flex-wrap:wrap}
+.commitbox .cfiles code{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);background:var(--code);border-radius:5px;padding:0 6px}
+.commitbox .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.commitbox .note{font-size:12px;color:var(--muted)}
 .chip.plain{border-color:var(--line)}
 .stepcard .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:6px;background:var(--you-bd);color:var(--card)}
 .stepcard .detail{margin:0 0 4px;font-size:14px}
@@ -303,7 +327,7 @@ const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + e
 // Page labels follow the plan's language (see langOf); anything else falls back to English.
 const STRINGS = {
   en: {
-    connOff: "○ Not connected to the server", connLost: "○ Lost the server · reconnecting", connOn: "● Agent is listening", connIdle: "◐ Connected · agent is busy, messages wait in a queue",
+    connOff: "○ Not connected to the server", connecting: "○ Connecting…", connLost: "○ Lost the server · reconnecting", connOn: "● Agent is listening", connIdle: "◐ Connected · agent is busy, messages wait in a queue",
     connLostTip: "The page cannot reach the local server", connOnTip: "Click or type: the agent sees it right away", connIdleTip: "The agent is working on something else; your message reaches it when it listens again",
     banner: "This page was opened as a file, so it is not connected to the agent and clicks reach no one. Open it with planview open instead.",
     ok: "Got it", confused: "Still unclear", deeper: "Go deeper", change: "Request change", question: "Ask", teachback: "Restate", approve: "Approve plan",
@@ -321,7 +345,11 @@ const STRINGS = {
     commitAutoFx: "The agent commits after each step", commitOnlyFx: "The agent suggests messages; you commit",
     settings: "Setting", working: (m) => (m ? `Agent is working on it · ${m} min` : "Agent is working on it"), noReply: (m) => `No reply after ${m} min. Check Claude Code`, connWorking: "✎ Agent is answering you",
     connWorkingTip: "The agent took your message and has not answered yet",
-    turnApprove: "Your turn: review the plan below, ask on any box or step, then approve it", approveSent: "Approval sent", quickLabel: "Tell the agent:", quickTip: "Sends this to the agent right away",
+    sb_doing: "In progress", sb_review: "Your turn", sb_done: "Done", sb_todo: "Not started", implementing: "The agent is building this step",
+    progDoing: (i, n, x) => `Working on step ${i}/${n}: ${x}`, progReview: (i, n, x) => `Your turn, step ${i}/${n}: ${x}`, progDone: (n) => `✓ All ${n} steps done`,
+    turnApprove: "Your turn: review the plan below, ask on any box or step, then approve it", turnCommit: "Your turn: check the commit message, then commit",
+    commit: "Commit", committed: "I committed, go on", q_committed: "I committed it myself. Go on to the next step", commitLabel: "Suggested commit message", commitsLabel: (n) => `Suggested commits (${n}), made in this order`, commitN: (i, n) => `Commit ${i} of ${n}`, filesN: (n) => `${n} ${n === 1 ? "file" : "files"} in this commit`,
+    commitNow: "Commit and go on", noCommitMsg: "The agent has not suggested a message yet", approveSent: "Approval sent", quickLabel: "Tell the agent:", quickTip: "Sends this to the agent right away",
     change_explain: "Correct the picture", send_change_explain: "Send correction", ph_change_explain: "Say what is wrong or missing in this picture…", askStage: "Ask about this stage…",
     backUp: "↑ Picture", viaLegend: "← :port on a box: what the link uses", talkLegend: "💬 a conversation on the box", termsPage: (n) => `📖 Terms on this page (${n})`, approved: "✓ Plan approved", awaiting: "Waiting for approval",
     newReplies: (n) => `💬 ${n} new from the agent`, changedN: (n) => `✎ Plan changed in ${n} ${n === 1 ? "place" : "places"}`,
@@ -337,7 +365,7 @@ const STRINGS = {
     loadFail: (s) => `Cannot load the plan (${s}): `, parseFail: "plan.json cannot be read: ", problems: "plan.json has problems",
   },
   th: {
-    connOff: "○ ยังไม่ได้ต่อกับ server", connLost: "○ หลุดจาก server · กำลังต่อใหม่", connOn: "● agent กำลังฟังอยู่", connIdle: "◐ ต่อแล้ว · agent ยังไม่ได้ฟัง ข้อความจะรอในคิว",
+    connOff: "○ ยังไม่ได้ต่อกับ server", connecting: "○ กำลังต่อ…", connLost: "○ หลุดจาก server · กำลังต่อใหม่", connOn: "● agent กำลังฟังอยู่", connIdle: "◐ ต่อแล้ว · agent ยังไม่ได้ฟัง ข้อความจะรอในคิว",
     connLostTip: "หน้าเว็บติดต่อ server ในเครื่องไม่ได้", connOnTip: "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที", connIdleTip: "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง",
     banner: "หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน planview open แทน",
     ok: "เข้าใจแล้ว", confused: "ยังงง", deeper: "ลึกขึ้น", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน",
@@ -355,7 +383,11 @@ const STRINGS = {
     commitAutoFx: "agent commit ให้หลังจบแต่ละขั้น", commitOnlyFx: "agent แนะนำข้อความ คุณ commit เอง",
     settings: "ตั้งค่า", working: (m) => (m ? `agent กำลังตอบ · ${m} นาที` : "agent กำลังตอบ"), noReply: (m) => `ผ่านไป ${m} นาทียังไม่มีคำตอบ ลองดูที่ Claude Code`, connWorking: "✎ agent กำลังตอบคุณ",
     connWorkingTip: "agent รับข้อความแล้ว และยังไม่ได้ตอบ",
-    turnApprove: "ถึงตาคุณ: ตรวจแผนด้านล่าง ถามได้ทุกกล่องหรือทุกขั้น แล้วกดอนุมัติ", approveSent: "ส่งการอนุมัติแล้ว", quickLabel: "บอก agent:", quickTip: "ส่งถึง agent ทันที",
+    sb_doing: "กำลังทำ", sb_review: "ถึงตาคุณ", sb_done: "เสร็จแล้ว", sb_todo: "ยังไม่เริ่ม", implementing: "agent กำลังลงมือทำขั้นนี้",
+    progDoing: (i, n, x) => `กำลังทำขั้น ${i}/${n}: ${x}`, progReview: (i, n, x) => `ถึงตาคุณ ขั้น ${i}/${n}: ${x}`, progDone: (n) => `✓ เสร็จครบ ${n} ขั้น`,
+    turnApprove: "ถึงตาคุณ: ตรวจแผนด้านล่าง ถามได้ทุกกล่องหรือทุกขั้น แล้วกดอนุมัติ", turnCommit: "ถึงตาคุณ: ตรวจข้อความ commit แล้วกด commit",
+    commit: "commit ให้", committed: "commit เองแล้ว ไปต่อ", q_committed: "commit เองแล้ว ไปขั้นถัดไปได้", commitLabel: "ข้อความ commit ที่แนะนำ", commitsLabel: (n) => `commit ที่แนะนำ (${n}) ทำตามลำดับนี้`, commitN: (i, n) => `commit ที่ ${i} จาก ${n}`, filesN: (n) => `ไฟล์ใน commit นี้ (${n})`,
+    commitNow: "commit ให้เลย แล้วไปต่อ", noCommitMsg: "agent ยังไม่ได้เสนอข้อความ", approveSent: "ส่งการอนุมัติแล้ว", quickLabel: "บอก agent:", quickTip: "ส่งถึง agent ทันที",
     change_explain: "ขอแก้ภาพ", send_change_explain: "ส่งคำขอแก้", ph_change_explain: "บอกว่าภาพนี้ผิดหรือขาดอะไร…", askStage: "ถามเกี่ยวกับช่วงนี้…",
     backUp: "↑ ภาพ", viaLegend: "← :port บนกล่อง: สิ่งที่เส้นนั้นใช้", talkLegend: "💬 มีการคุยบนกล่องนี้", termsPage: (n) => `📖 คำศัพท์ในหน้านี้ (${n})`, approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
     newReplies: (n) => `💬 ข้อความใหม่จาก agent ${n}`, changedN: (n) => `✎ แผนเปลี่ยน ${n} จุด`,
@@ -534,8 +566,8 @@ function openUnread() {
   else selectStep(m.step || null);
 }
 
-async function send(c, kind, text) {
-  const body = {kind, text};
+async function send(c, kind, text, extra = {}) {
+  const body = {...extra, kind, text};
   if (c.node) body.node = c.node;
   if (c.step) body.step = c.step;
   if (viewId || plan.views[0]) body.view = viewId || plan.views[0].id;
@@ -663,7 +695,7 @@ function renderBadges() {
   const conn = document.getElementById("conn");
   const busy = working().length > 0;
   conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy ? "work" : "idle");
-  conn.textContent = !connected ? t(served && rendered ? "connLost" : "connOff") : waiting ? t("connOn") : busy ? t("connWorking") : t("connIdle");
+  conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : t("connIdle");
   conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
   if (!plan) return;
   const s = plan.settings || {};
@@ -707,8 +739,23 @@ function renderBadges() {
   renderBar();
 }
 
+// The step the agent is on, or the one waiting for the user.
+const activeStep = (p) => (p?.steps || []).find((s) => s.status === "doing" || yourTurn(s)) || null;
+
 function renderBar() {
   const extra = [];
+  const list = steps();
+  if (plan.mode !== "explain" && plan.approved && list.length) {
+    const a = activeStep(plan);
+    const all = list.every((s) => s.status === "done");
+    if (a || all) {
+      const i = list.indexOf(a) + 1, review = a && a.status !== "doing";
+      const b = el("button", "progress " + (all ? "done" : review ? "review" : "doing"),
+        all ? t("progDone", list.length) : t(review ? "progReview" : "progDoing", i, list.length, a.title));
+      if (a) b.onclick = () => selectStep(a.id);
+      extra.push(b);
+    }
+  }
   const news = unread().length;
   if (news) {
     const b = el("button", "unread", t("newReplies", news));
@@ -742,6 +789,70 @@ function renderBar() {
   document.getElementById("barExtra").replaceChildren(...extra);
 }
 
+// What a step in review still waits for: a restatement, then (when the user commits) the commit.
+function yourTurn(step) {
+  if (step?.status !== "review") return null;
+  if (teachBackOn(plan) && !step.confirmed) return "turnRestate";
+  if (plan.mode !== "explain" && plan.settings?.commit === "suggest") return "turnCommit";
+  return step.confirmed ? null : "turnCheck";
+}
+
+// The agent's suggested commits (one or several, each with its files), editable; the user commits through the agent or says they did it themselves.
+function commitBox(step) {
+  const list = Array.isArray(step.commits) && step.commits.length ? step.commits : [{message: step.commitMessage ?? ""}];
+  const box = el("div", "commitbox");
+  box.append(el("div", "lbl", list.length > 1 ? t("commitsLabel", list.length) : t("commitLabel")));
+  const areas = list.map((c, i) => {
+    const key = `commit:${step.id}:${i}`;
+    const item = el("div", "citem");
+    const ta = el("textarea");
+    ta.dataset.key = key;
+    ta.value = drafts[key] ?? c.message ?? "";
+    ta.placeholder = t("noCommitMsg");
+    ta.oninput = () => {
+      drafts[key] = ta.value;
+      now.disabled = areas.some((a) => !a.value.trim());
+    };
+    if (list.length > 1) {
+      const head = el("div", "chead");
+      head.append(el("span", "cnum", String(i + 1)), t("commitN", i + 1, list.length));
+      item.append(head);
+    }
+    item.append(ta);
+    if (c.files?.length) {
+      const files = el("div", "cfiles");
+      c.files.forEach((f) => files.append(el("code", null, f)));
+      item.append(el("div", "flabel", t("filesN", c.files.length)), files);
+    }
+    box.append(item);
+    return ta;
+  });
+  const now = el("button", "primary", t("commitNow"));
+  const mine = el("button", null, t("committed"));
+  const note = el("span", "note");
+  const go = async (kind, text, extra) => {
+    now.disabled = mine.disabled = true;
+    try {
+      await send({step: step.id}, kind, text, extra);
+      note.textContent = t("sent");
+    } catch (e) {
+      note.textContent = t("sendFail") + e.message;
+      now.disabled = areas.some((a) => !a.value.trim());
+      mine.disabled = false;
+    }
+  };
+  now.disabled = areas.some((a) => !a.value.trim());
+  now.onclick = () => {
+    const commits = list.map((c, i) => ({message: areas[i].value.trim(), ...(c.files?.length ? {files: c.files} : {})}));
+    go("commit", commits.map((c) => c.message).join("\n\n"), {commits});
+  };
+  mine.onclick = () => go("committed", t("q_committed"));
+  const row = el("div", "row");
+  row.append(now, mine, note);
+  box.append(row);
+  return box;
+}
+
 function renderStepCard() {
   const card = document.getElementById("stepcard");
   const step = curStep();
@@ -753,19 +864,30 @@ function renderStepCard() {
     card.replaceChildren(c);
   } else {
     const explain = plan.mode === "explain";
-    const c = el("div", "stepcard " + (step.status === "review" && !step.confirmed ? "review" : ""));
-    if (step.status === "review" && !step.confirmed) c.append(el("span", "turn", teachBackOn(plan) ? t("turnRestate") : t("turnCheck")));
+    const turn = yourTurn(step);
+    const c = el("div", "stepcard " + (turn ? "review" : ""));
+    if (turn) c.append(el("span", "turn", t(turn)));
     const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
-    if (step.confirmed) h.append(el("span", "passed", t("restated")));
+    const st = !explain && (turn ? "review" : step.status === "done" || step.confirmed && step.status !== "doing" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
+    if (st) h.append(el("span", "sbadge " + st, (st === "done" ? "✓ " : "") + t("sb_" + st)));
+    if (step.confirmed && step.status !== "done") h.append(el("span", "passed", t("restated")));
     c.append(h);
+    if (st === "doing") {
+      const line = el("div", "implementing");
+      const dots = el("span", "dots");
+      dots.append(el("i"), el("i"), el("i"));
+      line.append(dots, t("implementing"));
+      c.append(line);
+    }
     if (step.detail) c.append(richEl("p", "detail", step.detail));
     if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
+    if (turn === "turnCommit") c.append(commitBox(step));
     const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: t(explain ? "askStage" : "askStep"),
-      quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
+      quick: plan.mode === "explain" ? ["confused", "deeper"] : turn === "turnCommit" ? ["confused"] : ["confused"],
       modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
-      mode: teach && step.status === "review" && !step.confirmed ? "teachback" : "question",
+      mode: turn === "turnRestate" ? "teachback" : "question",
       phase: step.status + (step.confirmed ? "+" : ""),
     }));
     card.replaceChildren(c);
@@ -1131,8 +1253,9 @@ function renderSteps() {
   all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
   bar.replaceChildren(all, ...steps().map((s, i) => {
-    const cls = plan.mode === "explain" && !s.status ? "plain" : s.confirmed ? "done" : STEP_STATUS[s.status] || "todo";
-    const mark = s.confirmed ? "✓ " : s.status === "review" ? "👉 " : "";
+    const turn = yourTurn(s);
+    const cls = plan.mode === "explain" && !s.status ? "plain" : turn ? "review" : s.confirmed ? "done" : STEP_STATUS[s.status] || "todo";
+    const mark = turn ? "👉 " : s.status === "done" || s.confirmed ? "✓ " : "";
     const c = el("button", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
     c.setAttribute("aria-pressed", String(s.id === stepId));
     c.title = s.confirmed ? t("chipRestated") : s.status === "review" ? t("chipTurn") : "";
@@ -1393,13 +1516,18 @@ function draw(p) {
     clearPanel(t("boxRemoved"));
   }
   if (prev && !same(prev, p)) noteChanges(prev);
+  // Follow the agent: when the step you were watching is finished, show the one it moved on to.
+  const was = prev && activeStep(prev), now = activeStep(plan);
+  if (was && now && stepId === was.id && now.id !== was.id) selectStep(now.id);
   markChanges();
   renderBar();
 }
 let rendered = false, loadedThread = false;
 
+let everConnected = false;
 function setConn(on) {
   connected = on;
+  everConnected ||= on;
   if (!on) waiting = 0;
   document.querySelectorAll(".talk .note").forEach((n) => {
     n.textContent = hintText();

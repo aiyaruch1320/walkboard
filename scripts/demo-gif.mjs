@@ -31,11 +31,11 @@ const listen = () => api("/api/poll").catch(() => {});
 const terminalUrl = pathToFileURL(path.join(repo, "scripts/demo/terminal.html")).href;
 const endUrl = pathToFileURL(path.join(repo, "scripts/demo/end.html")).href;
 const shortUrl = `127.0.0.1:${new URL(url).port}/?token=…`;
-const PROMPT = "/planview วางแผน deploy CronJob นำเข้าลูกค้าขึ้น staging";
+const PROMPT = "/planview plan deploying the nightly customer import CronJob to staging";
 
 const page = await launch({width: W, height: H, scale: SCALE});
 const frames = [];
-const graphemes = (t) => [...new Intl.Segmenter("th", {granularity: "grapheme"}).segment(t)].map((s) => s.segment);
+const graphemes = (t) => [...new Intl.Segmenter("en", {granularity: "grapheme"}).segment(t)].map((s) => s.segment);
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
 
 // Captions are drawn on the output frames, so they stay sharp and the same size while the camera zooms.
@@ -208,25 +208,25 @@ async function crossfade(load, steps = 6) {
 }
 
 const TERMINAL_LINES = [
-  ['● planview <span class="muted">· โหมดวางแผน</span>', ""],
-  ['? ทวนความเข้าใจทีละขั้นไหม  <span class="ok">› ใช่</span>', "ask"],
-  ['? ให้ช่วย commit ไหม  <span class="ok">› แนะนำข้อความพอ</span>', "ask"],
-  ['● อ่านโค้ด 14 ไฟล์ · เขียนแผน 5 ขั้น 4 ภาพ · <span class="ok">planview check ok</span>', ""],
-  [`● เปิดหน้าแผน  <span class="link" id="planlink">http://${shortUrl}</span>`, ""],
-  ['<span class="muted">  รอฟังจากหน้าแผน…</span>', ""],
+  ['● planview <span class="muted">· build mode</span>', ""],
+  ['? Restate each step as we go?  <span class="ok">› Yes</span>', "ask"],
+  ['? Commit for you?  <span class="ok">› Suggest messages only</span>', "ask"],
+  ['● Read 14 files · wrote a plan: 5 steps, 4 pictures · <span class="ok">planview check ok</span>', ""],
+  [`● Plan page  <span class="link" id="planlink">http://${shortUrl}</span>`, ""],
+  ['<span class="muted">  Listening to the plan page…</span>', ""],
 ];
 const CAPTIONS = [
-  "พิมพ์ /planview แล้วบอกงานที่อยากทำ",
-  "agent ถามสองข้อ เขียนแผน แล้วเปิดเป็นหน้าเว็บ",
-  "ตรวจแผนก่อน: ขั้นตอนอยู่บน ภาพของงานอยู่ล่าง",
-  "พอใจแล้วกด อนุมัติแผน agent จึงเริ่มทำ",
-  "เลือกขั้นไหนก็ได้ หน้าพาไปภาพที่เกี่ยวข้อง",
-  "คลิกกล่อง: รับอะไร ได้อะไร ทำไม",
-  "สงสัยตรงไหน ถามบนกล่องนั้นเลย",
-  "คลิกของคุณปลุก agent ให้มาตอบ",
-  "คำตอบขึ้นตรงที่ถาม",
-  "ขั้นเสร็จแล้ว: ถึงตาคุณทวนว่าเข้าใจตรงกัน",
-  "ทวนถูก agent ยืนยัน ✓ แล้วไปขั้นถัดไป",
+  "Type /planview and describe the task",
+  "The agent asks two questions, writes the plan and opens it as a page",
+  "Review the plan first: steps on top, the picture of the work below",
+  "When it looks right, approve the plan. Only then does the agent start",
+  "Pick any step: the page shows the picture it belongs to",
+  "Click a box: what goes in, what comes out, and why",
+  "Ask about a box right where it is",
+  "Your message wakes the agent",
+  "The answer appears where you asked",
+  "Step finished: your turn to restate it in your own words",
+  "Restated correctly: the agent confirms ✓ and moves on",
 ];
 // Clears the fake browser bar and the sticky status bar when scrolling to something.
 const TOP = 100;
@@ -293,7 +293,7 @@ try {
   caption = CAPTIONS[6];
   await moveTo("#panel textarea", {dx: 0.2});
   await click("#panel textarea", {hold: 200});
-  await typeInto("#panel textarea", "ทำไมต้อง suspend ไว้ก่อน");
+  await typeInto("#panel textarea", "Why keep it suspended for now?");
   await snap(500);
   await moveTo("#panel .send button");
   await click("#panel .send button", {hold: 200});
@@ -309,10 +309,10 @@ try {
     await ov(`__ov.cursor(0, 0, false)`);
     await page.eval(`typeTo(${JSON.stringify(PROMPT)});`);
     for (const [html, cls] of TERMINAL_LINES.slice(0, 5)) await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
-    await page.eval(`addLine('<span class="ask">◆ คำถามจากหน้าแผน · CronJob import</span>'); addLine('  “ทำไมต้อง suspend ไว้ก่อน”'); addLine('<span class="ok">● ตอบบนหน้าแผนแล้ว</span>');`);
+    await page.eval(`addLine('<span class="ask">◆ Question from the plan page · CronJob import</span>'); addLine('  “Why keep it suspended for now?”'); addLine('<span class="ok">● Answered on the plan page</span>');`);
   });
   await snap(2500);
-  await api("/api/reply", {node: "cronjob", from: "agent", text: "เพราะ Secret และทางไป warehouse ยังไม่พร้อม เปิดตอนนี้ Job จะล้มทุกคืน"});
+  await api("/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night."});
   listen();
 
   caption = CAPTIONS[8];
@@ -330,7 +330,7 @@ try {
   pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:netpol", "status=done", "node:cm", "status=done");
   await sleep(1300);
   caption = CAPTIONS[9];
-  await scrollTo("main", 0);
+  await scrollTo("main", 40);
   await snap(900);
   await moveTo('.chip[data-step="manifests"]');
   await click('.chip[data-step="manifests"]', {hold: 400});
@@ -338,20 +338,19 @@ try {
   await snap(1600);
   await moveTo("#stepcard textarea", {dx: 0.2});
   await click("#stepcard textarea", {hold: 200});
-  await typeInto("#stepcard textarea", "เขียน manifest ให้ CronJob พักไว้ก่อน รอ key", 4);
+  await typeInto("#stepcard textarea", "Manifests create the CronJob suspended until the keys exist", 4);
   await snap(400);
   await moveTo("#stepcard .send button");
   await click("#stepcard .send button", {hold: 300});
-  await api("/api/reply", {step: "manifests", from: "agent", text: "ถูกครับ ✓ ต่อไปขั้น: ใส่ key ของ warehouse"});
+  await api("/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ Next step: add the BigQuery and API keys"});
   listen();
   pv("set", dir, "step:manifests", "confirmed=true", "status=done", "step:secrets", "status=doing");
   await sleep(1300);
   caption = CAPTIONS[10];
   await page.eval(`document.querySelector("#stepcard .thread").scrollIntoView({block: "center"});`);
   await snap(2300);
-  await scrollTo("main", 0);
-  await zoomTo(['.chip[data-step="manifests"]', '.chip[data-step="secrets"]'], 1.6, 2000);
-  await zoomOut();
+  await scrollTo("main", 40);
+  await snap(2600);
 
   caption = null;
   await crossfade(async () => {

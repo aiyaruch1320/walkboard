@@ -52,10 +52,10 @@ const urls = {
   explain: pv("open", path.join(repo, "examples/explain-login"), "--no-browser"),
   demo: pv("open", demo, "--no-browser"),
 };
-await post(urls.demo, "/api/feedback", {node: "cronjob", kind: "confused", text: "ทำไมต้อง suspend ไว้ก่อน"});
-await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "เพราะ Secret กับทางออกไป warehouse ยังไม่พร้อม ถ้าเปิดตอนนี้ Job จะล้มทุกคืน พอขั้น 4 เสร็จค่อยเลิก suspend ในขั้น 5"});
-await post(urls.demo, "/api/feedback", {step: "manifests", kind: "teachback", text: "ขั้นนี้เขียน manifest ให้ ArgoCD สร้าง CronJob แบบพักไว้ก่อน พร้อม ConfigMap และ NetworkPolicy"});
-await post(urls.demo, "/api/reply", {step: "manifests", from: "agent", text: "ถูกครับ ✓ เพิ่มอีกข้อ: NetworkPolicy ยังไม่เปิดทางไป warehouse ซึ่งจะทำในขั้น 4"});
+await post(urls.demo, "/api/feedback", {node: "cronjob", kind: "confused", text: "Why keep it suspended for now?"});
+await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night, so it stays suspended until step 4 is done."});
+await post(urls.demo, "/api/feedback", {step: "manifests", kind: "teachback", text: "This step writes manifests so ArgoCD creates the CronJob suspended, with its ConfigMap and NetworkPolicy."});
+await post(urls.demo, "/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ One more thing: the NetworkPolicy does not open the route to BigQuery yet; that comes in step 4."});
 
 const page = await launch();
 try {
@@ -71,7 +71,7 @@ try {
   await shot(page, at(urls.explain, "step=verify"), "explain-overview.png", {select: ["#bar", "main > .top", "#badges", "#stepcard", "#view .lane"]});
   await shot(page, at(urls.demo, "step=manifests&node=cronjob"), "chat.png", {
     select: ["#panel"],
-    prepare: `const t = document.querySelector('#panel .term'); t?.click();`,
+    prepare: `document.querySelector('#panel').scrollIntoView(); const t = document.querySelector('#panel .term'); t?.click();`,
   });
   await shot(page, at(urls.demo, "step=manifests"), "teachback.png", {
     select: ["#stepbar", "#stepcard"],

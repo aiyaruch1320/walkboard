@@ -36,6 +36,22 @@ export function parseLines(spec) {
   return out;
 }
 
+// "highlight" is lines ("146, 152") or lines with a short note each ({"146": "waits here", "152": "prints, then exits"}).
+export function highlightOf(h) {
+  if (isObj(h)) {
+    const lines = new Set(), notes = new Map();
+    for (const [spec, note] of Object.entries(h)) {
+      const set = parseLines(spec);
+      if (!set || typeof note !== "string") return null;
+      set.forEach((n) => lines.add(n));
+      if (note) notes.set(Math.max(...set), note);
+    }
+    return {lines, notes};
+  }
+  const lines = parseLines(h);
+  return lines && {lines, notes: new Map()};
+}
+
 const has = (o, k) => o != null && typeof o === "object" && Object.hasOwn(o, k);
 const list = (x) => (Array.isArray(x) ? x : []);
 const isObj = (x) => x != null && typeof x === "object" && !Array.isArray(x);
@@ -118,7 +134,7 @@ export function validate(p) {
     }
     if (!n.name) out.push(`node "${id}" has no name`);
     if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
-    if (n.highlight != null && !parseLines(n.highlight)) out.push(`node "${id}" highlight must be lines like "12", "12-14" or "12, 15-16"`);
+    if (n.highlight != null && !highlightOf(n.highlight)) out.push(`node "${id}" highlight must be lines like "12, 15-16", or {"12": "note"}`);
     if (n.proposal != null && (!isObj(n.proposal) || !["add", "change", "remove"].includes(n.proposal.type) || (n.proposal.note != null && typeof n.proposal.note !== "string")))
       out.push(`node "${id}" proposal must be {"type": "add"|"change"|"remove", "note": "…"}`);
     if (n.status && !has(NODE_STATUS, n.status)) out.push(`node "${id}": unknown status "${n.status}" (${Object.keys(NODE_STATUS).join(", ")})`);

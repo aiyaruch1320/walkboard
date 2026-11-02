@@ -149,6 +149,10 @@ test("highlighted lines are parsed and checked", async () => {
   const p = base();
   p.nodes.a.highlight = "3-4";
   assert.deepEqual(validate(p), []);
+  p.nodes.a.highlight = {"3": "starts here", "5-6": ""};
+  assert.deepEqual(validate(p), []);
+  p.nodes.a.highlight = {"x": "no"};
+  assert.match(validate(p).join("\n"), /highlight must be/);
   p.nodes.a.highlight = "x";
   assert.match(validate(p).join("\n"), /highlight must be/);
 });

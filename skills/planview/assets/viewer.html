@@ -225,13 +225,13 @@ const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
 const drafts = {};
-const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน"};
+const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", deeper: "ลึกขึ้น", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน"};
 const MODE = {
   question: {label: "ถาม", send: "ส่งคำถาม"},
   change: {label: "ขอแก้", send: "ส่งคำขอแก้", placeholder: "บอกว่าอยากให้แก้อะไร เช่น แยกขั้นนี้เป็นสองขั้น…"},
   teachback: {label: "ทวน", send: "ส่งคำทวน", placeholder: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…"},
 };
-const QUICK = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", approve: "อนุมัติแผนนี้ เริ่มทำได้"};
+const QUICK = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", deeper: "ขอดูส่วนนี้ลึกลงไปอีกชั้น", approve: "อนุมัติแผนนี้ เริ่มทำได้"};
 const touch = matchMedia("(pointer: coarse)").matches;
 const picked = {};
 const seen = new Set();
@@ -497,7 +497,7 @@ function renderStepCard() {
     const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: "ถามเกี่ยวกับขั้นนี้…",
-      quick: ["confused"],
+      quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
       modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
       mode: teach && step.status === "review" ? "teachback" : "question",
     }));
@@ -912,7 +912,7 @@ function selectNode(id, reveal = false) {
   if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused"], modes: ["question", "change"]}));
+  parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused", "deeper"], modes: ["question", "change"]}));
   p.replaceChildren(...parts);
   refreshThreads();
   if (reveal) p.scrollIntoView({block: "nearest", behavior: "smooth"});

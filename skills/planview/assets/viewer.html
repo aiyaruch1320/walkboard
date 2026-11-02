@@ -161,8 +161,17 @@ const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + escRe(t) + (/\w$/.t
 
 // Shared terms ship with planview; the plan only adds its own. Only terms the plan uses are shown.
 function setGlossary(own) {
-  // Addresses and paths are not prose: "token" in a URL is no reason to explain tokens.
-  const text = JSON.stringify(plan, (k, v) => (["glossary", "url", "file", "root", "roots", "links"].includes(k) ? undefined : v));
+  // Only the words people read: not field names ("settings.commit") and not addresses ("token" in a URL).
+  const NOT_PROSE = new Set(["glossary", "settings", "url", "file", "root", "roots", "links", "anchor", "highlight", "id", "icon", "kind", "status", "basis", "type", "key",
+    "nodes", "node", "from", "to", "actors", "states", "start", "end", "before", "after", "changed", "uses", "configs", "outside", "targets", "policy", "view", "option", "proposals", "sources", "source", "ref"]);
+  const words = [];
+  const walk = (x, k) => {
+    if (NOT_PROSE.has(k)) return;
+    if (typeof x === "string") words.push(x);
+    else if (x && typeof x === "object") for (const [kk, v] of Object.entries(x)) walk(v, Array.isArray(x) ? k : kk);
+  };
+  walk(plan, "");
+  const text = words.join("\n");
   const used = Object.fromEntries(Object.entries(commonGlossary).filter(([t]) => new RegExp(edge(t)).test(text)));
   const pick = (v) => (typeof v === "string" ? v : v?.[lang] ?? v?.en);
   glossary = {...Object.fromEntries(Object.entries(used).map(([k, v]) => [k, pick(v)])), ...(own && typeof own === "object" ? own : {})};
@@ -562,6 +571,7 @@ function yourTurn(step) {
 }
 
 // The agent's suggested commits (one or several, each with its files), editable; the user commits through the agent or says they did it themselves.
+let commitShown = null;
 function commitBox(step) {
   const list = Array.isArray(step.commits) && step.commits.length ? step.commits : [{message: step.commitMessage ?? ""}];
   const box = el("div", "commitbox");
@@ -1081,7 +1091,13 @@ function renderSide() {
     const turn = yourTurn(step);
     const parts = [];
     if (turn) parts.push(el("span", "turn", answered(step) ? t("sentWait") : t(turn, unit())));
-    if (turn === "turnCommit" && !answered(step)) parts.push(commitBox(step));
+    if (turn === "turnCommit" && !answered(step)) {
+      const box = commitBox(step);
+      parts.push(box);
+      // The suggested commits appear after a restatement passes: bring them into view once.
+      if (commitShown !== step.id) requestAnimationFrame(() => box.scrollIntoView({block: "nearest", behavior: "smooth"}));
+      commitShown = step.id;
+    }
     const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     parts.push(talkBox({step: step.id}, {
       placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
@@ -1608,14 +1624,16 @@ function renderJourney(v) {
     renderView();
   };
   bar.append(prev, el("span", "jpos", t("jStop", i + 1, stops.length)), next, play);
-  const s = stops[i], before = new Set(String(stops[i - 1]?.data ?? "").split("\n"));
+  // A trailing comma or spacing is not a change.
+  const norm = (l) => l.trim().replace(/,$/, "");
+  const s = stops[i], before = new Set(String(stops[i - 1]?.data ?? "").split("\n").map(norm));
   const card = el("div", "jcard");
   card.append(el("div", "jtitle", plan.nodes[s.node]?.name || s.node));
   if (s.note) card.append(richEl("p", "jnote", s.note));
   if (s.data != null) {
     const pre = el("pre", "jdata");
     // Lines that were not there at the previous stop are what this stop changed.
-    for (const line of String(s.data).split("\n")) pre.append(el("span", i && !before.has(line) ? "jnew" : null, line + "\n"));
+    for (const line of String(s.data).split("\n")) pre.append(el("span", i && line.trim() && !before.has(norm(line)) ? "jnew" : null, line + "\n"));
     card.append(pre);
   }
   wrap.append(scroll, bar, card);

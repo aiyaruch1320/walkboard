@@ -8,7 +8,7 @@ One JSON object. `PV check <dir>` validates it with the same rules the page uses
   "goal": "One sentence: what is true when this is done.",
   "mode": "build",
   "lang": "en",
-  "settings": {"teachBack": true, "commit": "suggest"},
+  "settings": {"commit": "suggest"},
   "approved": false,
   "glossary": {"CronJob": "A Kubernetes job that starts by itself on a schedule"},
   "steps": [
@@ -56,7 +56,7 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 
 | Field | Mode | Values |
 |---|---|---|
-| `teachBack` | both | `true` = the user restates each step; `false` = skip |
+| `teachBack` | both | Default `true`: the user restates each step. The user switches it on the page; do not ask |
 | `commit` | build | `"auto"` = you commit after each step; `"suggest"` = only suggest messages |
 | `depth` | explain | `"overview"` or `"detail"` (down to functions and files) |
 | `editor` | both | Where file links open: `"vscode"` (default), `"cursor"`, `"idea"`, `"none"` |

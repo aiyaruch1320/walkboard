@@ -32,6 +32,7 @@ function viewerPage() {
 }
 
 const MAX_BODY = 64 * 1024;
+const sameKey = (v) => JSON.stringify(["kind", "text", "node", "step", "option", "criterion", "constraint"].map((k) => v[k] ?? null));
 
 // A torn or hand-edited line must not keep the server from starting.
 function readLines(file) {
@@ -92,6 +93,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   const all = readLines(p.feedback);
   let delivered = Math.min(Number(fs.existsSync(p.delivered) ? fs.readFileSync(p.delivered, "utf8") : 0) || 0, all.length);
   const pending = all.slice(delivered);
+  let recent = [];
   const waiters = [];
   const polls = new Set();
   const streams = new Set();
@@ -170,7 +172,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       readBody(req, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         if (err || typeof v.text !== "string" || !v.text.trim()) return res.writeHead(400).end("need a JSON object with text");
+        // A double click sends the same message twice; keep the first.
+        const same = route === "POST /api/feedback" && recent.find((r) => Date.now() - r.t < 5000 && r.key === sameKey(v));
+        if (same) return res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(same.item));
         const item = {...v, id: crypto.randomUUID(), at: new Date().toISOString()};
+        if (route === "POST /api/feedback") recent = [...recent.filter((r) => Date.now() - r.t < 5000), {t: Date.now(), key: sameKey(v), item}];
         if (route === "POST /api/reply") {
           fs.appendFileSync(p.replies, JSON.stringify(item) + "\n");
           broadcast("reply", item);

@@ -425,9 +425,9 @@ function typingEl(m) {
 
 function renderBadges() {
   const conn = document.getElementById("conn");
-  const busy = working().length > 0;
-  conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy ? "work" : "idle");
-  conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : t("connIdle");
+  const busy = working().length > 0, building = steps().some((x) => x.status === "doing");
+  conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
+  conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
   conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
   if (!plan) return;
   const s = plan.settings || {};
@@ -510,7 +510,9 @@ function renderBar() {
     extra.push(b);
   }
   if ((plan.mode ?? "build") === "build" && !plan.approved && connected) {
-    const b = el("button", "primary", "✓ " + t("approve"));
+    const sent = approvePending();
+    const b = el("button", "primary", sent ? t("approveSent") : "✓ " + t("approve"));
+    b.disabled = sent;
     b.title = t("quickTip");
     b.onclick = async (e) => {
       e.stopPropagation();
@@ -538,6 +540,11 @@ function renderBar() {
 }
 
 // What a step in review still waits for: a restatement, then (when the user commits) the commit.
+// Approved and not yet answered: the agent replying (e.g. with a question) gives the button back.
+const approvePending = () => {
+  const i = thread.findLastIndex((m) => m.kind === "approve" && m.from !== "agent");
+  return i >= 0 && !thread.slice(i + 1).some((m) => m.from === "agent");
+};
 const approveOk = () => !proposals().length || confirm(t("approveOpen", proposals().length));
 
 // A step whose answer (restatement or commit) was sent and is waiting for the agent.
@@ -548,7 +555,8 @@ function yourTurn(step) {
   if (step?.status !== "review") return null;
   if (teachBackOn(plan) && !step.confirmed) return "turnRestate";
   if (plan.mode !== "explain" && plan.settings?.commit === "suggest") return "turnCommit";
-  return step.confirmed ? null : "turnCheck";
+  // Restating off and the agent commits itself: nothing waits for the user.
+  return null;
 }
 
 // The agent's suggested commits (one or several, each with its files), editable; the user commits through the agent or says they did it themselves.
@@ -731,7 +739,9 @@ function renderPropsPanel() {
   const build = plan.mode !== "explain";
   const go = el("button", "primary", t(build ? "confirmApply" : "confirmPlan"));
   const ids = proposals().map(([id]) => id);
-  go.disabled = !ids.length;
+  const asked = thread.some((m) => ["plan", "apply"].includes(m.kind) && String(m.proposals) === String(ids));
+  go.disabled = !ids.length || asked;
+  if (asked) go.textContent = t("sentWait");
   go.onclick = async () => {
     go.disabled = true;
     await send({}, build ? "apply" : "plan", t(build ? "q_apply" : "q_plan"), {proposals: ids}).catch(() => (go.disabled = false));
@@ -1069,7 +1079,7 @@ function renderSide() {
     const turn = yourTurn(step);
     const parts = [];
     if (turn) parts.push(el("span", "turn", answered(step) ? t("sentWait") : t(turn, unit())));
-    if (turn === "turnCommit") parts.push(commitBox(step));
+    if (turn === "turnCommit" && !answered(step)) parts.push(commitBox(step));
     const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     parts.push(talkBox({step: step.id}, {
       placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
@@ -1081,7 +1091,7 @@ function renderSide() {
     p.replaceChildren(...parts);
   } else {
     title.textContent = t("wholePlan");
-    const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
+    const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
     parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
     p.replaceChildren(...parts);

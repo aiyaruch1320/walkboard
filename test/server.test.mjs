@@ -48,6 +48,16 @@ test("the page arrives as one file", async (t) => {
   assert.match(html, /--new-bd/);
 });
 
+test("a double click sends one message", async (t) => {
+  const s = await startServer(planDir());
+  t.after(s.close);
+  const a = await (await post(s, "/api/feedback", {kind: "approve", text: "go"})).json();
+  const b = await (await post(s, "/api/feedback", {kind: "approve", text: "go"})).json();
+  assert.equal(a.id, b.id);
+  const items = await (await call(s, "/api/poll")).json();
+  assert.equal(items.length, 1);
+});
+
 test("feedback reaches a waiting poll", async (t) => {
   const s = await startServer(planDir());
   t.after(s.close);

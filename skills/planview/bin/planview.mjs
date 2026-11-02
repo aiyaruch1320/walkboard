@@ -5,6 +5,7 @@ import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths} from "../lib/server.mjs";
 import {validate, lint} from "../lib/schema.mjs";
+import {checkEvidence} from "../lib/source.mjs";
 
 const USAGE = `planview <command> [options]
 
@@ -79,6 +80,7 @@ async function check() {
     fail(`cannot read ${p.plan}: ${e.message}`);
   }
   const problems = validate(plan);
+  if (!problems.length) problems.push(...checkEvidence(plan));
   if (problems.length) {
     console.error(problems.map((t) => `- ${t}`).join("\n"));
     process.exit(1);

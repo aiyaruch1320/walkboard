@@ -664,7 +664,7 @@ function renderStepCard() {
     c.append(h);
     if (step.detail) c.append(richEl("p", "detail", step.detail));
     if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
-    const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
+    const teach = plan.settings?.teachBack && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: t(explain ? "askStage" : "askStep"),
       quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],

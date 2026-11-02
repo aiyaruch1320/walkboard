@@ -71,6 +71,8 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | `detail` | One sentence: what this step does (shown when the step is selected) |
 | `done` | How we know it is finished; in explain mode, what the reader understands at that point (shown as "Understood when:") |
 | `status` | `todo`, `doing`, `review` (waiting for the user; shown as "Your turn"), `done`; omit in explain mode |
+| `commitMessage` | The commit message you suggest when `settings.commit` is `"suggest"`; the page shows it, editable, with a commit button |
+| `commits` | Several suggested commits instead: `[{"message": "…", "files": ["…"]}]`, made in order. Usually one per step; more than 3 means the step should be split |
 | `confirmed` | `true` once the user's restatement matched; shown as ✓ |
 | `nodes` | Boxes this step touches; others fade when it is selected, and the page switches to a picture that shows them |
 

@@ -51,7 +51,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
    - `deeper`: add boxes, a stage or a view (with `file` evidence), then reply with what you added.
    - `change`: change the plan, `PV check`, reply with what changed (the page highlights it).
    - `teachback`: say what is right, correct what is not; when it matches, `PV set <dir> step:<id> confirmed=true`.
-   - `approve`: `PV set <dir> approved=true`, then reply in one line. `ok`: acknowledge in one line.
+   - `approve`: `PV set <dir> approved=true`, then reply in one line. `commit` / `committed`: see section 4. `ok`: acknowledge in one line.
    - `settings`: switches the user changed on the page (already in plan.json). It only arrives together with another message and needs no reply.
    Reply to every other message, even in one line: the page shows you as typing from the moment you take a message until you reply or poll again.
 3. Refer to steps by title, not number. Start `PV poll` again. The user may also answer in chat; handle both.
@@ -63,9 +63,12 @@ Do not start until `approved` is true. For each step:
 1. `PV set <dir> step:<id> status=doing node:<a> status=new …`
 2. Do the work, limited to that step.
 3. `PV set <dir> step:<id> status=review node:<a> status=done …` (the page shows "Your turn").
-4. Read the current `settings` first (`PV status <dir>` prints them; the user may have switched them on the page). With teach-back on (`teachBack` is not `false`), wait until the step is `confirmed`; if the user asks to skip restating this step, go on without it. Otherwise skip.
-5. Commit per `settings.commit`: `"auto"` → small commits, one context each; `"suggest"` → give the messages, do not commit. The user who installed planview wants no `Co-Authored-By` or other line naming an AI or tool in these messages.
-6. `PV set <dir> step:<id> status=done`.
+4. Read the current `settings` first (`PV status <dir>` prints them; the user may have switched them on the page). With teach-back on (`teachBack` is not `false`), wait until the step is `confirmed`; if the user asks to skip restating this step, go on without it.
+5. Commit per `settings.commit`. The user who installed planview wants no `Co-Authored-By` or other line naming an AI or tool in these messages.
+   - `"auto"`: small commits, one context each, then go on.
+   - One commit per step by default. Split only into separate concerns (refactor and feature, migration and the code using it, dependency bump and code); more than 3 means the step is too big: split the step instead.
+   - `"suggest"`: `PV set <dir> step:<id> commitMessage="<message>"`, or for several `'commits=[{"message":"…","files":["…"]}]'`, and **wait**. The page shows them, editable, with each commit's files. `commit` (with `commits` = the messages as the user left them): make those commits in order, each with only its files, then go on. `committed`: the user committed; go on. Before the next step, `git status`: if this step's changes are still uncommitted, ask instead of going on, so steps never mix in one working tree.
+6. `PV set <dir> step:<id> status=done`, then the next step. Without teach-back and with `"auto"`, nothing waits.
 
 ## 4E. Walk through (explain)
 

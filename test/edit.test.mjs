@@ -18,6 +18,14 @@ test("JSON values set lists such as a step's commits", () => {
   assert.throws(() => applySet(plan(), parseSet(["step:a", "commits=[oops"])), /not valid JSON/);
 });
 
+test("design lists are targets by id", () => {
+  const p = {constraints: [{id: "cidr", text: "x", confirmed: false}], criteria: [{id: "cost", weight: 1}]};
+  applySet(p, parseSet(["constraint:cidr", "confirmed=true", "criterion:cost", "weight=3"]));
+  assert.equal(p.constraints[0].confirmed, true);
+  assert.equal(p.criteria[0].weight, 3);
+  assert.throws(() => applySet(p, parseSet(["constraint:nope", "confirmed=true"])), /no constraint:nope/);
+});
+
 test("unknown targets and prototype keys are refused", () => {
   assert.throws(() => applySet(plan(), parseSet(["step:nope", "status=done"])), /no step:nope/);
   assert.throws(() => applySet(plan(), parseSet(["node:constructor", "status=done"])), /no node:constructor/);

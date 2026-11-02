@@ -14,9 +14,10 @@ const USAGE = `planview <command> [options]
   check  [dir]                  validate dir/plan.json, print problems, exit 1 if any
   set    [dir] [target] key=value ...   change plan.json in place, e.g.
                                 step:build status=review confirmed=true node:job status=done approved=true
+                                (targets: plan, step:, node:, constraint:, option:, criterion:, source:<id>)
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
   poll   [dir] [--full]         wait for feedback from the page, print one JSON line per item, exit
-  reply  [dir] [--node n] [--step s] <text>   show an agent reply on the page (or --dir d)
+  reply  [dir] [--node n] [--step s] [--option o [--criterion c]] <text>   show an agent reply on the page (or --dir d)
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
@@ -31,7 +32,7 @@ function parse(argv) {
     const a = argv[i];
     if (a === "--no-browser") flags.noBrowser = true;
     else if (a === "--full") flags.full = true;
-    else if (["--dir", "--node", "--step"].includes(a)) flags[a.slice(2)] = argv[++i];
+    else if (["--dir", "--node", "--step", "--option", "--criterion"].includes(a)) flags[a.slice(2)] = argv[++i];
     else rest.push(a);
   }
   return {flags, rest};
@@ -166,9 +167,11 @@ async function reply() {
   const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
   if (flags.node && !Object.hasOwn(plan.nodes || {}, flags.node)) fail(`no node "${flags.node}" in the plan; ids: ${Object.keys(plan.nodes || {}).join(", ")}`);
   if (flags.step && !(plan.steps || []).some((x) => x.id === flags.step)) fail(`no step "${flags.step}" in the plan; ids: ${(plan.steps || []).map((x) => x.id).join(", ")}`);
+  for (const [flag, list] of [["option", "options"], ["criterion", "criteria"]]) {
+    if (flags[flag] && !(plan[list] || []).some((x) => x?.id === flags[flag])) fail(`no ${flag} "${flags[flag]}" in the plan; ids: ${(plan[list] || []).map((x) => x?.id).join(", ")}`);
+  }
   const body = {text, from: "agent"};
-  if (flags.node) body.node = flags.node;
-  if (flags.step) body.step = flags.step;
+  for (const k of ["node", "step", "option", "criterion"]) if (flags[k]) body[k] = flags[k];
   await api(s, "/api/reply", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
   console.log("sent");
 }

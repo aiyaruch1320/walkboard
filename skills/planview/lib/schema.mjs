@@ -242,6 +242,7 @@ function checkDesign(p) {
     else if (o.view != null && !views.has(o.view)) out.push(`option "${o.id}": no view "${o.view}"`);
   }
   for (const c of list(p.criteria)) if (!isObj(c) || !c.id || !c.label || (c.weight != null && !(Number.isInteger(c.weight) && c.weight >= 0 && c.weight <= 3))) out.push("every criterion needs an id, a label and a weight from 0 to 3");
+  for (const c of list(p.criteria)) if (isObj(c) && c.must != null && typeof c.must !== "boolean") out.push(`criterion "${c.id}": must is true or false`);
   for (const s of list(p.sources)) if (!isObj(s) || !s.id || typeof s.url !== "string" || !/^https?:\/\//.test(s.url)) out.push("every source needs an id and an http(s) url");
   if (p.scores != null && !isObj(p.scores)) out.push("scores must be {option: {criterion: {rating, note, sources}}}");
   for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) {
@@ -255,6 +256,11 @@ function checkDesign(p) {
   if (p.decision != null && (!isObj(p.decision) || !ids(p.options).includes(p.decision.option))) out.push("decision must name one of the options");
   for (const [id, n] of Object.entries(isObj(p.nodes) ? p.nodes : {})) if (n?.source != null && !sources.has(n.source)) out.push(`node "${id}": no source "${n.source}"`);
   return out;
+}
+
+// The must-have criteria an option fails (rated "no" or 0); such an option is out of the running whatever its total.
+export function failsMust(p, option) {
+  return list(p?.criteria).filter((c) => isObj(c) && c.must && ratingValue(p.scores?.[option]?.[c.id]?.rating) === 0).map((c) => c.id);
 }
 
 // Advice that does not stop the page from drawing.
@@ -275,6 +281,7 @@ export function lint(p) {
   if (p.mode === "design") {
     for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) for (const [c, cell] of Object.entries(isObj(row) ? row : {})) if (cell?.rating !== "na" && !list(cell?.sources).length) out.push(`scores.${o}.${c} cites no source`);
     if (!list(p.options).some((o) => o?.recommended)) out.push("no option is marked recommended");
+    for (const o of list(p.options)) if (o?.recommended && failsMust(p, o.id).length) out.push(`recommended option "${o.id}" fails a must: ${failsMust(p, o.id).join(", ")}`);
   }
   if (p.mode === "explain" && !p.root && !p.roots) out.push("explain mode should have root (the repository path) so file:line can be checked and opened");
   return out;

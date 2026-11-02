@@ -59,7 +59,7 @@ const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
 
 let lang = /^th\b/i.test(navigator.language) ? "th" : "en";
@@ -93,8 +93,12 @@ const seen = new Set();
 let freshReply = null;
 const hintText = () => (connected ? (touch ? "" : t("sendHint")) : t("noAgent"));
 
-const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : "plan");
-const inCtx = (m, c) => (c.node ? m.node === c.node : c.step ? m.step === c.step && !m.node : !m.node && !m.step);
+// Where a message belongs: a box, a step, a design option or one of its cells, or the whole plan.
+const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : c.option ? `option:${c.option}:${c.criterion || ""}` : "plan");
+const ctxOf = (m) => (m.node ? {node: m.node} : m.step ? {step: m.step} : m.option ? {option: m.option, criterion: m.criterion} : {});
+const inCtx = (m, c) => ctxKey(ctxOf(m)) === ctxKey(c);
+// An option's thread also keeps whole-plan replies that answered it, in case the agent replied without --option.
+const inThread = (m, c, i) => inCtx(m, c) || (!!c.option && m.from === "agent" && inCtx(m, {}) && inCtx(thread.slice(0, i).findLast((x) => x.from !== "agent" && x.kind !== "settings") || {}, c));
 
 function msgEl(m) {
   const d = el("div", "msg " + (m.from === "agent" ? "agent" : "user"));
@@ -157,7 +161,8 @@ const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + escRe(t) + (/\w$/.t
 
 // Shared terms ship with planview; the plan only adds its own. Only terms the plan uses are shown.
 function setGlossary(own) {
-  const text = JSON.stringify({...plan, glossary: undefined});
+  // Addresses and paths are not prose: "token" in a URL is no reason to explain tokens.
+  const text = JSON.stringify(plan, (k, v) => (["glossary", "url", "file", "root", "roots", "links"].includes(k) ? undefined : v));
   const used = Object.fromEntries(Object.entries(commonGlossary).filter(([t]) => new RegExp(edge(t)).test(text)));
   const pick = (v) => (typeof v === "string" ? v : v?.[lang] ?? v?.en);
   glossary = {...Object.fromEntries(Object.entries(used).map(([k, v]) => [k, pick(v)])), ...(own && typeof own === "object" ? own : {})};
@@ -232,7 +237,7 @@ const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id))
 function refreshThreads() {
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
-    const msgs = thread.filter((m) => inCtx(m, c) && m.kind !== "settings");
+    const msgs = thread.filter((m, i) => inThread(m, c, i) && m.kind !== "settings");
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     t.replaceChildren(...msgs.map(msgEl));
     const busy = working().find((m) => inCtx(m, c));
@@ -272,6 +277,8 @@ async function send(c, kind, text, extra = {}) {
   const body = {...extra, kind, text};
   if (c.node) body.node = c.node;
   if (c.step) body.step = c.step;
+  if (c.option) body.option = c.option;
+  if (c.criterion) body.criterion = c.criterion;
   if (viewId || plan.views[0]) body.view = viewId || plan.views[0].id;
   if (stepId && !c.step) body.viewingStep = stepId;
   const r = await fetch("/api/feedback?token=" + encodeURIComponent(token), {
@@ -403,7 +410,7 @@ async function saveSetting(change) {
 function working() {
   if (!connected || waiting) return [];
   return thread.filter((m, i) => m.from !== "agent" && m.delivered && m.kind !== "settings" && !(m.kind === "approve" && plan?.approved) &&
-    !thread.slice(i + 1).some((r) => r.from === "agent" && inCtx(r, m.node ? {node: m.node} : m.step ? {step: m.step} : {})));
+    !thread.slice(i + 1).some((r, j) => r.from === "agent" && inThread(r, ctxOf(m), i + 1 + j)));
 }
 
 function typingEl(m) {
@@ -836,14 +843,15 @@ function renderOptionCard() {
 function renderCompare() {
   const box = document.getElementById("compare");
   if (!isDesign() || !options().length || !criteria().length) return box.replaceChildren();
-  const pct = totals(), best = Math.max(...Object.values(pct).filter((x) => x != null));
+  const pct = totals(), out = Object.fromEntries(options().map((o) => [o.id, failsMust(plan, o.id).length > 0]));
+  const best = Math.max(...options().filter((o) => !out[o.id] && pct[o.id] != null).map((o) => pct[o.id]));
   const cur = curOption()?.id;
   const wrap = el("div", "cmp");
   wrap.append(el("h4", null, t("compareTitle")));
   const table = el("table"), head = el("tr");
   head.append(el("th"));
   for (const o of options()) {
-    const th = el("th", o.id === cur ? "sel" : "", (o.recommended ? "★ " : "") + o.title);
+    const th = el("th", (o.id === cur ? "sel" : "") + (out[o.id] ? " out" : ""), (o.recommended ? "★ " : "") + o.title);
     th.style.cursor = "pointer";
     th.onclick = () => chooseOption(o.id);
     head.append(th);
@@ -863,11 +871,12 @@ function renderCompare() {
       renderView();
       await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({weights: {[c.id]: next}})}).catch(() => {});
     };
+    if (c.must) th.append(" ", el("span", "must", t("must")));
     th.append(el("br"), wb);
     tr.append(th);
     for (const o of options()) {
       const x = cell(o.id, c.id);
-      const td = el("td", o.id === cur ? "sel" : "");
+      const td = el("td", (o.id === cur ? "sel" : "") + (out[o.id] ? " out" : ""));
       td.append(ratingEl(x?.rating));
       for (const s of x?.sources || []) if (sourceNo(s)) td.append(el("sup", null, `[${sourceNo(s)}]`));
       td.onclick = () => openSide({kind: "cell", option: o.id, criterion: c.id});
@@ -878,6 +887,12 @@ function renderCompare() {
   const foot = el("tr");
   foot.append(el("th", null, t("total")));
   for (const o of options()) {
+    if (out[o.id]) {
+      const td = el("td", (o.id === cur ? "sel " : "") + "out", "✗ " + t("failsMust"));
+      td.title = failsMust(plan, o.id).map((id) => criteria().find((c) => c.id === id)?.label || id).join(", ");
+      foot.append(td);
+      continue;
+    }
     const td = el("td", (o.id === cur ? "sel " : "") + (pct[o.id] === best ? "best" : ""), pct[o.id] == null ? "—" : pct[o.id] + "%");
     const meter = el("span", "meter"), fill = el("i");
     fill.style.width = (pct[o.id] || 0) + "%";
@@ -888,7 +903,20 @@ function renderCompare() {
   const tfoot = el("tfoot");
   tfoot.append(foot);
   table.append(thead, tbody, tfoot);
-  wrap.append(table);
+  wrap.append(table, el("p", "cmplegend", t("ratingLegend")));
+  // When the user's weights (or a failed must) put another option ahead of the agent's pick, say so and offer a re-check.
+  const rec = options().find((o) => o.recommended);
+  const lead = options().find((o) => !out[o.id] && pct[o.id] === best);
+  if (rec && lead && lead.id !== rec.id && !plan.decision?.option && (out[rec.id] || pct[lead.id] > pct[rec.id])) {
+    const note = el("div", "cmpnote", t(out[rec.id] ? "recFails" : "leadNote", lead.title, rec.title));
+    const ask = el("button", null, t("askRecheck"));
+    ask.onclick = async () => {
+      ask.disabled = true;
+      await send({}, "question", t("q_recheck", lead.title, rec.title)).catch(() => (ask.disabled = false));
+    };
+    note.append(ask);
+    wrap.append(note);
+  }
   box.replaceChildren(wrap);
 }
 
@@ -952,12 +980,29 @@ function renderDesignPanel() {
       }
       parts.push(ul);
     }
-    parts.push(talkBox({}, {placeholder: t("cellAsk", c.label, opt.title), modes: ["question", "propose"], extra: {option: opt.id, criterion: c.id}}));
+    parts.push(talkBox({option: opt.id, criterion: c.id}, {placeholder: t("cellAsk", c.label, opt.title), modes: ["question", "propose"]}));
   } else if (side.kind === "decide") {
     if (!opt) return closeSide();
     title.textContent = t("decideTitle", opt.title);
     const n = unconfirmed();
-    if (n) parts.push(el("div", "warnbox", "⚠ " + t("decideWarn", n)));
+    if (n) {
+      const warn = el("div", "warnbox", "⚠ " + t("decideWarn", n));
+      const items = [...(plan.constraints || []).filter((c) => c?.id && !c.confirmed).map((c) => [c.text, {}, {constraint: c.id}]),
+        ...Object.entries(plan.nodes || {}).filter(([, x]) => x?.basis === "assumed").map(([id, x]) => [x.name || id, {node: id}, {}])];
+      const ul = el("ul", "unconf");
+      for (const [text, c, extra] of items) {
+        const li = el("li", null, "❓ " + text + " ");
+        const ok = el("button", null, t("confirm"));
+        ok.onclick = async () => {
+          ok.disabled = true;
+          await send(c, "confirm", t("q_confirm", text), extra).catch(() => (ok.disabled = false));
+        };
+        li.append(ok);
+        ul.append(li);
+      }
+      warn.append(ul);
+      parts.push(warn);
+    }
     const ta = el("textarea");
     ta.placeholder = t("decideReason");
     ta.dataset.key = "decide:" + opt.id;
@@ -976,7 +1021,7 @@ function renderDesignPanel() {
   } else {
     if (!opt) return closeSide();
     title.textContent = opt.title;
-    parts.push(talkBox({}, {placeholder: t("askOption", opt.title), modes: ["question", "propose"], extra: {option: opt.id}}));
+    parts.push(talkBox({option: opt.id}, {placeholder: t("askOption", opt.title), modes: ["question", "propose"]}));
   }
   p.replaceChildren(...parts);
   refreshThreads();

@@ -140,8 +140,8 @@
   "th": "ช่องทางที่โปรแกรมหนึ่งเรียกใช้อีกโปรแกรมหนึ่ง"
  },
  "endpoint": {
-  "en": "One address of an API, e.g. POST /orders",
-  "th": "ที่อยู่หนึ่งของ API เช่น POST /orders"
+  "en": "An address something connects to: an API path such as POST /orders, or a service's network address",
+  "th": "ที่อยู่ที่ระบบอื่นเรียกเข้ามา เช่น path ของ API (POST /orders) หรือที่อยู่ของ service ในเครือข่าย"
  },
  "HTTP": {
   "en": "The standard protocol web pages and APIs talk over",
@@ -270,5 +270,109 @@
  "CLI": {
   "en": "A program used by typing commands",
   "th": "โปรแกรมที่ใช้ผ่านการพิมพ์คำสั่ง"
+ },
+ "region": {
+  "en": "A cloud location such as ap-southeast-1 (Singapore)",
+  "th": "พื้นที่ของ cloud เช่น ap-southeast-1 (สิงคโปร์)"
+ },
+ "AZ": {
+  "en": "Availability Zone: one data centre group inside a region",
+  "th": "Availability Zone: กลุ่มศูนย์ข้อมูลหนึ่งใน region"
+ },
+ "VPC": {
+  "en": "Your own private network inside the cloud",
+  "th": "เครือข่ายส่วนตัวของเราบน cloud"
+ },
+ "subnet": {
+  "en": "A slice of a VPC's addresses, usually in one AZ",
+  "th": "ส่วนย่อยของช่วง IP ใน VPC มักอยู่ใน AZ เดียว"
+ },
+ "CIDR": {
+  "en": "A range of IP addresses, e.g. 10.0.0.0/16",
+  "th": "ช่วงของ IP address เช่น 10.0.0.0/16"
+ },
+ "route table": {
+  "en": "Rules that say where traffic for each address range goes",
+  "th": "กฎที่บอกว่าข้อมูลไปยังช่วง IP ไหนต้องวิ่งผ่านทางใด"
+ },
+ "security group": {
+  "en": "A firewall on a server: which traffic may come in or go out",
+  "th": "firewall ของเครื่อง: กำหนดว่าข้อมูลไหนเข้าออกได้"
+ },
+ "NAT": {
+  "en": "Lets private machines reach the internet without being reachable from it",
+  "th": "ให้เครื่องในเครือข่ายส่วนตัวออก internet ได้ โดยข้างนอกเข้ามาไม่ได้"
+ },
+ "VPC peering": {
+  "en": "A direct private link between two VPCs",
+  "th": "การเชื่อม VPC สองตัวเข้าหากันโดยตรงแบบส่วนตัว"
+ },
+ "Transit Gateway": {
+  "en": "A hub that connects many VPCs and networks in one place",
+  "th": "ศูนย์กลางที่เชื่อม VPC และเครือข่ายหลายตัวไว้ที่เดียว"
+ },
+ "PrivateLink": {
+  "en": "Exposes one service to another VPC privately, without joining the networks",
+  "th": "เปิดให้อีก VPC เรียก service หนึ่งตัวแบบส่วนตัว โดยไม่ต้องเชื่อมทั้งเครือข่าย"
+ },
+ "transitive": {
+  "en": "Passing through: A reaches C via B. Peering is not transitive",
+  "th": "ส่งต่อผ่านกันได้: A ไปถึง C ผ่าน B (peering ทำแบบนี้ไม่ได้)"
+ },
+ "attachment": {
+  "en": "The connection of one VPC or network to a Transit Gateway",
+  "th": "จุดที่ VPC หรือเครือข่ายหนึ่งต่อเข้ากับ Transit Gateway"
+ },
+ "load balancer": {
+  "en": "Spreads incoming requests over several servers",
+  "th": "กระจายคำขอที่เข้ามาไปยังหลายเครื่อง"
+ },
+ "NLB": {
+  "en": "Network Load Balancer: spreads raw TCP/UDP traffic",
+  "th": "Network Load Balancer: กระจายข้อมูลระดับ TCP/UDP"
+ },
+ "ALB": {
+  "en": "Application Load Balancer: spreads HTTP requests by path or host",
+  "th": "Application Load Balancer: กระจายคำขอ HTTP ตาม path หรือ host"
+ },
+ "ENI": {
+  "en": "A network card attached to a cloud machine",
+  "th": "การ์ดเครือข่ายที่ติดกับเครื่องบน cloud"
+ },
+ "IAM": {
+  "en": "Who may do what in the cloud account",
+  "th": "ระบบกำหนดว่าใครทำอะไรได้ใน account cloud"
+ },
+ "ARN": {
+  "en": "The full name of an AWS resource",
+  "th": "ชื่อเต็มของ resource ใน AWS"
+ },
+ "RAM": {
+  "en": "AWS Resource Access Manager: shares a resource with other accounts",
+  "th": "AWS Resource Access Manager: แชร์ resource ให้ account อื่นใช้"
+ },
+ "S3": {
+  "en": "AWS file storage (buckets of files)",
+  "th": "ที่เก็บไฟล์ของ AWS (เป็น bucket)"
+ },
+ "Pub/Sub": {
+  "en": "Google's message queue: publishers send, subscribers receive",
+  "th": "คิวข้อความของ Google: ฝั่งส่ง publish ฝั่งรับ subscribe"
+ },
+ "ack": {
+  "en": "The receiver confirms it handled a message, so it is not sent again",
+  "th": "ผู้รับยืนยันว่าจัดการข้อความแล้ว จะได้ไม่ถูกส่งซ้ำ"
+ },
+ "dead-letter": {
+  "en": "Where messages go after failing too many times, to look at later",
+  "th": "ที่พักข้อความที่ล้มเหลวเกินจำนวนครั้ง เพื่อมาดูทีหลัง"
+ },
+ "primary key": {
+  "en": "The column that identifies each row",
+  "th": "คอลัมน์ที่ระบุแต่ละแถวได้ไม่ซ้ำกัน"
+ },
+ "foreign key": {
+  "en": "A column pointing at a row in another table",
+  "th": "คอลัมน์ที่ชี้ไปยังแถวในอีกตาราง"
  }
 }

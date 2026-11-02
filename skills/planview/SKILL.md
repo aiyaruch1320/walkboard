@@ -46,7 +46,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `PV set <dir> step:<id> confirmed=true`.
    - `approve`: `PV set <dir> approved=true`, reply in one line.
-   - `confirm` (`constraint` or `node`): set `confirmed: true` or the box's real `basis`; if corrected, update what depended on it and say what changed.
+   - `confirm` (`constraint` or `node`): `PV set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed.
    - `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
@@ -79,7 +79,7 @@ Summarize in chat with the URL. `PV stop <dir>` unless the user wants the page k
 | Command | Does |
 |---|---|
 | `PV check <dir>` | Validate; problems exit 1, warnings are advice |
-| `PV set <dir> [step:<id> \| node:<id> \| plan] key=value …` | Change fields in place (`key=` removes one; JSON values allowed) |
+| `PV set <dir> [plan \| step: \| node: \| constraint: \| option: \| criterion:<id>] key=value …` | Change fields in place (`key=` removes one; JSON values allowed) |
 | `PV open <dir> [--no-browser]` | Start or reuse the server, print the URL |
 | `PV poll <dir>` / `PV reply <dir> [--node id \| --step id] <text>` | Wait for the page / answer on it |
 | `PV status <dir>` / `PV stop <dir>` | URL, queue, settings / stop the server |

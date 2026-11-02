@@ -32,6 +32,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .conn{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
 .conn.on{color:var(--done-tx);background:var(--done-bg);border-color:var(--done-bd)}
 .conn.off{color:var(--warn-tx);background:var(--warn-bg);border-color:var(--warn-bd)}
+.conn.idle{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
 .banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
 .problems ul{margin:4px 0 0;padding-left:20px}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
@@ -80,7 +81,8 @@ button:hover{border-color:var(--muted)}
 button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:12px;color:var(--muted)}
 .badges span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
-.badges .listen{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
+.badges .ok{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
+.badges .wait{border-color:var(--new-bd);color:var(--new-tx);background:var(--new-bg)}
 .stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
@@ -155,7 +157,7 @@ svg.links text{font-size:11px;fill:var(--muted)}
 <main>
   <div class="top">
     <div><h1 id="title">planview</h1><p class="goal" id="goal"></p></div>
-    <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ agent</span>
+    <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ server</span>
   </div>
   <div class="badges" id="badges"></div>
   <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
@@ -311,13 +313,19 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
 }
 
 function renderBadges() {
+  const conn = document.getElementById("conn");
+  conn.className = "conn " + (!connected ? "off" : waiting ? "on" : "idle");
+  conn.textContent = !connected ? "○ หลุดจาก server · กำลังต่อใหม่" : waiting ? "● agent กำลังฟังอยู่" : "◐ ต่อแล้ว · agent ยังไม่ได้ฟัง ข้อความจะรอในคิว";
+  conn.title = !connected ? "หน้าเว็บติดต่อ server ในเครื่องไม่ได้" : waiting ? "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที" : "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง";
   if (!plan) return;
   const s = plan.settings || {};
-  const items = [
-    el("span", null, `ทวนทีละขั้น: ${s.teachBack ? "เปิด" : "ปิด"}`),
-    el("span", null, `commit: ${s.commit === "auto" ? "agent ทำให้" : "แนะนำข้อความ"}`),
-  ];
-  if (connected) items.push(waiting ? el("span", "listen", "agent กำลังรอฟัง") : el("span", null, "agent ไม่ได้รอฟัง · ข้อความจะรอในคิว"));
+  const explain = plan.mode === "explain";
+  const items = [el("span", null, explain ? "โหมด: อธิบายโค้ดที่มีอยู่" : "โหมด: วางแผนและลงมือ")];
+  items.push(el("span", null, `ทวนทีละขั้น: ${s.teachBack ? "เปิด" : "ปิด"}`));
+  if (!explain) {
+    items.push(el("span", null, `commit: ${s.commit === "auto" ? "agent ทำให้" : "แนะนำข้อความ"}`));
+    items.push(plan.approved ? el("span", "ok", "✓ อนุมัติแผนแล้ว") : el("span", "wait", "รออนุมัติแผน"));
+  }
   document.getElementById("badges").replaceChildren(...items);
 }
 
@@ -746,14 +754,12 @@ let rendered = false;
 
 function setConn(on) {
   connected = on;
+  if (!on) waiting = 0;
   document.querySelectorAll(".talk .note").forEach((n) => {
     n.textContent = hintText();
     n.className = "note";
   });
   renderBadges();
-  const conn = document.getElementById("conn");
-  conn.className = "conn " + (on ? "on" : "off");
-  conn.textContent = on ? "● ต่อกับ agent แล้ว" : "○ หลุดจาก server";
 }
 
 async function fetchPlan() {

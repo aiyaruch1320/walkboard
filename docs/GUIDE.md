@@ -17,9 +17,10 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 
 | Part | What it does |
 |---|---|
-| Top bar (always visible) | ● agent listening now · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also "💬 ข้อความใหม่" for unread replies and "✎ แผนเปลี่ยน" for what the agent changed (outlined until you press รับทราบ). |
+| Top bar (always visible) | ● agent listening now · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also "💬 new from the agent" for unread replies and "✎ Plan changed" for what the agent changed (outlined until you press **Mark as seen**). |
 | Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ▶ plays the steps once. |
 | Step card | What the step does, how we know it is done, and a chat box. |
+| Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
 | Dotted words | Glossary: tap for a plain explanation; 📖 lists every term the plan uses. |
 
 ## Pictures
@@ -38,9 +39,11 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 |---|---|
 | ![A question and the agent's answer](images/chat.png) | ![A step marked as your turn and confirmed](images/teachback.png) |
 
-- **เข้าใจแล้ว · ยังงง · ลึกขึ้น** send at once.
-- **ถาม · ขอแก้ · ทวน** choose what the text you type is sent as.
-- **อนุมัติแผน** lets the agent start building. Nothing is built before.
+- **Got it · Still unclear · Go deeper** send at once.
+- **Ask · Request change · Restate** choose what the text you type is sent as.
+- **Approve plan** lets the agent start building. Nothing is built before.
+
+The page speaks the plan's language: the agent writes the plan in the language you use and sets `lang`, and the buttons and labels follow (English and Thai today; other languages get English labels).
 
 ## Explain existing code
 
@@ -92,7 +95,7 @@ Not through planview. The agent itself works as Claude Code normally does.
 
 ## Limitations
 
-- Page labels are in Thai; plan content can be in any language.
+- Page labels exist in English and Thai; plan content can be in any language.
 - One machine, one viewer: no sharing or multi-user editing.
 - Each message is delivered once; if the agent dies right after receiving it, ask again.
 - Built and tested on macOS with Chrome and the Claude desktop app; Linux should work; Windows is untested.
@@ -119,7 +122,7 @@ Add `&step=<id>`, `&view=<id>`, `&node=<id>` (or `&step=all`) and `&theme=light|
 
 ### Plan format
 
-[schema.md](../skills/planview/references/schema.md) describes `plan.json`; [views.md](../skills/planview/references/views.md) the four pictures. Examples (all data made up): `examples/nightly-import` (build), `examples/explain-login` (explain, with sample code), `examples/planview` (the plan that built planview).
+[schema.md](../skills/planview/references/schema.md) describes `plan.json`; [views.md](../skills/planview/references/views.md) the four pictures. Examples (all data made up): `examples/nightly-import` (build), `examples/explain-login` (explain, with sample code), `examples/planview` (the plan that built planview, in Thai).
 
 ### Update or uninstall
 

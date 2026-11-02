@@ -13,8 +13,9 @@ Notes for AI agents (and people) changing this repository. To *use* planview, re
 | `skills/planview/lib/schema.mjs` | Validation shared by the CLI and the page (runs in Node and the browser: no Node imports) |
 | `skills/planview/lib/source.mjs` | `file:line` lookups confined to declared roots |
 | `skills/planview/lib/edit.mjs` | `planview set` |
+| `skills/planview/lib/icons.mjs` | Box icons and how they are guessed from names (runs in Node and the browser) |
 | `skills/planview/assets/viewer.html` | The page: one file, no dependencies, no network |
-| `skills/planview/assets/glossary.th.json` | Shared glossary |
+| `skills/planview/assets/glossary.json` | Shared glossary, English and Thai |
 | `examples/` | Example plans; `npm test` validates all of them |
 | `scripts/` | Screenshots and the demo GIF (headless Chrome via DevTools, no dependencies) |
 | `.claude-plugin/` | Plugin and marketplace manifests, icon |
@@ -24,7 +25,8 @@ Notes for AI agents (and people) changing this repository. To *use* planview, re
 - No runtime dependencies. Node 18.18+ for the skill; Node 22 for `scripts/`.
 - The server binds 127.0.0.1 and checks the token on every route. Plan text is rendered with `textContent`, never as HTML.
 - Code excerpts never leave the declared `root` / `roots` (realpath check).
-- Page labels are Thai; code, comments and docs are English.
+- Page labels live in `STRINGS` in `viewer.html` (English and Thai); add a key to both. Code, comments and docs are English.
+- Icons are planview's own line drawings. Do not add vendor logos: their licences do not allow shipping them here.
 - Keep `SKILL.md` small and the plan format backward compatible; document new fields in `references/schema.md` and `CHANGELOG.md`.
 
 ## Check your change

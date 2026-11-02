@@ -39,6 +39,15 @@ test("a wrong token is refused", async (t) => {
   assert.equal((await call(s, "/")).status, 200);
 });
 
+test("the page arrives as one file", async (t) => {
+  const s = await startServer(planDir());
+  t.after(s.close);
+  const html = await (await call(s, "/")).text();
+  assert.doesNotMatch(html, /<link rel="stylesheet"|<script src=/);
+  assert.match(html, /const STRINGS = \{/);
+  assert.match(html, /--new-bd/);
+});
+
 test("feedback reaches a waiting poll", async (t) => {
   const s = await startServer(planDir());
   t.after(s.close);

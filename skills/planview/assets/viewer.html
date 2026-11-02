@@ -141,14 +141,16 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .badges{align-items:center}
 .badges>span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
 .badges>.mode{border:0;padding:0 4px 0 0;font-size:13px;color:var(--text);font-weight:500}
-.settings{display:inline-flex;align-items:center;gap:6px 14px;flex-wrap:wrap;border:1.5px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 60%,var(--card));color:var(--you-tx);border-radius:10px;padding:4px 12px;font-size:12.5px}
-.settings .slabel{font-weight:600}
-.switch{display:inline-flex;align-items:center;gap:7px;border:0;background:none;padding:2px 0;font-size:12.5px;color:inherit;border-radius:6px}
+.settings{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
+.settings .slabel{color:var(--you-tx);font-weight:600;margin-right:2px}
+.setting{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 55%,var(--card));color:var(--you-tx);border-radius:9px;padding:2px 10px}
+.setting .sname{font-weight:600}
+.switch{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:2px 0;font-size:12.5px;color:inherit;border-radius:6px}
 .switch .track{width:30px;height:17px;border-radius:999px;background:var(--todo-bd);position:relative;transition:background .2s;flex:none}
 .switch .track::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 .switch.on .track{background:var(--done-bd)}
 .switch.on .track::after{transform:translateX(13px)}
-.switch .state{font-weight:600;min-width:2.2em}
+.switch .state{font-weight:600}
 .seg{display:inline-flex;align-items:center;gap:7px}
 .seg .opts{display:inline-flex;border:1px solid var(--you-bd);border-radius:7px;overflow:hidden}
 .seg .opts button{border:0;border-radius:0;padding:1px 10px;font-size:12px;background:transparent;color:inherit}
@@ -314,7 +316,9 @@ const STRINGS = {
     step: "step", stage: "stage", Step: "Step", Stage: "Stage", prev: (u) => `◀ Previous ${u}`, next: (u) => `Next ${u} ▶`, play: (u) => `▶ Play ${u}s`, pause: "❚❚ Pause",
     terms: (n) => `📖 Terms in this plan (${n})`, typeChange: "Type what to change first", typeFirst: "Type a message first", sent: "Sent", sendFail: "Could not send: ",
     modeExplain: "Explaining existing code", modeBuild: "Plan first, then build", restate: (u) => `Restate each ${u}`, on: "on", off: "off",
-    agentSettings: "⚙ Agent settings", commits: "Commits", commitAuto: "Agent commits", commitOnly: "Suggest messages", settingTip: "Saved to the plan; the agent follows it from its next step", settingFail: "Could not save the setting: ",
+    agentSettings: "⚙ Agent settings", commits: "Commits", commitAuto: "Agent commits", commitOnly: "Suggest messages", settingFail: "Could not save the setting: ",
+    restateOnFx: (u) => `The agent waits for you to restate each ${u} before going on`, restateOffFx: (u) => `The agent goes on to the next ${u} without waiting`,
+    commitAutoFx: "The agent commits after each step", commitOnlyFx: "The agent suggests messages; you commit",
     settings: "Setting", working: (m) => (m ? `Agent is working on it · ${m} min` : "Agent is working on it"), noReply: (m) => `No reply after ${m} min. Check Claude Code`, connWorking: "✎ Agent is answering you",
     connWorkingTip: "The agent took your message and has not answered yet",
     turnApprove: "Your turn: review the plan below, ask on any box or step, then approve it", approveSent: "Approval sent", quickLabel: "Tell the agent:", quickTip: "Sends this to the agent right away",
@@ -346,7 +350,9 @@ const STRINGS = {
     step: "ขั้น", stage: "ช่วง", Step: "ขั้น", Stage: "ช่วงที่", prev: (u) => `◀ ${u}ก่อน`, next: (u) => `${u}ถัดไป ▶`, play: (u) => `▶ เล่นทีละ${u}`, pause: "❚❚ หยุด",
     terms: (n) => `📖 คำศัพท์ในแผนนี้ (${n})`, typeChange: "พิมพ์สิ่งที่อยากให้แก้ก่อน", typeFirst: "พิมพ์ข้อความก่อน", sent: "ส่งแล้ว", sendFail: "ส่งไม่สำเร็จ: ",
     modeExplain: "อธิบายโค้ดที่มีอยู่", modeBuild: "วางแผนก่อน แล้วลงมือ", restate: (u) => `ทวนทีละ${u}`, on: "เปิด", off: "ปิด",
-    agentSettings: "⚙ ตั้งค่า agent", commits: "commit", commitAuto: "agent commit ให้", commitOnly: "แนะนำข้อความ", settingTip: "บันทึกลงแผน agent ทำตามตั้งแต่ขั้นถัดไป", settingFail: "บันทึกการตั้งค่าไม่ได้: ",
+    agentSettings: "⚙ ตั้งค่า agent", commits: "การ commit", commitAuto: "agent commit ให้", commitOnly: "แนะนำข้อความ", settingFail: "บันทึกการตั้งค่าไม่ได้: ",
+    restateOnFx: (u) => `agent รอให้คุณทวนก่อนไป${u}ถัดไป`, restateOffFx: (u) => `agent ไป${u}ถัดไปเองโดยไม่รอทวน`,
+    commitAutoFx: "agent commit ให้หลังจบแต่ละขั้น", commitOnlyFx: "agent แนะนำข้อความ คุณ commit เอง",
     settings: "ตั้งค่า", working: (m) => (m ? `agent กำลังตอบ · ${m} นาที` : "agent กำลังตอบ"), noReply: (m) => `ผ่านไป ${m} นาทียังไม่มีคำตอบ ลองดูที่ Claude Code`, connWorking: "✎ agent กำลังตอบคุณ",
     connWorkingTip: "agent รับข้อความแล้ว และยังไม่ได้ตอบ",
     turnApprove: "ถึงตาคุณ: ตรวจแผนด้านล่าง ถามได้ทุกกล่องหรือทุกขั้น แล้วกดอนุมัติ", approveSent: "ส่งการอนุมัติแล้ว", quickLabel: "บอก agent:", quickTip: "ส่งถึง agent ทันที",
@@ -496,7 +502,7 @@ const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id))
 function refreshThreads() {
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
-    const msgs = thread.filter((m) => inCtx(m, c));
+    const msgs = thread.filter((m) => inCtx(m, c) && m.kind !== "settings");
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     t.replaceChildren(...msgs.map(msgEl));
     const busy = working().find((m) => inCtx(m, c));
@@ -623,10 +629,10 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   return box;
 }
 
-async function saveSetting(change, text) {
+async function saveSetting(change) {
   document.querySelectorAll(".settings button").forEach((b) => (b.disabled = true));
   try {
-    const r = await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({...change, text})});
+    const r = await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(change)});
     if (!r.ok) throw new Error(await r.text());
   } catch (e) {
     const box = document.getElementById("toast");
@@ -663,31 +669,38 @@ function renderBadges() {
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
   const items = [el("span", "mode", explain ? t("modeExplain") : t("modeBuild"))];
+  // One small box per setting; what the current value means is in its tooltip.
   const box = el("div", "settings");
   box.append(el("span", "slabel", t("agentSettings")));
+  const card = (name, control, fx) => {
+    const c = el("span", "setting");
+    c.title = fx;
+    c.append(el("span", "sname", name), control);
+    box.append(c);
+  };
   const on = teachBackOn(plan);
   const sw = el("button", "switch" + (on ? " on" : ""));
   sw.setAttribute("role", "switch");
   sw.setAttribute("aria-checked", String(on));
-  sw.append(el("span", "track"), el("span", null, t("restate", unit())), el("span", "state", on ? t("on") : t("off")));
-  sw.onclick = () => saveSetting({teachBack: !on}, `${t("restate", unit())}: ${!on ? t("on") : t("off")}`);
-  box.append(sw);
+  sw.setAttribute("aria-label", t("restate", unit()));
+  sw.append(el("span", "track"), el("span", "state", on ? t("on") : t("off")));
+  sw.onclick = () => saveSetting({teachBack: !on});
+  card(t("restate", unit()), sw, on ? t("restateOnFx", unit()) : t("restateOffFx", unit()));
   if (!explain) {
-    const seg = el("span", "seg");
     const opts = el("span", "opts");
+    opts.setAttribute("role", "group");
+    opts.setAttribute("aria-label", t("commits"));
     for (const [v, label] of [["auto", t("commitAuto")], ["suggest", t("commitOnly")]]) {
       const b = el("button", null, label);
       b.setAttribute("aria-pressed", String(s.commit === v));
-      b.onclick = () => s.commit !== v && saveSetting({commit: v}, `${t("commits")}: ${label}`);
+      b.onclick = () => s.commit !== v && saveSetting({commit: v});
       opts.append(b);
     }
-    seg.append(el("span", null, t("commits")), opts);
-    box.append(seg);
+    const seg = el("span", "seg");
+    seg.append(opts);
+    card(t("commits"), seg, s.commit === "auto" ? t("commitAutoFx") : t("commitOnlyFx"));
   }
-  for (const b of box.querySelectorAll("button")) {
-    b.disabled = !connected;
-    b.title = t("settingTip");
-  }
+  for (const b of box.querySelectorAll("button")) b.disabled = !connected;
   items.push(box);
   if (!explain) items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
   document.getElementById("badges").replaceChildren(...items);

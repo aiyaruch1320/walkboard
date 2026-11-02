@@ -88,6 +88,14 @@ body.side-open .side-inner{opacity:1;transform:none}
 .side-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
 .side-head b{flex:1;font-weight:500;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .side-head button{padding:2px 9px}
+#sideBack{max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--muted)}
+.recent{display:grid;gap:4px;margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
+.recent>b{font-size:13px;font-weight:500;color:var(--muted);margin-bottom:2px}
+.rtalk{display:grid;gap:1px;text-align:left;padding:6px 10px;border-radius:8px}
+.rtalk .rt{font-weight:500;font-size:13px}
+.rtalk .rm{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtalk.unread{border-color:var(--you-bd)}
+.rtalk.unread .rt::after{content:" •";color:var(--you-tx)}
 .side .panel{border:0;border-radius:0;margin:0;padding:14px 16px 24px;background:transparent}
 .side .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:8px;background:var(--you-bd);color:var(--card);font-weight:500}
 @media (max-width:819px){

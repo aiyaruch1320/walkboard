@@ -47,7 +47,7 @@
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
 <aside class="side" id="side" inert>
   <div class="side-inner">
-    <div class="side-head"><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
+    <div class="side-head"><button id="sideBack" hidden>←</button><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
     <div class="panel" id="panel"></div>
   </div>
 </aside>
@@ -1097,9 +1097,34 @@ function renderDesignPanel() {
 
 let side = null;
 
-function openSide(ctx) {
+// Where you talked before, newest last, so ← in the panel (or the list in "the whole plan") takes you back.
+const sideKey = (c) => JSON.stringify([c.kind, c.id ?? null, c.option ?? null, c.criterion ?? null]);
+let sideBack = [], lastSide = null;
+
+function sideTitle(c) {
+  const opt = options().find((o) => o.id === (c.option || c.id));
+  if (c.kind === "node") return plan.nodes[c.id]?.name || c.id;
+  if (c.kind === "step") {
+    const st = steps().find((s) => s.id === c.id);
+    return st ? `${unit(true)} ${steps().indexOf(st) + 1}: ${st.title}` : c.id;
+  }
+  if (c.kind === "cell") return `${criteria().find((x) => x.id === c.criterion)?.label || c.criterion} · ${opt?.title || c.option}`;
+  if (c.kind === "option" || c.kind === "decide") return opt?.title || c.id;
+  return t({props: "propsTitle", constraints: "consTitle"}[c.kind] || "wholePlan");
+}
+
+// The panel that holds a message's conversation.
+const sideOf = (m) => (m.node ? {kind: "node", id: m.node} : m.step ? {kind: "step", id: m.step} : m.option ? (m.criterion ? {kind: "cell", option: m.option, criterion: m.criterion} : {kind: "option", id: m.option}) : {kind: "plan"});
+
+function openSide(ctx, {back = false} = {}) {
+  const prev = side || lastSide;
+  if (!back && prev && sideKey(prev) !== sideKey(ctx)) {
+    sideBack = [...sideBack.filter((c) => sideKey(c) !== sideKey(prev) && sideKey(c) !== sideKey(ctx)), prev].slice(-10);
+  }
+  lastSide = null;
   side = ctx;
   if (ctx.kind !== "node") nodeId = null;
+  else nodeId = ctx.id;
   const was = document.body.classList.contains("side-open");
   document.getElementById("side").inert = false;
   document.body.classList.add("side-open");
@@ -1113,6 +1138,7 @@ function openSide(ctx) {
 }
 
 function closeSide() {
+  lastSide = side;
   side = null;
   nodeId = null;
   document.getElementById("side").inert = true;
@@ -1123,6 +1149,13 @@ function closeSide() {
 
 function renderSide() {
   if (!side) return;
+  const backBtn = document.getElementById("sideBack");
+  const to = sideBack.at(-1);
+  backBtn.hidden = !to;
+  if (to) {
+    backBtn.textContent = "← " + sideTitle(to);
+    backBtn.title = t("backTo", sideTitle(to));
+  }
   const title = document.getElementById("sideTitle");
   const p = document.getElementById("panel");
   if (side.kind === "node") return renderNodePanel(side.id);
@@ -1156,6 +1189,24 @@ function renderSide() {
     const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() && steps().length ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
     parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
+    // Every other conversation on the page, newest first, one click away.
+    const latest = new Map();
+    for (const m of thread) if (m.kind !== "settings") {
+      const c = sideOf(m);
+      if (c.kind !== "plan") latest.set(sideKey(c), {c, m});
+    }
+    const recent = [...latest.values()].reverse().slice(0, 8);
+    if (recent.length) {
+      const list = el("div", "recent");
+      list.append(el("b", null, t("recentTalks")));
+      for (const {c, m} of recent) {
+        const row = el("button", "rtalk" + (unread().some((u) => sideKey(sideOf(u)) === sideKey(c)) ? " unread" : ""));
+        row.append(el("span", "rt", sideTitle(c)), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 70)));
+        row.onclick = () => openSide(c);
+        list.append(row);
+      }
+      parts.push(list);
+    }
     p.replaceChildren(...parts);
   }
   refreshThreads();
@@ -2667,6 +2718,10 @@ window.__planview = {get plan() { return plan; }, selectStep, selectNode, render
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
+document.getElementById("sideBack").onclick = () => {
+  const to = sideBack.pop();
+  if (to) openSide(to, {back: true});
+};
 
 // A three-stop tour the first time someone opens planview in this browser; "?" shows it again.
 const store = {

@@ -59,6 +59,47 @@ const has = (o, k) => o != null && typeof o === "object" && Object.hasOwn(o, k);
 const list = (x) => (Array.isArray(x) ? x : []);
 const isObj = (x) => x != null && typeof x === "object" && !Array.isArray(x);
 
+// Fields each picture iterates: a string or object where a list belongs would stop the page drawing, so check refuses it.
+const SHAPES = {
+  flow: ["lanes", "lanes.*.nodes"],
+  k8s: ["outside", "configs", "targets", "workloads", "workloads.*.containers", "workloads.*.uses", "links"],
+  sequence: ["actors", "messages"],
+  map: ["zones", "links"],
+  journey: ["stops"],
+  state: ["states", "transitions", "end"],
+  decision: ["nodes", "edges"],
+  impact: ["nodes", "edges"],
+  timeline: ["lanes", "lanes.*.events", "marks"],
+  datamodel: ["tables", "tables.*.columns", "relations"],
+  transform: ["stages", "stages.*.columns", "stages.*.rows", "stages.*.rows.*", "stages.*.notes"],
+  diff: [],
+};
+
+function shapeProblems(v) {
+  const out = [];
+  const walk = (x, parts, at) => {
+    if (x == null) return;
+    if (!parts.length) {
+      if (!Array.isArray(x)) out.push(`${at} must be a list [...]`);
+      return;
+    }
+    const [head, ...rest] = parts;
+    if (head === "*") list(x).forEach((y, i) => walk(y, rest, `${at}[${i}]`));
+    else if (isObj(x) || Array.isArray(x)) walk(x[head], rest, at ? `${at}.${head}` : head);
+  };
+  for (const path of SHAPES[v.kind] || []) walk(v, path.split("."), "");
+  // Zones nest; each level's zones and nodes are lists too.
+  const zones = (zs, at, depth) => list(zs).forEach((z, i) => {
+    for (const k of ["zones", "nodes"]) if (z?.[k] != null && !Array.isArray(z[k])) out.push(`${at}[${i}].${k} must be a list [...]`);
+    if (depth > 8) out.push(`${at}[${i}]: zones nested deeper than 8 levels`);
+    else zones(z?.zones, `${at}[${i}].zones`, depth + 1);
+  });
+  if (v.kind === "map") zones(v.zones, "zones", 1);
+  return out;
+}
+
+const TEXT = (x) => x == null || typeof x === "string" || typeof x === "number";
+
 export const KINDS = {
   flow: {
     refs: (v) => list(v.lanes).flatMap((l) => list(l?.nodes)),
@@ -116,7 +157,7 @@ export const KINDS = {
   },
   diff: {
     refs: () => [],
-    check: (v, p) => [v.before, v.after].filter((id) => !list(p.views).some((x) => x?.id === id && x.kind !== "diff")).map((id) => `no view "${id}" to compare`),
+    check: (v, p) => [v.before, v.after].filter((id) => !list(p.views).some((x) => x?.id === id && x.kind !== "diff")).map((id) => `no view "${id}" to compare (a diff compares two other, non-diff views)`),
   },
   transform: {
     refs: (v) => list(v.stages).map((st) => st?.node),
@@ -153,6 +194,7 @@ export function validate(p) {
   const out = [];
   if (!isObj(p)) return ["plan.json is not an object"];
   if (!p.title) out.push("no title");
+  for (const k of ["title", "goal"]) if (!TEXT(p[k])) out.push(`${k} must be text`);
   if (p.lang != null && typeof p.lang !== "string") out.push('lang must be a language code such as "en" or "th"');
   const mode = p.mode ?? "build";
   if (!MODES.includes(mode)) out.push(`unknown mode "${p.mode}" (${MODES.join(", ")})`);
@@ -185,6 +227,7 @@ export function validate(p) {
       continue;
     }
     if (!n.name) out.push(`node "${id}" has no name`);
+    for (const k of ["name", "what", "in", "out", "why", "file", "anchor"]) if (!TEXT(n[k])) out.push(`node "${id}" ${k} must be text`);
     if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
     if (n.highlight != null && !highlightOf(n.highlight)) out.push(`node "${id}" highlight must be lines like "12, 15-16", or {"12": "note"}`);
     if (n.basis != null && !BASIS.includes(n.basis)) out.push(`node "${id}" basis must be one of ${BASIS.join(", ")}`);
@@ -198,10 +241,12 @@ export function validate(p) {
   const steps = list(p.steps);
   for (const id of dupes(steps.map((x) => x?.id))) out.push(`step id "${id}" is used twice`);
   for (const st of steps) {
-    if (!isObj(st) || !st.id || !st.title) {
-      out.push("every step needs an id and a title");
+    if (!isObj(st) || typeof st.id !== "string" || !st.id || !st.title) {
+      out.push("every step needs an id (text) and a title");
       continue;
     }
+    for (const k of ["title", "detail", "done"]) if (!TEXT(st[k])) out.push(`step "${st.id}" ${k} must be text`);
+    if (st.nodes != null && !Array.isArray(st.nodes)) out.push(`step "${st.id}" nodes must be a list of node ids`);
     if (st.status && !has(STEP_STATUS, st.status)) out.push(`step "${st.id}": unknown status "${st.status}" (${Object.keys(STEP_STATUS).join(", ")})`);
     if (st.confirmed != null && typeof st.confirmed !== "boolean") out.push(`step "${st.id}" confirmed must be true or false`);
     if (st.commitMessage != null && typeof st.commitMessage !== "string") out.push(`step "${st.id}" commitMessage must be a string`);
@@ -224,6 +269,9 @@ export function validate(p) {
       out.push(`view "${v.id}": unknown kind "${v.kind}" (${Object.keys(KINDS).join(", ")})`);
       continue;
     }
+    const shape = shapeProblems(v);
+    for (const t of shape) out.push(`view "${v.id}": ${t}`);
+    if (shape.length) continue;
     for (const k of new Set(kind.refs(v))) if (!known(k)) out.push(`view "${v.id}": no node "${k}"`);
     for (const t of kind.check?.(v, p) || []) out.push(`view "${v.id}": ${t}`);
   }
@@ -237,6 +285,8 @@ function checkDesign(p) {
   const views = new Set(ids(viewsOf(p)));
   const sources = new Set(ids(p.sources));
   if (!list(p.options).length) out.push("design mode needs options: [{\"id\", \"title\", \"summary\", \"view\"}]");
+  for (const [name, xs] of [["option", p.options], ["criterion", p.criteria], ["source", p.sources], ["constraint", p.constraints]]) for (const id of dupes(ids(xs))) out.push(`${name} id "${id}" is used twice`);
+  if (list(p.options).filter((o) => o?.recommended).length > 1) out.push("only one option can be recommended");
   for (const o of list(p.options)) {
     if (!isObj(o) || !o.id || !o.title) out.push("every option needs an id and a title");
     else if (o.view != null && !views.has(o.view)) out.push(`option "${o.id}": no view "${o.view}"`);
@@ -281,6 +331,7 @@ export function lint(p) {
   if (p.mode === "design") {
     for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) for (const [c, cell] of Object.entries(isObj(row) ? row : {})) if (cell?.rating !== "na" && !list(cell?.sources).length) out.push(`scores.${o}.${c} cites no source`);
     if (!list(p.options).some((o) => o?.recommended)) out.push("no option is marked recommended");
+    for (const o of list(p.options)) for (const c of list(p.criteria)) if (o?.id && c?.id && !isObj(p.scores?.[o.id]?.[c.id])) out.push(`scores.${o.id}.${c.id} is missing (counts as 0; use "na" if it does not apply)`);
     for (const o of list(p.options)) if (o?.recommended && failsMust(p, o.id).length) out.push(`recommended option "${o.id}" fails a must: ${failsMust(p, o.id).join(", ")}`);
   }
   if (p.mode === "explain" && !p.root && !p.roots) out.push("explain mode should have root (the repository path) so file:line can be checked and opened");

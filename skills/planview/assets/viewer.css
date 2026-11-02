@@ -41,6 +41,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .conn.off{color:var(--warn-tx);background:var(--warn-bg);border-color:var(--warn-bd)}
 .conn.idle{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
 .banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
+.drawfail{color:var(--warn-tx);border:1.5px dashed var(--warn-bd);border-radius:10px;padding:10px 14px}
 .problems{position:fixed;left:16px;bottom:16px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.15)}
 .bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:var(--bg);box-shadow:0 1px 0 var(--line)}
 .bar button.primary{font-weight:500}

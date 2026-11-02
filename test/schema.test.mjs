@@ -216,3 +216,21 @@ test("state, decision, timeline, datamodel, impact and diff views are checked", 
   const out = validate(p).join("\n");
   for (const want of [/start "z" is not in states/, /every event needs/, /no column "t1.nope"/, /no view "ghost"/]) assert.match(out, want);
 });
+
+test("shapes the page iterates must be lists", () => {
+  const base = {title: "t", settings: {commit: "auto"}, nodes: {a: {name: "A"}}};
+  const bad = (v) => validate({...base, views: [{id: "v", ...v}]});
+  assert.match(bad({kind: "flow", lanes: [{title: "L", nodes: "a"}]}).join("\n"), /lanes\[0\]\.nodes must be a list/);
+  assert.match(bad({kind: "transform", stages: [{node: "a", columns: "abc", rows: []}]}).join("\n"), /columns must be a list/);
+  assert.match(bad({kind: "timeline", lanes: [{node: "a", events: "x"}]}).join("\n"), /events must be a list/);
+  assert.match(validate({...base, nodes: {a: {name: {x: 1}}}, views: [{id: "v", kind: "flow", lanes: [{nodes: ["a"]}]}]}).join("\n"), /name must be text/);
+  assert.match(validate({...base, steps: [{id: "s", title: "S", nodes: "a"}]}).join("\n"), /nodes must be a list/);
+});
+
+test("design ids are unique and one option is recommended", () => {
+  const p = {title: "t", mode: "design", nodes: {a: {name: "A"}}, views: [{id: "v", kind: "flow", lanes: [{nodes: ["a"]}]}],
+    options: [{id: "x", title: "X", recommended: true}, {id: "x", title: "Y", recommended: true}], criteria: [{id: "c", label: "C"}]};
+  const out = validate(p).join("\n");
+  assert.match(out, /option id "x" is used twice/);
+  assert.match(out, /only one option can be recommended/);
+});

@@ -758,8 +758,9 @@ function totals() {
   return Object.fromEntries(options().map((o) => {
     let got = 0, max = 0;
     for (const c of criteria()) {
-      const w = c.weight ?? 1, v = ratingValue(cell(o.id, c.id)?.rating);
-      if (!w || v == null) continue;
+      // A missing score counts as 0, so leaving a cell out never lifts an option; "na" leaves the criterion out.
+      const w = c.weight ?? 1, r = cell(o.id, c.id)?.rating, v = ratingValue(r) ?? 0;
+      if (!w || r === "na") continue;
       got += w * v;
       max += w * 5;
     }
@@ -777,6 +778,7 @@ function chooseOption(id) {
 
 function sourceLink(src) {
   const a = el("a", null, `[${sourceNo(src.id)}] ${src.title || src.url} ↗`);
+  if (!/^https?:\/\//.test(src.url || "")) return el("span", null, a.textContent.replace(/ ↗$/, ""));
   a.href = src.url;
   a.target = "_blank";
   a.rel = "noopener noreferrer";
@@ -1927,7 +1929,7 @@ function renderDataModel(v) {
 function renderDiff(v) {
   const before = plan.views.find((x) => x.id === v.before), after = plan.views.find((x) => x.id === v.after);
   const wrap = el("div", "diffview");
-  if (!before || !after || !VIEWS[before.kind] || !VIEWS[after.kind]) return el("p", null, t("cannotDraw", "diff"));
+  if (!before || !after || !VIEWS[before.kind] || !VIEWS[after.kind] || before.kind === "diff" || after.kind === "diff") return el("p", null, t("cannotDraw", "diff"));
   const ids = (x) => new Set(KINDS[x.kind]?.refs(x) || []);
   const a = ids(before), b = ids(after), changed = new Set(v.changed || []);
   const legend = el("div", "linklegend");
@@ -2004,8 +2006,17 @@ function renderView() {
   pictureHook = null;
   linkObserver?.disconnect();
   linkObserver = null;
-  document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, t("cannotDraw", v.kind)));
-  kind?.after?.();
+  // One picture that cannot be drawn must not take the rest of the page with it.
+  let pic;
+  try {
+    pic = kind ? kind.render(v) : el("p", null, t("cannotDraw", v.kind));
+  } catch (e) {
+    pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
+  }
+  document.getElementById("view").replaceChildren(pic);
+  try {
+    kind?.after?.();
+  } catch {}
   highlight();
   requestAnimationFrame(() => {
     // An arrow left at the end of a wrapped row points at nothing.
@@ -2397,11 +2408,19 @@ async function fetchPlan() {
     box.textContent = t("loadFail", r.status) + (await r.text());
     return;
   }
+  let next;
   try {
-    render(JSON.parse(await r.text()));
+    next = JSON.parse(await r.text());
   } catch (e) {
     box.hidden = false;
     box.textContent = t("parseFail") + e.message;
+    return;
+  }
+  try {
+    render(next);
+  } catch (e) {
+    box.hidden = false;
+    box.append(el("div", null, t("drawFail", "plan.json", e.message)));
   }
 }
 

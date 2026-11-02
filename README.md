@@ -7,7 +7,7 @@ Long text plans are hard to follow, and it is easy to lose the feeling that the 
 Two modes:
 
 - **build**: plan a feature as small steps, approve the plan, then follow the agent building it step by step.
-- **explain**: understand code that already exists, e.g. "/planview อธิบายการเข้าใช้ระบบใน project A". The agent reads the code and draws the real flow, every box pointing at `file:line`, and you ask about it on the page.
+- **explain**: understand code that already exists, e.g. "/planview อธิบายการเข้าใช้ระบบใน project A". The agent reads the code and draws the real flow. Every box points at `file:line`, which `check` verifies exists; the page shows the code excerpt and opens it in your editor, and "ลึกขึ้น" asks for more detail on a box or stage.
 
 ```
 agent ──writes──► plan.json ──► page (picture + details + chat)
@@ -57,7 +57,9 @@ Then it writes the plan, opens the page and waits for you. On the page:
 - tabs for each picture: `flow`, `k8s`, `sequence`, `transform`
 - click a box for its details and a chat box; 💬 marks boxes with a conversation, red ones have an unread reply
 - dotted words are in the glossary: click or tap them; 📖 lists them all
-- in build mode, "อนุมัติแผน" on the whole-plan box lets the agent start; after the agent edits the plan, the changed steps and boxes are outlined
+- in build mode, "อนุมัติแผน" on the whole-plan box lets the agent start
+- the bar at the top stays visible while you scroll: agent status, unread replies, and "✎ แผนเปลี่ยน N จุด"; changed steps and boxes stay outlined until you press รับทราบ
+- in explain mode, boxes show the code they point at, with a link to open it in VS Code (or Cursor / IntelliJ, set in `settings.editor`)
 
 ## How it works
 
@@ -89,7 +91,7 @@ node skills/planview/bin/planview.mjs open examples/nightly-import
 ```
 
 - `examples/nightly-import`: a CronJob deployed to staging, using all four pictures
-- `examples/explain-login`: explain mode, the login flow of a made-up `shop-api`
+- `examples/explain-login`: explain mode, the login flow of a made-up `shop-api` whose sample code ships with the example
 - `examples/planview`: the plan that built planview
 
 All example data is made up.

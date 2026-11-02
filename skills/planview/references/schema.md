@@ -42,6 +42,9 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | `mode` | no | `"build"` (default) or `"explain"` |
 | `settings` | yes | The answers to the up-front questions |
 | `approved` | no | build: `true` once the user approved the plan; do not build before |
+| `root` | explain: expected | Repository the `file` paths are relative to; absolute, or relative to the plan folder |
+| `roots` | no | More repositories by name, e.g. `{"deploy": "/path/to/deploy-repo"}`; refer to them as `deploy:path:line` |
+| `start` | no | Step id the page opens on (default: first step in `review`, else `doing`) |
 | `glossary` | no (expected) | `{"term": "plain one-line explanation"}`; terms are underlined wherever they appear and explain themselves on click |
 | `steps` | no (expected) | Ordered steps (build) or stages of the flow (explain) |
 | `views` | yes, ≥ 1 | Pictures, shown as tabs when there is more than one |
@@ -54,6 +57,7 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | `teachBack` | both | `true` = the user restates each step; `false` = skip |
 | `commit` | build | `"auto"` = you commit after each step; `"suggest"` = only suggest messages |
 | `depth` | explain | `"overview"` or `"detail"` (down to functions and files) |
+| `editor` | both | Where file links open: `"vscode"` (default), `"cursor"`, `"idea"`, `"none"` |
 
 ## steps[]
 
@@ -62,7 +66,7 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | `id` | Unique, short; used by `reply --step` and sequence messages |
 | `title` | ≤ 8 words |
 | `detail` | One sentence: what this step does (shown when the step is selected) |
-| `done` | How we know it is finished, or in explain mode "you understand this when…" |
+| `done` | How we know it is finished; in explain mode, what the reader understands at that point (shown as "เข้าใจเมื่อ:") |
 | `status` | `todo`, `doing`, `review` (waiting for the user; shown as "ถึงตาคุณ"), `done`; omit in explain mode |
 | `confirmed` | `true` once the user's restatement matched; shown as ✓ |
 | `nodes` | Boxes this step touches; others fade when it is selected, and the page switches to a picture that shows them |
@@ -76,7 +80,7 @@ The page opens on the first step in `review`, else `doing`.
 | `name` | Required, ≤ 4 words |
 | `what` | Subtitle, ≤ 6 words |
 | `status` | `done` (exists; "โค้ด" in explain mode), `new` (being built; "จุดสำคัญ" in explain mode), `todo`, `ext` (outside this work) |
-| `file` | Main file; in explain mode `path:line` of the code you read (required, the checker warns) |
+| `file` | Main file: `path`, `path:line`, `path:from-to`, or `name:path:line` with a named root. In explain mode it is required, must exist (checked), and the page shows the excerpt with an editor link |
 | `in` / `out` | What goes in and comes out; a concrete example beats a description. Newlines allowed |
 | `why` | One or two lines: the reason, not a restatement of `name` |
 
@@ -84,4 +88,6 @@ The page opens on the first step in `review`, else `doing`.
 
 Problems (exit 1): `settings` present and valid for the mode; ids used by steps and views exist in `nodes`; unique step and view ids; known statuses and view kinds; correct types; view-specific rules in [views.md](views.md).
 
-Warnings: boxes that appear in no picture, very long names, steps without `detail`, explain-mode code boxes without `file`.
+Explain mode with a `root`: every `file` must exist inside its root and its lines must exist.
+
+Warnings: boxes that appear in no picture, names over 40 or `what` over 60 characters, steps without `detail`, more than 10 steps, explain-mode code boxes without `file` or without a line, explain mode without `root`.

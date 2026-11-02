@@ -42,7 +42,7 @@ Use whenever something is deployed to Kubernetes.
 | `policy` | Optional node: a dashed frame around the workloads, labelled with its name |
 | `workloads[]` | Deployments, CronJobs, Jobs; `containers` are small chips (init containers included) |
 | `targets` | Right column: what the workloads talk to, plus "everything else" when a policy blocks it |
-| `links[]` | `state`: `ok` (solid green), `todo` (dashed orange), `blocked` (dotted red); `label` is usually the port. Long labels are shortened on the line and listed in full under the picture |
+| `links[]` | `state`: `ok` (solid green), `todo` (dashed orange), `blocked` (dotted red); `label` is usually the port; it is shown on the box the link reaches and listed under the picture |
 
 Show blocked and not-yet-open paths explicitly; they are what the user most needs to see.
 
@@ -62,7 +62,7 @@ Use when the order of calls or a round trip matters.
 
 - `actors` are node ids, left to right.
 - `reply: true` draws a dashed return arrow; `from == to` draws a note on that lifeline.
-- `group`: consecutive messages with the same text are framed and labelled, e.g. `"group": "ถ้า token หมดอายุ"`. Use one group per alternative path so error branches are not read as the next step.
+- `group`: consecutive messages with the same text are framed and labelled, e.g. `"group": "If the token has expired"`. Use one group per alternative path so error branches are not read as the next step.
 - `step` fades the message when another step is selected; `node` is what a click opens (default: the receiver).
 - Messages are numbered automatically. Keep `text` under ~8 words.
 - In explain mode a sequence of the real calls (route → service → store) is usually the clearest picture; give every message a `step` so each stage lights up its own calls.

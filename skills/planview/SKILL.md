@@ -9,7 +9,9 @@ Long text loses people. You write `plan.json`; planview draws it as a local page
 
 `PV` = `node <this skill's base directory>/bin/planview.mjs` (Node 18.18+, no install).
 
-## 0. Mode and two questions
+## 0. Language, mode and two questions
+
+Use the language the user writes in for everything: questions, the plan, replies, commit-message suggestions. Set `"lang"` in the plan to its code (`"en"`, `"th"`, …); the page's buttons and labels follow it (English for languages planview has no labels for). Code, ids and file paths stay as they are.
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
@@ -26,17 +28,17 @@ Reuse existing `settings` without asking again.
 Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read [references/schema.md](references/schema.md) the first time.
 
 - 3-8 **steps**, each reviewable in minutes: `title`, `detail` (what it does), `done` (how we know), `nodes` (boxes it touches).
-- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`.
+- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. The page picks an icon from the name (S3, BigQuery, CronJob, PostgreSQL, API, …); set `icon` only when that guess is wrong or a cloud service has a generic name: `aws:s3`, `gcp:bigquery`, `azure:keyvault`, `k8s:cronjob`, or a plain one such as `database`, `queue`, `user` (list in the schema reference).
 - **views**: leave them out for a plain flow (built from the steps). Add `k8s` when something runs in Kubernetes, `sequence` when call order matters (alternatives in a `group`), `transform` when data changes shape; see [references/views.md](references/views.md).
 - **glossary**: only terms specific to this project. Common terms (Kubernetes, CI, HTTP, JWT, …) ship with planview.
-- Write in the user's language. No secrets, tokens or real customer data.
+- No secrets, tokens or real customer data.
 - `PV check <dir>` until it says ok.
 
 ## 2E. Write the explanation (explain)
 
 1. Read the real path: entry points, middleware, services, data access, external calls, deployment files. Do not guess from names.
 2. `"mode": "explain"`, `"root": "<repo path>"`, `"roots": {"deploy": "<path>"}` for other repositories, `"start": "<first stage id>"`. Steps are 3-10 stages in order with `detail` and `done` (what the reader understands there).
-3. Every code box has `file` = `path:line` or `path:from-to` (`deploy:path:line` for a named root). The page shows that code and links it to the editor, so **never paste code into the plan**. `PV check` fails if a file or line does not exist. Mark anything unconfirmed in `why` ("ยังไม่ได้ยืนยัน: …"). Code is `"done"` (the default), external systems `"ext"`, the parts the question is about `"new"`.
+3. Every code box has `file` = `path:line` or `path:from-to` (`deploy:path:line` for a named root). The page shows that code and links it to the editor, so **never paste code into the plan**. `PV check` fails if a file or line does not exist. Mark anything unconfirmed in `why` ("unconfirmed: …", in the user's language). Code is `"done"` (the default), external systems `"ext"`, the parts the question is about `"new"`.
 4. `PV check <dir>` until ok.
 
 ## 3. Show and listen
@@ -56,7 +58,7 @@ Do not start until `approved` is true. For each step:
 
 1. `PV set <dir> step:<id> status=doing node:<a> status=new …`
 2. Do the work, limited to that step.
-3. `PV set <dir> step:<id> status=review node:<a> status=done …` (the page shows "ถึงตาคุณ").
+3. `PV set <dir> step:<id> status=review node:<a> status=done …` (the page shows "Your turn").
 4. With teach-back on, wait until the step is `confirmed`. Otherwise skip.
 5. Commit per `settings.commit`: `"auto"` → small commits, one context each; `"suggest"` → give the messages, do not commit. The user who installed planview wants no `Co-Authored-By` or other line naming an AI or tool in these messages.
 6. `PV set <dir> step:<id> status=done`.

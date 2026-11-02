@@ -102,6 +102,34 @@ body.side-open .side-inner{opacity:1;transform:none}
 .talklink{margin-top:10px;font-size:12.5px;padding:3px 10px;border-radius:999px;color:var(--muted)}
 .controls .talklink{margin:0 6px 0 0;font-size:12px;color:var(--text)}
 #stepcard:empty{display:none}
+/* Proposals: things the user wants added, changed or removed, drawn on the picture until they become a plan. */
+.propbar{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:0 0 12px;padding:8px 12px;border:1.5px dashed var(--you-bd);border-radius:10px;background:color-mix(in srgb,var(--you-bg) 55%,var(--card));color:var(--you-tx);font-size:13px}
+.propbar .pc{font-size:12px;font-weight:600;border-radius:6px;padding:0 7px}
+.propbar .cta{margin-left:auto}
+.propbar .plinks{font-size:12.5px;color:var(--text)}
+.propbar .plinks a{color:var(--you-tx)}
+.pc-add,.prop-add .pbadge{background:var(--you-bd);color:var(--card)}
+.pc-change,.prop-change .pbadge{background:#14a3b8;color:#fff}
+.pc-remove,.prop-remove .pbadge{background:var(--warn-bd);color:#fff}
+#view .node.prop{opacity:1;filter:none}
+.node.prop-add{border:2px dashed var(--you-bd);background:color-mix(in srgb,var(--you-bg) 75%,var(--card));color:var(--you-tx)}
+.node.prop-change{outline:2.5px solid #14a3b8;outline-offset:2px}
+.node.prop-remove{border-color:var(--warn-bd);border-style:dashed}
+.node.prop-remove .name{text-decoration:line-through;text-decoration-color:var(--warn-bd)}
+.pbadge{align-self:flex-start;font-size:10.5px;font-weight:600;border-radius:5px;padding:0 6px;margin-bottom:5px}
+.sw.prop-add{border:1.5px dashed var(--you-bd);background:var(--you-bg)}
+.sw.prop-change{border-color:#14a3b8;background:transparent}
+.sw.prop-remove{border:1.5px dashed var(--warn-bd);background:transparent}
+.propcard{border:1.5px dashed var(--you-bd);border-radius:10px;padding:8px 12px;margin:0 0 12px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+.propcard .pbadge{display:inline-block}
+.propcard p{margin:4px 0 8px;font-size:13.5px}
+.proplist{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}
+.proplist button{display:flex;gap:8px;align-items:baseline;text-align:left;width:100%;padding:7px 10px;border-radius:8px}
+.proplist .pbadge{flex:none;margin:0}
+.proplist small{display:block;color:var(--muted);font-size:12px}
+.pchoose{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
+.pchoose button{font-size:12px;padding:2px 10px;border-radius:999px}
+.pchoose button[aria-pressed="true"]{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-weight:600}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
 @media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
@@ -355,6 +383,7 @@ details.glossary dd{margin:0;color:var(--muted)}
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
   <details class="glossary" id="glossary" hidden></details>
+  <div id="proposals" class="propbar" hidden></div>
   <div class="stepnav">
     <div class="stepbar" id="stepbar"></div>
     <div class="controls">
@@ -419,7 +448,14 @@ const STRINGS = {
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", talkStep: (n) => (n ? `💬 Talk about this step (${n})` : "💬 Ask about this step"), talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"), openTurn: "Open", noNode: (id) => `No box "${id}"`,
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)",
+    propose: "Propose", send_propose: "Send proposal", ph_propose_add: "What to add after this box, e.g. a cache in front of the database…", ph_propose_change: "How this box should change…",
+    ph_propose_remove: "Why this box should go…", ph_propose_plan: "What to add or change in the picture…", pc_add: "+ Add after this", pc_change: "~ Change this", pc_remove: "− Remove",
+    pb_add: "+ proposed", pb_change: "~ proposed change", pb_remove: "− proposed removal", lg_add: "Proposed: add", lg_change: "Proposed: change", lg_remove: "Proposed: remove",
+    propCount: (n) => `📝 ${n} ${n === 1 ? "proposal" : "proposals"}`, seeProps: "See all", toPlan: "Turn into a plan →", applyPlan: "Change the plan →", propsTitle: "Proposals",
+    confirmPlan: "Write a build plan from these", confirmApply: "Change the plan with these", plan: "Plan it", q_plan: "Turn these proposals into a build plan", apply: "Change the plan",
+    q_apply: "Change the plan to include these proposals", withdraw: "Withdraw", q_withdraw: "Withdraw this proposal", linksLabel: "Plans from this page:", pickChange: "First choose: add, change or remove",
+    talkStep: (n) => (n ? `💬 Talk about this step (${n})` : "💬 Ask about this step"), talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"), openTurn: "Open", noNode: (id) => `No box "${id}"`,
     in: "In", out: "Out", inSteps: "In steps: ", inStages: "In stages: ", askBox: (n) => `Ask about "${n}"…`,
     newView: "New picture: ", planApproved: "Plan approved", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
     seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxRemoved: "The box you had open was removed from the plan",
@@ -457,7 +493,14 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", talkStep: (n) => (n ? `💬 คุยเรื่องขั้นนี้ (${n})` : "💬 ถามเรื่องขั้นนี้"), talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"), openTurn: "เปิด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)",
+    propose: "เสนอเปลี่ยน", send_propose: "ส่งข้อเสนอ", ph_propose_add: "จะเพิ่มอะไรต่อจากกล่องนี้ เช่น cache หน้าฐานข้อมูล…", ph_propose_change: "อยากให้กล่องนี้เปลี่ยนอย่างไร…",
+    ph_propose_remove: "ทำไมควรเอากล่องนี้ออก…", ph_propose_plan: "อยากเพิ่มหรือเปลี่ยนอะไรในภาพ…", pc_add: "+ เพิ่มต่อจากนี้", pc_change: "~ แก้กล่องนี้", pc_remove: "− เอาออก",
+    pb_add: "+ เสนอเพิ่ม", pb_change: "~ เสนอแก้", pb_remove: "− เสนอเอาออก", lg_add: "เสนอเพิ่ม", lg_change: "เสนอแก้", lg_remove: "เสนอเอาออก",
+    propCount: (n) => `📝 ข้อเสนอ ${n} รายการ`, seeProps: "ดูทั้งหมด", toPlan: "เขียนเป็นแผน →", applyPlan: "ปรับแผนตามข้อเสนอ →", propsTitle: "ข้อเสนอ",
+    confirmPlan: "เขียนแผนลงมือทำจากข้อเสนอนี้", confirmApply: "ปรับแผนตามข้อเสนอนี้", plan: "เขียนเป็นแผน", q_plan: "เขียนข้อเสนอทั้งหมดนี้เป็นแผนลงมือทำ", apply: "ปรับแผน",
+    q_apply: "ปรับแผนตามข้อเสนอทั้งหมดนี้", withdraw: "ถอนข้อเสนอ", q_withdraw: "ถอนข้อเสนอนี้", linksLabel: "แผนที่สร้างจากหน้านี้:", pickChange: "เลือกก่อน: เพิ่ม แก้ หรือเอาออก",
+    talkStep: (n) => (n ? `💬 คุยเรื่องขั้นนี้ (${n})` : "💬 ถามเรื่องขั้นนี้"), talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"), openTurn: "เปิด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
     in: "รับเข้า", out: "ได้ออกมา", inSteps: "อยู่ในขั้น: ", inStages: "อยู่ในช่วง: ", askBox: (n) => `ถามเกี่ยวกับ "${n}"…`,
     newView: "ภาพใหม่: ", planApproved: "อนุมัติแผนแล้ว", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
     seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxRemoved: "กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว",
@@ -512,13 +555,23 @@ function msgBody(text) {
   String(text ?? "").split(/```[a-z0-9]*\n?([\s\S]*?)```/i).forEach((part, i) => {
     if (i % 2) return f.append(el("pre", "mcode", part.replace(/\n$/, "")));
     if (i) part = part.replace(/^\n/, "");
-    part.split(/`([^`\n]+)`/).forEach((x, j) => f.append(j % 2 ? el("code", "mcode", x) : x));
+    part.split(/`([^`\n]+)`/).forEach((x, j) => {
+      if (j % 2) return f.append(el("code", "mcode", x));
+      x.split(/(https?:\/\/[^\s<>"'`]+)/).forEach((y, k) => {
+        if (!(k % 2)) return f.append(y);
+        const a = el("a", null, y);
+        a.href = y;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        f.append(a);
+      });
+    });
   });
   return f;
 }
 
 const MARK = {done: "✓", new: "●", todo: "", ext: "↗"}, EXPLAIN_MARK = {done: "", new: "★", todo: "", ext: "↗"};
-const statusLabel = (st) => t((plan?.mode === "explain" ? "ex_" : "st_") + (NODE_STATUS[st] ? st : "todo"));
+const statusLabel = (st) => t((plan?.mode === "explain" ? "ex_" : "st_") + (NODE_STATUS[st] ? st : plan?.mode === "explain" ? "done" : "todo"));
 
 function renderLegend() {
   const items = plan.mode === "explain"
@@ -527,6 +580,10 @@ function renderLegend() {
   document.getElementById("legend").replaceChildren(...items.map(([c, label]) => {
     const sp = el("span");
     sp.append(el("i", "sw " + c, (plan.mode === "explain" ? EXPLAIN_MARK : MARK)[c]), label);
+    return sp;
+  }), ...PROP_TYPES.filter((k) => proposals().some(([, n]) => n.proposal.type === k)).map((k) => {
+    const sp = el("span");
+    sp.append(el("i", "sw prop-" + k), t("lg_" + k));
     return sp;
   }), el("span", null, t("talkLegend")));
 }
@@ -677,9 +734,15 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   const sendBtn = el("button", "primary");
   let busy = false;
   const buttons = [];
+  let pchange = null;
   const go = async (kind, fallback) => {
     if (busy) return;
     const text = ta.value.trim() || fallback;
+    if (kind === "propose" && c.node && !pchange) {
+      note.textContent = t("pickChange");
+      note.className = "note err";
+      return choose.querySelector("button")?.focus();
+    }
     if (!text) {
       note.textContent = kind === "change" ? t("typeChange") : t("typeFirst");
       note.className = "note err";
@@ -688,7 +751,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     busy = true;
     buttons.forEach((b) => (b.disabled = true));
     try {
-      await send(c, kind, text);
+      await send(c, kind, text, kind === "propose" ? {change: c.node ? pchange : "add"} : {});
       if (ta.value.trim()) ta.value = drafts[key] = "";
       note.textContent = t("sent");
       note.className = "note";
@@ -712,12 +775,26 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     }
     box.append(row);
   }
+  // Proposing on a box: add something after it, change it, or remove it.
+  const choose = el("div", "pchoose");
+  for (const k of ["add", "change", "remove"]) {
+    const b = el("button", null, t("pc_" + k));
+    b.dataset.change = k;
+    b.onclick = () => {
+      pchange = k;
+      setMode("propose");
+      ta.focus();
+    };
+    choose.append(b);
+  }
   const setMode = (m) => {
     current = m;
     const x = m === "change" && plan.mode === "explain" ? "_explain" : "";
-    ta.placeholder = m === "question" ? placeholder : t("ph_" + m + x);
+    ta.placeholder = m === "question" ? placeholder : m === "propose" ? t(c.node ? (pchange ? "ph_propose_" + pchange : "pickChange") : "ph_propose_plan") : t("ph_" + m + x);
     sendBtn.textContent = t("send_" + m + x);
     seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+    choose.hidden = !(m === "propose" && c.node);
+    choose.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.change === pchange)));
   };
   const seg = el("div", "modes");
   if (modes.length > 1) {
@@ -734,6 +811,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     }
     box.append(seg);
   }
+  box.append(choose);
   setMode(current);
   sendBtn.onclick = () => go(current, "");
   buttons.push(sendBtn);
@@ -993,6 +1071,68 @@ function renderStepCard() {
   refreshThreads();
 }
 
+const PROP_TYPES = ["add", "change", "remove"];
+const propOf = (n) => (PROP_TYPES.includes(n?.proposal?.type) ? n.proposal : null);
+const proposals = () => Object.entries(plan?.nodes || {}).filter(([, n]) => propOf(n));
+
+// Outside everything else: how many proposals there are, and the way to turn them into a plan.
+function renderProposals() {
+  const bar = document.getElementById("proposals");
+  const list = proposals();
+  const links = (Array.isArray(plan.links) ? plan.links : []).filter((l) => /^https?:\/\//.test(l?.url || ""));
+  bar.hidden = !list.length && !links.length;
+  const parts = [];
+  if (list.length) {
+    parts.push(el("b", null, t("propCount", list.length)));
+    for (const k of PROP_TYPES) {
+      const n = list.filter(([, x]) => x.proposal.type === k).length;
+      if (n) parts.push(el("span", "pc pc-" + k, `${{add: "+", change: "~", remove: "−"}[k]}${n}`));
+    }
+    const see = el("button", null, t("seeProps"));
+    see.onclick = () => openSide({kind: "props"});
+    const go = el("button", "primary cta", t(plan.mode === "explain" ? "toPlan" : "applyPlan"));
+    go.onclick = () => openSide({kind: "props"});
+    parts.push(see, go);
+  }
+  if (links.length) {
+    const s = el("span", "plinks", t("linksLabel"));
+    for (const l of links) {
+      const a = el("a", null, (l.title || l.url) + " ↗");
+      a.href = l.url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      s.append(" ", a);
+    }
+    parts.push(s);
+  }
+  bar.replaceChildren(...parts);
+}
+
+function renderPropsPanel() {
+  document.getElementById("sideTitle").textContent = t("propsTitle");
+  const list = el("div", "proplist");
+  for (const [id, n] of proposals()) {
+    const b = el("button");
+    const txt = el("span");
+    txt.append(n.name, el("small", null, n.proposal.note || ""));
+    b.append(el("span", "pbadge " + "pc-" + n.proposal.type, t("pb_" + n.proposal.type)), txt);
+    b.onclick = () => selectNode(id, false);
+    list.append(b);
+  }
+  const build = plan.mode !== "explain";
+  const go = el("button", "primary", t(build ? "confirmApply" : "confirmPlan"));
+  const ids = proposals().map(([id]) => id);
+  go.disabled = !ids.length;
+  go.onclick = async () => {
+    go.disabled = true;
+    await send({}, build ? "apply" : "plan", t(build ? "q_apply" : "q_plan"), {proposals: ids}).catch(() => (go.disabled = false));
+  };
+  const thr = el("div", "thread");
+  thr.dataset.ctx = "{}";
+  document.getElementById("panel").replaceChildren(list, go, thr);
+  refreshThreads();
+}
+
 let side = null;
 
 function openSide(ctx) {
@@ -1024,6 +1164,7 @@ function renderSide() {
   const title = document.getElementById("sideTitle");
   const p = document.getElementById("panel");
   if (side.kind === "node") return renderNodePanel(side.id);
+  if (side.kind === "props") return renderPropsPanel();
   if (side.kind === "step") {
     const step = steps().find((s) => s.id === side.id);
     if (!step) return closeSide();
@@ -1045,7 +1186,7 @@ function renderSide() {
     title.textContent = t("wholePlan");
     const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
-    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change"]}));
+    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change", "propose"]}));
     p.replaceChildren(...parts);
   }
   refreshThreads();
@@ -1087,6 +1228,11 @@ function nodeBox(id, family = null) {
   d.dataset.id = id;
   d.tabIndex = 0;
   d.setAttribute("role", "button");
+  const pr = propOf(n);
+  if (pr) {
+    d.classList.add("prop", "prop-" + pr.type);
+    d.append(el("span", "pbadge", t("pb_" + pr.type)));
+  }
   const head = el("div", "nhead");
   const ic = iconEl(n, id, family);
   if (ic) head.append(ic);
@@ -1572,7 +1718,21 @@ function renderNodePanel(id) {
   const ic = iconEl(n, id, document.querySelector(`#view .ns [data-id="${CSS.escape(id)}"]`) ? "k8s" : null);
   if (ic) h.append(ic);
   h.append(richEl("span", null, `${n.name} · ${statusLabel(n.status)}`));
-  const parts = [h];
+  const parts = [];
+  const pr = propOf(n);
+  if (pr) {
+    const card = el("div", "propcard prop-" + pr.type);
+    card.append(el("span", "pbadge", t("pb_" + pr.type)));
+    if (pr.note) card.append(richEl("p", null, pr.note));
+    const w = el("button", null, t("withdraw"));
+    w.onclick = async () => {
+      w.disabled = true;
+      await send({node: id}, "withdraw", t("q_withdraw")).catch(() => (w.disabled = false));
+    };
+    card.append(w);
+    parts.push(card);
+  }
+  parts.push(h);
   if (n.what) parts.push(richEl("p", "meta", n.what));
   if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
@@ -1589,7 +1749,7 @@ function renderNodePanel(id) {
   if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", (plan.mode === "explain" ? t("inStages") : t("inSteps")) + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "change"]}));
+  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "change", "propose"]}));
   p.replaceChildren(...parts);
   refreshThreads();
 }
@@ -1685,6 +1845,7 @@ function draw(p) {
   document.getElementById("title").textContent = plan.title || "planview";
   setGlossary(plan.glossary);
   renderLegend();
+  renderProposals();
   document.getElementById("goal").replaceChildren(rich(plan.goal || ""));
   const problems = validate(plan);
   const box = document.getElementById("problems");

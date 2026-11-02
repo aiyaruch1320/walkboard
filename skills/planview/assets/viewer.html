@@ -237,8 +237,16 @@ function richEl(tag, cls, text, passive) {
   return e;
 }
 
+let tipFor = null;
 function showTip(anchor, term) {
   const tip = document.getElementById("tip");
+  // Tapping the same word again closes its explanation.
+  if (!tip.hidden && tipFor === anchor) {
+    tip.hidden = true;
+    tipFor = null;
+    return;
+  }
+  tipFor = anchor;
   tip.replaceChildren(el("b", null, term), document.createTextNode(glossary[term]));
   tip.hidden = false;
   const r = anchor.getBoundingClientRect();
@@ -426,6 +434,7 @@ async function saveSetting(change) {
     if (!r.ok) throw new Error(await r.text());
   } catch (e) {
     const box = document.getElementById("toast");
+    box.className = "toast";
     box.replaceChildren(t("settingFail") + e.message);
     box.hidden = false;
     renderBadges();
@@ -1752,7 +1761,14 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false}) {
       (outs[e.from] ||= []).push(e);
       (ins[e.to] ||= []).push(e);
     }
+    // Ports in the order of what is at the other end, so lines leaving one box never cross each other.
+    const top = (id) => box(id)?.top ?? 0;
+    for (const l of Object.values(outs)) l.sort((x, y) => top(x.to) - top(y.to));
+    for (const l of Object.values(ins)) l.sort((x, y) => top(x.from) - top(y.from));
     const spread = (list, e, r) => r.top + (r.height * (list.indexOf(e) + 1)) / (list.length + 1);
+    // A question is a hexagon: its sides slant 10px in, so a line meets the side where it really is.
+    const isQ = (id) => grid.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.classList.contains("g-q");
+    const slant = (id, r, y) => (isQ(id) ? (10 * Math.abs(y - (r.top + r.height / 2))) / (r.height / 2) : 0);
     for (const e of edges) {
       const a = box(e.from), b = box(e.to);
       if (!a || !b) continue;
@@ -1767,7 +1783,8 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false}) {
         p1 = p0; p2 = [xl, p3[1]];
         lanes.push({d: `M${p0} L${[xr, p0[1]]} L${[xr, y]} L${[xl, y]} L${[xl, p3[1]]} L${p3}`, mid: [(xr + xl) / 2, y], left: true});
       } else if (depth[e.to] > depth[e.from] && !back.has(e)) {
-        p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
+        const y0 = spread(outs[e.from], e, a), y3 = spread(ins[e.to], e, b);
+        p0 = P(a.right - slant(e.from, a, y0), y0); p3 = P(b.left - 4 + slant(e.to, b, y3), y3);
         const dx = Math.max(30, (p3[0] - p0[0]) / 2);
         p1 = [p0[0] + dx, p0[1]]; p2 = [p3[0] - dx, p3[1]];
         // Skipping a column and a box is in the way: go around it, above or below.
@@ -2445,6 +2462,9 @@ function markChanges() {
 
 function showChangeList() {
   const box = document.getElementById("toast");
+  // A second click on "Plan changed" closes the list.
+  if (!box.hidden && box.classList.contains("chlist")) return (box.hidden = true);
+  box.className = "toast chlist";
   const ul = el("ul");
   for (const id of changes.steps) {
     const st = steps().find((x) => x.id === id);
@@ -2670,13 +2690,20 @@ document.getElementById("help").onclick = (e) => {
     document.getElementById("toast").hidden = true;
     startTour();
   };
-  showCard(document.getElementById("help"), el("b", null, t("helpTitle")), ul, el("p", "meta", t("helpSettings")), again);
+  showCard(document.getElementById("help"), "helpcard", el("b", null, t("helpTitle")), ul, el("p", "meta", t("helpSettings")), again);
 };
 
-// A small card under the button that opened it; a click elsewhere closes it.
-function showCard(anchor, ...parts) {
+// A small card under the button that opened it; a click elsewhere, or on that button again, closes it.
+let cardFor = null;
+function showCard(anchor, cls, ...parts) {
   const box = document.getElementById("toast");
-  box.className = "toast helpcard";
+  if (!box.hidden && cardFor === anchor && box.classList.contains(cls)) {
+    box.hidden = true;
+    cardFor = null;
+    return;
+  }
+  cardFor = anchor;
+  box.className = "toast " + cls;
   box.replaceChildren(...parts);
   const r = anchor.getBoundingClientRect();
   box.style.top = r.bottom + 8 + "px";
@@ -2686,17 +2713,11 @@ function showCard(anchor, ...parts) {
   box.hidden = false;
 }
 
-// The mode pill says which mode this page is in; clicking it says what each mode is for.
+// The mode pill says which mode this page is in; clicking it says, in one line, what this mode does.
 document.getElementById("modePill").onclick = (e) => {
   e.stopPropagation();
   const cur = MODES_SHOWN.includes(plan?.mode) ? plan.mode : "build";
-  const ul = el("ul", "modes-list");
-  for (const m of MODES_SHOWN) {
-    const li = el("li", m === cur ? "on" : null);
-    li.append(el("b", null, t("pill_" + m)), el("span", null, t("pillTip_" + m)));
-    ul.append(li);
-  }
-  showCard(e.currentTarget, el("b", null, t("modesTitle")), ul, el("p", "meta", t("modesHow")));
+  showCard(e.currentTarget, "tipcard", el("span", null, t("pillTip_" + cur)));
 };
 
 document.addEventListener("keydown", (e) => {

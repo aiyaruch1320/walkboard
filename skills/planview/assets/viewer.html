@@ -62,7 +62,9 @@ h1{font-size:22px;font-weight:500;margin:0}
 .tabs button.on{border-color:var(--text);font-weight:500}
 .lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 14px 16px;margin-bottom:14px}
 .lane-title{font-size:13px;color:var(--muted);margin-bottom:10px}
-.row{display:flex;align-items:stretch;flex-wrap:wrap;row-gap:12px}
+.row{display:flex;align-items:stretch;padding:10px 2px 12px}
+.lane .scroll{margin:0}
+.row .node{flex:1 0 150px;min-width:150px}
 .node{flex:1 1 140px;min-width:140px;border:1.5px solid;border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;transition:transform .25s,opacity .25s}
 .node .name{font-weight:500;font-size:14px}
 .node .what{font-size:12px;margin-top:2px}
@@ -75,6 +77,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .ext{background:var(--ext-bg);border-color:var(--ext-bd);color:var(--ext-tx)}
 #view .dim{opacity:.2}
 .node.active{transform:translateY(-3px);opacity:1;outline:2px solid var(--text);outline-offset:2px}
+.gap{flex:0 0 12px}
 .arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .arrow svg{width:26px;height:14px}
 .arrow line{stroke:currentColor;stroke-width:1.6;stroke-dasharray:4 4}
@@ -184,7 +187,7 @@ svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--
 .stage .tbl{overflow-x:auto}
 .stage th,.stage td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top}
 .stage th{white-space:nowrap}
-.stage td{word-break:keep-all;overflow-wrap:break-word}
+.stage td{overflow-wrap:anywhere;min-width:6ch}
 .stage th{background:var(--code);font-weight:500}
 .stage .snote{font-size:12px;color:var(--muted);margin:8px 0 0;padding-left:16px}
 .term{border-bottom:1.5px dotted currentColor;cursor:help}
@@ -196,6 +199,7 @@ details.glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 1
 details.glossary dt{font-weight:500}
 details.glossary dd{margin:0;color:var(--muted)}
 .linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
+.linklist{margin:0 0 14px;padding-left:18px;font-size:12.5px;color:var(--muted)}
 .scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px}
 </style>
 </head>
@@ -570,9 +574,12 @@ function renderFlow(v) {
     const row = el("div", "row");
     (lane.nodes || []).forEach((id, i) => {
       if (i > 0 && lane.arrows !== false) row.append(arrow());
+      else if (i > 0) row.append(el("div", "gap"));
       row.append(nodeBox(id));
     });
-    box.append(row);
+    const sc = el("div", "scroll");
+    sc.append(row);
+    box.append(sc);
     wrap.append(box);
   }
   return wrap;
@@ -616,6 +623,15 @@ function drawLinks(container, specs) {
           t.setAttribute("text-anchor", "end");
           t.textContent = l.label;
           svg.append(t);
+          const room = Math.max(30, x2 - x1 - 24);
+          if (t.getComputedTextLength() > room) {
+            const full = l.label;
+            let cut = full.length;
+            while (cut > 3 && t.getComputedTextLength() > room) t.textContent = full.slice(0, --cut) + "…";
+            const tip = document.createElementNS(svg.namespaceURI, "title");
+            tip.textContent = full;
+            t.append(tip);
+          }
         }
       }
       const dim = inStep && !inStep.has(l.from) && !inStep.has(l.to);
@@ -694,7 +710,20 @@ function renderK8s(v) {
   for (const w of v.workloads || []) for (const u of w.uses || []) specs.push({from: u, to: w.node, state: "uses"});
   for (const l of v.links || []) specs.push({...l, state: l.state || "ok"});
   drawLinks(grid, specs);
-  return scroll;
+  const wrap = el("div");
+  wrap.append(scroll);
+  const listed = (v.links || []).filter((l) => l.label || (l.state && l.state !== "ok"));
+  if (listed.length) {
+    const ul = el("ul", "linklist");
+    for (const l of listed) {
+      const li = el("li");
+      li.append(`${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to} · ${LINK_STATE[l.state || "ok"]}`);
+      if (l.label) li.append(" · ", rich(l.label));
+      ul.append(li);
+    }
+    wrap.append(ul);
+  }
+  return wrap;
 }
 
 function renderSequence(v) {

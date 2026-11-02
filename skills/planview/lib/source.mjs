@@ -32,7 +32,9 @@ export function excerpt(plan, file, {around = 6, max = 60, base, anchor} = {}) {
   const out = {path: abs, from, focus: ref.line, end: ref.end, lines: lines.slice(from - 1, to)};
   // The anchor is a bit of the code the box is about; when it is no longer in the cited lines, the code has moved since it was explained.
   if (typeof anchor === "string" && anchor && ref.line) {
-    const a = Math.max(1, ref.line - 2), b = Math.min(lines.length, (ref.end || ref.line) + 2);
+    // A range must hold the anchor; a single line may be a couple of lines off (the line under a comment).
+    const range = ref.end > ref.line;
+    const a = range ? ref.line : Math.max(1, ref.line - 2), b = range ? ref.end : Math.min(lines.length, ref.line + 2);
     if (!lines.slice(a - 1, b).some((l) => l.includes(anchor))) {
       const at = lines.findIndex((l) => l.includes(anchor));
       out.moved = at >= 0 ? at + 1 : 0;

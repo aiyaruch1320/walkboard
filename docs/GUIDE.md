@@ -68,7 +68,7 @@ The page does the explaining, so the agent spends tokens on content once and ver
 | Code in explain mode | paste it | `file:line`; the server reads the excerpt |
 | Common terms | explain each time | ~70 ship with planview |
 | Each message from the page | — | one compact line, ~110 bytes |
-| Instructions loaded with the skill | — | SKILL.md ~6.6 KB (23% shorter than 0.3) |
+| Instructions loaded with the skill | — | SKILL.md ~7.2 KB (16% shorter than 0.3) |
 
 ## FAQ
 

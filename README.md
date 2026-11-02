@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version 0.4.0" src="https://img.shields.io/badge/version-0.4.0-7f77dd"></a>
+  <a href="CHANGELOG.md"><img alt="version 0.5.0" src="https://img.shields.io/badge/version-0.5.0-7f77dd"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-1d9e75"></a>
   <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-ef9f27">
 </p>
@@ -41,8 +41,8 @@ Needs Node.js 18.18 or newer. Nothing else.
 Type `/planview` and say what you want, or just ask in your own words:
 
 ```
-/planview plan the deploy of this CronJob to staging
-/planview อธิบายการเข้าใช้ระบบใน project A
+/planview plan deploying this CronJob to staging
+/planview explain how login works in project A
 ```
 
 <sub>If another command is already called `/planview`, use the full name `/planview:planview`.</sub>
@@ -50,9 +50,9 @@ Type `/planview` and say what you want, or just ask in your own words:
 1. The agent asks two quick questions (restate each step? commit for you?).
 2. It writes the plan and gives you a link to a page on your machine.
 3. You click, ask, or ask for changes. It answers on the page and updates the picture.
-4. In build mode, nothing starts until you press **อนุมัติแผน** (approve plan). Keep Claude Code open while you use the page: that is where the agent works.
+4. In build mode, nothing starts until you press **Approve plan**. Keep Claude Code open while you use the page: that is where the agent works.
 
-The page's labels are in Thai; your plan can be in any language. Built and tested on macOS.
+The agent plans and answers in the language you write in, and the page's labels follow (English and Thai). Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours, so the picture maps onto your system at a glance. Built and tested on macOS.
 
 <table>
   <tr>

@@ -194,12 +194,7 @@ details.glossary dd{margin:0;color:var(--muted)}
   <div id="problems" class="problems" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
-  <div class="legend">
-    <span><i class="sw done"></i>ทำแล้ว</span>
-    <span><i class="sw new"></i>ทำอยู่ / เพิ่งทำ</span>
-    <span><i class="sw todo"></i>ยังไม่ทำ</span>
-    <span><i class="sw ext"></i>ระบบภายนอก</span>
-  </div>
+  <div class="legend" id="legend"></div>
   <details class="glossary" id="glossary" hidden></details>
   <div class="stepbar" id="stepbar"></div>
   <div class="controls">
@@ -243,6 +238,24 @@ function msgEl(m) {
   const who = m.from === "agent" ? "agent" : `คุณ · ${KIND[m.kind] || "ถาม"} · ${m.delivered ? "agent รับแล้ว" : "รอ agent"}`;
   d.append(el("span", "who", who), document.createTextNode(m.text));
   return d;
+}
+
+const EXPLAIN_STATUS = {done: "โค้ด", new: "จุดสำคัญ", todo: "ยังไม่มี", ext: "ภายนอก"};
+const statusLabel = (st) => (plan?.mode === "explain" ? EXPLAIN_STATUS : NODE_STATUS)[st] || NODE_STATUS.todo;
+
+function renderLegend() {
+  const items = plan.mode === "explain"
+    ? [["done", "โค้ดที่มีอยู่"], ["new", "จุดสำคัญของคำถามนี้"], ["ext", "ระบบภายนอก"]]
+    : [["done", "ทำแล้ว"], ["new", "ทำอยู่ / เพิ่งทำ"], ["todo", "ยังไม่ทำ"], ["ext", "ระบบภายนอก"]];
+  document.getElementById("legend").replaceChildren(...items.map(([c, t]) => {
+    const sp = el("span");
+    sp.append(el("i", "sw " + c), t);
+    return sp;
+  }));
+  const unit = plan.mode === "explain" ? "ช่วง" : "ขั้น";
+  document.getElementById("prev").textContent = `◀ ${unit}ก่อน`;
+  document.getElementById("next").textContent = `${unit}ถัดไป ▶`;
+  if (!timer) document.getElementById("play").textContent = `▶ เล่นทีละ${unit}`;
 }
 
 let termRe = null;
@@ -504,7 +517,7 @@ function nodeBox(id) {
   const d = el("div", "node " + status);
   d.dataset.id = id;
   d.tabIndex = 0;
-  d.append(el("span", "tag", NODE_STATUS[status]), el("div", "name", n.name));
+  d.append(el("span", "tag", statusLabel(status)), el("div", "name", n.name));
   if (n.what) d.append(richEl("div", "what", n.what));
   d.onclick = () => selectNode(id, true);
   d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id, true); };
@@ -822,7 +835,7 @@ function selectNode(id, reveal = false) {
   const n = plan.nodes[id];
   const p = document.getElementById("panel");
   if (!n) return p.replaceChildren(el("h3", null, `ไม่มี node "${id}"`));
-  const parts = [richEl("h3", null, `${n.name} · ${NODE_STATUS[n.status] || NODE_STATUS.todo}`)];
+  const parts = [richEl("h3", null, `${n.name} · ${statusLabel(n.status)}`)];
   if (n.file) parts.push(el("div", "meta", n.file));
   if (n.in || n.out) {
     const io = el("div", "io");
@@ -846,7 +859,7 @@ function selectNode(id, reveal = false) {
 function stop() {
   clearInterval(timer);
   timer = null;
-  document.getElementById("play").textContent = "▶ เล่นทีละขั้น";
+  document.getElementById("play").textContent = `▶ เล่นทีละ${plan?.mode === "explain" ? "ช่วง" : "ขั้น"}`;
 }
 function step(d) {
   const list = steps(), i = list.indexOf(curStep());
@@ -912,6 +925,7 @@ function draw(p) {
   document.title = plan.title ? `${plan.title} · planview` : "planview";
   document.getElementById("title").textContent = plan.title || "planview";
   setGlossary(plan.glossary);
+  renderLegend();
   document.getElementById("goal").replaceChildren(rich(plan.goal || ""));
   const problems = validate(plan);
   const box = document.getElementById("problems");

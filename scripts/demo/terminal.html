@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>terminal</title>
+<style>
+  html,body{margin:0;height:100%;background:#e9e7f5}
+  body{display:flex;align-items:center;justify-content:center;font:15px/1.65 ui-monospace,SFMono-Regular,Menlo,"Noto Sans Thai",monospace}
+  .win{width:860px;height:470px;border-radius:12px;background:#1c1b22;box-shadow:0 18px 50px rgba(38,33,92,.35);overflow:hidden;display:flex;flex-direction:column}
+  .bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 14px;background:#2a2833;color:#a9a7b8;font:13px -apple-system,system-ui,sans-serif}
+  .dot{width:12px;height:12px;border-radius:50%}
+  .title{margin-left:10px}
+  .body{flex:1;padding:18px 22px;color:#e8e6f0;overflow:hidden}
+  .line{white-space:pre-wrap;margin:0 0 6px}
+  .prompt{color:#afa9ec}
+  .muted{color:#8f8da0}
+  .ok{color:#5dcaa5}
+  .ask{color:#ef9f27}
+  .link{color:#85b7eb;text-decoration:underline}
+  .caret{display:inline-block;width:8px;height:18px;background:#e8e6f0;vertical-align:-3px;margin-left:1px}
+</style>
+</head>
+<body>
+  <div class="win">
+    <div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span class="title">claude — ~/shop-import</span></div>
+    <div class="body" id="out"><div class="line"><span class="prompt">&gt; </span><span id="typed"></span><span class="caret" id="caret"></span></div></div>
+  </div>
+<script>
+  window.typeTo = (t) => (document.getElementById("typed").textContent = t);
+  window.addLine = (html, cls = "") => {
+    document.getElementById("caret").style.display = "none";
+    const d = document.createElement("div");
+    d.className = "line " + cls;
+    d.innerHTML = html;
+    document.getElementById("out").append(d);
+    return d;
+  };
+</script>
+</body>
+</html>

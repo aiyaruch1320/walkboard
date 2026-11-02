@@ -210,7 +210,7 @@ details.glossary dd{margin:0;color:var(--muted)}
 <script type="module">
 const token = new URLSearchParams(location.search).get("token");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, LINK_STATE, validate} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, validate: () => []};
+const {NODE_STATUS, STEP_STATUS, LINK_STATE, KINDS, validate} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, KINDS: {}, validate: () => []};
 let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
@@ -775,10 +775,22 @@ function highlight() {
   linkDrawer?.();
 }
 
+// Show the step in a picture that contains its boxes.
+function followStep(step) {
+  const want = new Set(step?.nodes || []);
+  if (!want.size || [...document.querySelectorAll("#view [data-id]")].some((e) => want.has(e.dataset.id))) return;
+  const v = plan.views.find((x) => KINDS[x.kind]?.refs(x).some((k) => want.has(k)));
+  if (v) {
+    viewId = v.id;
+    renderView();
+  }
+}
+
 function selectStep(id) {
   stepId = id;
   renderSteps();
   renderStepCard();
+  followStep(curStep());
   highlight();
   const step = curStep();
   if (step?.nodes?.length) selectNode(step.nodes[0]);
@@ -833,7 +845,7 @@ document.getElementById("play").onclick = () => {
   if (timer) return stop();
   document.getElementById("play").textContent = "❚❚ หยุด";
   step(1);
-  timer = setInterval(() => step(1), 3200);
+  timer = setInterval(() => (curStep() === steps().at(-1) ? stop() : step(1)), 3200);
 };
 
 // Redraws replace the chat boxes; put the cursor back where the user was typing.

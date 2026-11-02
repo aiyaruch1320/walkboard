@@ -2196,6 +2196,7 @@ function codeBox(id) {
         fade();
       };
       box.querySelector("summary").append(wrapBtn);
+      if (r.moved != null) box.querySelector("summary").after(el("div", "meta err", "⚠ " + t("codeMoved", r.moved)));
       new ResizeObserver(() => scroll.style.setProperty("--cw", scroll.clientWidth + "px")).observe(scroll);
       const fade = () => scroll.classList.toggle("more", scroll.scrollLeft + scroll.clientWidth < scroll.scrollWidth - 4);
       scroll.addEventListener("scroll", fade, {passive: true});

@@ -279,7 +279,8 @@
       "in": "JSON body",
       "out": "Calls authService, or answers 400 if the format is wrong",
       "why": "Checking the format at the front door keeps junk out of the code behind it",
-      "icon": "api"
+      "icon": "api",
+      "anchor": "authRoutes.post(\"/auth/login\""
     },
     "service": {
       "name": "authService",
@@ -288,7 +289,8 @@
       "file": "src/services/authService.ts:26-31",
       "in": "Email and password, or a refresh token",
       "out": "Access token (JWT, 15 min) + refresh token (14 days)",
-      "why": "Security rules live in one place: the same answer for every failure, and a new refresh token every time"
+      "why": "Security rules live in one place: the same answer for every failure, and a new refresh token every time",
+      "anchor": "export async function login("
     },
     "repo": {
       "name": "userRepo",
@@ -298,7 +300,8 @@
       "in": "Email (lowercase)",
       "out": "id, password_hash, locked",
       "why": "Fetches no other columns, so less personal data passes through",
-      "icon": "database"
+      "icon": "database",
+      "anchor": "function findByEmail("
     },
     "pg": {
       "name": "PostgreSQL",
@@ -315,7 +318,8 @@
       "file": "src/services/tokenStore.ts:5-14",
       "in": "Refresh token + expiry",
       "out": "Accepts or rejects it on renewal",
-      "why": "Can revoke a token at once, unlike a JWT that lives until it expires"
+      "why": "Can revoke a token at once, unlike a JWT that lives until it expires",
+      "anchor": "function saveRefresh("
     },
     "guard": {
       "name": "requireAuth",
@@ -324,7 +328,8 @@
       "file": "src/middleware/requireAuth.ts:8-18",
       "in": "Authorization: Bearer <access token>",
       "out": "req.user = {id, role}, or 401",
-      "why": "Every route that needs login goes through this one place"
+      "why": "Every route that needs login goes through this one place",
+      "anchor": "function requireAuth("
     },
     "orders": {
       "name": "orders handler",
@@ -333,7 +338,8 @@
       "file": "src/routes/orders.ts:19-23",
       "in": "req.user",
       "out": "That user's orders",
-      "why": "Always uses req.user.id, never an id sent in the body"
+      "why": "Always uses req.user.id, never an id sent in the body",
+      "anchor": "never from the request"
     }
   }
 }

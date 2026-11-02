@@ -1,3 +1,5 @@
+import fs from "node:fs";
+
 // Small updates without rewriting plan.json:
 //   approved=true  step:build status=review confirmed=true  node:job status=done  constraint:cidr confirmed=true
 // A word with ":" and no "=" picks the target; "plan" goes back to the top level; "key=" removes a key.
@@ -6,6 +8,7 @@ export function parseSet(words) {
   let target = "plan";
   for (const w of words) {
     if (!w.includes("=")) {
+      if (w !== "plan" && !/^[a-z]+:./.test(w)) throw new Error(`"${w}" is neither a target (plan, step:<id>, node:<id>, …) nor key=value; is the plan folder right?`);
       target = w;
       continue;
     }
@@ -15,9 +18,9 @@ export function parseSet(words) {
   return ops;
 }
 
-// A value starting with [ or { is JSON, e.g. commits=[{"message":"feat: x","files":["a.go"]}].
+// A value starting with [, { or " is JSON, e.g. commits=[{"message":"feat: x","files":["a.go"]}], or what='"0001042"' to keep digits as text.
 function coerce(v) {
-  if (/^[[{]/.test(v)) {
+  if (/^[[{"]/.test(v)) {
     try {
       return JSON.parse(v);
     } catch {
@@ -31,7 +34,8 @@ const LISTS = {constraint: "constraints", option: "options", criterion: "criteri
 
 export function applySet(plan, ops) {
   for (const {target, key, value} of ops) {
-    if (!key || key === "__proto__" || key === "constructor" || key === "prototype") throw new Error(`bad key "${key}"`);
+    const keys = key.split(".");
+    if (keys.some((k) => !k || k === "__proto__" || k === "constructor" || k === "prototype")) throw new Error(`bad key "${key}"`);
     let obj;
     if (target === "plan") obj = plan;
     else if (target.startsWith("step:")) obj = (plan.steps || []).find((s) => s.id === target.slice(5));
@@ -39,8 +43,22 @@ export function applySet(plan, ops) {
     else if (LISTS[target.split(":")[0]] && target.includes(":")) obj = (plan[LISTS[target.split(":")[0]]] || []).find((x) => x?.id === target.slice(target.indexOf(":") + 1));
     else throw new Error(`unknown target "${target}" (use plan, step:, node:, constraint:, option:, criterion: or source:<id>)`);
     if (!obj) throw new Error(`no ${target}`);
-    if (value === "") delete obj[key];
-    else obj[key] = coerce(value);
+    // settings.commit=auto reaches inside an object.
+    for (const k of keys.slice(0, -1)) {
+      if (obj[k] == null) obj[k] = {};
+      if (typeof obj[k] !== "object" || Array.isArray(obj[k])) throw new Error(`${k} is not an object`);
+      obj = obj[k];
+    }
+    const last = keys.at(-1);
+    if (value === "") delete obj[last];
+    else obj[last] = coerce(value);
   }
   return plan;
+}
+
+// Write plan.json the way it was written (compact stays compact), through a temporary file so a reader never sees half of it.
+export function savePlan(file, plan, before = "") {
+  const indent = before.includes("\n ") || before.includes("\n\t") ? before.match(/\n([ \t]+)"/)?.[1] ?? 1 : before.trim() ? 0 : 1;
+  fs.writeFileSync(file + ".tmp", JSON.stringify(plan, null, indent) + "\n");
+  fs.renameSync(file + ".tmp", file);
 }

@@ -32,3 +32,12 @@ test("unknown targets and prototype keys are refused", () => {
   assert.throws(() => applySet(plan(), parseSet(["__proto__=1"])), /bad key/);
   assert.throws(() => applySet(plan(), parseSet(["thing:x", "a=1"])), /unknown target/);
 });
+
+test("dotted keys, quoted text and a mistyped folder", () => {
+  const p = {settings: {commit: "auto"}, nodes: {a: {name: "A"}}};
+  applySet(p, parseSet(["settings.commit=suggest", "node:a", 'what="0001042"']));
+  assert.equal(p.settings.commit, "suggest");
+  assert.equal(p.nodes.a.what, "0001042");
+  assert.throws(() => parseSet(["~/typo/dir", "step:a", "status=done"]), /neither a target/);
+  assert.throws(() => applySet(p, parseSet(["settings.__proto__.x=1"])), /bad key/);
+});

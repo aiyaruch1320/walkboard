@@ -18,15 +18,27 @@ export function locate(plan, file, base = process.cwd()) {
   return {ref, abs: real};
 }
 
-export function excerpt(plan, file, {around = 6, max = 60, base} = {}) {
+export function excerpt(plan, file, {around = 6, max = 60, base, anchor} = {}) {
   const {ref, abs, error} = locate(plan, file, base);
   if (error) return {error};
   const lines = fs.readFileSync(abs, "utf8").split("\n");
+  if (ref.line === 0) return {error: "lines start at 1"};
   if (ref.line && ref.line > lines.length) return {error: `line ${ref.line} is past the end (${lines.length} lines)`};
+  if (ref.end && ref.end < ref.line) return {error: `range ${ref.line}-${ref.end} ends before it starts`};
+  if (ref.end && ref.end > lines.length) return {error: `line ${ref.end} is past the end (${lines.length} lines)`};
   const from = ref.line ? Math.max(1, ref.line - (ref.end > ref.line ? 0 : 2)) : 1;
   const last = !ref.line ? max : ref.end > ref.line ? ref.end : ref.line + around;
   const to = Math.min(lines.length, last, from + max - 1);
-  return {path: abs, from, focus: ref.line, end: ref.end, lines: lines.slice(from - 1, to)};
+  const out = {path: abs, from, focus: ref.line, end: ref.end, lines: lines.slice(from - 1, to)};
+  // The anchor is a bit of the code the box is about; when it is no longer in the cited lines, the code has moved since it was explained.
+  if (typeof anchor === "string" && anchor && ref.line) {
+    const a = Math.max(1, ref.line - 2), b = Math.min(lines.length, (ref.end || ref.line) + 2);
+    if (!lines.slice(a - 1, b).some((l) => l.includes(anchor))) {
+      const at = lines.findIndex((l) => l.includes(anchor));
+      out.moved = at >= 0 ? at + 1 : 0;
+    }
+  }
+  return out;
 }
 
 // Problems with code references, checked only in explain mode where every box must point at real code.
@@ -35,8 +47,9 @@ export function checkEvidence(plan, base) {
   const out = [];
   for (const [id, n] of Object.entries(plan.nodes || {})) {
     if (!n?.file) continue;
-    const r = excerpt(plan, n.file, {around: 0, max: 1, base});
+    const r = excerpt(plan, n.file, {around: 0, max: 1, base, anchor: n.anchor});
     if (r.error) out.push(`node "${id}" file "${n.file}": ${r.error}`);
+    else if (r.moved != null) out.push(`node "${id}" file "${n.file}": anchor ${JSON.stringify(n.anchor)} is not there${r.moved ? `; it is at line ${r.moved}` : "; it is not in the file"} (the code moved: fix file and highlight)`);
   }
   return out;
 }

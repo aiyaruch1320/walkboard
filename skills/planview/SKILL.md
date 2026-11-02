@@ -35,7 +35,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
 
 1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
 2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there.
-3. Every code box has `file` = `path:line` or `path:from-to`; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
+3. Every code box has `file` = `path:line` or `path:from-to` and `anchor` = a short piece of that code (`"function send("`), so `check` notices when the code moves; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
 4. `PV check <dir>` until ok (it fails when a file or line does not exist).
 
 ## 3. Show and listen

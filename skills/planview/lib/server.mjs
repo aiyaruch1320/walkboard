@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
+import {savePlan} from "./edit.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".planview");
@@ -157,7 +158,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } else if (route === "GET /api/source") {
       const plan = readJSON(p.plan);
       const node = plan.nodes && Object.hasOwn(plan.nodes, url.searchParams.get("node") || "") ? plan.nodes[url.searchParams.get("node")] : null;
-      const r = node?.file ? excerpt(plan, node.file, {base: dir}) : {error: "no file"};
+      const r = node?.file ? excerpt(plan, node.file, {base: dir, anchor: node.anchor}) : {error: "no file"};
       res.writeHead(r.error ? 404 : 200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify(r));
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
@@ -196,18 +197,20 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         if (typeof v?.teachBack === "boolean") s.teachBack = v.teachBack;
         if (v?.commit === "auto" || v?.commit === "suggest") s.commit = v.commit;
         // Design criteria weights: {criterion id: 0-3}.
-        const w = v?.weights && typeof v.weights === "object" ? Object.entries(v.weights).filter(([, n]) => Number.isInteger(n) && n >= 0 && n <= 3) : [];
+        const w = v?.weights && typeof v.weights === "object" && !Array.isArray(v.weights) ? Object.entries(v.weights) : [];
         if (err || (!Object.keys(s).length && !w.length)) return res.writeHead(400).end('need teachBack (true|false), commit ("auto"|"suggest") or weights ({criterion: 0-3})');
-        let plan;
+        let plan, before;
         try {
-          plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+          before = fs.readFileSync(p.plan, "utf8");
+          plan = JSON.parse(before);
         } catch {
           return res.writeHead(409).end("plan.json cannot be read");
         }
+        const known = new Set((Array.isArray(plan.criteria) ? plan.criteria : []).map((c) => c?.id));
+        if (w.some(([id, n]) => !known.has(id) || !(Number.isInteger(n) && n >= 0 && n <= 3))) return res.writeHead(400).end("weights must be {criterion id: 0-3} for criteria in the plan");
         plan.settings = {...(plan.settings && typeof plan.settings === "object" && !Array.isArray(plan.settings) ? plan.settings : {}), ...s};
         for (const [id, n] of w) for (const c of Array.isArray(plan.criteria) ? plan.criteria : []) if (c?.id === id) c.weight = n;
-        fs.writeFileSync(p.plan + ".tmp", JSON.stringify(plan, null, 1) + "\n");
-        fs.renameSync(p.plan + ".tmp", p.plan);
+        savePlan(p.plan, plan, before);
         changedSettings = {settings: plan.settings};
         if (Array.isArray(plan.criteria)) changedSettings.weights = Object.fromEntries(plan.criteria.filter((c) => c?.id).map((c) => [c.id, c.weight ?? 1]));
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({settings: plan.settings}));

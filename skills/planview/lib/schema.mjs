@@ -324,6 +324,7 @@ export function lint(p) {
     if (String(n.name || "").length > 40) out.push(`node "${id}": name over 40 characters, shorten it`);
     if (p.mode === "explain" && n.status !== "ext" && !n.file && !n.proposal) out.push(`node "${id}" has no file (explain mode points at real code)`);
     if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" has no line (path:line)`);
+    if (p.mode === "explain" && parseFile(n.file, p)?.line && !n.anchor) out.push(`node "${id}" has no anchor (a short piece of the cited code, so check notices when it moves)`);
     if (String(n.what || "").length > 60) out.push(`node "${id}": what over 60 characters`);
   }
   for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" has no detail (what the step does)`);

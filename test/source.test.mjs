@@ -42,3 +42,19 @@ test("explain plans are checked against the code", () => {
   assert.match(out, /node "c".*not found/);
   assert.deepEqual(checkEvidence({...plan, mode: "build"}), []);
 });
+
+test("ranges must make sense and anchors must still be in them", () => {
+  const root = repo();
+  assert.match(excerpt({root}, "src/a.go:0").error, /start at 1/);
+  assert.match(excerpt({root}, "src/a.go:3-1").error, /ends before/);
+  assert.match(excerpt({root}, "src/a.go:2-9999").error, /past the end/);
+  const plan = {mode: "explain", root, nodes: {
+    ok: {name: "ok", file: "src/a.go:10-12", anchor: "line 11"},
+    moved: {name: "moved", file: "src/a.go:10", anchor: "line 25"},
+    gone: {name: "gone", file: "src/a.go:10", anchor: "nothing"},
+  }};
+  const out = checkEvidence(plan).join("\n");
+  assert.doesNotMatch(out, /node "ok"/);
+  assert.match(out, /node "moved".*at line 25/);
+  assert.match(out, /node "gone".*not in the file/);
+});

@@ -246,8 +246,13 @@ test("design weights are saved from the page and reach the agent with its next m
   fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", mode: "design", criteria: [{id: "cost", label: "Cost", weight: 1}], views: [], nodes: {}}));
   const s = await startServer(dir);
   t.after(s.close);
-  assert.equal((await post(s, "/api/settings", {weights: {cost: 3, nope: 2, bad: 9}})).status, 200);
-  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).criteria[0].weight, 3);
+  assert.equal((await post(s, "/api/settings", {weights: {cost: 3, nope: 2}})).status, 400);
+  assert.equal((await post(s, "/api/settings", {weights: [3, 3]})).status, 400);
+  assert.equal((await post(s, "/api/settings", {weights: {cost: 9}})).status, 400);
+  assert.equal((await post(s, "/api/settings", {weights: {cost: 3}})).status, 200);
+  const saved = fs.readFileSync(path.join(dir, "plan.json"), "utf8");
+  assert.equal(JSON.parse(saved).criteria[0].weight, 3);
+  assert.equal(saved.trim().includes("\n"), false, "a compact plan stays compact");
   const polled = call(s, "/api/poll").then((r) => r.json());
   await post(s, "/api/feedback", {kind: "question", text: "?"});
   const [first] = await polled;

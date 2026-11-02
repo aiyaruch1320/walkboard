@@ -7,7 +7,7 @@ import {startServer, paths} from "../lib/server.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
 import {knownIcon, iconNames} from "../lib/icons.mjs";
-import {parseSet, applySet} from "../lib/edit.mjs";
+import {parseSet, applySet, savePlan} from "../lib/edit.mjs";
 
 const USAGE = `planview <command> [options]
 
@@ -41,7 +41,8 @@ function parse(argv) {
 const [cmd, ...args] = process.argv.slice(2);
 const {flags, rest} = parse(args);
 // reply takes free text, so its first word is a dir only when that dir holds a plan.
-const dirFirst = rest[0] && (!["reply", "set"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")));
+// set and reply take words after the folder, so the first word is the folder only when it holds a plan or looks like a path.
+const dirFirst = rest[0] && (!["reply", "set"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")) || (/^[./~]|\//.test(rest[0]) && !rest[0].includes("=")));
 const dir = path.resolve(flags.dir ?? (dirFirst ? rest[0] : "."));
 const words = !flags.dir && dirFirst ? rest.slice(1) : rest;
 const p = paths(dir);
@@ -100,7 +101,9 @@ async function check() {
 }
 
 async function set() {
-  const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  if (!fs.existsSync(p.plan)) fail(`no plan.json in ${dir}`);
+  const before = fs.readFileSync(p.plan, "utf8");
+  const plan = JSON.parse(before);
   try {
     applySet(plan, parseSet(words));
   } catch (e) {
@@ -108,9 +111,7 @@ async function set() {
   }
   const problems = validate(plan);
   if (problems.length) fail("not saved:\n" + problems.map((t) => `- ${t}`).join("\n"));
-  const tmp = p.plan + ".tmp";
-  fs.writeFileSync(tmp, JSON.stringify(plan, null, 1) + "\n");
-  fs.renameSync(tmp, p.plan);
+  savePlan(p.plan, plan, before);
   console.log("ok");
 }
 
@@ -125,7 +126,11 @@ async function open() {
       await sleep(100);
       s = await running();
     }
-    if (!s) fail("server did not start");
+    if (!s) {
+      // A lock left by a crashed server whose pid now belongs to another program keeps every start waiting.
+      const lock = fs.existsSync(p.lock) ? fs.readFileSync(p.lock, "utf8").trim() : "";
+      fail(lock ? `server did not start: ${p.lock} names pid ${lock}, which is not a planview server; if none is running for this folder, delete that file and open again` : "server did not start");
+    }
   }
   console.log(urlOf(s));
   if (!flags.noBrowser) openBrowser(urlOf(s));
@@ -228,4 +233,8 @@ if (!commands[cmd]) {
   console.error(USAGE);
   process.exit(cmd ? 2 : 0);
 }
-await commands[cmd]();
+try {
+  await commands[cmd]();
+} catch (e) {
+  fail(e.message);
+}

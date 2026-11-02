@@ -6,7 +6,7 @@ import {fileURLToPath} from "node:url";
 import {startServer, paths} from "../lib/server.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
-import {knownIcon} from "../lib/icons.mjs";
+import {knownIcon, iconNames} from "../lib/icons.mjs";
 import {parseSet, applySet} from "../lib/edit.mjs";
 
 const USAGE = `planview <command> [options]
@@ -20,6 +20,7 @@ const USAGE = `planview <command> [options]
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
+  icons                         list the icon names for "icon"
 
 dir defaults to the current directory and must contain plan.json.`;
 
@@ -91,7 +92,7 @@ async function check() {
     process.exit(1);
   }
   const warnings = lint(plan);
-  for (const [id, n] of Object.entries(plan.nodes || {})) if (typeof n?.icon === "string" && !knownIcon(n.icon)) warnings.push(`node "${id}": unknown icon "${n.icon}" (see references/schema.md)`);
+  for (const [id, n] of Object.entries(plan.nodes || {})) if (typeof n?.icon === "string" && !knownIcon(n.icon)) warnings.push(`node "${id}": unknown icon "${n.icon}" (planview icons lists them)`);
   for (const w of warnings.slice(0, 8)) console.log(`warning: ${w}`);
   if (warnings.length > 8) console.log(`warning: … ${warnings.length - 8} more`);
   console.log(`ok: ${plan.steps?.length || 0} steps, ${viewsOf(plan).length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
@@ -215,7 +216,11 @@ function fail(msg) {
   process.exit(1);
 }
 
-const commands = {check, set, open, poll, reply, status, stop, serve};
+function icons() {
+  console.log(iconNames().join(" "));
+}
+
+const commands = {check, set, open, poll, reply, status, stop, serve, icons};
 if (!commands[cmd]) {
   console.error(USAGE);
   process.exit(cmd ? 2 : 0);

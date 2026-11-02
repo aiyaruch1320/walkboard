@@ -237,6 +237,15 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monos
 details.code{margin:10px 0 0}
 details.code summary{cursor:pointer;font-size:13px;color:var(--muted)}
 .code .cscroll{margin:6px 0 0;background:var(--code);border-radius:6px;overflow-x:auto}
+.code li.lnote{white-space:normal;position:sticky;left:0;max-width:var(--cw,100%);font:12.5px/1.45 -apple-system,"Noto Sans Thai",system-ui,sans-serif;color:var(--new-tx);background:var(--new-bg);padding:3px 10px 4px calc(3.5ch + 20px);border-left:3px solid var(--new-bd)}
+.code li.lnote::before{content:none}
+.code .cscroll.wrap ol{width:auto}
+.code .cscroll.wrap li{white-space:pre-wrap;overflow-wrap:anywhere;padding-left:calc(3.5ch + 20px);text-indent:calc(-3.5ch - 10px)}
+.code .cscroll.wrap li.lnote{text-indent:0}
+.code .cscroll.wrap li::before{position:static}
+details.code summary{display:flex;align-items:center;gap:8px}
+.wrapbtn{margin-left:auto;font-size:11.5px;padding:1px 8px}
+.wrapbtn[aria-pressed="true"]{border-color:var(--you-bd);color:var(--you-tx)}
 .code .cscroll.more{-webkit-mask-image:linear-gradient(to right,#000 85%,transparent);mask-image:linear-gradient(to right,#000 85%,transparent)}
 /* The list is as wide as its longest line, so a highlight reaches the end when scrolled sideways. */
 .code ol{margin:0;padding:6px 0;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;list-style:none;width:max-content;min-width:100%}
@@ -431,7 +440,7 @@ const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, parseLines, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, parseLines: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
 
 // Page labels follow the plan's language (see langOf); anything else falls back to English.
@@ -468,7 +477,7 @@ const STRINGS = {
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", legendSum: "ⓘ What the colours and marks mean", sentWait: "Sent · waiting for the agent",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", wrapCode: "↵ Wrap lines", legendSum: "ⓘ What the colours and marks mean", sentWait: "Sent · waiting for the agent",
     approveOpen: (n) => `${n} ${n === 1 ? "proposal is" : "proposals are"} still open. Approve the plan anyway?`, helpSettings: "Restating and commits: the switches under the title.",
     emptyBox: "Nothing asked here yet. Ask about this box, or propose adding, changing or removing it.", emptyStep: (u) => `Nothing here yet. Ask about this ${u}, restate it, or propose a change.`,
     emptyPlan: "Ask about the whole plan, or propose something to add.",
@@ -523,7 +532,7 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", legendSum: "ⓘ สีและสัญลักษณ์หมายถึงอะไร", sentWait: "ส่งแล้ว · รอ agent",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", wrapCode: "↵ ตัดบรรทัด", legendSum: "ⓘ สีและสัญลักษณ์หมายถึงอะไร", sentWait: "ส่งแล้ว · รอ agent",
     approveOpen: (n) => `ยังมีข้อเสนอค้างอยู่ ${n} รายการ อนุมัติแผนเลยไหม`, helpSettings: "เปิด/ปิดการทวน และวิธี commit: สวิตช์ใต้ชื่อแผน",
     emptyBox: "ยังไม่มีใครถามตรงนี้ ถามเรื่องกล่องนี้ได้เลย หรือเสนอให้เพิ่ม แก้ หรือเอาออก", emptyStep: (u) => `ยังไม่มีบทสนทนา ถามเรื่อง${u}นี้ ทวน หรือเสนอเปลี่ยนได้`,
     emptyPlan: "ถามเรื่องทั้งแผน หรือเสนอสิ่งที่อยากเพิ่ม",
@@ -1744,6 +1753,9 @@ function fileLine(file, resolved) {
   return row;
 }
 
+// Long lines wrap on narrow screens unless the reader chose otherwise.
+const codeWrap = () => (store.get("planview.wrap") ?? (innerWidth < 700 ? "on" : "off")) === "on";
+
 function codeBox(id) {
   const box = el("details", "code");
   box.open = true;
@@ -1754,7 +1766,8 @@ function codeBox(id) {
       if (r.error) return box.lastChild.replaceWith(el("div", "meta err", `${t("codeFail")}: ${r.error}`));
       // Only the lines that make the point: "highlight", else a single referenced line; a range alone is just context.
       const node = plan.nodes[id] || {};
-      const marked = parseLines(node.highlight) || (r.focus && r.focus === r.end ? new Set([r.focus]) : new Set());
+      const hl = highlightOf(node.highlight) || {lines: r.focus && r.focus === r.end ? new Set([r.focus]) : new Set(), notes: new Map()};
+      const marked = hl.lines;
       const ol = el("ol");
       const indent = Math.min(...r.lines.filter((l) => l.trim()).map((l) => l.match(/^[ \t]*/)[0].length));
       r.lines = r.lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0));
@@ -1763,9 +1776,23 @@ function codeBox(id) {
         const li = el("li", marked.has(n) ? "focus" : null, t);
         li.dataset.n = n;
         ol.append(li);
+        // A highlighted line can say why it matters, right under it.
+        if (hl.notes.has(n)) ol.append(el("li", "lnote", "↑ " + hl.notes.get(n)));
       });
-      const scroll = el("div", "cscroll");
+      const scroll = el("div", "cscroll" + (codeWrap() ? " wrap" : ""));
       scroll.append(ol);
+      const wrapBtn = el("button", "wrapbtn", t("wrapCode"));
+      wrapBtn.setAttribute("aria-pressed", String(codeWrap()));
+      wrapBtn.onclick = (e) => {
+        e.preventDefault();
+        const on = !scroll.classList.contains("wrap");
+        store.set("planview.wrap", on ? "on" : "off");
+        scroll.classList.toggle("wrap", on);
+        wrapBtn.setAttribute("aria-pressed", String(on));
+        fade();
+      };
+      box.querySelector("summary").append(wrapBtn);
+      new ResizeObserver(() => scroll.style.setProperty("--cw", scroll.clientWidth + "px")).observe(scroll);
       const fade = () => scroll.classList.toggle("more", scroll.scrollLeft + scroll.clientWidth < scroll.scrollWidth - 4);
       scroll.addEventListener("scroll", fade, {passive: true});
       box.lastChild.replaceWith(scroll);

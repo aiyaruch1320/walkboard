@@ -41,8 +41,9 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 |---|---|
 | ![A question and the agent's answer](images/chat.png) | ![A step marked as your turn and confirmed](images/teachback.png) |
 
-- **Got it · Still unclear · Go deeper** send at once.
-- **Ask · Request change · Restate** choose what the text you type is sent as.
+- **Still unclear · Go deeper** send at once.
+- **Ask** or **Propose** (add after a box, change it, remove it) choose what the text you type is sent as. The agent decides whether a proposal just corrects the picture, changes a plan not yet approved, or is drawn as a proposal. **Restate** appears when it is your turn (and on every stage in explain mode).
+- The first visit shows a three-stop tour; **?** lists the shortcuts (← → steps, Esc closes the panel, ⌘/Ctrl+Enter sends) and shows the tour again.
 - **Approve plan** lets the agent start building. Nothing is built before.
 - **Commit and go on** / **I committed, go on** appear under the suggested commit message of a finished step when commits are only suggested; you can edit the message first. The agent waits for one of them before the next step.
 

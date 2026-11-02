@@ -11,7 +11,7 @@ const USAGE = `planview <command> [options]
   check  [dir]                  validate dir/plan.json, print problems, exit 1 if any
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
   poll   [dir]                  wait for feedback from the page, print it as JSON, exit
-  reply  [--dir d] [--node n] [--step s] <text>   show an agent reply on the page
+  reply  [dir] [--node n] [--step s] <text>   show an agent reply on the page (or --dir d)
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
@@ -32,7 +32,10 @@ function parse(argv) {
 
 const [cmd, ...args] = process.argv.slice(2);
 const {flags, rest} = parse(args);
-const dir = path.resolve(flags.dir ?? (cmd === "reply" ? "." : rest[0] ?? "."));
+// reply takes free text, so its first word is a dir only when that dir holds a plan.
+const dirFirst = rest[0] && (cmd !== "reply" || fs.existsSync(path.join(rest[0], "plan.json")));
+const dir = path.resolve(flags.dir ?? (dirFirst ? rest[0] : "."));
+const words = !flags.dir && dirFirst ? rest.slice(1) : rest;
 const p = paths(dir);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -54,7 +57,8 @@ async function running() {
   const s = readServer();
   if (!s) return null;
   try {
-    return {...s, status: await api(s, "/api/status")};
+    const status = await api(s, "/api/status");
+    return status.pid === s.pid ? {...s, status} : null;
   } catch {
     return null;
   }
@@ -88,7 +92,8 @@ async function open() {
   if (!s) {
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve", dir], {stdio: "ignore", detached: true});
     child.unref();
-    for (let i = 0; i < 50 && !(s && s.pid === child.pid); i++) {
+    // Another open may win the lock; any live server for this folder will do.
+    for (let i = 0; i < 50 && !s; i++) {
       await sleep(100);
       s = await running();
     }
@@ -116,9 +121,12 @@ async function poll() {
 }
 
 async function reply() {
-  const text = rest.join(" ").trim();
+  const text = words.join(" ").trim();
   if (!text) fail("reply needs text");
   const s = (await running()) ?? fail(`server not running for ${dir}`);
+  const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  if (flags.node && !Object.hasOwn(plan.nodes || {}, flags.node)) fail(`no node "${flags.node}" in the plan; ids: ${Object.keys(plan.nodes || {}).join(", ")}`);
+  if (flags.step && !(plan.steps || []).some((x) => x.id === flags.step)) fail(`no step "${flags.step}" in the plan; ids: ${(plan.steps || []).map((x) => x.id).join(", ")}`);
   const body = {text, from: "agent"};
   if (flags.node) body.node = flags.node;
   if (flags.step) body.step = flags.step;
@@ -133,19 +141,24 @@ async function status() {
 }
 
 async function stop() {
-  const s = readServer();
-  if (!s) return console.log("not running");
-  try {
-    process.kill(s.pid, "SIGTERM");
-  } catch {}
+  const s = await running();
+  if (!s) {
+    // Never signal a pid we cannot confirm: it may belong to another program by now.
+    if (readServer()) fs.rmSync(p.server, {force: true});
+    return console.log("not running");
+  }
+  process.kill(s.pid, "SIGTERM");
   for (let i = 0; i < 30 && fs.existsSync(p.server); i++) await sleep(100);
-  fs.rmSync(p.server, {force: true});
   console.log("stopped");
 }
 
 async function serve() {
-  if (await running()) fail(`already running for ${dir}`);
-  const s = await startServer(dir, {pollMs: Number(process.env.PLANVIEW_POLL_MS) || undefined});
+  let s;
+  try {
+    s = await startServer(dir, {pollMs: Number(process.env.PLANVIEW_POLL_MS) || undefined});
+  } catch (e) {
+    fail(e.code === "PLANVIEW_RUNNING" ? `${e.message} for ${dir}` : e.message);
+  }
   console.log(s.url);
   const quit = async () => {
     await s.close();

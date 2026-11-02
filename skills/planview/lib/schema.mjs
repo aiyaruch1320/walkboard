@@ -157,7 +157,10 @@ export const KINDS = {
   },
   diff: {
     refs: () => [],
-    check: (v, p) => [v.before, v.after].filter((id) => !list(p.views).some((x) => x?.id === id && x.kind !== "diff")).map((id) => `no view "${id}" to compare (a diff compares two other, non-diff views)`),
+    check: (v, p) => [
+      ...[v.before, v.after].filter((id) => !list(p.views).some((x) => x?.id === id && x.kind !== "diff")).map((id) => `no view "${id}" to compare (a diff compares two other, non-diff views)`),
+      ...(v.changed != null && !Array.isArray(v.changed) && !(isObj(v.changed) && Object.values(v.changed).every((x) => typeof x === "string")) ? ['changed must be ["id", …] or {"id": "what changed"}'] : []),
+    ],
   },
   transform: {
     refs: (v) => list(v.stages).map((st) => st?.node),

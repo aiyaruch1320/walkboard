@@ -11,7 +11,7 @@
 <div class="layout">
 <main>
   <div class="bar" id="bar">
-    <span id="modePill" class="modepill" hidden></span>
+    <button id="modePill" class="modepill" hidden></button>
     <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>planview</b></span>
     <button id="help" class="helpbtn" aria-label="Help">?</button>
     <span class="conn off" id="conn"></span>
@@ -25,7 +25,6 @@
   <div id="problems" class="problems" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
-  <details class="glossary" id="glossary" hidden></details>
   <div id="constraints" class="cons" hidden></div>
   <div id="proposals" class="propbar" hidden></div>
   <div class="stepnav">
@@ -191,12 +190,6 @@ function setGlossary(own) {
   const g = glossary;
   const terms = Object.keys(g).filter(Boolean).sort((a, b) => b.length - a.length);
   termRe = terms.length ? new RegExp(terms.map(edge).join("|"), "g") : null;
-  const box = document.getElementById("glossary");
-  box.hidden = !terms.length;
-  if (!terms.length) return;
-  const dl = el("dl");
-  for (const t of [...terms].sort((a, b) => a.localeCompare(b))) dl.append(el("dt", null, t), el("dd", null, g[t]));
-  box.replaceChildren(el("summary", null, t(plan.mode === "explain" ? "termsPage" : "terms", terms.length)), dl);
 }
 
 // Text with glossary terms that explain themselves on click or tap.
@@ -227,6 +220,15 @@ function rich(text, passive = false) {
   }
   f.append(str.slice(last));
   return f;
+}
+
+// Long identifiers (feedback.jsonl, order_events) may break after . / _ - instead of mid-word.
+function breakable(e, text) {
+  String(text ?? "").split(/(?<=[./_-])(?=\w)/).forEach((part, i) => {
+    if (i) e.append(el("wbr"));
+    e.append(part);
+  });
+  return e;
 }
 
 function richEl(tag, cls, text, passive) {
@@ -534,7 +536,7 @@ function renderBar() {
     b.onclick = openUnread;
     extra.push(b);
   }
-  if ((plan.mode ?? "build") === "build" && !plan.approved && connected) {
+  if ((plan.mode ?? "build") === "build" && !plan.approved && connected && steps().length) {
     const sent = approvePending();
     const b = el("button", "primary", sent ? t("approveSent") : "✓ " + t("approve"));
     b.disabled = sent;
@@ -861,6 +863,10 @@ function renderOptionCard() {
   if (d?.option) {
     const mine = d.option === o.id;
     const box = el("div", "decided" + (mine ? "" : " other"), mine ? t("decided", o.title) : t("notChosen"));
+    // Who chose and when: from the decision, else from the user's "decide" message.
+    const asked = thread.findLast((m) => m.kind === "decide" && m.option === d.option && m.from !== "agent");
+    const when = d.at || asked?.at;
+    if (mine && (d.by || when)) box.append(el("div", "dwho", [d.by, when && new Date(when).toLocaleString(lang, {dateStyle: "medium", timeStyle: "short"})].filter(Boolean).join(" · ")));
     const why = mine ? d.why : d.not?.[o.id];
     if (why) box.append(el("div", null, why));
     // The record in one place: why the others lost, and the plan the choice became.
@@ -1063,7 +1069,8 @@ function renderDesignPanel() {
     const go = el("button", "primary", t("decideSend"));
     go.onclick = async () => {
       go.disabled = true;
-      await send({}, "decide", ta.value.trim() || t("q_decide", opt.title), {option: opt.id}).catch(() => (go.disabled = false));
+      const weights = Object.fromEntries(criteria().map((c) => [c.id, c.weight ?? 1]));
+      await send({}, "decide", ta.value.trim() || t("q_decide", opt.title), {option: opt.id, weights}).catch(() => (go.disabled = false));
     };
     const talk = el("div", "talk");
     talk.append(ta, go);
@@ -1137,7 +1144,7 @@ function renderSide() {
     p.replaceChildren(...parts);
   } else {
     title.textContent = t("wholePlan");
-    const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() ? ["approve"] : [];
+    const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() && steps().length ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
     parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
     p.replaceChildren(...parts);
@@ -1193,7 +1200,7 @@ function nodeBox(id, family = null) {
   const st = el("span", "st", (plan.mode === "explain" ? EXPLAIN_MARK : MARK)[status]);
   st.title = statusLabel(status);
   st.setAttribute("aria-label", statusLabel(status));
-  head.append(el("div", "name", n.name), st);
+  head.append(breakable(el("div", "name"), n.name), st);
   d.append(head);
   if (n.what) d.append(richEl("div", "what", n.what, true));
   if (pr?.note) d.append(richEl("div", "pnote", "→ " + (pr.note.length > 60 ? pr.note.slice(0, 58) + "…" : pr.note), true));
@@ -1675,7 +1682,7 @@ function bezierMid(p0, p1, p2, p3) {
   return [(p0[0] + 3 * p1[0] + 3 * p2[0] + p3[0]) / 8, (p0[1] + 3 * p1[1] + 3 * p2[1] + p3[1]) / 8];
 }
 
-function renderGraph(v, {ids, edges, starts = [], shape}) {
+function renderGraph(v, {ids, edges, starts = [], shape, wrap = false}) {
   const known = new Set(ids);
   edges = edges.filter((e) => known.has(e.from) && known.has(e.to));
   const out = {};
@@ -1709,15 +1716,26 @@ function renderGraph(v, {ids, edges, starts = [], shape}) {
     const key = (id) => (pred(id).length ? pred(id).reduce((a, b) => a + b, 0) / pred(id).length : cols[d].indexOf(id));
     cols[d].sort((a, b) => key(a) - key(b)).forEach((id, i) => (at[id] = i));
   }
-  const grid = el("div", "graph diagram");
-  grid.style.gridTemplateColumns = `repeat(${Object.keys(cols).length}, minmax(150px, 210px))`;
+  // A long chain wider than the screen continues on the next row (wrap), like lines of text.
+  const nCols = Object.keys(cols).length;
+  const fit = Math.max(2, Math.floor(((document.getElementById("view")?.clientWidth || 900) + 120) / 330));
+  const per = wrap && nCols > fit ? fit : nCols, tall = Math.max(...Object.values(cols).map((l) => l.length));
+  const band = (x) => Math.floor(depth[x] / per);
+  const grid = el("div", "graph diagram" + (per < nCols ? " wrapped" : ""));
+  grid.style.gridTemplateColumns = `repeat(${per}, minmax(150px, 210px))`;
   for (const [d, list] of Object.entries(cols)) list.forEach((id, i) => {
     const b = anchored(id);
-    b.style.gridColumn = String(Number(d) + 1);
-    b.style.gridRow = String(i + 1);
+    b.style.gridColumn = String((Number(d) % per) + 1);
+    b.style.gridRow = String(Math.floor(Number(d) / per) * (tall + 1) + i + 1);
     shape?.(b, id, out[id] || []);
     grid.append(b);
   });
+  for (let k = 1; k * per < nCols; k++) {
+    const gap = el("div", "gband");
+    gap.style.gridRow = String(k * (tall + 1));
+    grid.append(gap);
+  }
+  const bandBottom = (k, base) => Math.max(...ids.filter((x) => band(x) === k).map(box).filter(Boolean).map((r) => r.bottom - base.top));
   const svg = linkLayer(grid);
   const labels = el("div", "elabels");
   grid.append(labels);
@@ -1742,6 +1760,12 @@ function renderGraph(v, {ids, edges, starts = [], shape}) {
       let p0, p1, p2, p3;
       if (e.from === e.to) {
         p0 = P(a.right - 22, a.bottom); p3 = P(a.right, a.bottom - 14); p1 = [p0[0] + 4, p0[1] + 34]; p2 = [p3[0] + 38, p3[1] + 6];
+      } else if (band(e.to) > band(e.from) && !back.has(e)) {
+        // On to the next row: out to the right, along the gap between the rows, in from the left.
+        p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
+        const y = bandBottom(band(e.from), base) + 39 + 6 * arcs, xr = p0[0] + 22 + 6 * arcs, xl = p3[0] - 26 - 6 * arcs++;
+        p1 = p0; p2 = [xl, p3[1]];
+        lanes.push({d: `M${p0} L${[xr, p0[1]]} L${[xr, y]} L${[xl, y]} L${[xl, p3[1]]} L${p3}`, mid: [(xr + xl) / 2, y], left: true});
       } else if (depth[e.to] > depth[e.from] && !back.has(e)) {
         p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
         const dx = Math.max(30, (p3[0] - p0[0]) / 2);
@@ -1768,7 +1792,7 @@ function renderGraph(v, {ids, edges, starts = [], shape}) {
         p1 = [p0[0], Math.min(p0[1], p3[1]) - lift]; p2 = [p3[0], Math.min(p0[1], p3[1]) - lift];
       }
       const detour = lanes.pop();
-      if (detour) p2 = [detour.mid[0] < p3[0] ? p3[0] - 30 : p3[0] + 30, p3[1]];
+      if (detour) p2 = [(detour.left ?? detour.mid[0] < p3[0]) ? p3[0] - 30 : p3[0] + 30, p3[1]];
       const ang = Math.atan2(p3[1] - p2[1], p3[0] - p2[0]);
       const tip = (k) => `${p3[0] - 7 * Math.cos(ang + k)} ${p3[1] - 7 * Math.sin(ang + k)}`;
       const dim = inStep && !(inStep.has(e.from) && inStep.has(e.to));
@@ -1796,6 +1820,7 @@ function renderState(v) {
     ids: [...new Set([...(v.states || []), ...(v.transitions || []).flatMap((x) => [x.from, x.to])])],
     edges: v.transitions || [],
     starts: v.start ? [v.start] : [],
+    wrap: true,
     shape: (b, id) => {
       b.classList.add("g-state");
       if (id === v.start) b.prepend(el("span", "g-start", t("gStart")));
@@ -1997,7 +2022,9 @@ function renderDiff(v) {
   const wrap = el("div", "diffview");
   if (!before || !after || !VIEWS[before.kind] || !VIEWS[after.kind] || before.kind === "diff" || after.kind === "diff") return el("p", null, t("cannotDraw", "diff"));
   const ids = (x) => new Set(KINDS[x.kind]?.refs(x) || []);
-  const a = ids(before), b = ids(after), changed = new Set(v.changed || []);
+  // changed: ["api"], or {"api": "now publishes instead of sending"} to say what changed.
+  const notes = v.changed && typeof v.changed === "object" && !Array.isArray(v.changed) ? v.changed : {};
+  const a = ids(before), b = ids(after), changed = new Set(Array.isArray(v.changed) ? v.changed : Object.keys(notes));
   const legend = el("div", "linklegend");
   legend.append(el("span", "dl add", t("dAdd")), el("span", "dl del", t("dDel")), el("span", "dl chg", t("dChg")));
   const half = (view, label, mark) => {
@@ -2005,15 +2032,42 @@ function renderDiff(v) {
     h.append(el("div", "dtitle", `${label} · ${view.title || view.id}`), VIEWS[view.kind].render(view));
     h.querySelectorAll("[data-id]").forEach((d) => {
       const id = d.dataset.id;
-      if (changed.has(id)) d.classList.add("d-chg");
+      if (changed.has(id)) {
+        d.classList.add("d-chg");
+        if (typeof notes[id] === "string") d.append(el("div", "dnote", "~ " + notes[id]));
+      }
       else if (mark(id)) d.classList.add(label === t("before") ? "d-del" : "d-add");
     });
     return h;
   };
   wrap.append(half(before, t("before"), (id) => !b.has(id)), half(after, t("after"), (id) => !a.has(id)));
+  // Links that exist on one side only: what stops talking to what, and what starts.
+  const name = (x) => plan.nodes[x]?.name || x;
+  const ea = edgesOf(before), eb = edgesOf(after);
+  const gone = [...ea].filter((k) => !eb.has(k)), added = [...eb].filter((k) => !ea.has(k));
+  const links = el("div", "dlinks");
+  for (const [list, cls, label] of [[gone, "del", t("dLinkGone")], [added, "add", t("dLinkNew")]]) {
+    if (!list.length) continue;
+    const row = el("div", "drow");
+    row.append(el("span", "dl " + cls, label));
+    for (const k of list) {
+      const [f, to] = k.split("\u0000");
+      row.append(el("span", "dedge " + cls, `${name(f)} → ${name(to)}`));
+    }
+    links.append(row);
+  }
   const box = el("div");
-  box.append(legend, wrap);
+  box.append(legend, links, wrap);
   return box;
+}
+
+// Who points at whom in a picture, as "from\0to" keys, for comparing two pictures.
+function edgesOf(v) {
+  const pairs = [];
+  if (v.kind === "flow") for (const l of v.lanes || []) if (l?.arrows !== false) (l.nodes || []).forEach((x, i, a) => i && pairs.push([a[i - 1], x]));
+  for (const e of [...(v.links || []), ...(v.edges || []), ...(v.transitions || []), ...(v.kind === "sequence" ? (v.messages || []).filter((m) => !m?.reply) : [])]) if (e?.from && e?.to && e.from !== e.to) pairs.push([e.from, e.to]);
+  for (const w of v.workloads || []) for (const u of w?.uses || []) pairs.push([w.node, u]);
+  return new Set(pairs.map(([f, to]) => f + "\u0000" + to));
 }
 
 const VIEWS = {
@@ -2566,7 +2620,8 @@ function startTour() {
   const x = plan?.mode === "explain" ? "x" : "";
   const stops = (isDesign() ? [["#view", "tour1d"], ["#tabs", "tour2d"], ["#compare .cmp", "tour3d"]] : [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]])
     .filter(([sel]) => document.querySelector(sel));
-  if (!stops.length) return;
+  // Nothing drawn yet: a tour of empty bars explains nothing.
+  if (!stops.length || !document.querySelector("#view [data-id]")) return;
   const tour = document.getElementById("tour");
   let i = 0;
   const end = () => {
@@ -2604,7 +2659,6 @@ function startTour() {
 
 document.getElementById("help").onclick = (e) => {
   e.stopPropagation();
-  const box = document.getElementById("toast");
   const ul = el("ul");
   for (const [k, what] of t("helpKeys")) {
     const li = el("li");
@@ -2613,17 +2667,36 @@ document.getElementById("help").onclick = (e) => {
   }
   const again = el("button", "primary", t("replayTour"));
   again.onclick = () => {
-    box.hidden = true;
+    document.getElementById("toast").hidden = true;
     startTour();
   };
+  showCard(document.getElementById("help"), el("b", null, t("helpTitle")), ul, el("p", "meta", t("helpSettings")), again);
+};
+
+// A small card under the button that opened it; a click elsewhere closes it.
+function showCard(anchor, ...parts) {
+  const box = document.getElementById("toast");
   box.className = "toast helpcard";
-  box.replaceChildren(el("b", null, t("helpTitle")), ul, el("p", "meta", t("helpSettings")), again);
-  const r = document.getElementById("help").getBoundingClientRect();
+  box.replaceChildren(...parts);
+  const r = anchor.getBoundingClientRect();
   box.style.top = r.bottom + 8 + "px";
   box.style.left = Math.max(16, Math.min(r.left, innerWidth - 436)) + "px";
   box.style.right = "auto";
   box.onclick = (ev) => ev.stopPropagation();
   box.hidden = false;
+}
+
+// The mode pill says which mode this page is in; clicking it says what each mode is for.
+document.getElementById("modePill").onclick = (e) => {
+  e.stopPropagation();
+  const cur = MODES_SHOWN.includes(plan?.mode) ? plan.mode : "build";
+  const ul = el("ul", "modes-list");
+  for (const m of MODES_SHOWN) {
+    const li = el("li", m === cur ? "on" : null);
+    li.append(el("b", null, t("pill_" + m)), el("span", null, t("pillTip_" + m)));
+    ul.append(li);
+  }
+  showCard(e.currentTarget, el("b", null, t("modesTitle")), ul, el("p", "meta", t("modesHow")));
 };
 
 document.addEventListener("keydown", (e) => {

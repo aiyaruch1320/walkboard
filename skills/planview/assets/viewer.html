@@ -146,6 +146,52 @@ body.side-open .side-inner{opacity:1;transform:none}
 .helpcard kbd{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg)}
 .helpcard ul{list-style:none;padding:0;margin:8px 0 10px}
 .helpcard li{margin:4px 0}
+/* design mode */
+.cons{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font-size:12.5px}
+.cons .clabel{color:var(--muted);margin-right:2px}
+.cons .cchip{border:1.5px solid var(--done-bd);background:var(--done-bg);color:var(--done-tx);border-radius:999px;padding:1px 10px;font-size:12.5px}
+.cons .cchip.assumed{border-style:dashed;border-color:var(--new-bd);background:transparent;color:var(--new-tx)}
+.stepnav.nosteps .stepbar,.stepnav.nosteps #prev,.stepnav.nosteps #play,.stepnav.nosteps #next{display:none}
+.stepnav.nosteps{justify-content:flex-end}
+.tabs .rec{color:var(--you-tx)}
+.tabs .pct{font-size:11.5px;color:var(--muted);margin-left:6px}
+.optcard .orec{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:0 9px;margin-left:8px;background:var(--you-bd);color:var(--card);vertical-align:2px}
+.optcard .why{margin:4px 0 0;font-size:13.5px;color:var(--you-tx)}
+.optcard .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.decided{border:1.5px solid var(--done-bd);background:var(--done-bg);color:var(--done-tx);border-radius:9px;padding:7px 12px;margin-top:10px;font-size:13.5px}
+.decided.other{border-color:var(--line);background:transparent;color:var(--muted)}
+.cmp{margin:16px 0 8px;overflow-x:auto}
+.cmp h4{margin:0 0 8px;font-size:14px;font-weight:500}
+.cmp table{border-collapse:separate;border-spacing:0;width:100%;min-width:560px;font-size:13px}
+.cmp th,.cmp td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.cmp thead th{font-weight:500;color:var(--muted);white-space:nowrap}
+.cmp thead th.sel,.cmp td.sel{background:color-mix(in srgb,var(--you-bg) 55%,transparent)}
+.cmp tbody th{font-weight:500}
+.cmp td{cursor:pointer}
+.cmp td:hover{background:color-mix(in srgb,var(--you-bg) 35%,transparent)}
+.cmp .dots{letter-spacing:1px;color:var(--you-tx)}
+.cmp .yes{color:var(--done-tx);font-weight:600}
+.cmp .no{color:var(--warn-tx);font-weight:600}
+.cmp .na{color:var(--muted)}
+.cmp sup{font-size:10px;color:var(--muted);margin-left:3px}
+.cmp .wbtn{display:inline-block;margin-top:3px;font-size:11px;padding:0 7px;border-radius:999px;color:var(--muted)}
+.cmp tfoot th,.cmp tfoot td{border-bottom:0;font-weight:600}
+.cmp .meter{display:block;height:5px;border-radius:3px;background:var(--line);margin-top:4px;overflow:hidden}
+.cmp .meter i{display:block;height:100%;background:var(--you-bd)}
+.node.plain{background:var(--card);border-color:var(--line);color:var(--text)}
+.cmp td.best{color:var(--you-tx)}
+.sources{margin:10px 0 0;font-size:13px}
+.sources summary{cursor:pointer;color:var(--muted)}
+.sources ol{margin:8px 0 0;padding-left:22px}
+.sources li{margin:3px 0}
+.sources a{color:var(--you-tx)}
+.sources small{color:var(--muted)}
+.node .bmark{align-self:flex-start;margin-top:6px;font-size:10.5px;border:1px solid currentColor;border-radius:5px;padding:0 6px;opacity:.85}
+.node.basis-assumed{border-style:dashed}
+.basisline{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.basisline a{color:var(--you-tx)}
+.cellbig{font-size:22px;margin:4px 0 8px}
+.warnbox{border:1.5px dashed var(--new-bd);color:var(--new-tx);border-radius:9px;padding:7px 12px;margin:0 0 10px;font-size:13px}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
 @media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
@@ -411,6 +457,7 @@ details.glossary dd{margin:0;color:var(--muted)}
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
   <details class="glossary" id="glossary" hidden></details>
+  <div id="constraints" class="cons" hidden></div>
   <div id="proposals" class="propbar" hidden></div>
   <div class="stepnav">
     <div class="stepbar" id="stepbar"></div>
@@ -425,6 +472,8 @@ details.glossary dd{margin:0;color:var(--muted)}
   <div class="tabs" id="tabs"></div>
   <details class="legendbox" id="legendbox"><summary id="legendSum"></summary><div class="legend" id="legend"></div></details>
   <div id="view"></div>
+  <div id="compare"></div>
+  <details id="sources" class="sources" hidden></details>
   <footer class="foot"><a href="https://github.com/aiyaruch1320/planview" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/planview</a></footer>
 </main>
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
@@ -440,7 +489,7 @@ const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
 
 // Page labels follow the plan's language (see langOf); anything else falls back to English.
@@ -477,7 +526,15 @@ const STRINGS = {
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", wrapCode: "↵ Wrap lines", legendSum: "ⓘ What the colours and marks mean", sentWait: "Sent · waiting for the agent",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", modeDesign: "Designing: compare options", constraintsLabel: "Constraints:", checkCons: "Check", consTitle: "Constraints",
+    assumedTip: "Assumed by the agent; not confirmed yet", confirm: "Confirm", q_confirm: (x) => `Confirmed: ${x}`, recommended: "★ recommended", choose: "Choose this → write a plan",
+    askOption: (o) => `Ask about ${o}…`, compareTitle: "Comparison", weightTip: "How much this matters to you; click to change (saved, the agent is not woken)", total: "Total, by your weights",
+    sourcesTitle: (n) => `📚 Sources (${n})`, checkedOn: (d) => `checked ${d}`, decideTitle: (o) => `Choose ${o}`, decideWarn: (n) => `${n} ${n === 1 ? "assumption is" : "assumptions are"} not confirmed yet`,
+    decideReason: "Why this one? (optional, kept with the decision)", decideSend: "Choose it and write a plan", q_decide: (o) => `Chosen: ${o}. Write a build plan for it.`, decide: "Choose",
+    decided: (o) => `✓ Chosen: ${o}`, notChosen: "Not chosen", cellAsk: (c, o) => `Ask about ${c} for ${o}…`, b_iac: "IaC", b_cli: "checked by command", b_doc: "📄 docs", b_assumed: "❓ assumed",
+    lb_iac: "= from your infrastructure code", lb_cli: "= seen with a read-only command", lb_doc: "= from official documentation", lb_assumed: "= the agent's assumption, not confirmed",
+    tour1d: "The option you are looking at, as a picture.", tour2d: "All the options. ★ is the agent's pick; the number is the total by your weights.",
+    tour3d: "The comparison. Click a cell for the reasons and sources; click the weight dots to say what matters to you.", wrapCode: "↵ Wrap lines", legendSum: "ⓘ What the colours and marks mean", sentWait: "Sent · waiting for the agent",
     approveOpen: (n) => `${n} ${n === 1 ? "proposal is" : "proposals are"} still open. Approve the plan anyway?`, helpSettings: "Restating and commits: the switches under the title.",
     emptyBox: "Nothing asked here yet. Ask about this box, or propose adding, changing or removing it.", emptyStep: (u) => `Nothing here yet. Ask about this ${u}, restate it, or propose a change.`,
     emptyPlan: "Ask about the whole plan, or propose something to add.",
@@ -532,7 +589,15 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", wrapCode: "↵ ตัดบรรทัด", legendSum: "ⓘ สีและสัญลักษณ์หมายถึงอะไร", sentWait: "ส่งแล้ว · รอ agent",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", modeDesign: "ออกแบบ: เทียบทางเลือก", constraintsLabel: "ข้อจำกัด:", checkCons: "ตรวจ", consTitle: "ข้อจำกัด",
+    assumedTip: "agent สมมติไว้ ยังไม่มีใครยืนยัน", confirm: "ยืนยัน", q_confirm: (x) => `ยืนยัน: ${x}`, recommended: "★ แนะนำ", choose: "เลือกทางนี้ → เขียนเป็นแผน",
+    askOption: (o) => `ถามเรื่อง ${o}…`, compareTitle: "เทียบทางเลือก", weightTip: "เกณฑ์นี้สำคัญกับคุณแค่ไหน คลิกเพื่อเปลี่ยน (บันทึกทันที ไม่ปลุก agent)", total: "รวมตามน้ำหนักของคุณ",
+    sourcesTitle: (n) => `📚 แหล่งอ้างอิง (${n})`, checkedOn: (d) => `ตรวจ ${d}`, decideTitle: (o) => `เลือก ${o}`, decideWarn: (n) => `ยังมีสมมติฐาน ${n} ข้อที่ยังไม่ยืนยัน`,
+    decideReason: "ทำไมเลือกทางนี้ (ไม่บังคับ จะบันทึกไว้กับการตัดสินใจ)", decideSend: "ยืนยัน เลือกทางนี้และเขียนแผน", q_decide: (o) => `เลือก ${o} แล้วเขียนเป็นแผน`, decide: "เลือกทาง",
+    decided: (o) => `✓ เลือกแล้ว: ${o}`, notChosen: "ไม่ได้เลือก", cellAsk: (c, o) => `ถามเรื่อง${c}ของ ${o}…`, b_iac: "IaC", b_cli: "ตรวจด้วยคำสั่ง", b_doc: "📄 เอกสาร", b_assumed: "❓ สมมติฐาน",
+    lb_iac: "= มาจากโค้ด infrastructure ของคุณ", lb_cli: "= เห็นจากคำสั่งแบบอ่านอย่างเดียว", lb_doc: "= มาจากเอกสารทางการ", lb_assumed: "= agent สมมติไว้ ยังไม่มีใครยืนยัน",
+    tour1d: "นี่คือภาพของทางเลือกที่กำลังดู", tour2d: "ทางเลือกทั้งหมด ★ คือที่ agent แนะนำ ตัวเลขคือคะแนนรวมตามน้ำหนักที่คุณตั้ง",
+    tour3d: "ตารางเทียบ คลิกช่องเพื่อดูเหตุผลและแหล่งอ้างอิง กดจุดน้ำหนักเพื่อบอกว่าเกณฑ์ไหนสำคัญกับคุณ", wrapCode: "↵ ตัดบรรทัด", legendSum: "ⓘ สีและสัญลักษณ์หมายถึงอะไร", sentWait: "ส่งแล้ว · รอ agent",
     approveOpen: (n) => `ยังมีข้อเสนอค้างอยู่ ${n} รายการ อนุมัติแผนเลยไหม`, helpSettings: "เปิด/ปิดการทวน และวิธี commit: สวิตช์ใต้ชื่อแผน",
     emptyBox: "ยังไม่มีใครถามตรงนี้ ถามเรื่องกล่องนี้ได้เลย หรือเสนอให้เพิ่ม แก้ หรือเอาออก", emptyStep: (u) => `ยังไม่มีบทสนทนา ถามเรื่อง${u}นี้ ทวน หรือเสนอเปลี่ยนได้`,
     emptyPlan: "ถามเรื่องทั้งแผน หรือเสนอสิ่งที่อยากเพิ่ม",
@@ -624,6 +689,10 @@ const statusLabel = (st) => t((plan?.mode === "explain" ? "ex_" : "st_") + (NODE
 
 function renderLegend() {
   document.getElementById("legendSum").textContent = t("legendSum");
+  if (plan.mode === "design") {
+    const marks = BASIS_KEYS.filter((k) => Object.values(plan.nodes || {}).some((n) => n?.basis === k));
+    return document.getElementById("legend").replaceChildren(...marks.map((k) => el("span", null, `${t("b_" + k)} ${t("lb_" + k)}`)), el("span", null, t("talkLegend")));
+  }
   const items = plan.mode === "explain"
     ? [["done", t("lg_code")], ["new", t("lg_focus")], ["ext", t("lg_ext")]]
     : [["done", t("lg_done")], ["new", t("lg_new")], ["todo", t("lg_todo")], ["ext", t("lg_ext")]];
@@ -771,7 +840,7 @@ async function send(c, kind, text, extra = {}) {
 }
 
 // quick: buttons that send at once; modes: what the typed text is sent as.
-function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = ""}) {
+function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = "", extra = {}}) {
   const key = ctxKey(c);
   const pickKey = key + "|" + phase;
   let current = modes.includes(picked[pickKey]) ? picked[pickKey] : mode && modes.includes(mode) ? mode : modes[0];
@@ -801,7 +870,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     busy = true;
     buttons.forEach((b) => (b.disabled = true));
     try {
-      await send(c, kind, text, kind === "propose" ? {change: c.node ? pchange : "add"} : {});
+      await send(c, kind, text, kind === "propose" ? {...extra, change: c.node ? pchange : "add"} : extra);
       if (ta.value.trim()) ta.value = drafts[key] = "";
       note.textContent = t("sent");
       note.className = "note";
@@ -916,7 +985,11 @@ function renderBadges() {
   if (!plan) return;
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
-  const items = [el("span", "mode", explain ? t("modeExplain") : t("modeBuild"))];
+  const items = [el("span", "mode", plan.mode === "design" ? t("modeDesign") : explain ? t("modeExplain") : t("modeBuild"))];
+  if (plan.mode === "design") {
+    document.getElementById("badges").replaceChildren(...items);
+    return renderBar();
+  }
   // One small box per setting; what the current value means is in its tooltip.
   const box = el("div", "settings");
   box.append(el("span", "slabel", t("agentSettings")));
@@ -1083,6 +1156,7 @@ function commitBox(step) {
 // The main column explains; everything you answer or decide opens in the side panel.
 function renderStepCard() {
   const card = document.getElementById("stepcard");
+  if (isDesign()) return renderOptionCard();
   const step = curStep();
   const talk = (ctx, label, n) => {
     const b = el("button", "talklink", label);
@@ -1214,6 +1288,252 @@ function renderPropsPanel() {
   refreshThreads();
 }
 
+// ---------- design mode: options, a comparison by weighted criteria, constraints and sources
+const BASIS_KEYS = ["iac", "cli", "doc", "assumed"];
+const isDesign = () => plan?.mode === "design";
+const options = () => (isDesign() && Array.isArray(plan.options) ? plan.options.filter((o) => o?.id) : []);
+const criteria = () => (Array.isArray(plan?.criteria) ? plan.criteria.filter((c) => c?.id) : []);
+let optionId = null;
+const curOption = () => options().find((o) => o.id === optionId) || options().find((o) => o.id === plan.decision?.option) || options().find((o) => o.recommended) || options()[0] || null;
+const cell = (o, c) => plan.scores?.[o]?.[c] || null;
+const sourceNo = (id) => (plan.sources || []).findIndex((x) => x?.id === id) + 1;
+const unconfirmed = () => (plan.constraints || []).filter((c) => c && !c.confirmed).length + Object.values(plan.nodes || {}).filter((n) => n?.basis === "assumed").length;
+
+function totals() {
+  return Object.fromEntries(options().map((o) => {
+    let got = 0, max = 0;
+    for (const c of criteria()) {
+      const w = c.weight ?? 1, v = ratingValue(cell(o.id, c.id)?.rating);
+      if (!w || v == null) continue;
+      got += w * v;
+      max += w * 5;
+    }
+    return [o.id, max ? Math.round((got / max) * 100) : null];
+  }));
+}
+
+function chooseOption(id) {
+  optionId = id;
+  viewId = curOption()?.view || viewId;
+  renderView();
+  renderStepCard();
+  renderCompare();
+}
+
+function sourceLink(src) {
+  const a = el("a", null, `[${sourceNo(src.id)}] ${src.title || src.url} ↗`);
+  a.href = src.url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  return a;
+}
+
+function ratingEl(r) {
+  if (r === "yes") return el("span", "yes", "✓");
+  if (r === "no") return el("span", "no", "✗");
+  const v = ratingValue(r);
+  if (v == null) return el("span", "na", "—");
+  return el("span", "dots", "●".repeat(Math.round(v)) + "○".repeat(5 - Math.round(v)));
+}
+
+function renderConstraints() {
+  const bar = document.getElementById("constraints");
+  const list = (plan.constraints || []).filter((c) => c?.id);
+  bar.hidden = !list.length;
+  if (!list.length) return;
+  const parts = [el("span", "clabel", t("constraintsLabel"))];
+  for (const c of list) {
+    const chip = el("span", "cchip" + (c.confirmed ? "" : " assumed"), (c.confirmed ? "✓ " : "❓ ") + c.text);
+    if (!c.confirmed) chip.title = t("assumedTip");
+    parts.push(chip);
+  }
+  const check = el("button", "talklink", t("checkCons"));
+  check.style.marginTop = "0";
+  check.onclick = () => openSide({kind: "constraints"});
+  parts.push(check);
+  bar.replaceChildren(...parts);
+}
+
+function renderOptionCard() {
+  const card = document.getElementById("stepcard");
+  const o = curOption();
+  if (!o) return card.replaceChildren();
+  const c = el("div", "stepcard optcard");
+  const h = el("h3", null, o.title);
+  if (o.recommended) h.append(el("span", "orec", t("recommended")));
+  c.append(h);
+  if (o.summary) c.append(richEl("p", "detail", o.summary));
+  if (o.why) c.append(richEl("p", "why", o.why));
+  const d = plan.decision;
+  if (d?.option) {
+    const mine = d.option === o.id;
+    const box = el("div", "decided" + (mine ? "" : " other"), mine ? t("decided", o.title) : t("notChosen"));
+    const why = mine ? d.why : d.not?.[o.id];
+    if (why) box.append(el("div", null, why));
+    c.append(box);
+  } else {
+    const acts = el("div", "acts");
+    const go = el("button", "primary", t("choose"));
+    go.onclick = () => openSide({kind: "decide", id: o.id});
+    const ask = el("button", "talklink", "💬 " + t("askOption", o.title).replace(/…$/, ""));
+    ask.style.marginTop = "0";
+    ask.onclick = () => openSide({kind: "option", id: o.id});
+    acts.append(go, ask);
+    c.append(acts);
+  }
+  card.replaceChildren(c);
+  refreshThreads();
+}
+
+function renderCompare() {
+  const box = document.getElementById("compare");
+  if (!isDesign() || !options().length || !criteria().length) return box.replaceChildren();
+  const pct = totals(), best = Math.max(...Object.values(pct).filter((x) => x != null));
+  const cur = curOption()?.id;
+  const wrap = el("div", "cmp");
+  wrap.append(el("h4", null, t("compareTitle")));
+  const table = el("table"), head = el("tr");
+  head.append(el("th"));
+  for (const o of options()) {
+    const th = el("th", o.id === cur ? "sel" : "", (o.recommended ? "★ " : "") + o.title);
+    th.style.cursor = "pointer";
+    th.onclick = () => chooseOption(o.id);
+    head.append(th);
+  }
+  const thead = el("thead");
+  thead.append(head);
+  const tbody = el("tbody");
+  for (const c of criteria()) {
+    const tr = el("tr"), th = el("th", null, c.label);
+    const w = c.weight ?? 1;
+    const wb = el("button", "wbtn", "●".repeat(w) + "○".repeat(3 - w));
+    wb.title = t("weightTip");
+    wb.onclick = async () => {
+      const next = (w + 1) % 4;
+      c.weight = next;
+      renderCompare();
+      renderView();
+      await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({weights: {[c.id]: next}})}).catch(() => {});
+    };
+    th.append(el("br"), wb);
+    tr.append(th);
+    for (const o of options()) {
+      const x = cell(o.id, c.id);
+      const td = el("td", o.id === cur ? "sel" : "");
+      td.append(ratingEl(x?.rating));
+      for (const s of x?.sources || []) if (sourceNo(s)) td.append(el("sup", null, `[${sourceNo(s)}]`));
+      td.onclick = () => openSide({kind: "cell", option: o.id, criterion: c.id});
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  const foot = el("tr");
+  foot.append(el("th", null, t("total")));
+  for (const o of options()) {
+    const td = el("td", (o.id === cur ? "sel " : "") + (pct[o.id] === best ? "best" : ""), pct[o.id] == null ? "—" : pct[o.id] + "%");
+    const meter = el("span", "meter"), fill = el("i");
+    fill.style.width = (pct[o.id] || 0) + "%";
+    meter.append(fill);
+    td.append(meter);
+    foot.append(td);
+  }
+  const tfoot = el("tfoot");
+  tfoot.append(foot);
+  table.append(thead, tbody, tfoot);
+  wrap.append(table);
+  box.replaceChildren(wrap);
+}
+
+function renderSources() {
+  const box = document.getElementById("sources");
+  const list = (plan.sources || []).filter((x) => x?.id && /^https?:\/\//.test(x.url || ""));
+  box.hidden = !list.length;
+  if (!list.length) return;
+  const ol = el("ol");
+  for (const src of list) {
+    const li = el("li"), a = el("a", null, (src.title || src.url) + " ↗");
+    a.href = src.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    li.append(a);
+    if (src.checked) li.append(" ", el("small", null, t("checkedOn", src.checked)));
+    ol.append(li);
+  }
+  box.replaceChildren(el("summary", null, t("sourcesTitle", list.length)), ol);
+}
+
+function renderDesignPanel() {
+  const title = document.getElementById("sideTitle");
+  const p = document.getElementById("panel");
+  const opt = options().find((o) => o.id === (side.option || side.id));
+  const parts = [];
+  if (side.kind === "constraints") {
+    title.textContent = t("consTitle");
+    const list = el("div", "proplist");
+    for (const c of (plan.constraints || []).filter((x) => x?.id)) {
+      const row = el("div", "propcard");
+      row.append(el("p", null, (c.confirmed ? "✓ " : "❓ ") + c.text));
+      if (!c.confirmed) {
+        const ok = el("button", null, t("confirm"));
+        ok.onclick = async () => {
+          ok.disabled = true;
+          await send({}, "confirm", t("q_confirm", c.text), {constraint: c.id}).catch(() => (ok.disabled = false));
+        };
+        row.append(ok);
+      }
+      list.append(row);
+    }
+    parts.push(list, talkBox({}, {placeholder: t("ph_propose_plan"), modes: ["propose", "question"]}));
+  } else if (side.kind === "cell") {
+    const c = criteria().find((x) => x.id === side.criterion);
+    if (!opt || !c) return closeSide();
+    title.textContent = `${c.label} · ${opt.title}`;
+    const x = cell(opt.id, c.id);
+    const big = el("div", "cellbig");
+    big.append(ratingEl(x?.rating));
+    parts.push(big);
+    if (x?.note) parts.push(richEl("p", "why", x.note));
+    const srcs = (x?.sources || []).map((s) => (plan.sources || []).find((y) => y?.id === s)).filter(Boolean);
+    if (srcs.length) {
+      const ul = el("ul", "linklist");
+      for (const src of srcs) {
+        const li = el("li");
+        li.append(sourceLink(src));
+        if (src.checked) li.append(" ", el("small", null, t("checkedOn", src.checked)));
+        ul.append(li);
+      }
+      parts.push(ul);
+    }
+    parts.push(talkBox({}, {placeholder: t("cellAsk", c.label, opt.title), modes: ["question", "propose"], extra: {option: opt.id, criterion: c.id}}));
+  } else if (side.kind === "decide") {
+    if (!opt) return closeSide();
+    title.textContent = t("decideTitle", opt.title);
+    const n = unconfirmed();
+    if (n) parts.push(el("div", "warnbox", "⚠ " + t("decideWarn", n)));
+    const ta = el("textarea");
+    ta.placeholder = t("decideReason");
+    ta.dataset.key = "decide:" + opt.id;
+    ta.value = drafts[ta.dataset.key] || "";
+    ta.oninput = () => (drafts[ta.dataset.key] = ta.value);
+    const go = el("button", "primary", t("decideSend"));
+    go.onclick = async () => {
+      go.disabled = true;
+      await send({}, "decide", ta.value.trim() || t("q_decide", opt.title), {option: opt.id}).catch(() => (go.disabled = false));
+    };
+    const talk = el("div", "talk");
+    talk.append(ta, go);
+    const thr = el("div", "thread");
+    thr.dataset.ctx = "{}";
+    parts.push(talk, thr);
+  } else {
+    if (!opt) return closeSide();
+    title.textContent = opt.title;
+    parts.push(talkBox({}, {placeholder: t("askOption", opt.title), modes: ["question", "propose"], extra: {option: opt.id}}));
+  }
+  p.replaceChildren(...parts);
+  refreshThreads();
+}
+
 let side = null;
 
 function openSide(ctx) {
@@ -1246,6 +1566,7 @@ function renderSide() {
   const p = document.getElementById("panel");
   if (side.kind === "node") return renderNodePanel(side.id);
   if (side.kind === "props") return renderPropsPanel();
+  if (side.kind === "option" || side.kind === "decide" || side.kind === "cell" || side.kind === "constraints") return renderDesignPanel();
   if (side.kind === "step") {
     const step = steps().find((s) => s.id === side.id);
     if (!step) return closeSide();
@@ -1304,7 +1625,8 @@ function iconEl(n, id, family) {
 function nodeBox(id, family = null) {
   const n = plan.nodes[id];
   if (!n) return el("div", "node todo", `? ${id}`);
-  const status = NODE_STATUS[n.status] ? n.status : plan.mode === "explain" ? "done" : "todo";
+  // A design draws options that do not exist yet: neutral boxes unless a status is given.
+  const status = NODE_STATUS[n.status] ? n.status : plan.mode === "explain" ? "done" : plan.mode === "design" ? "plain" : "todo";
   const d = el("div", "node " + status);
   d.dataset.id = id;
   d.tabIndex = 0;
@@ -1324,6 +1646,12 @@ function nodeBox(id, family = null) {
   d.append(head);
   if (n.what) d.append(richEl("div", "what", n.what));
   if (pr?.note) d.append(richEl("div", "pnote", "→ " + (pr.note.length > 60 ? pr.note.slice(0, 58) + "…" : pr.note)));
+  if (BASIS_KEYS.includes(n.basis)) {
+    d.classList.add("basis-" + n.basis);
+    const m = el("span", "bmark", t("b_" + n.basis));
+    if (n.basis === "assumed") m.title = t("assumedTip");
+    d.append(m);
+  }
   d.onclick = () => selectNode(id);
   d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id); };
   return d;
@@ -1631,9 +1959,26 @@ function scrollHints() {
 }
 
 function renderView() {
+  if (isDesign() && !viewId) viewId = curOption()?.view;
   const v = plan.views.find((x) => x.id === viewId) || plan.views[0];
   const tabs = document.getElementById("tabs");
-  tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
+  if (isDesign()) {
+    const pct = totals();
+    const byView = new Set(options().map((o) => o.view));
+    tabs.replaceChildren(...options().map((o) => {
+      const b = el("button", (o.id === curOption()?.id ? "on " : "") + (o.recommended ? "rec" : ""), (o.recommended ? "★ " : "") + o.title);
+      if (pct[o.id] != null) b.append(el("span", "pct", pct[o.id] + "%"));
+      b.onclick = () => chooseOption(o.id);
+      return b;
+    }), ...plan.views.filter((x) => !byView.has(x.id)).map((x) => {
+      const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
+      b.onclick = () => {
+        viewId = x.id;
+        renderView();
+      };
+      return b;
+    }));
+  } else tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
     const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
     b.onclick = () => {
       viewId = x.id;
@@ -1664,6 +2009,7 @@ addEventListener("resize", stepFades);
 
 function renderSteps() {
   const bar = document.getElementById("stepbar");
+  document.querySelector(".stepnav").classList.toggle("nosteps", !steps().length);
   const all = el("button", "chip all" + (stepId ? "" : " sel"), t("all"));
   all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
@@ -1838,6 +2184,22 @@ function renderNodePanel(id) {
     parts.push(card);
   }
   parts.push(h);
+  if (BASIS_KEYS.includes(n.basis)) {
+    const line = el("div", "basisline");
+    line.append(el("span", null, t("b_" + n.basis)));
+    const src = (plan.sources || []).find((x) => x?.id === n.source);
+    if (src) line.append(sourceLink(src));
+    if (n.checked) line.append(el("span", null, t("checkedOn", n.checked)));
+    if (n.basis === "assumed") {
+      const ok = el("button", null, t("confirm"));
+      ok.onclick = async () => {
+        ok.disabled = true;
+        await send({node: id}, "confirm", t("q_confirm", n.name)).catch(() => (ok.disabled = false));
+      };
+      line.append(ok);
+    }
+    parts.push(line);
+  }
   if (n.what) parts.push(richEl("p", "meta", n.what));
   if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
@@ -1955,6 +2317,7 @@ function draw(p) {
   setGlossary(plan.glossary);
   renderLegend();
   renderProposals();
+  renderConstraints();
   document.getElementById("goal").replaceChildren(rich(plan.goal || ""));
   const problems = validate(plan);
   const box = document.getElementById("problems");
@@ -1968,6 +2331,8 @@ function draw(p) {
   renderSteps();
   renderStepCard();
   if (plan.views.length) renderView();
+  renderCompare();
+  renderSources();
   refreshThreads();
   if (!rendered) {
     rendered = true;
@@ -2077,7 +2442,8 @@ const store = {
 };
 function startTour() {
   const x = plan?.mode === "explain" ? "x" : "";
-  const stops = [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]].filter(([sel]) => document.querySelector(sel));
+  const stops = (isDesign() ? [["#view", "tour1d"], ["#tabs", "tour2d"], ["#compare .cmp", "tour3d"]] : [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]])
+    .filter(([sel]) => document.querySelector(sel));
   if (!stops.length) return;
   const tour = document.getElementById("tour");
   let i = 0;

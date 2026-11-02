@@ -179,6 +179,8 @@ body.side-open .side-inner{opacity:1;transform:none}
 .node.plain{background:var(--card);border-color:var(--line);color:var(--text)}
 .cmp td.best{color:var(--you-tx)}
 .cmp .out{opacity:.5}
+.decided .dnot{font-size:13px;opacity:.8;margin-top:4px}
+.decided .dlink{display:inline-block;margin-top:8px;font-weight:500;color:inherit}
 .cmp tfoot td.out{color:var(--warn-tx);font-weight:500;opacity:1}
 .cmp .must{font-size:11px;font-weight:600;border-radius:999px;padding:0 6px;background:var(--warn-bg);color:var(--warn-tx);border:1px solid currentColor}
 .cmplegend{margin:6px 0 0;font-size:12px;color:var(--muted)}
@@ -212,6 +214,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .g-q .name::before{content:"◆ ";opacity:.7}
 .g-out{border-radius:14px;border-width:2px}
 .impbar{font-size:13px;margin:0 0 6px;padding:6px 10px;border-radius:8px;background:var(--code);color:var(--text)}
+#view .imp-on .node:not(.imp-me):not(.imp-hit):not(.imp-need){opacity:.35}
 #view .node.imp-me{outline:3px solid var(--text);outline-offset:2px;opacity:1}
 #view .node.imp-hit{box-shadow:0 0 0 3px var(--warn-bd);opacity:1;filter:none}
 #view .node.imp-need{box-shadow:0 0 0 3px var(--ext-bd);opacity:1;filter:none}
@@ -256,11 +259,11 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 #view .d-add{box-shadow:0 0 0 3px var(--done-bd)!important}
 #view .d-del{box-shadow:0 0 0 3px var(--warn-bd)!important;opacity:.75}
 #view .d-del .name{text-decoration:line-through}
-#view .d-chg{box-shadow:0 0 0 3px #14a3b8!important}
+#view .d-chg{box-shadow:0 0 0 3px #d98a00!important}
 .dl{border-radius:6px;padding:0 7px;font-weight:600}
 .dl.add{background:var(--done-bg);color:var(--done-tx)}
 .dl.del{background:var(--warn-bg);color:var(--warn-tx)}
-.dl.chg{background:rgba(20,163,184,.18);color:#14a3b8}
+.dl.chg{background:rgba(217,138,0,.18);color:#b87400}
 /* map */
 .map{position:relative;display:flex;flex-wrap:wrap;gap:28px 56px;align-items:flex-start;padding:10px 6px 14px}
 .zone{position:relative;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px 14px;background:color-mix(in srgb,var(--card) 70%,transparent)}

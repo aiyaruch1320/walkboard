@@ -11,94 +11,72 @@ Long text loses people. You write `plan.json`; planview draws it as a local page
 
 ## 0. Language, mode and settings
 
-Use the language the user writes in for everything: questions, the plan, replies, commit-message suggestions. Set `"lang"` in the plan to its code (`"en"`, `"th"`, …); the page's buttons and labels follow it (English for languages planview has no labels for). Code, ids and file paths stay as they are.
+Use the language the user writes in for everything: questions, the plan, replies, commit messages you suggest. Set `"lang"` to its code (`"en"`, `"th"`, …); the page's labels follow. Code, ids and paths stay as they are.
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 
-`settings` in the plan, in this order of precedence:
-
-1. What the request says ("no restating", "commit for me", "just an overview").
-2. Existing `settings` in the plan; never ask again.
-3. The user's defaults in `~/.planview/config.json`, e.g. `{"teachBack": true, "commit": "suggest", "depth": "overview"}`.
-4. Still missing: ask one question (AskUserQuestion when available). build: commit for them, or only suggest messages? → `"commit": "auto"|"suggest"`; explain: overview or detail? → `"depth"`. Then offer to save the answer to `~/.planview/config.json` so it is never asked again.
-
-Do not ask about restating (`teachBack`): it is on unless set to `false`. The user can switch it, and commits, on the page.
+`settings`, first match wins: what the request says ("no restating", "commit for me") · existing `settings` · `~/.planview/config.json` (same fields). Still missing: ask one question (AskUserQuestion when available): build → commit for them or only suggest messages (`"commit": "auto"|"suggest"`); explain → overview or detail (`"depth"`). Then offer to save it to `~/.planview/config.json`. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
 
 ## 1. Write the plan (build)
 
 Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read [references/schema.md](references/schema.md) the first time.
 
-- 3-8 **steps**, each reviewable in minutes: `title`, `detail` (what it does), `done` (how we know), `nodes` (boxes it touches).
-- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. The page picks an icon from the name (S3, BigQuery, CronJob, PostgreSQL, API, …); set `icon` only when that guess is wrong or a cloud service has a generic name: `aws:s3`, `gcp:bigquery`, `azure:keyvault`, `k8s:cronjob`, or a plain one such as `database`, `queue`, `user` (list in the schema reference).
-- **views**: leave them out for a plain flow (built from the steps). Add `k8s` when something runs in Kubernetes, `sequence` when call order matters (alternatives in a `group`), `transform` when data changes shape; see [references/views.md](references/views.md).
-- **glossary**: only terms specific to this project. Common terms (Kubernetes, CI, HTTP, JWT, …) ship with planview.
-- No secrets, tokens or real customer data.
-- `PV check <dir>` until it says ok.
+- 3-8 **steps**, each reviewable in minutes: `title`, `detail` (what it does), `done` (how we know), `nodes`.
+- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when the guess is wrong (`aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, …).
+- **views**: leave out for a plain flow. Add `k8s`, `sequence` (alternatives in a `group`) or `transform` when they explain better; see [references/views.md](references/views.md).
+- **glossary**: only project-specific terms. No secrets, tokens or real customer data.
+- `PV check <dir>` until ok.
 
 ## 2E. Write the explanation (explain)
 
-1. Read the real path: entry points, middleware, services, data access, external calls, deployment files. Do not guess from names.
-2. `"mode": "explain"`, `"root": "<repo path>"`, `"roots": {"deploy": "<path>"}` for other repositories, `"start": "<first stage id>"`. Steps are 3-10 stages in order with `detail` and `done` (what the reader understands there).
-3. Every code box has `file` = `path:line` or `path:from-to` (`deploy:path:line` for a named root). The page shows that code and links it to the editor, so **never paste code into the plan**. Give a range for context and `highlight` only the lines that make the point (e.g. `"highlight": "146-152"`). `PV check` fails if a file or line does not exist. Mark anything unconfirmed in `why` ("unconfirmed: …", in the user's language). Code is `"done"` (the default), external systems `"ext"`, the parts the question is about `"new"`.
-4. `PV check <dir>` until ok.
+1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
+2. `"mode": "explain"`, `"root": "<repo>"` (`"roots": {"deploy": "<path>"}` for more), `"start"`. Steps are 3-10 stages in order; `done` = what the reader understands there.
+3. Every code box has `file` = `path:line` or `path:from-to`; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. Code is `"done"` (default), external systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
+4. `PV check <dir>` until ok (it fails when a file or line does not exist).
 
 ## 3. Show and listen
 
-1. `PV open <dir>` starts or reuses the server and prints the URL (`--no-browser` when you open it yourself, e.g. in a browser pane). Add `&step=<id>`, `&node=<id>` or `&view=<id>` to point at something. Give the user the URL; the first time, add one line on how to use it, in their language: click a box to see it, ask or propose a change; 👉 and a purple bar mean their turn; "?" shows a short tour.
-2. While you wait, keep exactly one `PV poll <dir>` running **in the background** (`PV status` shows `waiting: 1` if one is). It exits when the page sends something, which wakes you, and prints one JSON line per message: `kind`, `text`, and `node` or `step` (`viewingStep` = the step the user had open). Handle every line:
-   - `question` / `confused`: `PV reply <dir> --node <id> "<answer>"` (or `--step <id>`; neither for the whole plan). Two or three sentences. If the picture was unclear, fix the box instead and say so. Code goes in ``` fences or `ticks`.
-   - `deeper`: add boxes, a stage or a view (with `file` evidence), then reply with what you added.
-   - `change` (older pages): treat it like `propose`.
-   - `teachback`: say what is right, correct what is not; when it matches, `PV set <dir> step:<id> confirmed=true`.
-   - `approve`: `PV set <dir> approved=true`, then reply in one line. `commit` / `committed`: see section 4. `ok`: acknowledge in one line.
-   - `propose` (`change` = `add`, `change` or `remove`; any mode). First decide what it is. It corrects the picture (wrong, unclear or missing explanation of what exists): fix the picture and say so. It changes what gets built and the plan is not approved yet: change the plan directly (`PV check`; the page outlines what changed). Otherwise draw it, do not build it. `add`: a new node with `"proposal": {"type": "add", "note": "…"}`, placed in the views next to the box it came from. `change` / `remove`: `PV set <dir> node:<id> 'proposal={"type":"change","note":"…"}'`. Reply in one line. Proposals are the only part of an explanation that is not in the code. `withdraw`: remove that proposal (and a proposed node with it).
-   - `plan` (explain): write a build plan from the `proposals` ids in a new folder, carrying their context (root, related boxes and their `file`), `PV open` it, add `{"title": "…", "url": "…"}` to this plan's `links`, and reply with the URL. `apply` (build): turn the proposals into real steps and nodes, drop their `proposal` field, `PV check`, reply with what changed.
-   - `settings`: switches the user changed on the page (already in plan.json). It only arrives together with another message and needs no reply.
-   Reply to every other message, even in one line: the page shows you as typing from the moment you take a message until you reply or poll again.
-3. Refer to steps by title, not number. Start `PV poll` again. The user may also answer in chat; handle both.
+1. `PV open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line in the user's language: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "?" shows a tour.
+2. Keep exactly one `PV poll <dir>` running **in the background**. It exits when the page sends something, which wakes you, with one JSON line per message (`kind`, `text`, `node` or `step`). Handle each:
+   - `question` / `confused`: `PV reply <dir> --node <id> "<answer>"` (or `--step <id>`, or neither). Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
+   - `deeper`: add boxes, a stage or a view (with `file` evidence), reply with what you added.
+   - `teachback`: say what is right, correct the rest; when it matches, `PV set <dir> step:<id> confirmed=true`.
+   - `approve`: `PV set <dir> approved=true`, reply in one line.
+   - `propose`, `change`, `withdraw`, `plan`, `apply`, `commit`, `committed`: read [references/messages.md](references/messages.md) the first time.
+   - `settings`: switches already saved in plan.json; arrives only with another message; no reply.
+   Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
+3. Refer to steps by title. Start `PV poll` again. The user may also answer in chat.
 
 ## 4. Build (build)
 
-Do not start until `approved` is true. For each step:
+Not before `approved` is true. For each step:
 
-1. `PV set <dir> step:<id> status=doing node:<a> status=new …`
-2. Do the work, limited to that step.
-3. `PV set <dir> step:<id> status=review node:<a> status=done …` (the page shows "Your turn").
-4. Read the current `settings` first (`PV status <dir>` prints them; the user may have switched them on the page). With teach-back on (`teachBack` is not `false`), wait until the step is `confirmed`; if the user asks to skip restating this step, go on without it.
-5. Commit per `settings.commit`. The user who installed planview wants no `Co-Authored-By` or other line naming an AI or tool in these messages.
-   - `"auto"`: small commits, one context each, then go on.
-   - One commit per step by default. Split only into separate concerns (refactor and feature, migration and the code using it, dependency bump and code); more than 3 means the step is too big: split the step instead.
-   - `"suggest"`: `PV set <dir> step:<id> commitMessage="<message>"`, or for several `'commits=[{"message":"…","files":["…"]}]'`, and **wait**. The page shows them, editable, with each commit's files. `commit` (with `commits` = the messages as the user left them): make those commits in order, each with only its files, then go on. `committed`: the user committed; go on. Before the next step, `git status`: if this step's changes are still uncommitted, ask instead of going on, so steps never mix in one working tree.
-6. `PV set <dir> step:<id> status=done`, then the next step. Without teach-back and with `"auto"`, nothing waits.
+1. `PV set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
+2. `PV set <dir> step:<id> status=review node:<a> status=done …`.
+3. `PV status <dir>` shows the current `settings`. Teach-back on: wait for `confirmed` (skip only if the user asks).
+4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (references/messages.md). No `Co-Authored-By` or other line naming an AI or tool: the user who installed planview does not want them.
+5. `PV set <dir> step:<id> status=done`, next step. Teach-back off and `"auto"`: nothing waits.
 
 ## 4E. Walk through (explain)
 
-Answer from the code, reading more when needed and adding `file` evidence. Prefer new boxes, stages or views over long replies. With teach-back on, confirm each stage as above.
-
-The picture must match the code. A `change` request that contradicts the code is not drawn: reply with what the code does and its `file:line`. Something that should exist but does not becomes a box with `"status": "todo"` (shown as "missing"), and you say so. Explain mode never edits the project's code.
+Answer from the code, reading more when needed; prefer new boxes or stages over long replies. The picture must match the code: a request that contradicts it is answered with what the code does and its `file:line`, not drawn. Explain mode never edits the project.
 
 ## Keep it cheap
 
-The page carries the explanation, so tokens go into the plan once and stay small afterwards:
-
-- Write `plan.json` once. After that, change it with `PV set` (statuses, flags, single fields) or a small Edit; never rewrite or re-read the whole file to change a status.
-- Leave out what has a default: `views` for a plain flow, `status`, empty fields, common glossary terms.
-- Point at code with `file:line`; the page shows it.
-- Keep replies to two or three sentences and do not repeat in chat what the page shows. In chat, give the URL and what changed.
-- Fix `PV check` problems and move on; warnings are advice.
+- Write `plan.json` once; then `PV set` or a small Edit. Never rewrite or re-read the whole file to change a status.
+- Leave out defaults (`views` for a plain flow, `status`, empty fields, common terms).
+- Point at code with `file:line`; replies stay short; do not repeat in chat what the page shows.
 
 ## Finish
 
-Summarize in chat with the URL. `PV stop <dir>` unless the user wants the page kept; a waiting poll then exits by itself. If permission prompts interrupt the loop, suggest allowing `node <skill dir>/bin/planview.mjs` and edits under `~/.planview/`; do not change their settings yourself.
-
-## Commands
+Summarize in chat with the URL. `PV stop <dir>` unless the user wants the page kept. If permission prompts interrupt, suggest allowing `node <skill dir>/bin/planview.mjs` and edits under `~/.planview/`; do not change their settings yourself.
 
 | Command | Does |
 |---|---|
 | `PV check <dir>` | Validate; problems exit 1, warnings are advice |
-| `PV set <dir> [step:<id> \| node:<id> \| plan] key=value …` | Change fields in place (`key=` removes one) |
+| `PV set <dir> [step:<id> \| node:<id> \| plan] key=value …` | Change fields in place (`key=` removes one; JSON values allowed) |
 | `PV open <dir> [--no-browser]` | Start or reuse the server, print the URL |
 | `PV poll <dir>` | Wait for the page; one JSON line per message |
 | `PV reply <dir> [--node id \| --step id] <text>` | Answer on the page |
-| `PV status <dir>` / `PV stop <dir>` | URL, queue and waiting poll / stop the server |
+| `PV status <dir>` / `PV stop <dir>` | URL, queue, settings / stop the server |

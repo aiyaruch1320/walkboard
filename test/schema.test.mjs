@@ -186,3 +186,15 @@ test("design plans check options, criteria, scores and sources", () => {
   for (const want of [/no view "nope"/, /rating must be/, /no source "s2"/, /basis must be/, /decision must name/]) assert.match(out, want);
   assert.match(validate({title: "t", mode: "design", nodes: {}, views: []}).join("\n"), /needs options/);
 });
+
+test("map and journey views check their boxes", () => {
+  const p = {title: "t", settings: {commit: "auto"}, nodes: {a: {name: "A"}, b: {name: "B"}},
+    views: [{id: "m", kind: "map", zones: [{label: "VPC", zones: [{label: "subnet", nodes: ["a"]}], nodes: ["b"]}], links: [{from: "a", to: "b"}]},
+      {id: "j", kind: "journey", stops: [{node: "a", data: "{}"}, {node: "b"}]}]};
+  assert.deepEqual(validate(p), []);
+  p.views[0].zones[0].zones[0].nodes.push("ghost");
+  p.views[1].stops = [{node: "a"}];
+  const out = validate(p).join("\n");
+  assert.match(out, /no node "ghost"/);
+  assert.match(out, /at least two stops/);
+});

@@ -77,6 +77,19 @@ export const KINDS = {
       ...(m?.group != null && typeof m.group !== "string" ? [`message ${i + 1}: group must be a string`] : []),
     ]),
   },
+  // Zones inside zones (account › VPC › subnet), boxes inside them, links across.
+  map: {
+    refs: (v) => [...zoneNodes(list(v.zones)), ...list(v.links).flatMap((l) => [l?.from, l?.to])],
+    check: (v) => [
+      ...(!list(v.zones).length ? ["map needs zones: [{\"label\", \"zones\", \"nodes\"}]"] : []),
+      ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked)`),
+    ],
+  },
+  // One piece of data travelling stop by stop, with what it looks like at each stop.
+  journey: {
+    refs: (v) => list(v.stops).map((st) => st?.node),
+    check: (v) => (list(v.stops).length < 2 ? ["journey needs at least two stops: [{\"node\", \"data\", \"note\"}]"] : []),
+  },
   transform: {
     refs: (v) => list(v.stages).map((st) => st?.node),
     check: (v) => list(v.stages).flatMap((st, i) => [
@@ -92,6 +105,11 @@ export function langOf(p) {
   if (LANGS.includes(code)) return code;
   if (code) return "en";
   return /[\u0E00-\u0E7F]/.test(`${p?.title ?? ""} ${p?.goal ?? ""}`) ? "th" : "en";
+}
+
+function zoneNodes(zones, depth = 0) {
+  if (depth > 8) return [];
+  return zones.filter(isObj).flatMap((z) => [...list(z.nodes), ...zoneNodes(list(z.zones), depth + 1)]);
 }
 
 const dupes = (ids) => ids.filter((id, i) => id && ids.indexOf(id) !== i);

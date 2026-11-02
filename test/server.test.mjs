@@ -221,3 +221,16 @@ test("a switch on the page saves the setting without waking the agent", async (t
   assert.equal((await post(s, "/api/settings", {commit: "sometimes"})).status, 400);
   assert.equal((await post(s, "/api/settings", {teachBack: "yes"})).status, 400);
 });
+
+test("design weights are saved from the page and reach the agent with its next message", async (t) => {
+  const dir = planDir();
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", mode: "design", criteria: [{id: "cost", label: "Cost", weight: 1}], views: [], nodes: {}}));
+  const s = await startServer(dir);
+  t.after(s.close);
+  assert.equal((await post(s, "/api/settings", {weights: {cost: 3, nope: 2, bad: 9}})).status, 200);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).criteria[0].weight, 3);
+  const polled = call(s, "/api/poll").then((r) => r.json());
+  await post(s, "/api/feedback", {kind: "question", text: "?"});
+  const [first] = await polled;
+  assert.deepEqual(first.weights, {cost: 3});
+});

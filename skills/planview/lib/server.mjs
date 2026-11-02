@@ -99,7 +99,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       delivered += items.length;
       fs.writeFileSync(p.delivered, String(delivered));
       if (changedSettings) {
-        items.unshift({kind: "settings", settings: changedSettings, id: crypto.randomUUID(), at: new Date().toISOString()});
+        items.unshift({kind: "settings", ...changedSettings, id: crypto.randomUUID(), at: new Date().toISOString()});
         changedSettings = null;
       }
       waiters.shift()(items);
@@ -180,7 +180,9 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         const s = {};
         if (typeof v?.teachBack === "boolean") s.teachBack = v.teachBack;
         if (v?.commit === "auto" || v?.commit === "suggest") s.commit = v.commit;
-        if (err || !Object.keys(s).length) return res.writeHead(400).end('need teachBack (true|false) or commit ("auto"|"suggest")');
+        // Design criteria weights: {criterion id: 0-3}.
+        const w = v?.weights && typeof v.weights === "object" ? Object.entries(v.weights).filter(([, n]) => Number.isInteger(n) && n >= 0 && n <= 3) : [];
+        if (err || (!Object.keys(s).length && !w.length)) return res.writeHead(400).end('need teachBack (true|false), commit ("auto"|"suggest") or weights ({criterion: 0-3})');
         let plan;
         try {
           plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
@@ -188,9 +190,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
           return res.writeHead(409).end("plan.json cannot be read");
         }
         plan.settings = {...(plan.settings && typeof plan.settings === "object" && !Array.isArray(plan.settings) ? plan.settings : {}), ...s};
+        for (const [id, n] of w) for (const c of Array.isArray(plan.criteria) ? plan.criteria : []) if (c?.id === id) c.weight = n;
         fs.writeFileSync(p.plan + ".tmp", JSON.stringify(plan, null, 1) + "\n");
         fs.renameSync(p.plan + ".tmp", p.plan);
-        changedSettings = plan.settings;
+        changedSettings = {settings: plan.settings};
+        if (Array.isArray(plan.criteria)) changedSettings.weights = Object.fromEntries(plan.criteria.filter((c) => c?.id).map((c) => [c.id, c.weight ?? 1]));
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({settings: plan.settings}));
       });
     } else if (route === "GET /api/poll") {

@@ -3,7 +3,10 @@ export const STEP_STATUS = {done: "done", doing: "doing", review: "review", todo
 export const LINK_STATE = {ok: "ok", todo: "todo", blocked: "blocked"};
 export const LANGS = ["en", "th"];
 export const teachBackOn = (p) => p?.settings?.teachBack !== false;
-export const MODES = ["build", "explain"];
+export const MODES = ["build", "explain", "design"];
+export const BASIS = ["iac", "cli", "doc", "assumed"];
+// A design score: 0-5, or "yes" / "no" / "na" for things that either work or do not.
+export const ratingValue = (r) => (r === "yes" ? 5 : r === "no" ? 0 : typeof r === "number" && r >= 0 && r <= 5 ? r : null);
 export const EDITORS = ["vscode", "cursor", "idea", "none"];
 
 // "src/a.go:12", "src/a.go:12-20", or "deploy:k8s/job.yaml:7" when "deploy" is a key of plan.roots.
@@ -121,6 +124,7 @@ export function validate(p) {
   if (isObj(s) && s.editor != null && !EDITORS.includes(s.editor)) out.push(`settings.editor must be one of ${EDITORS.join(", ")}`);
   if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth must be "overview" or "detail"');
   if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" matches no step`);
+  if (mode === "design") out.push(...checkDesign(p));
   if (p.links != null && (!Array.isArray(p.links) || p.links.some((l) => !isObj(l) || typeof l.url !== "string" || !/^https?:\/\//.test(l.url))))
     out.push('links must be [{"title": "…", "url": "http://…"}]');
   if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary must be {"term": "explanation"}');
@@ -135,6 +139,7 @@ export function validate(p) {
     if (!n.name) out.push(`node "${id}" has no name`);
     if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
     if (n.highlight != null && !highlightOf(n.highlight)) out.push(`node "${id}" highlight must be lines like "12, 15-16", or {"12": "note"}`);
+    if (n.basis != null && !BASIS.includes(n.basis)) out.push(`node "${id}" basis must be one of ${BASIS.join(", ")}`);
     if (n.proposal != null && (!isObj(n.proposal) || !["add", "change", "remove"].includes(n.proposal.type) || (n.proposal.note != null && typeof n.proposal.note !== "string")))
       out.push(`node "${id}" proposal must be {"type": "add"|"change"|"remove", "note": "…"}`);
     if (n.status && !has(NODE_STATUS, n.status)) out.push(`node "${id}": unknown status "${n.status}" (${Object.keys(NODE_STATUS).join(", ")})`);
@@ -177,6 +182,34 @@ export function validate(p) {
   return out;
 }
 
+// design: options to choose from, criteria to compare them by, a score per pair, and where each claim comes from.
+function checkDesign(p) {
+  const out = [];
+  const ids = (x) => list(x).filter(isObj).map((o) => o.id);
+  const views = new Set(ids(viewsOf(p)));
+  const sources = new Set(ids(p.sources));
+  if (!list(p.options).length) out.push("design mode needs options: [{\"id\", \"title\", \"summary\", \"view\"}]");
+  for (const o of list(p.options)) {
+    if (!isObj(o) || !o.id || !o.title) out.push("every option needs an id and a title");
+    else if (o.view != null && !views.has(o.view)) out.push(`option "${o.id}": no view "${o.view}"`);
+  }
+  for (const c of list(p.criteria)) if (!isObj(c) || !c.id || !c.label || (c.weight != null && !(Number.isInteger(c.weight) && c.weight >= 0 && c.weight <= 3))) out.push("every criterion needs an id, a label and a weight from 0 to 3");
+  for (const s of list(p.sources)) if (!isObj(s) || !s.id || typeof s.url !== "string" || !/^https?:\/\//.test(s.url)) out.push("every source needs an id and an http(s) url");
+  for (const c of list(p.constraints)) if (!isObj(c) || !c.id || typeof c.text !== "string") out.push("every constraint needs an id and text");
+  if (p.scores != null && !isObj(p.scores)) out.push("scores must be {option: {criterion: {rating, note, sources}}}");
+  for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) {
+    if (!ids(p.options).includes(o)) out.push(`scores: no option "${o}"`);
+    for (const [c, cell] of Object.entries(isObj(row) ? row : {})) {
+      if (!ids(p.criteria).includes(c)) out.push(`scores.${o}: no criterion "${c}"`);
+      if (!isObj(cell) || (cell.rating !== "na" && ratingValue(cell.rating) == null)) out.push(`scores.${o}.${c}: rating must be 0-5, "yes", "no" or "na"`);
+      for (const s of list(cell?.sources)) if (!sources.has(s)) out.push(`scores.${o}.${c}: no source "${s}"`);
+    }
+  }
+  if (p.decision != null && (!isObj(p.decision) || !ids(p.options).includes(p.decision.option))) out.push("decision must name one of the options");
+  for (const [id, n] of Object.entries(isObj(p.nodes) ? p.nodes : {})) if (n?.source != null && !sources.has(n.source)) out.push(`node "${id}": no source "${n.source}"`);
+  return out;
+}
+
 // Advice that does not stop the page from drawing.
 export function lint(p) {
   if (!isObj(p) || !isObj(p.nodes)) return [];
@@ -192,6 +225,10 @@ export function lint(p) {
   }
   for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" has no detail (what the step does)`);
   if (list(p.steps).length > 10) out.push(`${list(p.steps).length} steps, more than 10: merge some or split the plan`);
+  if (p.mode === "design") {
+    for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) for (const [c, cell] of Object.entries(isObj(row) ? row : {})) if (cell?.rating !== "na" && !list(cell?.sources).length) out.push(`scores.${o}.${c} cites no source`);
+    if (!list(p.options).some((o) => o?.recommended)) out.push("no option is marked recommended");
+  }
   if (p.mode === "explain" && !p.root && !p.roots) out.push("explain mode should have root (the repository path) so file:line can be checked and opened");
   return out;
 }

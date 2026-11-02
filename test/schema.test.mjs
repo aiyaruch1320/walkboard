@@ -169,3 +169,20 @@ test("proposals and links from a page are checked", async () => {
   assert.match(out, /proposal must be/);
   assert.match(out, /links must be/);
 });
+
+test("design plans check options, criteria, scores and sources", () => {
+  const p = {title: "t", mode: "design", nodes: {a: {name: "A", basis: "doc", source: "s1"}},
+    views: [{id: "v", kind: "flow", lanes: [{nodes: ["a"]}]}],
+    options: [{id: "x", title: "X", view: "v", recommended: true}],
+    criteria: [{id: "cost", label: "Cost", weight: 3}],
+    scores: {x: {cost: {rating: 4, sources: ["s1"]}}},
+    sources: [{id: "s1", title: "Docs", url: "https://example.com"}]};
+  assert.deepEqual(validate(p), []);
+  p.options[0].view = "nope";
+  p.scores.x.cost = {rating: 9, sources: ["s2"]};
+  p.nodes.a.basis = "rumour";
+  p.decision = {option: "y"};
+  const out = validate(p).join("\n");
+  for (const want of [/no view "nope"/, /rating must be/, /no source "s2"/, /basis must be/, /decision must name/]) assert.match(out, want);
+  assert.match(validate({title: "t", mode: "design", nodes: {}, views: []}).join("\n"), /needs options/);
+});

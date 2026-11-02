@@ -140,3 +140,15 @@ test("page language comes from lang, else from the title and goal", async () => 
   assert.equal(viewsOf(p)[0].title, "Overview");
   assert.match(validate({...base(), lang: 3}).join("\n"), /lang must be/);
 });
+
+test("highlighted lines are parsed and checked", async () => {
+  const {parseLines} = await import("../skills/planview/lib/schema.mjs");
+  assert.deepEqual([...parseLines("12, 15-16")], [12, 15, 16]);
+  assert.deepEqual([...parseLines("9-7")], [7, 8, 9]);
+  assert.equal(parseLines("twelve"), null);
+  const p = base();
+  p.nodes.a.highlight = "3-4";
+  assert.deepEqual(validate(p), []);
+  p.nodes.a.highlight = "x";
+  assert.match(validate(p).join("\n"), /highlight must be/);
+});

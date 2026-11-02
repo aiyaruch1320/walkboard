@@ -24,6 +24,18 @@ export function parseFile(file, plan = {}) {
   return {rootName, root, rel, line, end, abs: root ? root.replace(/\/+$/, "") + "/" + rel.replace(/^\.?\//, "") : null};
 }
 
+// "12", "12-14" or "12, 15-16" → the line numbers, or null when the text is not like that.
+export function parseLines(spec) {
+  if (typeof spec === "number" && Number.isInteger(spec) && spec > 0) return new Set([spec]);
+  if (typeof spec !== "string" || !/^\s*\d+(\s*-\s*\d+)?(\s*,\s*\d+(\s*-\s*\d+)?)*\s*$/.test(spec)) return null;
+  const out = new Set();
+  for (const part of spec.split(",")) {
+    const [a, b = a] = part.split("-").map(Number);
+    for (let n = Math.min(a, b); n <= Math.max(a, b) && out.size < 500; n++) out.add(n);
+  }
+  return out;
+}
+
 const has = (o, k) => o != null && typeof o === "object" && Object.hasOwn(o, k);
 const list = (x) => (Array.isArray(x) ? x : []);
 const isObj = (x) => x != null && typeof x === "object" && !Array.isArray(x);
@@ -104,6 +116,7 @@ export function validate(p) {
     }
     if (!n.name) out.push(`node "${id}" has no name`);
     if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
+    if (n.highlight != null && !parseLines(n.highlight)) out.push(`node "${id}" highlight must be lines like "12", "12-14" or "12, 15-16"`);
     if (n.status && !has(NODE_STATUS, n.status)) out.push(`node "${id}": unknown status "${n.status}" (${Object.keys(NODE_STATUS).join(", ")})`);
   }
   const known = (k) => has(nodes, k) && isObj(nodes[k]);

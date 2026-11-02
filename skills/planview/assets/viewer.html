@@ -36,6 +36,9 @@ h1{font-size:22px;font-weight:500;margin:0}
 .conn.off{color:var(--warn-tx);background:var(--warn-bg);border-color:var(--warn-bd)}
 .conn.idle{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
 .banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
+.problems{position:fixed;left:16px;bottom:16px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.15)}
+.toast{position:fixed;right:16px;bottom:16px;max-width:min(380px,calc(100vw - 32px));z-index:21;background:var(--you-bg);color:var(--you-tx);border:1.5px solid var(--you-bd);border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.15)}
+#view .changed,.chip.changed{outline:3px solid var(--you-bd);outline-offset:3px}
 .problems ul{margin:4px 0 0;padding-left:20px}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
@@ -176,6 +179,7 @@ svg.links text{font-size:11px;fill:var(--muted)}
   <div class="badges" id="badges"></div>
   <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
   <div id="problems" class="problems" hidden></div>
+  <div id="toast" class="toast" hidden></div>
   <div class="legend">
     <span><i class="sw done"></i>ทำแล้ว</span>
     <span><i class="sw new"></i>ทำอยู่ / เพิ่งทำ</span>
@@ -778,7 +782,33 @@ function render(p) {
   keepFocus(() => draw(p));
 }
 
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+let toastTimer;
+
+function showChanges(prev) {
+  const nodes = Object.keys(plan.nodes).filter((id) => !same(prev.nodes?.[id], plan.nodes[id]));
+  const stepIds = steps().map((s) => s.id).filter((id) => !same((prev.steps || []).find((x) => x.id === id), steps().find((x) => x.id === id)));
+  const marked = [
+    ...nodes.flatMap((id) => [...document.querySelectorAll(`#view [data-id="${CSS.escape(id)}"]`)]),
+    ...stepIds.map((id) => document.querySelector(`.chip[data-step="${CSS.escape(id)}"]`)).filter(Boolean),
+  ];
+  marked.forEach((e) => e.classList.add("changed"));
+  setTimeout(() => marked.forEach((e) => e.classList.remove("changed")), 6000);
+  if (!nodes.length && !stepIds.length) return;
+  const name = (id) => plan.nodes[id]?.name || id;
+  const parts = [];
+  if (stepIds.length) parts.push("ขั้น: " + stepIds.map((id) => steps().find((x) => x.id === id).title).join(", "));
+  if (nodes.length) parts.push("กล่อง: " + nodes.map(name).join(", "));
+  const t = document.getElementById("toast");
+  t.textContent = "agent อัปเดตแผน · " + parts.join(" · ");
+  t.hidden = false;
+  t.onclick = () => (t.hidden = true);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.hidden = true), 9000);
+}
+
 function draw(p) {
+  const prev = plan;
   plan = p;
   plan.nodes ||= {};
   plan.views ||= [];
@@ -807,6 +837,7 @@ function draw(p) {
   } else if (nodeId) {
     clearPanel("กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว");
   }
+  if (prev && !same(prev, p)) showChanges(prev);
 }
 let rendered = false, loadedThread = false;
 

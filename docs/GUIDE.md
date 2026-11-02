@@ -43,6 +43,7 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 - **Got it · Still unclear · Go deeper** send at once.
 - **Ask · Request change · Restate** choose what the text you type is sent as.
 - **Approve plan** lets the agent start building. Nothing is built before.
+- **Commit and go on** / **I committed, go on** appear under the suggested commit message of a finished step when commits are only suggested; you can edit the message first. The agent waits for one of them before the next step.
 
 The page speaks the plan's language: the agent writes the plan in the language you use and sets `lang`, and the buttons and labels follow (English and Thai today; other languages get English labels).
 

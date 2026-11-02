@@ -6,6 +6,8 @@
 - Restating each step is on by default and switched on the page, under **Agent settings**, together with how commits are made; each setting is a card that says what its current value means. The page saves the change to plan.json without waking the agent: the agent reads it before its next step, and gets it alongside your next message. The skill no longer asks about restating up front.
 - Defaults for every plan in `~/.planview/config.json`; the skill asks its one question only when nothing says the answer, and offers to save it. `planview status` prints the current settings.
 - The agent replies to every message, approvals included, so the dots always end.
+- With "suggest messages", the agent waits after each step: the step shows the suggested commit message (`commitMessage`), editable, with **Commit and go on** (the agent commits exactly that text) and **I committed, go on**. The agent checks `git status` before the next step, so two steps never mix in one working tree. A step may suggest several commits (`commits`, each with its files) when it holds separate concerns.
+- The step being built shows "The agent is building this step"; the top bar shows which step the agent is on (or "All steps done") and the page follows the agent to its next step.
 
 ## 0.5.0
 

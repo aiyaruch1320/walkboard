@@ -12,6 +12,7 @@
   --todo-bg:#f1efe8;--todo-bd:#b4b2a9;--todo-tx:#888780;
   --ext-bg:#e6f1fb;--ext-bd:#378add;--ext-tx:#0c447c;
   --warn-bg:#fcebeb;--warn-bd:#d85a5a;--warn-tx:#7a1f1f;
+  --you-bg:#eeedfe;--you-bd:#7f77dd;--you-tx:#3c3489;
   --code:#f1efe8;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -21,6 +22,7 @@
   --todo-bg:#2c2c2a;--todo-bd:#5f5e5a;--todo-tx:#888780;
   --ext-bg:#0c2a4a;--ext-bd:#85b7eb;--ext-tx:#d6e7f8;
   --warn-bg:#4a1717;--warn-bd:#e07a7a;--warn-tx:#f8d6d6;
+  --you-bg:#26215c;--you-bd:#afa9ec;--you-tx:#e4e1fb;
   --code:#2c2c2a;
 }}
 *{box-sizing:border-box}
@@ -42,6 +44,12 @@ h1{font-size:22px;font-weight:500;margin:0}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card)}
 .chip.sel{outline:2px solid var(--text);outline-offset:2px}
 .chip.all{border-color:var(--line);color:var(--muted)}
+.chip.review,.stepcard.review{background:var(--you-bg);border-color:var(--you-bd);color:var(--you-tx)}
+.chip.plain{border-color:var(--line)}
+.stepcard .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:6px;background:var(--you-bd);color:var(--card)}
+.stepcard .detail{margin:0 0 4px;font-size:14px}
+.stepcard .donewhen{margin:0;font-size:13px;color:var(--muted)}
+.stepcard .passed{font-size:12px;color:var(--done-tx);background:var(--done-bg);border:1px solid var(--done-bd);border-radius:6px;padding:0 8px;margin-left:6px}
 .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .tabs button.on{border-color:var(--text);font-weight:500}
 .lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 14px 16px;margin-bottom:14px}
@@ -196,7 +204,7 @@ const MODE = {
 };
 const QUICK = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", approve: "อนุมัติแผนนี้ เริ่มทำได้"};
 const touch = matchMedia("(pointer: coarse)").matches;
-const modeOf = {};
+const picked = {};
 const hintText = () => (connected ? (touch ? "" : "⌘/Ctrl + Enter เพื่อส่ง") : "ยังไม่ได้ต่อกับ agent");
 
 const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : "plan");
@@ -237,7 +245,7 @@ async function send(c, kind, text) {
 // quick: buttons that send at once; modes: what the typed text is sent as.
 function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
   const key = ctxKey(c);
-  if (!modes.includes(modeOf[key])) modeOf[key] = mode && modes.includes(mode) ? mode : modes[0];
+  let current = modes.includes(picked[key]) ? picked[key] : mode && modes.includes(mode) ? mode : modes[0];
   const box = el("div", "talk");
   const ta = el("textarea");
   ta.dataset.key = key;
@@ -281,7 +289,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
     box.append(row);
   }
   const setMode = (m) => {
-    modeOf[key] = m;
+    current = m;
     ta.placeholder = MODE[m].placeholder || placeholder;
     sendBtn.textContent = MODE[m].send;
     seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
@@ -293,6 +301,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
       const b = el("button", null, MODE[m].label);
       b.dataset.mode = m;
       b.onclick = () => {
+        picked[key] = m;
         setMode(m);
         ta.focus();
       };
@@ -300,10 +309,10 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
     }
     box.append(seg);
   }
-  setMode(modeOf[key]);
-  sendBtn.onclick = () => go(modeOf[key], "");
+  setMode(current);
+  sendBtn.onclick = () => go(current, "");
   buttons.push(sendBtn);
-  ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(modeOf[key], ""); };
+  ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(current, ""); };
   const row = el("div", "send");
   row.append(note, sendBtn);
   const t = el("div", "thread");
@@ -338,8 +347,14 @@ function renderStepCard() {
     c.append(el("h3", null, "คุยเรื่องทั้งแผน"), talkBox({}, {placeholder: "ถามเกี่ยวกับแผนทั้งหมด…", quick: approve, modes: ["question", "change"]}));
     card.replaceChildren(c);
   } else {
-    const c = el("div", "stepcard " + (STEP_STATUS[step.status] || "todo"));
-    c.append(el("h3", null, `ขั้น ${steps().indexOf(step) + 1}: ${step.title}`));
+    const explain = plan.mode === "explain";
+    const c = el("div", "stepcard " + (step.status === "review" ? "review" : ""));
+    if (step.status === "review") c.append(el("span", "turn", plan.settings?.teachBack ? "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้" : "ถึงตาคุณ: ตรวจขั้นนี้"));
+    const h = el("h3", null, `${explain ? "ช่วงที่" : "ขั้น"} ${steps().indexOf(step) + 1}: ${step.title}`);
+    if (step.confirmed) h.append(el("span", "passed", "✓ ทวนผ่านแล้ว"));
+    c.append(h);
+    if (step.detail) c.append(el("p", "detail", step.detail));
+    if (step.done) c.append(el("p", "donewhen", "เสร็จเมื่อ: " + step.done));
     const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: "ถามเกี่ยวกับขั้นนี้…",
@@ -626,7 +641,10 @@ function renderSteps() {
   const all = el("span", "chip all" + (stepId ? "" : " sel"), "ทั้งหมด");
   all.onclick = () => { stop(); selectStep(null); };
   bar.replaceChildren(all, ...steps().map((s, i) => {
-    const c = el("span", "chip " + (STEP_STATUS[s.status] || "todo") + (s.id === stepId ? " sel" : ""), `${i + 1}. ${s.title}`);
+    const cls = plan.mode === "explain" && !s.status ? "plain" : STEP_STATUS[s.status] || "todo";
+    const mark = s.confirmed ? "✓ " : s.status === "review" ? "👉 " : "";
+    const c = el("span", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
+    c.title = s.confirmed ? "ทวนผ่านแล้ว" : s.status === "review" ? "ถึงตาคุณตรวจหรือทวนขั้นนี้" : "";
     c.onclick = () => { stop(); selectStep(s.id); };
     return c;
   }));

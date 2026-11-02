@@ -86,7 +86,20 @@ let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
-const drafts = {};
+// Unsent text survives a reload of this tab.
+const draftKey = "planview.drafts." + token;
+const drafts = (() => {
+  try {
+    return JSON.parse(sessionStorage.getItem(draftKey)) || {};
+  } catch {
+    return {};
+  }
+})();
+addEventListener("pagehide", () => {
+  try {
+    sessionStorage.setItem(draftKey, JSON.stringify(drafts));
+  } catch {}
+});
 const touch = matchMedia("(pointer: coarse)").matches;
 const picked = {};
 const seen = new Set();

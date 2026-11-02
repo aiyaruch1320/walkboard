@@ -37,7 +37,12 @@ h1{font-size:22px;font-weight:500;margin:0}
 .conn.idle{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
 .banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
 .problems{position:fixed;left:16px;bottom:16px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.15)}
-.toast{position:fixed;right:16px;bottom:16px;max-width:min(380px,calc(100vw - 32px));z-index:21;background:var(--you-bg);color:var(--you-tx);border:1.5px solid var(--you-bd);border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.15)}
+.bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:var(--bg)}
+.bar #barExtra{display:contents}
+.bar button{font-size:12px;padding:2px 10px;border-radius:999px}
+.bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
+.toast{position:fixed;right:16px;top:52px;max-width:min(420px,calc(100vw - 32px));z-index:21;background:var(--card);color:var(--text);border:1.5px solid var(--you-bd);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.15)}
+.toast ul{margin:6px 0 8px;padding-left:18px}
 #view .changed,.chip.changed{outline:3px solid var(--you-bd);outline-offset:3px}
 .problems ul{margin:4px 0 0;padding-left:20px}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
@@ -194,9 +199,12 @@ details.glossary dd{margin:0;color:var(--muted)}
 </head>
 <body>
 <main>
+  <div class="bar" id="bar">
+    <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ server</span>
+    <span id="barExtra"></span>
+  </div>
   <div class="top">
     <div><h1 id="title">planview</h1><p class="goal" id="goal"></p></div>
-    <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ server</span>
   </div>
   <div class="badges" id="badges"></div>
   <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
@@ -468,13 +476,28 @@ function renderBadges() {
     items.push(el("span", null, `commit: ${s.commit === "auto" ? "agent ทำให้" : "แนะนำข้อความ"}`));
     items.push(plan.approved ? el("span", "ok", "✓ อนุมัติแผนแล้ว") : el("span", "wait", "รออนุมัติแผน"));
   }
+  document.getElementById("badges").replaceChildren(...items);
+  renderBar();
+}
+
+function renderBar() {
+  const extra = [];
   const news = unread().length;
   if (news) {
     const b = el("button", "unread", `💬 ข้อความใหม่จาก agent ${news}`);
     b.onclick = openUnread;
-    items.push(b);
+    extra.push(b);
   }
-  document.getElementById("badges").replaceChildren(...items);
+  const n = changes.nodes.size + changes.steps.size + changes.notes.length;
+  if (n) {
+    const b = el("button", "changes", `✎ แผนเปลี่ยน ${n} จุด`);
+    b.onclick = (e) => {
+      e.stopPropagation();
+      showChangeList();
+    };
+    extra.push(b);
+  }
+  document.getElementById("barExtra").replaceChildren(...extra);
 }
 
 function renderStepCard() {
@@ -811,6 +834,7 @@ function highlight() {
   });
   document.querySelectorAll("#view [data-step]").forEach((d) => d.classList.toggle("dim", !!step && d.dataset.step !== step.id));
   linkDrawer?.();
+  markChanges();
 }
 
 // Show the step in a picture that contains its boxes.
@@ -955,29 +979,49 @@ function render(p) {
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-let toastTimer;
+// What the agent changed since the user last acknowledged; outlines stay until then.
+const changes = {nodes: new Set(), steps: new Set(), notes: []};
 
-function showChanges(prev) {
-  const nodes = Object.keys(plan.nodes).filter((id) => !same(prev.nodes?.[id], plan.nodes[id]));
-  const stepIds = steps().map((s) => s.id).filter((id) => !same((prev.steps || []).find((x) => x.id === id), steps().find((x) => x.id === id)));
-  const marked = [
-    ...nodes.flatMap((id) => [...document.querySelectorAll(`#view [data-id="${CSS.escape(id)}"]`)]),
-    ...stepIds.map((id) => document.querySelector(`.chip[data-step="${CSS.escape(id)}"]`)).filter(Boolean),
-  ];
-  marked.forEach((e) => e.classList.add("changed"));
-  setTimeout(() => marked.forEach((e) => e.classList.remove("changed")), 6000);
-  if (!nodes.length && !stepIds.length) return;
-  const name = (id) => plan.nodes[id]?.name || id;
-  const parts = [];
-  if (stepIds.length) parts.push("ขั้น: " + stepIds.map((id) => steps().find((x) => x.id === id).title).join(", "));
-  if (nodes.length) parts.push("กล่อง: " + nodes.map(name).join(", "));
-  const t = document.getElementById("toast");
-  t.textContent = "agent อัปเดตแผน · " + parts.join(" · ");
-  t.hidden = false;
-  t.onclick = () => (t.hidden = true);
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), 9000);
+function noteChanges(prev) {
+  for (const id of Object.keys(plan.nodes)) if (!same(prev.nodes?.[id], plan.nodes[id])) changes.nodes.add(id);
+  for (const st of steps()) if (!same((prev.steps || []).find((x) => x.id === st.id), st)) changes.steps.add(st.id);
+  const views = new Set((prev.views || []).map((v) => v.id));
+  for (const v of plan.views) if (!views.has(v.id)) changes.notes.push(`ภาพใหม่: ${v.title || v.id}`);
+  if (!prev.approved && plan.approved) changes.notes.push("อนุมัติแผนแล้ว");
+  if (!same(prev.glossary, plan.glossary)) changes.notes.push("คำศัพท์เปลี่ยน");
+  if (prev.title !== plan.title || prev.goal !== plan.goal) changes.notes.push("ชื่อหรือเป้าหมายเปลี่ยน");
+  changes.notes = [...new Set(changes.notes)];
 }
+
+function markChanges() {
+  document.querySelectorAll(".changed").forEach((e) => e.classList.remove("changed"));
+  for (const id of changes.nodes) document.querySelectorAll(`#view [data-id="${CSS.escape(id)}"]`).forEach((e) => e.classList.add("changed"));
+  for (const id of changes.steps) document.querySelector(`.chip[data-step="${CSS.escape(id)}"]`)?.classList.add("changed");
+}
+
+function showChangeList() {
+  const t = document.getElementById("toast");
+  const ul = el("ul");
+  for (const id of changes.steps) {
+    const st = steps().find((x) => x.id === id);
+    if (st) ul.append(el("li", null, "ขั้น: " + st.title));
+  }
+  for (const id of changes.nodes) if (plan.nodes[id]) ul.append(el("li", null, "กล่อง: " + plan.nodes[id].name));
+  for (const n of changes.notes) ul.append(el("li", null, n));
+  const ok = el("button", "primary", "รับทราบ");
+  ok.onclick = () => {
+    changes.nodes.clear();
+    changes.steps.clear();
+    changes.notes = [];
+    t.hidden = true;
+    markChanges();
+    renderBar();
+  };
+  t.replaceChildren(el("b", null, "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)"), ul, ok);
+  t.onclick = (e) => e.stopPropagation();
+  t.hidden = false;
+}
+document.addEventListener("click", () => (document.getElementById("toast").hidden = true));
 
 function draw(p) {
   const prev = plan;
@@ -1011,7 +1055,9 @@ function draw(p) {
   } else if (nodeId) {
     clearPanel("กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว");
   }
-  if (prev && !same(prev, p)) showChanges(prev);
+  if (prev && !same(prev, p)) noteChanges(prev);
+  markChanges();
+  renderBar();
 }
 let rendered = false, loadedThread = false;
 

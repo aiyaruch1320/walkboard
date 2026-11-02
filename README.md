@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version 0.5.0" src="https://img.shields.io/badge/version-0.5.0-7f77dd"></a>
+  <a href="CHANGELOG.md"><img alt="version 0.6.0" src="https://img.shields.io/badge/version-0.6.0-7f77dd"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-1d9e75"></a>
   <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-ef9f27">
 </p>
@@ -47,10 +47,10 @@ Type `/planview` and say what you want, or just ask in your own words:
 
 <sub>If another command is already called `/planview`, use the full name `/planview:planview`.</sub>
 
-1. The agent asks two quick questions (restate each step? commit for you?).
+1. The agent asks one quick question (commit for you, or only suggest messages?).
 2. It writes the plan and gives you a link to a page on your machine.
-3. You click, ask, or ask for changes. It answers on the page and updates the picture.
-4. In build mode, nothing starts until you press **Approve plan**. Keep Claude Code open while you use the page: that is where the agent works.
+3. You click, ask, or ask for changes. Dots show while the agent works on your message; the answer appears on the page and the picture updates.
+4. Restating each step is on by default; switch it, and how commits are made, under **Agent settings** at the top of the page. In build mode, nothing starts until you press **Approve plan**. Keep Claude Code open while you use the page: that is where the agent works.
 
 The agent plans and answers in the language you write in, and the page's labels follow (English and Thai). Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours, so the picture maps onto your system at a glance. Built and tested on macOS.
 
@@ -79,7 +79,7 @@ The agent writes a small JSON file once and updates it with one-line commands, w
 
 ## For AI agents
 
-- **Using planview for a user**: read [skills/planview/SKILL.md](skills/planview/SKILL.md) and follow it. It covers the modes, the two questions, the plan format and every command. From a clone, the CLI also works without installing: `node skills/planview/bin/planview.mjs <command>`.
+- **Using planview for a user**: read [skills/planview/SKILL.md](skills/planview/SKILL.md) and follow it. It covers the modes, the up-front question, the plan format and every command. From a clone, the CLI also works without installing: `node skills/planview/bin/planview.mjs <command>`.
 - **Installing it for a user**: ask first, because it changes their Claude Code setup.
   1. Check `node -v` is 18.18 or newer.
   2. Prefer the plugin: `claude plugin marketplace add aiyaruch1320/planview`, then `claude plugin install planview@planview`. If plugins are not available, clone this repository and copy `skills/planview` to `~/.claude/skills/planview`.

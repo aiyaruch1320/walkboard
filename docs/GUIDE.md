@@ -17,7 +17,8 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 
 | Part | What it does |
 |---|---|
-| Top bar (always visible) | ● agent listening now · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also "💬 new from the agent" for unread replies and "✎ Plan changed" for what the agent changed (outlined until you press **Mark as seen**). |
+| Top bar (always visible) | ● agent listening now · ✎ agent is answering you · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also "💬 new from the agent" for unread replies and "✎ Plan changed" for what the agent changed (outlined until you press **Mark as seen**). |
+| Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages. Saved to the plan at once; the agent follows it from its next step. |
 | Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ▶ plays the steps once. |
 | Step card | What the step does, how we know it is done, and a chat box. |
 | Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
@@ -68,7 +69,7 @@ The page does the explaining, so the agent spends tokens on content once and ver
 | Code in explain mode | paste it | `file:line`; the server reads the excerpt |
 | Common terms | explain each time | ~70 ship with planview |
 | Each message from the page | — | one compact line, ~110 bytes |
-| Instructions loaded with the skill | — | SKILL.md ~7.2 KB (16% shorter than 0.3) |
+| Instructions loaded with the skill | — | SKILL.md ~7.5 KB (12% shorter than 0.3) |
 
 ## FAQ
 

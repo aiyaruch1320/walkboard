@@ -197,6 +197,68 @@ body.side-open .side-inner{opacity:1;transform:none}
 .basisline a{color:var(--you-tx)}
 .cellbig{font-size:22px;margin:4px 0 8px}
 .warnbox{border:1.5px dashed var(--new-bd);color:var(--new-tx);border-radius:9px;padding:7px 12px;margin:0 0 10px;font-size:13px}
+/* graphs: state, decision, impact */
+.graph{position:relative;display:grid;gap:34px 120px;align-items:center;padding:46px 10px 18px;min-width:max-content}
+.graph>.node{min-width:0}
+.elabels{position:absolute;inset:0;pointer-events:none}
+.elabel{position:absolute;transform:translate(-50%,-50%);font-size:11.5px;line-height:1.3;max-width:150px;text-align:center;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:1px 6px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.elabel.dim{opacity:.3}
+.l-flow{stroke:var(--muted)}
+.g-state{border-radius:999px;padding-left:16px;padding-right:16px}
+.g-end{box-shadow:0 0 0 3px var(--card),0 0 0 5px currentColor}
+.g-start{align-self:flex-start;font-size:10.5px;font-weight:600;border-radius:5px;padding:0 6px;margin-bottom:4px;background:var(--text);color:var(--bg)}
+.g-q{border-radius:4px;border-style:solid;border-width:2px;clip-path:polygon(10px 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,10px 100%,0 50%);padding-left:22px;padding-right:22px}
+.g-q .name::before{content:"◆ ";opacity:.7}
+.g-out{border-radius:14px;border-width:2px}
+.impbar{font-size:13px;margin:0 0 6px;padding:6px 10px;border-radius:8px;background:var(--code);color:var(--text)}
+#view .node.imp-me{outline:3px solid var(--text);outline-offset:2px;opacity:1}
+#view .node.imp-hit{box-shadow:0 0 0 3px var(--warn-bd);opacity:1;filter:none}
+#view .node.imp-need{box-shadow:0 0 0 3px var(--ext-bd);opacity:1;filter:none}
+/* timeline */
+.timeline{min-width:640px;padding:8px 4px 14px}
+.tl-row{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:center;min-height:64px;border-bottom:1px dashed var(--line)}
+.tl-axis{min-height:34px;border-bottom:1px solid var(--line)}
+.tl-track{position:relative;height:100%;min-height:inherit;margin-right:30px}
+.tl-tick{position:absolute;bottom:4px;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap}
+.tl-mlabel{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:600;color:var(--warn-tx);white-space:nowrap}
+.tl-mark{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--warn-bd)}
+.tl-who{display:flex;align-items:center;gap:6px;font-size:13px;text-align:left;padding:4px 8px}
+.tl-who .icon{width:22px;height:22px}
+.tl-span{position:absolute;top:50%;transform:translateY(-50%);height:22px;border-radius:6px;font-size:11.5px;line-height:22px;padding:0 6px;white-space:nowrap;border:1px solid}
+.tl-span .tl-slabel{display:block;overflow:hidden}
+.tl-span.out .tl-slabel{position:absolute;top:24px;left:0;overflow:visible;color:var(--text);line-height:1.4}
+.tl-mlabel.end{transform:translateX(-100%);padding-right:4px}
+.tl-point{position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:2px solid}
+.tl-plabel{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:11.5px;white-space:nowrap;color:var(--text)}
+.tl-point.low .tl-plabel{bottom:auto;top:14px}
+.tl-ok{background:var(--done-bg);border-color:var(--done-bd);color:var(--done-tx)}
+.tl-todo{background:var(--new-bg);border-color:var(--new-bd);color:var(--new-tx)}
+.tl-blocked{background:var(--warn-bg);border-color:var(--warn-bd);color:var(--warn-tx)}
+/* data model */
+.er{position:relative;display:grid;grid-auto-columns:max-content;gap:30px 110px;align-items:start;padding:10px 6px 14px;min-width:max-content}
+.ertable{background:var(--card);border:1.5px solid var(--line);border-radius:10px;min-width:220px;cursor:pointer;overflow:hidden}
+.ertable.active{outline:2px solid var(--text);outline-offset:2px}
+.erhead{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:7px 10px;background:var(--code);border-bottom:1px solid var(--line)}
+.ertable ul{list-style:none;margin:0;padding:4px 0}
+.ertable li{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:2px 10px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
+.erkey{font-size:10px;font-weight:700;color:var(--muted)}
+.erkey.pk{color:var(--new-tx)}
+.erkey.fk{color:var(--ext-tx)}
+.ertype{color:var(--muted)}
+svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-order:stroke;stroke:var(--bg);stroke-width:4px}
+/* before / after */
+.diffview{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:1000px){.diffview{grid-template-columns:1fr}}
+.dhalf{min-width:0;border:1px solid var(--line);border-radius:12px;padding:10px}
+.dtitle{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 6px}
+#view .d-add{box-shadow:0 0 0 3px var(--done-bd)!important}
+#view .d-del{box-shadow:0 0 0 3px var(--warn-bd)!important;opacity:.75}
+#view .d-del .name{text-decoration:line-through}
+#view .d-chg{box-shadow:0 0 0 3px #14a3b8!important}
+.dl{border-radius:6px;padding:0 7px;font-weight:600}
+.dl.add{background:var(--done-bg);color:var(--done-tx)}
+.dl.del{background:var(--warn-bg);color:var(--warn-tx)}
+.dl.chg{background:rgba(20,163,184,.18);color:#14a3b8}
 /* map */
 .map{position:relative;display:flex;flex-wrap:wrap;gap:28px 56px;align-items:flex-start;padding:10px 6px 14px}
 .zone{position:relative;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px 14px;background:color-mix(in srgb,var(--card) 70%,transparent)}
@@ -560,7 +622,9 @@ const STRINGS = {
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", jPlay: "▶ Play the journey", jStop: (i, n) => `stop ${i} / ${n}`, pill_build: "🗺 Plan mode", pill_explain: "🔍 Explain mode", pill_design: "🧭 Design mode",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", gStart: "start", impHint: "Click a box to see what breaks if it goes down (red) and what it needs (blue).",
+    impHit: (x, n, list) => `If ${x} goes down, ${n} ${n === 1 ? "part breaks" : "parts break"}: ${list}`, impNone: (x) => `Nothing depends on ${x}.`,
+    before: "Before", after: "After", dAdd: "+ added", dDel: "− removed", dChg: "~ changed", jPlay: "▶ Play the journey", jStop: (i, n) => `stop ${i} / ${n}`, pill_build: "🗺 Plan mode", pill_explain: "🔍 Explain mode", pill_design: "🧭 Design mode",
     pillTip_build: "Plan in small steps, approve, then the agent builds step by step", pillTip_explain: "How existing code works, drawn from the real code; nothing is changed",
     pillTip_design: "Options for something not built yet, compared with sources; choose one to plan it", modeDesign: "Designing: compare options", constraintsLabel: "Constraints:", checkCons: "Check", consTitle: "Constraints",
     assumedTip: "Assumed by the agent; not confirmed yet", confirm: "Confirm", q_confirm: (x) => `Confirmed: ${x}`, recommended: "★ recommended", choose: "Choose this → write a plan",
@@ -625,7 +689,9 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", jPlay: "▶ เล่นการเดินทาง", jStop: (i, n) => `จุดที่ ${i} / ${n}`, pill_build: "🗺 โหมดวางแผน", pill_explain: "🔍 โหมดอธิบาย", pill_design: "🧭 โหมดออกแบบ",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", gStart: "เริ่ม", impHint: "คลิกกล่องเพื่อดูว่าถ้าล่มจะกระทบอะไร (แดง) และมันพึ่งอะไรอยู่ (ฟ้า)",
+    impHit: (x, n, list) => `ถ้า ${x} ล่ม กระทบ ${n} ส่วน: ${list}`, impNone: (x) => `ไม่มีอะไรพึ่ง ${x}`,
+    before: "ก่อน", after: "หลัง", dAdd: "+ เพิ่ม", dDel: "− เอาออก", dChg: "~ เปลี่ยน", jPlay: "▶ เล่นการเดินทาง", jStop: (i, n) => `จุดที่ ${i} / ${n}`, pill_build: "🗺 โหมดวางแผน", pill_explain: "🔍 โหมดอธิบาย", pill_design: "🧭 โหมดออกแบบ",
     pillTip_build: "วางแผนเป็นขั้นเล็กๆ อนุมัติแล้ว agent ลงมือทำทีละขั้น", pillTip_explain: "อธิบายโค้ดที่มีอยู่จากโค้ดจริง ไม่แก้อะไร",
     pillTip_design: "เทียบทางเลือกของสิ่งที่ยังไม่มี พร้อมแหล่งอ้างอิง เลือกแล้วต่อเป็นแผน", modeDesign: "ออกแบบ: เทียบทางเลือก", constraintsLabel: "ข้อจำกัด:", checkCons: "ตรวจ", consTitle: "ข้อจำกัด",
     assumedTip: "agent สมมติไว้ ยังไม่มีใครยืนยัน", confirm: "ยืนยัน", q_confirm: (x) => `ยืนยัน: ${x}`, recommended: "★ แนะนำ", choose: "เลือกทางนี้ → เขียนเป็นแผน",
@@ -1723,13 +1789,22 @@ function renderFlow(v) {
 }
 
 let linkDrawer = null, linkObserver = null;
+// Pictures add their line drawers; one observer redraws them all when anything resizes.
+function addDrawer(fn, container) {
+  const prev = linkDrawer;
+  linkDrawer = () => {
+    prev?.();
+    fn();
+  };
+  (linkObserver ||= new ResizeObserver(() => linkDrawer?.())).observe(container);
+}
 
 function drawLinks(container, specs) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add("links");
   container.append(svg);
   const box = (id) => container.querySelector(`[data-anchor="${CSS.escape(id)}"]`);
-  linkDrawer = () => {
+  const draw = () => {
     const base = container.getBoundingClientRect();
     svg.setAttribute("width", container.scrollWidth);
     svg.setAttribute("height", container.scrollHeight);
@@ -1772,9 +1847,7 @@ function drawLinks(container, specs) {
       }
     }
   };
-  linkObserver?.disconnect();
-  linkObserver = new ResizeObserver(() => linkDrawer?.());
-  linkObserver.observe(container);
+  addDrawer(draw, container);
 }
 
 function anchored(id, elx = nodeBox(id)) {
@@ -2023,7 +2096,7 @@ function renderMap(v) {
   svg.classList.add("links");
   map.append(svg);
   const at = (id) => map.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
-  linkDrawer = () => {
+  const draw = () => {
     const base = map.getBoundingClientRect();
     svg.setAttribute("width", map.scrollWidth);
     svg.setAttribute("height", map.scrollHeight);
@@ -2060,9 +2133,7 @@ function renderMap(v) {
       }
     }
   };
-  linkObserver?.disconnect();
-  linkObserver = new ResizeObserver(() => linkDrawer?.());
-  linkObserver.observe(map);
+  addDrawer(draw, map);
   return scroll;
 }
 
@@ -2154,8 +2225,373 @@ function renderJourney(v) {
   return wrap;
 }
 
+
+// ---------- graphs: boxes in columns by distance from the start; back edges arc over, self loops loop
+let pictureHook = null;
+function bezierMid(p0, p1, p2, p3) {
+  return [(p0[0] + 3 * p1[0] + 3 * p2[0] + p3[0]) / 8, (p0[1] + 3 * p1[1] + 3 * p2[1] + p3[1]) / 8];
+}
+
+function renderGraph(v, {ids, edges, starts = [], shape}) {
+  const known = new Set(ids);
+  edges = edges.filter((e) => known.has(e.from) && known.has(e.to));
+  const out = {};
+  edges.forEach((e) => (out[e.from] ||= []).push(e));
+  const incoming = new Set(edges.filter((e) => e.from !== e.to).map((e) => e.to));
+  // Edges that close a cycle are drawn as arcs; the rest set the columns by longest path,
+  // so a box always sits right of everything that leads to it.
+  const roots = starts.filter((x) => known.has(x));
+  const seeds = [...(roots.length ? roots : ids.filter((x) => !incoming.has(x))), ...ids];
+  const back = new Set(), state = {}, order = [];
+  const visit = (x) => {
+    state[x] = 1;
+    for (const e of out[x] || []) {
+      if (state[e.to] === 1) back.add(e);
+      else if (!state[e.to]) visit(e.to);
+    }
+    state[x] = 2;
+    order.unshift(x);
+  };
+  for (const x of seeds) if (!state[x]) visit(x);
+  const depth = {};
+  for (const x of order) depth[x] ??= 0;
+  for (const x of order) for (const e of out[x] || []) if (!back.has(e) && e.from !== e.to) depth[e.to] = Math.max(depth[e.to] ?? 0, depth[x] + 1);
+  order.sort((a, b) => depth[a] - depth[b]);
+  const cols = {};
+  for (const id of order) (cols[depth[id]] ||= []).push(id);
+  // Within a column, sit next to what leads in (fewer crossings).
+  const at = {};
+  for (const d of Object.keys(cols).map(Number).sort((a, b) => a - b)) {
+    const pred = (id) => edges.filter((e) => e.to === id && e.from !== id && !back.has(e) && at[e.from] != null).map((e) => at[e.from]);
+    const key = (id) => (pred(id).length ? pred(id).reduce((a, b) => a + b, 0) / pred(id).length : cols[d].indexOf(id));
+    cols[d].sort((a, b) => key(a) - key(b)).forEach((id, i) => (at[id] = i));
+  }
+  const grid = el("div", "graph diagram");
+  grid.style.gridTemplateColumns = `repeat(${Object.keys(cols).length}, minmax(150px, 210px))`;
+  for (const [d, list] of Object.entries(cols)) list.forEach((id, i) => {
+    const b = anchored(id);
+    b.style.gridColumn = String(Number(d) + 1);
+    b.style.gridRow = String(i + 1);
+    shape?.(b, id, out[id] || []);
+    grid.append(b);
+  });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("links");
+  const labels = el("div", "elabels");
+  grid.append(svg, labels);
+  const box = (id) => grid.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
+  const draw = () => {
+    const base = grid.getBoundingClientRect();
+    svg.setAttribute("width", grid.scrollWidth);
+    svg.setAttribute("height", grid.scrollHeight);
+    svg.replaceChildren();
+    labels.replaceChildren();
+    const inStep = curStep() ? new Set(curStep().nodes || []) : null;
+    let arcs = 0;
+    const lanes = [];
+    // Edges leaving or entering the same box spread along its side instead of sharing one point.
+    const outs = {}, ins = {};
+    for (const e of edges) if (e.from !== e.to) {
+      (outs[e.from] ||= []).push(e);
+      (ins[e.to] ||= []).push(e);
+    }
+    const spread = (list, e, r) => r.top + (r.height * (list.indexOf(e) + 1)) / (list.length + 1);
+    for (const e of edges) {
+      const a = box(e.from), b = box(e.to);
+      if (!a || !b) continue;
+      const P = (x, y) => [x - base.left, y - base.top];
+      let p0, p1, p2, p3;
+      if (e.from === e.to) {
+        p0 = P(a.right - 22, a.bottom); p3 = P(a.right, a.bottom - 14); p1 = [p0[0] + 4, p0[1] + 34]; p2 = [p3[0] + 38, p3[1] + 6];
+      } else if (depth[e.to] > depth[e.from] && !back.has(e)) {
+        p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
+        const dx = Math.max(30, (p3[0] - p0[0]) / 2);
+        p1 = [p0[0] + dx, p0[1]]; p2 = [p3[0] - dx, p3[1]];
+        // Skipping a column and a box is in the way: go around it, above or below.
+        const between = ids.filter((x) => depth[x] > depth[e.from] && depth[x] < depth[e.to]).map(box).filter(Boolean).map((r) => [r.left - base.left, r.right - base.left, r.top - base.top, r.bottom - base.top]);
+        const lo = Math.min(p0[1], p3[1]) - 8, hi = Math.max(p0[1], p3[1]) + 8;
+        if (between.some(([, , top, bottom]) => bottom > lo && top < hi)) {
+          const above = Math.min(...between.map((r) => r[2])) - 16 - 10 * arcs;
+          const below = Math.max(...between.map((r) => r[3])) + 16 + 10 * arcs++;
+          const y = Math.abs((p0[1] + p3[1]) / 2 - above) <= Math.abs((p0[1] + p3[1]) / 2 - below) ? above : below;
+          const xa = Math.min(...between.map((r) => r[0])) - 20, xb = Math.max(...between.map((r) => r[1])) + 20;
+          lanes.push({d: `M${p0} C${[xa, p0[1]]}, ${[xa, y]}, ${[xa + 10, y]} L${[xb - 10, y]} C${[xb, y]}, ${[xb, p3[1]]}, ${p3}`, mid: [(xa + xb) / 2, y]});
+        }
+      } else if (depth[e.to] === depth[e.from]) {
+        // Same column: a bracket around the right side.
+        p0 = P(a.right, a.top + a.height / 2); p3 = P(b.right + 4, b.top + b.height / 2);
+        const out = Math.max(a.right, b.right) - base.left + 36 + 10 * arcs++;
+        p1 = [out, p0[1]]; p2 = [out, p3[1]];
+      } else {
+        // Going back (a loop or a retry): arc over the boxes.
+        const lift = 34 + 14 * arcs++;
+        p0 = P(a.left + a.width / 2, a.top); p3 = P(b.left + b.width / 2 + 8, b.top - 4);
+        p1 = [p0[0], Math.min(p0[1], p3[1]) - lift]; p2 = [p3[0], Math.min(p0[1], p3[1]) - lift];
+      }
+      const detour = lanes.pop();
+      if (detour) p2 = [detour.mid[0] < p3[0] ? p3[0] - 30 : p3[0] + 30, p3[1]];
+      const ang = Math.atan2(p3[1] - p2[1], p3[0] - p2[0]);
+      const tip = (k) => `${p3[0] - 7 * Math.cos(ang + k)} ${p3[1] - 7 * Math.sin(ang + k)}`;
+      const dim = inStep && !(inStep.has(e.from) && inStep.has(e.to));
+      for (const [d, extra] of [[detour ? detour.d : `M${p0} C${p1}, ${p2}, ${p3}`, ""], [`M${tip(0.45)} L${p3} L${tip(-0.45)}`, " head"]]) {
+        const path = document.createElementNS(svg.namespaceURI, "path");
+        path.setAttribute("d", d.replaceAll(",", " ").replace(/ +/g, " "));
+        path.setAttribute("class", `l-${e.state || "flow"}${extra}`);
+        if (extra) path.style.strokeDasharray = "none";
+        if (dim) path.style.opacity = ".15";
+        svg.append(path);
+      }
+      if (e.label) {
+        const [mx, my] = detour ? detour.mid : bezierMid(p0, p1, p2, p3);
+        const lab = el("span", "elabel" + (dim ? " dim" : ""));
+        lab.append(rich(e.label));
+        lab.style.left = mx + "px";
+        lab.style.top = my + "px";
+        labels.append(lab);
+      }
+    }
+  };
+  addDrawer(draw, grid);
+  const scroll = el("div", "scroll");
+  scroll.append(grid);
+  return scroll;
+}
+
+function renderState(v) {
+  const ends = new Set(v.end || []);
+  return renderGraph(v, {
+    ids: [...new Set([...(v.states || []), ...(v.transitions || []).flatMap((x) => [x.from, x.to])])],
+    edges: v.transitions || [],
+    starts: v.start ? [v.start] : [],
+    shape: (b, id) => {
+      b.classList.add("g-state");
+      if (id === v.start) b.prepend(el("span", "g-start", t("gStart")));
+      if (ends.has(id)) b.classList.add("g-end");
+    },
+  });
+}
+
+function renderDecision(v) {
+  return renderGraph(v, {
+    ids: [...new Set([...(v.nodes || []), ...(v.edges || []).flatMap((x) => [x.from, x.to])])],
+    edges: v.edges || [],
+    starts: v.start ? [v.start] : [],
+    shape: (b, id, outs) => b.classList.add(outs.length > 1 ? "g-q" : outs.length ? "g-do" : "g-out"),
+  });
+}
+
+// "from" depends on "to". Opening a box shows what breaks if it goes down, and what it needs.
+function renderImpact(v) {
+  const edges = v.edges || [];
+  const wrap = el("div");
+  const banner = el("div", "impbar", t("impHint"));
+  wrap.append(banner, renderGraph(v, {ids: [...new Set([...(v.nodes || []), ...edges.flatMap((x) => [x.from, x.to])])], edges, starts: v.start ? [v.start] : []}));
+  const walk = (from, next) => {
+    const seen = new Set(), todo = [from];
+    while (todo.length) for (const x of next(todo.shift())) if (!seen.has(x)) {
+      seen.add(x);
+      todo.push(x);
+    }
+    seen.delete(from);
+    return seen;
+  };
+  pictureHook = () => {
+    const boxes = wrap.querySelectorAll("[data-id]");
+    boxes.forEach((d) => d.classList.remove("imp-hit", "imp-need", "imp-me"));
+    if (!nodeId || ![...boxes].some((d) => d.dataset.id === nodeId)) return banner.replaceChildren(t("impHint"));
+    const hit = walk(nodeId, (x) => edges.filter((e) => e.to === x).map((e) => e.from));
+    const need = walk(nodeId, (x) => edges.filter((e) => e.from === x).map((e) => e.to));
+    boxes.forEach((d) => d.classList.toggle("imp-me", d.dataset.id === nodeId) || d.classList.toggle("imp-hit", hit.has(d.dataset.id)) || d.classList.toggle("imp-need", need.has(d.dataset.id)));
+    const name = (x) => plan.nodes[x]?.name || x;
+    banner.replaceChildren(hit.size ? t("impHit", name(nodeId), hit.size, [...hit].map(name).join(", ")) : t("impNone", name(nodeId)));
+  };
+  return wrap;
+}
+
+// ---------- timeline: lanes on a time axis; points, spans and marks such as a timeout
+function niceStep(range) {
+  const raw = range / 8, mag = 10 ** Math.floor(Math.log10(raw || 1));
+  return [1, 2, 5, 10].map((m) => m * mag).find((x) => x >= raw) || raw;
+}
+
+function renderTimeline(v) {
+  const lanes = (v.lanes || []).filter((l) => l?.node);
+  const times = lanes.flatMap((l) => (l.events || []).flatMap((e) => [e.at, e.to])).concat((v.marks || []).map((m) => m.at)).filter((x) => typeof x === "number");
+  const min = Math.min(0, ...times), max = Math.max(...times, 1);
+  const pos = (x) => ((x - min) / (max - min)) * 100 + "%";
+  const step = niceStep(max - min);
+  const wrap = el("div", "timeline");
+  const axis = el("div", "tl-row tl-axis");
+  const ticks = el("div", "tl-track");
+  for (let x = Math.ceil(min / step) * step; x <= max + 1e-9; x += step) {
+    const tk = el("span", "tl-tick", `${+x.toFixed(3)}${v.unit ? " " + v.unit : ""}`);
+    tk.style.left = pos(x);
+    ticks.append(tk);
+  }
+  for (const m of v.marks || []) {
+    const mk = el("span", "tl-mlabel" + ((m.at - min) / (max - min) > 0.8 ? " end" : ""), m.label || "");
+    mk.style.left = pos(m.at);
+    ticks.append(mk);
+  }
+  axis.append(el("span"), ticks);
+  wrap.append(axis);
+  for (const l of lanes) {
+    const row = el("div", "tl-row");
+    const who = el("button", "tl-who");
+    const ic = iconEl(plan.nodes[l.node] || {}, l.node);
+    if (ic) who.append(ic);
+    who.append(plan.nodes[l.node]?.name || l.node);
+    who.dataset.id = l.node;
+    who.onclick = () => selectNode(l.node);
+    const track = el("div", "tl-track");
+    for (const m of v.marks || []) {
+      const line = el("span", "tl-mark");
+      line.style.left = pos(m.at);
+      track.append(line);
+    }
+    let lastPoint = -Infinity, flip = false;
+    for (const e of l.events || []) {
+      if (typeof e.at !== "number") continue;
+      const state = LINK_STATE_KEYS.includes(e.state) ? e.state : "ok";
+      if (typeof e.to === "number" && e.to > e.at) {
+        const bar = el("span", "tl-span tl-" + state);
+        bar.style.left = pos(e.at);
+        bar.style.width = ((e.to - e.at) / (max - min)) * 100 + "%";
+        const lab = el("span", "tl-slabel");
+        lab.append(rich(e.label || ""));
+        bar.append(lab);
+        bar.title = e.label || "";
+        track.append(bar);
+        requestAnimationFrame(() => bar.classList.toggle("out", lab.scrollWidth > bar.clientWidth - 8));
+      } else {
+        // Points close together put their labels on alternate sides.
+        flip = (e.at - lastPoint) / (max - min) < 0.12 ? !flip : false;
+        lastPoint = e.at;
+        const dot = el("span", "tl-point tl-" + state + (flip ? " low" : ""));
+        dot.style.left = pos(e.at);
+        const lab = el("span", "tl-plabel");
+        lab.append(rich(e.label || ""));
+        dot.append(lab);
+        track.append(dot);
+      }
+    }
+    row.append(who, track);
+    wrap.append(row);
+  }
+  const scroll = el("div", "scroll");
+  scroll.append(wrap);
+  return scroll;
+}
+
+// ---------- data model: tables, keys and relations between columns
+function renderDataModel(v) {
+  const tables = (v.tables || []).filter((x) => x?.node);
+  const grid = el("div", "er diagram");
+  // A table sits right of the tables it points to; tables pointing to the same one stack.
+  const level = {};
+  const lv = (tb, seen = new Set()) => {
+    if (level[tb.node] != null) return level[tb.node];
+    if (seen.has(tb.node)) return 0;
+    seen.add(tb.node);
+    const refs = (tb.columns || []).filter((c) => c.ref).map((c) => tables.find((x) => x.node === String(c.ref).split(".")[0])).filter((x) => x && x !== tb);
+    return (level[tb.node] = refs.length ? 1 + Math.max(...refs.map((x) => lv(x, seen))) : 0);
+  };
+  tables.forEach((tb) => lv(tb));
+  const rows = {};
+  for (const tb of tables) {
+    const card = anchored(tb.node, el("div", "ertable"));
+    card.dataset.id = tb.node;
+    card.tabIndex = 0;
+    card.onclick = () => selectNode(tb.node);
+    const head = el("div", "erhead");
+    const ic = iconEl(plan.nodes[tb.node] || {}, tb.node);
+    if (ic) head.append(ic);
+    head.append(plan.nodes[tb.node]?.name || tb.node);
+    const ul = el("ul");
+    for (const c of tb.columns || []) {
+      const li = el("li");
+      li.dataset.col = `${tb.node}.${c.name}`;
+      li.append(el("span", "erkey " + (c.key || ""), c.key ? c.key.toUpperCase() : ""), el("span", "ername", c.name), el("span", "ertype", c.type || ""));
+      if (c.note) li.title = c.note;
+      ul.append(li);
+    }
+    card.append(head, ul);
+    card.style.gridColumn = String(level[tb.node] + 1);
+    card.style.gridRow = String((rows[level[tb.node]] = (rows[level[tb.node]] || 0) + 1));
+    grid.append(card);
+  }
+  const rels = v.relations || tables.flatMap((tb) => (tb.columns || []).filter((c) => c.ref).map((c) => ({from: `${tb.node}.${c.name}`, to: c.ref, kind: "N:1"})));
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("links");
+  grid.append(svg);
+  const row = (key) => grid.querySelector(`[data-col="${CSS.escape(key)}"]`)?.getBoundingClientRect();
+  const draw = () => {
+    const base = grid.getBoundingClientRect();
+    svg.setAttribute("width", grid.scrollWidth);
+    svg.setAttribute("height", grid.scrollHeight);
+    svg.replaceChildren();
+    for (const r of rels) {
+      const a = row(r.from), b = row(r.to);
+      if (!a || !b) continue;
+      const right = b.left + b.width / 2 > a.left + a.width / 2;
+      const x1 = (right ? a.right : a.left) - base.left, x2 = (right ? b.left : b.right) - base.left;
+      const y1 = a.top + a.height / 2 - base.top, y2 = b.top + b.height / 2 - base.top;
+      const dx = Math.max(30, Math.abs(x2 - x1) / 2) * (right ? 1 : -1);
+      const path = document.createElementNS(svg.namespaceURI, "path");
+      path.setAttribute("d", `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`);
+      path.setAttribute("class", "l-flow");
+      svg.append(path);
+      const [m, n] = String(r.kind || "N:1").split(":");
+      for (const [txt, x, y, anchor] of [[m, x1 + (right ? 6 : -6), y1 - 5, right ? "start" : "end"], [n, x2 + (right ? -6 : 6), y2 - 5, right ? "end" : "start"]]) {
+        const tx = document.createElementNS(svg.namespaceURI, "text");
+        tx.setAttribute("x", x);
+        tx.setAttribute("y", y);
+        tx.setAttribute("text-anchor", anchor);
+        tx.setAttribute("class", "ercard");
+        tx.textContent = txt;
+        svg.append(tx);
+      }
+    }
+  };
+  addDrawer(draw, grid);
+  const scroll = el("div", "scroll");
+  scroll.append(grid);
+  return scroll;
+}
+
+// ---------- before / after: two pictures side by side, with what was added, removed or changed marked
+function renderDiff(v) {
+  const before = plan.views.find((x) => x.id === v.before), after = plan.views.find((x) => x.id === v.after);
+  const wrap = el("div", "diffview");
+  if (!before || !after || !VIEWS[before.kind] || !VIEWS[after.kind]) return el("p", null, t("cannotDraw", "diff"));
+  const ids = (x) => new Set(KINDS[x.kind]?.refs(x) || []);
+  const a = ids(before), b = ids(after), changed = new Set(v.changed || []);
+  const legend = el("div", "linklegend");
+  legend.append(el("span", "dl add", t("dAdd")), el("span", "dl del", t("dDel")), el("span", "dl chg", t("dChg")));
+  const half = (view, label, mark) => {
+    const h = el("div", "dhalf");
+    h.append(el("div", "dtitle", `${label} · ${view.title || view.id}`), VIEWS[view.kind].render(view));
+    h.querySelectorAll("[data-id]").forEach((d) => {
+      const id = d.dataset.id;
+      if (changed.has(id)) d.classList.add("d-chg");
+      else if (mark(id)) d.classList.add(label === t("before") ? "d-del" : "d-add");
+    });
+    return h;
+  };
+  wrap.append(half(before, t("before"), (id) => !b.has(id)), half(after, t("after"), (id) => !a.has(id)));
+  const box = el("div");
+  box.append(legend, wrap);
+  return box;
+}
+
 const VIEWS = {
   flow: {render: renderFlow},
+  state: {render: renderState, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  decision: {render: renderDecision, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  impact: {render: renderImpact, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  timeline: {render: renderTimeline},
+  datamodel: {render: renderDataModel, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  diff: {render: renderDiff, after: () => requestAnimationFrame(() => linkDrawer?.())},
   map: {render: renderMap, after: () => requestAnimationFrame(() => linkDrawer?.())},
   journey: {render: renderJourney},
   k8s: {render: renderK8s, after: () => requestAnimationFrame(() => linkDrawer?.())},
@@ -2201,7 +2637,9 @@ function renderView() {
   }) : []));
   const kind = VIEWS[v.kind];
   linkDrawer = null;
+  pictureHook = null;
   linkObserver?.disconnect();
+  linkObserver = null;
   document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, t("cannotDraw", v.kind)));
   kind?.after?.();
   highlight();
@@ -2258,6 +2696,7 @@ function highlight() {
   });
   document.querySelectorAll("#view [data-step]").forEach((d) => d.classList.toggle("dim", !!step && d.dataset.step !== step.id));
   linkDrawer?.();
+  pictureHook?.();
   markChanges();
 }
 

@@ -94,6 +94,28 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .msg .who{display:block;font-size:11px;opacity:.75}
 .count{position:absolute;bottom:-9px;right:8px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
 .err{color:var(--warn-tx)}
+.diagram{position:relative}
+.scroll{overflow-x:auto;margin-bottom:14px}
+svg.links{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+svg.links path{fill:none;stroke-width:1.8}
+svg.links text{font-size:11px;fill:var(--muted)}
+.l-uses{stroke:var(--muted);stroke-width:1.1!important;opacity:.7}
+.l-ok{stroke:var(--done-bd)}
+.l-todo{stroke:var(--new-bd);stroke-dasharray:6 4}
+.l-blocked{stroke:var(--warn-bd);stroke-dasharray:3 4}
+.k8s{display:grid;grid-template-columns:minmax(130px,170px) 1fr minmax(150px,210px);gap:44px;min-width:880px;align-items:start;padding:12px 8px}
+.col{display:flex;flex-direction:column;gap:18px}
+.col .node{flex:none;min-width:0}
+.ns{border:1.5px solid var(--line);border-radius:14px;padding:12px;background:var(--card)}
+.ns-title{font-size:12px;color:var(--muted);margin-bottom:14px}
+.ns-grid{display:grid;grid-template-columns:minmax(140px,1fr) 1.7fr;gap:40px;align-items:start}
+.policy{border:1.5px dashed var(--new-bd);border-radius:12px;padding:24px 10px 10px;position:relative;display:flex;flex-direction:column;gap:20px}
+.policy.none{border-color:transparent;padding-top:0}
+.plabel{position:absolute;top:-11px;left:10px;font-size:12px;background:var(--card);padding:0 8px;border-radius:6px;border:1px solid var(--new-bd);color:var(--new-tx);cursor:pointer}
+.plabel.active{outline:2px solid var(--text);outline-offset:2px}
+.containers{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.containers span{font-size:11px;border:1px solid currentColor;border-radius:6px;padding:0 6px}
+.linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
 </style>
 </head>
 <body>
@@ -318,8 +340,133 @@ function renderFlow(v) {
   return wrap;
 }
 
+const LINK_STATE = {ok: "อนุญาต / ใช้ได้", todo: "รอเปิด / ยังไม่ทำ", blocked: "ถูกบล็อก"};
+let linkDrawer = null, linkObserver = null;
+
+function drawLinks(container, specs) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("links");
+  container.append(svg);
+  const box = (id) => container.querySelector(`[data-anchor="${CSS.escape(id)}"]`);
+  linkDrawer = () => {
+    const base = container.getBoundingClientRect();
+    svg.setAttribute("width", container.scrollWidth);
+    svg.setAttribute("height", container.scrollHeight);
+    svg.replaceChildren();
+    const step = plan.steps?.[stepIdx];
+    const inStep = step ? new Set(step.nodes || []) : null;
+    const fan = {};
+    for (const l of specs) if (!l.down) (fan[l.from] ||= []).push(l);
+    for (const l of specs) {
+      const a = box(l.from)?.getBoundingClientRect(), b = box(l.to)?.getBoundingClientRect();
+      if (!a || !b) continue;
+      let d, head;
+      if (l.down) {
+        const x = a.left + a.width / 2 - base.left, y1 = a.bottom - base.top, y2 = b.top - base.top - 2;
+        d = `M${x} ${y1} L${x} ${y2}`;
+        head = `M${x - 4} ${y2 - 7} L${x} ${y2} L${x + 4} ${y2 - 7}`;
+      } else {
+        const x1 = a.right - base.left, x2 = b.left - base.left - 2;
+        const out = fan[l.from], k = out.indexOf(l);
+        const y1 = a.top + (a.height * (k + 1)) / (out.length + 1) - base.top, y2 = b.top + Math.min(b.height / 2, 40) - base.top;
+        const dx = Math.max(24, (x2 - x1) / 2);
+        d = `M${x1} ${y1} C${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        head = `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
+        if (l.label) {
+          const t = document.createElementNS(svg.namespaceURI, "text");
+          t.setAttribute("x", x2 - 10);
+          t.setAttribute("y", y2 - 6);
+          t.setAttribute("text-anchor", "end");
+          t.textContent = l.label;
+          svg.append(t);
+        }
+      }
+      const dim = inStep && !inStep.has(l.from) && !inStep.has(l.to);
+      for (const [path, extra] of [[d, ""], [head, " head"]]) {
+        const e = document.createElementNS(svg.namespaceURI, "path");
+        e.setAttribute("d", path);
+        e.setAttribute("class", `l-${l.state || "uses"}${extra}`);
+        if (extra) e.style.strokeDasharray = "none";
+        if (dim) e.style.opacity = ".15";
+        svg.append(e);
+      }
+    }
+  };
+  linkObserver?.disconnect();
+  linkObserver = new ResizeObserver(() => linkDrawer?.());
+  linkObserver.observe(container);
+}
+
+function anchored(id, elx = nodeBox(id)) {
+  elx.dataset.anchor = id;
+  return elx;
+}
+
+function linkLegend(states) {
+  const lg = el("div", "linklegend");
+  const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)"};
+  for (const st of states) {
+    const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + LINK_STATE[st]);
+    sp.style.color = color[st];
+    lg.append(sp);
+  }
+  return lg;
+}
+
+function renderK8s(v) {
+  const scroll = el("div", "scroll");
+  const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
+  if (states.length) scroll.append(linkLegend(states));
+  const grid = el("div", "k8s diagram");
+  const outside = el("div", "col");
+  (v.outside || []).forEach((id) => outside.append(anchored(id)));
+  const ns = el("div", "ns");
+  ns.dataset.anchor = "#namespace";
+  ns.append(el("div", "ns-title", [v.namespace && `namespace ${v.namespace}`, v.cluster && `cluster ${v.cluster}`].filter(Boolean).join(" · ") || "namespace"));
+  const nsGrid = el("div", "ns-grid");
+  const configs = el("div", "col");
+  (v.configs || []).forEach((id) => configs.append(anchored(id)));
+  const policy = el("div", "policy" + (v.policy ? "" : " none"));
+  if (v.policy) {
+    const pl = el("span", "plabel", "🛡 " + (plan.nodes[v.policy]?.name || v.policy));
+    pl.dataset.id = v.policy;
+    pl.tabIndex = 0;
+    pl.onclick = () => selectNode(v.policy);
+    policy.append(pl);
+  }
+  for (const w of v.workloads || []) {
+    const b = anchored(w.node);
+    if (w.containers?.length) {
+      const c = el("div", "containers");
+      w.containers.forEach((name) => c.append(el("span", null, name)));
+      b.append(c);
+    }
+    policy.append(b);
+  }
+  nsGrid.append(configs, policy);
+  ns.append(nsGrid);
+  const targets = el("div", "col");
+  (v.targets || []).forEach((id) => targets.append(anchored(id)));
+  grid.append(outside, ns, targets);
+  scroll.append(grid);
+  const specs = [];
+  const out = v.outside || [];
+  out.forEach((id, i) => specs.push(i < out.length - 1 ? {from: id, to: out[i + 1], down: true, state: "uses"} : {from: id, to: "#namespace", state: "uses"}));
+  for (const w of v.workloads || []) for (const u of w.uses || []) specs.push({from: u, to: w.node, state: "uses"});
+  for (const l of v.links || []) specs.push({...l, state: l.state || "ok"});
+  drawLinks(grid, specs);
+  return scroll;
+}
+
 const VIEWS = {
   flow: {render: renderFlow, refs: (v) => (v.lanes || []).flatMap((l) => l.nodes || [])},
+  k8s: {
+    render: renderK8s,
+    after: () => requestAnimationFrame(() => linkDrawer?.()),
+    refs: (v) => [...(v.outside || []), ...(v.configs || []), ...(v.targets || []), ...(v.policy ? [v.policy] : []),
+      ...(v.workloads || []).flatMap((w) => [w.node, ...(w.uses || [])]), ...(v.links || []).flatMap((l) => [l.from, l.to])],
+    check: (v) => (v.links || []).filter((l) => l.state && !LINK_STATE[l.state]).map((l) => `link ${l.from}→${l.to} state "${l.state}" ไม่รู้จัก (ok, todo, blocked)`),
+  },
 };
 
 function renderView() {
@@ -331,6 +478,8 @@ function renderView() {
     return b;
   }) : []));
   const kind = VIEWS[v.kind];
+  linkDrawer = null;
+  linkObserver?.disconnect();
   document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, `ยังวาด ${v.kind} ไม่ได้`));
   kind?.after?.();
   highlight();
@@ -355,6 +504,7 @@ function highlight() {
     d.classList.toggle("active", d.dataset.id === nodeId);
   });
   document.querySelectorAll("#view [data-step]").forEach((d) => d.classList.toggle("dim", !!step && d.dataset.step !== step.id));
+  linkDrawer?.();
 }
 
 function selectStep(i) {

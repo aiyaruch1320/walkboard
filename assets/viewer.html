@@ -172,10 +172,10 @@ svg.links text{font-size:11px;fill:var(--muted)}
   <div id="view"></div>
   <div class="panel" id="panel"><h3>กดกล่องเพื่อดูรายละเอียด</h3></div>
 </main>
-<script>
-const NODE_STATUS = {done: "ทำแล้ว", new: "เพิ่งทำ", todo: "ยังไม่ทำ", ext: "ภายนอก"};
-const STEP_STATUS = {done: "done", doing: "doing", review: "doing", todo: "todo"};
+<script type="module">
 const token = new URLSearchParams(location.search).get("token");
+const served = location.protocol !== "file:" && token;
+const {NODE_STATUS, STEP_STATUS, LINK_STATE, validate} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, validate: () => []};
 let plan, viewId, stepIdx = -1, nodeId = null, timer = null;
 let thread = [], waiting = 0, connected = false;
 const drafts = {};
@@ -299,39 +299,6 @@ function el(tag, cls, text) {
   return e;
 }
 
-function validate(p) {
-  const out = [];
-  if (!p || typeof p !== "object") return ["plan.json ไม่ใช่ object"];
-  if (!p.title) out.push("ไม่มี title");
-  const s = p.settings;
-  if (!s) out.push('ไม่มี settings (ถามผู้ใช้ก่อนเริ่ม: {"teachBack": true|false, "commit": "auto"|"suggest"})');
-  else {
-    if (typeof s.teachBack !== "boolean") out.push("settings.teachBack ต้องเป็น true หรือ false");
-    if (!["auto", "suggest"].includes(s.commit)) out.push('settings.commit ต้องเป็น "auto" หรือ "suggest"');
-  }
-  const nodes = p.nodes || {};
-  for (const [id, n] of Object.entries(nodes)) {
-    if (!n.name) out.push(`node "${id}" ไม่มี name`);
-    if (n.status && !NODE_STATUS[n.status]) out.push(`node "${id}" status "${n.status}" ไม่รู้จัก`);
-  }
-  for (const s of p.steps || []) {
-    if (!s.id || !s.title) out.push("step ต้องมี id และ title");
-    if (s.status && !STEP_STATUS[s.status]) out.push(`step "${s.id}" status "${s.status}" ไม่รู้จัก`);
-    for (const k of s.nodes || []) if (!nodes[k]) out.push(`step "${s.id}" อ้าง node "${k}" ที่ไม่มี`);
-  }
-  if (!(p.views || []).length) out.push("ไม่มี views");
-  for (const v of p.views || []) {
-    const kind = VIEWS[v.kind];
-    if (!kind) {
-      out.push(`view "${v.id}" kind "${v.kind}" ไม่รู้จัก (มี: ${Object.keys(VIEWS).join(", ")})`);
-      continue;
-    }
-    for (const k of kind.refs(v)) if (!nodes[k]) out.push(`view "${v.id}" อ้าง node "${k}" ที่ไม่มี`);
-    for (const t of kind.check?.(v, p) || []) out.push(`view "${v.id}": ${t}`);
-  }
-  return out;
-}
-
 function arrow() {
   const a = el("div", "arrow");
   a.innerHTML = '<svg viewBox="0 0 26 14" aria-hidden="true"><line x1="1" y1="7" x2="20" y2="7"/><path d="M17 2l6 5-6 5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
@@ -368,7 +335,6 @@ function renderFlow(v) {
   return wrap;
 }
 
-const LINK_STATE = {ok: "อนุญาต / ใช้ได้", todo: "รอเปิด / ยังไม่ทำ", blocked: "ถูกบล็อก"};
 let linkDrawer = null, linkObserver = null;
 
 function drawLinks(container, specs) {
@@ -569,30 +535,10 @@ function renderTransform(v) {
 }
 
 const VIEWS = {
-  flow: {render: renderFlow, refs: (v) => (v.lanes || []).flatMap((l) => l.nodes || [])},
-  transform: {
-    render: renderTransform,
-    refs: (v) => (v.stages || []).map((st) => st.node),
-    check: (v) => (v.stages || []).flatMap((st, i) => [
-      ...(!st.columns && !st.text ? [`stage ที่ ${i + 1} ต้องมี columns+rows หรือ text`] : []),
-      ...(st.rows || []).filter((r) => st.columns && r.length !== st.columns.length).map(() => `stage ที่ ${i + 1} มีแถวที่จำนวนช่องไม่เท่า columns`),
-    ]),
-  },
-  sequence: {
-    render: renderSequence,
-    refs: (v) => [...(v.actors || []), ...(v.messages || []).flatMap((m) => (m.node ? [m.node] : []))],
-    check: (v, p) => (v.messages || []).flatMap((m, i) => [
-      ...[m.from, m.to].filter((a) => !(v.actors || []).includes(a)).map((a) => `ข้อความที่ ${i + 1} อ้าง actor "${a}" ที่ไม่อยู่ใน actors`),
-      ...(m.step && !(p.steps || []).some((s) => s.id === m.step) ? [`ข้อความที่ ${i + 1} อ้าง step "${m.step}" ที่ไม่มี`] : []),
-    ]),
-  },
-  k8s: {
-    render: renderK8s,
-    after: () => requestAnimationFrame(() => linkDrawer?.()),
-    refs: (v) => [...(v.outside || []), ...(v.configs || []), ...(v.targets || []), ...(v.policy ? [v.policy] : []),
-      ...(v.workloads || []).flatMap((w) => [w.node, ...(w.uses || [])]), ...(v.links || []).flatMap((l) => [l.from, l.to])],
-    check: (v) => (v.links || []).filter((l) => l.state && !LINK_STATE[l.state]).map((l) => `link ${l.from}→${l.to} state "${l.state}" ไม่รู้จัก (ok, todo, blocked)`),
-  },
+  flow: {render: renderFlow},
+  k8s: {render: renderK8s, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  sequence: {render: renderSequence},
+  transform: {render: renderTransform},
 };
 
 function renderView() {
@@ -742,7 +688,7 @@ async function fetchPlan() {
 }
 
 async function load() {
-  if (location.protocol === "file:" || !token) {
+  if (!served) {
     document.getElementById("banner").hidden = false;
     return;
   }
@@ -763,6 +709,7 @@ async function load() {
   on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
   on("agent", (a) => (waiting = a.waiting));
 }
+window.__planview = {get plan() { return plan; }, selectStep, selectNode, render};
 load();
 </script>
 </body>

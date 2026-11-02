@@ -134,7 +134,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } else if (route === "GET /api/source") {
       const plan = readJSON(p.plan);
       const node = plan.nodes && Object.hasOwn(plan.nodes, url.searchParams.get("node") || "") ? plan.nodes[url.searchParams.get("node")] : null;
-      const r = node?.file ? excerpt(plan, node.file) : {error: "no file"};
+      const r = node?.file ? excerpt(plan, node.file, {base: dir}) : {error: "no file"};
       res.writeHead(r.error ? 404 : 200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify(r));
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));

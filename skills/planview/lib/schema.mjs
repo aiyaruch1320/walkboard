@@ -41,6 +41,7 @@ export const KINDS = {
     check: (v, p) => list(v.messages).flatMap((m, i) => [
       ...[m?.from, m?.to].filter((a) => !list(v.actors).includes(a)).map((a) => `ข้อความที่ ${i + 1} อ้าง actor "${a}" ที่ไม่อยู่ใน actors`),
       ...(m?.step && !list(p.steps).some((s) => s?.id === m.step) ? [`ข้อความที่ ${i + 1} อ้าง step "${m.step}" ที่ไม่มี`] : []),
+      ...(m?.group != null && typeof m.group !== "string" ? [`ข้อความที่ ${i + 1} group ต้องเป็นข้อความ`] : []),
     ]),
   },
   transform: {
@@ -69,8 +70,8 @@ export function validate(p) {
     if (mode === "build" && !["auto", "suggest"].includes(s.commit)) out.push('settings.commit ต้องเป็น "auto" หรือ "suggest"');
   }
   if (p.approved != null && typeof p.approved !== "boolean") out.push("approved ต้องเป็น true หรือ false");
-  if (p.root != null && (typeof p.root !== "string" || !p.root.startsWith("/"))) out.push("root ต้องเป็น path เต็มที่ขึ้นต้นด้วย /");
-  if (p.roots != null && (!isObj(p.roots) || Object.values(p.roots).some((r) => typeof r !== "string" || !r.startsWith("/")))) out.push('roots ต้องเป็น {"ชื่อ": "/path/เต็ม"}');
+  if (p.root != null && (typeof p.root !== "string" || !p.root)) out.push("root ต้องเป็น path (เต็ม หรือนับจากโฟลเดอร์แผน)");
+  if (p.roots != null && (!isObj(p.roots) || Object.values(p.roots).some((r) => typeof r !== "string" || !r))) out.push('roots ต้องเป็น {"ชื่อ": "path"}');
   if (isObj(s) && s.editor != null && !EDITORS.includes(s.editor)) out.push(`settings.editor ต้องเป็น ${EDITORS.join(", ")}`);
   if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth ต้องเป็น "overview" หรือ "detail"');
   if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" ไม่ตรงกับ step ไหน`);

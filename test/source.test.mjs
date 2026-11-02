@@ -28,6 +28,7 @@ test("files outside the root, missing files and lines past the end are refused",
   assert.match(excerpt({root}, "src/nope.go:1").error, /not found/);
   assert.match(excerpt({root}, "src/a.go:99").error, /past the end/);
   assert.match(excerpt({}, "src/a.go:1").error, /no root/);
+  assert.equal(excerpt({root: "."}, "src/a.go:2", {base: root}).lines[1], "line 2");
   fs.symlinkSync(path.join(os.tmpdir(), "planview-outside.txt"), path.join(root, "src", "link.txt"));
   assert.equal(excerpt({root}, "src/link.txt:1").error, "outside root");
 });

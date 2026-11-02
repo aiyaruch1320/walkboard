@@ -80,7 +80,7 @@ async function check() {
     fail(`cannot read ${p.plan}: ${e.message}`);
   }
   const problems = validate(plan);
-  if (!problems.length) problems.push(...checkEvidence(plan));
+  if (!problems.length) problems.push(...checkEvidence(plan, dir));
   if (problems.length) {
     console.error(problems.map((t) => `- ${t}`).join("\n"));
     process.exit(1);

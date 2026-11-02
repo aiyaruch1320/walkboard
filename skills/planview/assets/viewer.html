@@ -908,20 +908,21 @@ const EDITOR_URL = {
   idea: (f, l) => `idea://open?file=${encodeURIComponent(f)}&line=${l || 1}`,
 };
 
-function fileLine(file) {
+// The editor link appears once the server has resolved the real path (roots may be relative).
+function fileLine(file, resolved) {
   const ref = parseFile(file, plan);
   const row = el("div", "meta fileline");
   const editor = plan.settings?.editor ?? "vscode";
-  if (ref?.abs && EDITOR_URL[editor]) {
+  if (resolved && EDITOR_URL[editor]) {
     const a = el("a", null, file);
-    a.href = EDITOR_URL[editor](ref.abs, ref.line);
+    a.href = EDITOR_URL[editor](resolved, ref?.line);
     a.title = "เปิดใน " + editor;
     row.append(a);
   } else row.append(el("span", null, file));
   const copy = el("button", null, "คัดลอก");
   copy.onclick = async () => {
     try {
-      await navigator.clipboard.writeText(ref?.abs ? `${ref.abs}${ref.line ? ":" + ref.line : ""}` : file);
+      await navigator.clipboard.writeText(resolved ? `${resolved}${ref?.line ? ":" + ref.line : ""}` : file);
       copy.textContent = "คัดลอกแล้ว";
     } catch {
       copy.textContent = "คัดลอกไม่ได้";
@@ -947,6 +948,7 @@ function codeBox(id) {
         ol.append(li);
       });
       box.lastChild.replaceWith(ol);
+      if (nodeId === id && plan.nodes[id]?.file) document.querySelector("#panel .fileline")?.replaceWith(fileLine(plan.nodes[id].file, r.path));
     })
     .catch(() => box.lastChild.replaceWith(el("div", "meta err", "อ่านโค้ดไม่ได้")));
   return box;

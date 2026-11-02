@@ -98,7 +98,7 @@ test("file references parse with lines, ranges and named roots", async () => {
 });
 
 test("root, roots, start, editor and depth are checked", () => {
-  const p = {...base(), root: "relative", roots: {d: 1}, start: "nope", settings: {teachBack: true, commit: "auto", editor: "notepad", depth: "deep"}};
+  const p = {...base(), root: 7, roots: {d: 1}, start: "nope", settings: {teachBack: true, commit: "auto", editor: "notepad", depth: "deep"}};
   const out = validate(p).join("\n");
   for (const want of [/root ต้องเป็น/, /roots ต้องเป็น/, /start "nope"/, /settings.editor/, /settings.depth/]) assert.match(out, want);
   assert.deepEqual(validate({...base(), root: "/repo", start: "s1"}), []);

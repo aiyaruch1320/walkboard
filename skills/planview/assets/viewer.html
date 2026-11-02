@@ -197,6 +197,34 @@ body.side-open .side-inner{opacity:1;transform:none}
 .basisline a{color:var(--you-tx)}
 .cellbig{font-size:22px;margin:4px 0 8px}
 .warnbox{border:1.5px dashed var(--new-bd);color:var(--new-tx);border-radius:9px;padding:7px 12px;margin:0 0 10px;font-size:13px}
+/* map */
+.map{position:relative;display:flex;flex-wrap:wrap;gap:28px 56px;align-items:flex-start;padding:10px 6px 14px}
+.zone{position:relative;border:1.5px solid var(--line);border-radius:14px;padding:10px 12px 14px;background:color-mix(in srgb,var(--card) 70%,transparent)}
+.zone.z0{border-width:2px;background:var(--card)}
+.zone.z1{border-style:solid;background:color-mix(in srgb,var(--bg) 55%,var(--card))}
+.zone.z2,.zone.z3{border-style:dashed}
+.zhead{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--muted);margin:0 0 10px}
+.zhead small{font-weight:400}
+.zhead .icon{width:20px;height:20px;border-radius:6px}
+.zhead .icon svg{width:13px;height:13px}
+.zbody{display:flex;flex-wrap:wrap;gap:18px 40px;align-items:flex-start}
+.zbody>.node{flex:0 0 auto;width:190px;min-width:0}
+/* journey */
+.journey{margin-bottom:14px}
+.jtrack{position:relative;display:flex;align-items:stretch;padding:44px 4px 10px;min-width:max-content}
+.jtrack .node{flex:0 0 170px;min-width:0;transition:opacity .3s,transform .3s,box-shadow .3s}
+.jtrack .node.jpast{opacity:.55}
+.jtrack .node.jhere{transform:translateY(-2px);box-shadow:0 0 0 3px var(--you-bd)}
+.jpacket{position:absolute;left:0;top:0;white-space:nowrap;font-size:12px;font-weight:600;background:var(--you-bd);color:var(--card);border-radius:999px;padding:3px 10px;box-shadow:0 4px 12px rgba(0,0,0,.25);pointer-events:none}
+.jpacket.ready{transition:left .7s cubic-bezier(.5,0,.2,1),top .7s cubic-bezier(.5,0,.2,1)}
+.jbar{display:flex;align-items:center;gap:8px;margin:6px 0 10px}
+.jbar .jpos{font-size:12.5px;color:var(--muted);min-width:9ch;text-align:center}
+.jcard{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--you-bd);border-radius:10px;padding:10px 14px}
+.jtitle{font-weight:600;font-size:14px}
+.jnote{margin:4px 0 8px;font-size:13.5px}
+.jdata{margin:0}
+.jdata .jnew{background:color-mix(in srgb,var(--done-bd) 28%,transparent);border-radius:3px}
+@media (prefers-reduced-motion:reduce){.jpacket.ready{transition:none}}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
 @media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
@@ -441,7 +469,7 @@ details.glossary dt{font-weight:500}
 details.glossary dd{margin:0;color:var(--muted)}
 .linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
 .linklist{margin:0 0 14px;padding-left:18px;font-size:12.5px;color:var(--muted)}
-.scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px}
+.scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px;position:sticky;left:0;width:max-content}
 </style>
 </head>
 <body>
@@ -532,7 +560,7 @@ const STRINGS = {
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", pill_build: "🗺 Plan mode", pill_explain: "🔍 Explain mode", pill_design: "🧭 Design mode",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", jPlay: "▶ Play the journey", jStop: (i, n) => `stop ${i} / ${n}`, pill_build: "🗺 Plan mode", pill_explain: "🔍 Explain mode", pill_design: "🧭 Design mode",
     pillTip_build: "Plan in small steps, approve, then the agent builds step by step", pillTip_explain: "How existing code works, drawn from the real code; nothing is changed",
     pillTip_design: "Options for something not built yet, compared with sources; choose one to plan it", modeDesign: "Designing: compare options", constraintsLabel: "Constraints:", checkCons: "Check", consTitle: "Constraints",
     assumedTip: "Assumed by the agent; not confirmed yet", confirm: "Confirm", q_confirm: (x) => `Confirmed: ${x}`, recommended: "★ recommended", choose: "Choose this → write a plan",
@@ -597,7 +625,7 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", pill_build: "🗺 โหมดวางแผน", pill_explain: "🔍 โหมดอธิบาย", pill_design: "🧭 โหมดออกแบบ",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", jPlay: "▶ เล่นการเดินทาง", jStop: (i, n) => `จุดที่ ${i} / ${n}`, pill_build: "🗺 โหมดวางแผน", pill_explain: "🔍 โหมดอธิบาย", pill_design: "🧭 โหมดออกแบบ",
     pillTip_build: "วางแผนเป็นขั้นเล็กๆ อนุมัติแล้ว agent ลงมือทำทีละขั้น", pillTip_explain: "อธิบายโค้ดที่มีอยู่จากโค้ดจริง ไม่แก้อะไร",
     pillTip_design: "เทียบทางเลือกของสิ่งที่ยังไม่มี พร้อมแหล่งอ้างอิง เลือกแล้วต่อเป็นแผน", modeDesign: "ออกแบบ: เทียบทางเลือก", constraintsLabel: "ข้อจำกัด:", checkCons: "ตรวจ", consTitle: "ข้อจำกัด",
     assumedTip: "agent สมมติไว้ ยังไม่มีใครยืนยัน", confirm: "ยืนยัน", q_confirm: (x) => `ยืนยัน: ${x}`, recommended: "★ แนะนำ", choose: "เลือกทางนี้ → เขียนเป็นแผน",
@@ -1961,8 +1989,175 @@ function renderTransform(v) {
   return wrap;
 }
 
+// ---------- map: zones inside zones, links routed between boxes on whichever sides face each other
+function zoneEl(z, depth) {
+  const box = el("div", `zone z${Math.min(depth, 3)}`);
+  const head = el("div", "zhead");
+  const ic = iconEl({name: z.label, icon: z.icon}, "", null);
+  if (ic) head.append(ic);
+  head.append(richEl("span", null, z.label || ""));
+  if (z.note) head.append(el("small", null, z.note));
+  const body = el("div", "zbody");
+  for (const c of (z.zones || []).filter((x) => x && typeof x === "object")) body.append(zoneEl(c, depth + 1));
+  for (const id of z.nodes || []) body.append(anchored(id));
+  box.append(head, body);
+  return box;
+}
+
+function renderMap(v) {
+  const scroll = el("div", "scroll");
+  const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
+  if (states.length) scroll.append(linkLegend(states, false));
+  const map = el("div", "map diagram");
+  for (const z of (v.zones || []).filter((x) => x && typeof x === "object")) map.append(zoneEl(z, 0));
+  scroll.append(map);
+  for (const l of v.links || []) {
+    const b = l.label && map.querySelector(`[data-anchor="${CSS.escape(l.to)}"]`);
+    if (!b) continue;
+    const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
+    const chip = el("span", "via via-" + (LINK_STATE_KEYS.includes(l.state) ? l.state : "ok"), "← " + l.label);
+    chip.title = `${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to}`;
+    row.append(chip);
+  }
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("links");
+  map.append(svg);
+  const at = (id) => map.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
+  linkDrawer = () => {
+    const base = map.getBoundingClientRect();
+    svg.setAttribute("width", map.scrollWidth);
+    svg.setAttribute("height", map.scrollHeight);
+    svg.replaceChildren();
+    const inStep = curStep() ? new Set(curStep().nodes || []) : null;
+    for (const l of v.links || []) {
+      const a = at(l.from), b = at(l.to);
+      if (!a || !b) continue;
+      const ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
+      let x1, y1, x2, y2, c1, c2;
+      if (Math.abs(bx - ax) >= Math.abs(by - ay)) {
+        const dir = bx > ax ? 1 : -1;
+        x1 = dir > 0 ? a.right : a.left; x2 = dir > 0 ? b.left - 4 : b.right + 4; y1 = ay; y2 = by;
+        const dx = Math.max(24, Math.abs(x2 - x1) / 2) * dir;
+        c1 = [x1 + dx, y1]; c2 = [x2 - dx, y2];
+      } else {
+        const dir = by > ay ? 1 : -1;
+        y1 = dir > 0 ? a.bottom : a.top; y2 = dir > 0 ? b.top - 4 : b.bottom + 4; x1 = ax; x2 = bx;
+        const dy = Math.max(20, Math.abs(y2 - y1) / 2) * dir;
+        c1 = [x1, y1 + dy]; c2 = [x2, y2 - dy];
+      }
+      const o = (x, y) => `${x - base.left} ${y - base.top}`;
+      const ang = Math.atan2(y2 - c2[1], x2 - c2[0]);
+      const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
+      const parts = [[`M${o(x1, y1)} C${o(...c1)}, ${o(...c2)}, ${o(x2, y2)}`, ""], [l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`, " head"]];
+      const dim = inStep && !(inStep.has(l.from) && inStep.has(l.to));
+      for (const [d, extra] of parts) {
+        const e = document.createElementNS(svg.namespaceURI, "path");
+        e.setAttribute("d", d);
+        e.setAttribute("class", `l-${l.state || "ok"}${extra}`);
+        if (extra) e.style.strokeDasharray = "none";
+        if (dim) e.style.opacity = ".15";
+        svg.append(e);
+      }
+    }
+  };
+  linkObserver?.disconnect();
+  linkObserver = new ResizeObserver(() => linkDrawer?.());
+  linkObserver.observe(map);
+  return scroll;
+}
+
+// ---------- journey: one piece of data moving stop by stop; each stop shows the data there, changes marked
+const journeyAt = {}, journeyPos = {};
+let journeyTimer = null;
+
+function renderJourney(v) {
+  const stops = (v.stops || []).filter((s) => s?.node);
+  const i = Math.min(journeyAt[v.id] ?? 0, stops.length - 1);
+  const wrap = el("div", "journey");
+  const scroll = el("div", "scroll");
+  const track = el("div", "jtrack");
+  stops.forEach((s, k) => {
+    if (k) track.append(arrow());
+    const b = nodeBox(s.node);
+    b.classList.toggle("jhere", k === i);
+    b.classList.toggle("jpast", k < i);
+    track.append(b);
+  });
+  const packet = el("div", "jpacket", "✉ " + (v.item || "data"));
+  track.append(packet);
+  scroll.append(track);
+  // The envelope starts where it was and slides to this stop.
+  const target = () => {
+    const here = track.querySelector(".jhere");
+    return here && {left: here.offsetLeft + here.offsetWidth / 2 - packet.offsetWidth / 2, top: here.offsetTop - packet.offsetHeight - 6};
+  };
+  const put = (p) => {
+    packet.style.left = p.left + "px";
+    packet.style.top = p.top + "px";
+  };
+  requestAnimationFrame(() => {
+    const to = target();
+    if (!to) return;
+    put(journeyPos[v.id] || to);
+    track.querySelector(".jhere")?.scrollIntoView({block: "nearest", inline: "center", behavior: "smooth"});
+    requestAnimationFrame(() => {
+      packet.classList.add("ready");
+      put(to);
+      journeyPos[v.id] = to;
+    });
+  });
+  new ResizeObserver(() => {
+    const to = target();
+    if (to && packet.classList.contains("ready")) {
+      put(to);
+      journeyPos[v.id] = to;
+    }
+  }).observe(track);
+  const go = (k) => {
+    journeyAt[v.id] = Math.max(0, Math.min(stops.length - 1, k));
+    renderView();
+  };
+  const bar = el("div", "jbar");
+  const prev = el("button", null, "◀"), next = el("button", null, "▶"), play = el("button", "primary", journeyTimer ? "❚❚" : t("jPlay"));
+  prev.onclick = () => { clearInterval(journeyTimer); journeyTimer = null; go(i - 1); };
+  next.onclick = () => { clearInterval(journeyTimer); journeyTimer = null; go(i + 1); };
+  play.onclick = () => {
+    if (journeyTimer) {
+      clearInterval(journeyTimer);
+      journeyTimer = null;
+      return renderView();
+    }
+    if (i >= stops.length - 1) journeyAt[v.id] = 0;
+    journeyTimer = setInterval(() => {
+      const at = journeyAt[v.id] ?? 0;
+      if (at >= stops.length - 1 || plan.views.find((x) => x.id === viewId)?.id !== v.id) {
+        clearInterval(journeyTimer);
+        journeyTimer = null;
+        return renderView();
+      }
+      go(at + 1);
+    }, 2400);
+    renderView();
+  };
+  bar.append(prev, el("span", "jpos", t("jStop", i + 1, stops.length)), next, play);
+  const s = stops[i], before = new Set(String(stops[i - 1]?.data ?? "").split("\n"));
+  const card = el("div", "jcard");
+  card.append(el("div", "jtitle", plan.nodes[s.node]?.name || s.node));
+  if (s.note) card.append(richEl("p", "jnote", s.note));
+  if (s.data != null) {
+    const pre = el("pre", "jdata");
+    // Lines that were not there at the previous stop are what this stop changed.
+    for (const line of String(s.data).split("\n")) pre.append(el("span", i && !before.has(line) ? "jnew" : null, line + "\n"));
+    card.append(pre);
+  }
+  wrap.append(scroll, bar, card);
+  return wrap;
+}
+
 const VIEWS = {
   flow: {render: renderFlow},
+  map: {render: renderMap, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  journey: {render: renderJourney},
   k8s: {render: renderK8s, after: () => requestAnimationFrame(() => linkDrawer?.())},
   sequence: {render: renderSequence},
   transform: {render: renderTransform},

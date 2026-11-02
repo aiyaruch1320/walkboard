@@ -8,6 +8,8 @@
 - `poll` prints one compact line per message; `check` caps its warnings.
 - Deep links: `&step=`, `&view=`, `&node=` (or `&step=all`) and `&theme=light|dark`.
 - Logo, plugin icon and page icon.
+- The skill is invoked as `/planview` (the full `/planview:planview` only when names collide).
+- A short README with a demo GIF; details in `docs/GUIDE.md`; `AGENTS.md` for changing the repository.
 - Shorter SKILL.md with a "keep it cheap" section.
 
 ## 0.3.0

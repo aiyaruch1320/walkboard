@@ -221,6 +221,7 @@ function talkBox(c, {placeholder, kinds}) {
   const key = ctxKey(c);
   const box = el("div", "talk");
   const ta = el("textarea");
+  ta.dataset.key = key;
   ta.placeholder = placeholder;
   ta.value = drafts[key] || "";
   ta.oninput = () => (drafts[key] = ta.value);
@@ -635,7 +636,24 @@ document.getElementById("play").onclick = () => {
   timer = setInterval(() => step(1), 3200);
 };
 
+// Redraws replace the chat boxes; put the cursor back where the user was typing.
+function keepFocus(fn) {
+  const a = document.activeElement;
+  const key = a?.tagName === "TEXTAREA" ? a.dataset.key : null;
+  const sel = key && [a.selectionStart, a.selectionEnd];
+  fn();
+  const t = key && document.querySelector(`textarea[data-key="${CSS.escape(key)}"]`);
+  if (t) {
+    t.focus({preventScroll: true});
+    t.setSelectionRange(...sel);
+  }
+}
+
 function render(p) {
+  keepFocus(() => draw(p));
+}
+
+function draw(p) {
   plan = p;
   plan.nodes ||= {};
   plan.views ||= [];

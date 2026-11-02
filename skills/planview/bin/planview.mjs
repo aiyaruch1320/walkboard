@@ -106,11 +106,22 @@ async function open() {
 
 async function poll() {
   let gone = 0;
+  const stopped = () => {
+    console.error(`planview: the server for ${dir} was stopped`);
+    console.log("[]");
+    process.exit(0);
+  };
   for (;;) {
     const s = readServer();
     try {
-      if (!s) throw new Error("not running");
-      const items = await api(s, "/api/poll");
+      if (!s) {
+        if (!fs.existsSync(p.lock)) stopped();
+        throw new Error("not running");
+      }
+      const r = await fetch(`http://127.0.0.1:${s.port}/api/poll?token=${s.token}`);
+      if (r.status === 410) stopped();
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const items = await r.json();
       gone = 0;
       if (items.length) return console.log(JSON.stringify(items, null, 2));
     } catch (e) {

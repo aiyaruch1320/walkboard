@@ -81,6 +81,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   let delivered = Math.min(Number(fs.existsSync(p.delivered) ? fs.readFileSync(p.delivered, "utf8") : 0) || 0, all.length);
   const pending = all.slice(delivered);
   const waiters = [];
+  const polls = new Set();
   const streams = new Set();
 
   const broadcast = (event, data) => {
@@ -174,6 +175,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         send([]);
       }, pollMs);
       res.on("close", drop);
+      polls.add(res);
+      res.on("close", () => polls.delete(res));
       waiters.push(send);
       agentState();
       flush();
@@ -220,6 +223,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
           new Promise((done) => {
             clearInterval(heartbeat);
             fs.unwatchFile(p.plan);
+            // Tell waiting polls the server is going away on purpose, so they exit instead of retrying.
+            for (const r of polls) if (!r.headersSent) r.writeHead(410, {"content-type": "text/plain"}).end("stopped");
             for (const s of streams) s.end();
             server.closeAllConnections();
             server.close(done);

@@ -177,3 +177,12 @@ test("a lock left by a dead process is taken over", async (t) => {
   t.after(s.close);
   assert.equal((await call(s, "/")).status, 200);
 });
+
+test("a waiting poll is told when the server stops", async () => {
+  const s = await startServer(planDir());
+  const polled = call(s, "/api/poll");
+  await new Promise((r) => setTimeout(r, 50));
+  await s.close();
+  const r = await polled;
+  assert.equal(r.status, 410);
+});

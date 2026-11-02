@@ -1,9 +1,16 @@
 {
   "title": "สร้าง planview",
   "goal": "skill ที่วาดแผนของ agent เป็นภาพ แล้วคลิก component เพื่อคุยกับ agent ได้",
+  "mode": "build",
   "settings": {
     "teachBack": true,
     "commit": "auto"
+  },
+  "approved": true,
+  "glossary": {
+    "poll": "คำสั่งที่ agent รันค้างไว้เบื้องหลัง จบเมื่อมีคนคลิก ทำให้ agent ถูกปลุก",
+    "SSE": "สายที่หน้าเว็บเปิดฟัง server ค้างไว้ ใช้บอกว่าแผนเปลี่ยนหรือ agent ตอบแล้ว",
+    "token": "รหัสสุ่มในลิงก์ กันเว็บอื่นในเครื่องส่งข้อความปลอมเข้ามา"
   },
   "steps": [
     {
@@ -15,7 +22,10 @@
         "queue",
         "poll",
         "wake"
-      ]
+      ],
+      "detail": "พิสูจน์ก่อนว่าคลิกบนหน้าเว็บแล้วปลุก agent ได้จริง",
+      "done": "คลิกแล้ว poll จบและ agent ทำงานต่อ",
+      "confirmed": true
     },
     {
       "id": "viewer",
@@ -25,7 +35,10 @@
         "plan",
         "viewer",
         "server"
-      ]
+      ],
+      "detail": "ให้ agent เขียนแค่ข้อมูล แล้วหน้าเว็บวาดเอง",
+      "done": "plan.json ตัวอย่างแสดงเป็นภาพได้",
+      "confirmed": true
     },
     {
       "id": "server",
@@ -35,7 +48,10 @@
         "server",
         "queue",
         "reply"
-      ]
+      ],
+      "detail": "server จริง: หน้าอัปเดตเอง คิวไม่หาย ตอบกลับขึ้นหน้าได้",
+      "done": "test ของ server ผ่านทั้งหมด",
+      "confirmed": true
     },
     {
       "id": "chat",
@@ -44,7 +60,10 @@
       "nodes": [
         "viewer",
         "reply"
-      ]
+      ],
+      "detail": "กล่องคุยบนทุกกล่อง ทุกขั้น และทั้งแผน",
+      "done": "ถาม ขอแก้ ทวน ส่งถึง agent ถูกชนิด",
+      "confirmed": true
     },
     {
       "id": "views",
@@ -54,7 +73,10 @@
         "viewer",
         "plan",
         "check"
-      ]
+      ],
+      "detail": "ภาพ k8s, sequence และ transform",
+      "done": "ตัวอย่างใช้ภาพครบสี่แบบ",
+      "confirmed": true
     },
     {
       "id": "skill",
@@ -63,7 +85,10 @@
       "nodes": [
         "skill",
         "check"
-      ]
+      ],
+      "detail": "SKILL.md ที่บอก agent ทั้งโหมดวางแผนและโหมดอธิบายโค้ด",
+      "done": "agent ทำตามได้ตั้งแต่ต้นจนจบ",
+      "confirmed": true
     },
     {
       "id": "plugin",
@@ -71,17 +96,22 @@
       "status": "done",
       "nodes": [
         "skill"
-      ]
+      ],
+      "detail": "ห่อเป็น plugin ให้ทีมติดตั้งได้",
+      "done": "claude plugin validate ผ่าน",
+      "confirmed": true
     },
     {
       "id": "dogfood",
-      "title": "ลองใช้กับงานจริง (รอผู้ใช้)",
+      "title": "ทดลองกับผู้ใช้หลายระดับแล้วแก้ตาม",
       "status": "review",
       "nodes": [
         "skill",
         "plan",
         "viewer"
-      ]
+      ],
+      "detail": "ให้คนหลายระดับลองใช้ แล้วแก้ตาม feedback",
+      "done": "junior ถึง senior เข้าใจแผนและปรับแผนต่อได้"
     }
   ],
   "views": [

@@ -1,9 +1,25 @@
 {
   "title": "นำเข้าลูกค้ารายวันขึ้น staging",
   "goal": "CronJob อ่านลูกค้าใหม่จาก warehouse ทุกคืน แล้วส่งเข้า Customer API ทีละชุด",
+  "mode": "build",
   "settings": {
     "teachBack": true,
     "commit": "suggest"
+  },
+  "approved": true,
+  "glossary": {
+    "CronJob": "งานที่ Kubernetes ปลุกขึ้นมารันเองตามเวลาที่ตั้งไว้ เช่น ทุกคืนตีสอง",
+    "suspend": "สั่งพักไว้ ยังไม่ให้รันจนกว่าจะเปิด",
+    "ArgoCD": "เครื่องมือที่อ่าน manifest จาก Git แล้วสร้างของใน cluster ให้ตรงกัน",
+    "manifest": "ไฟล์ YAML ที่บอก Kubernetes ว่าต้องมีอะไรบ้าง",
+    "ConfigMap": "ค่าตั้งที่ไม่ลับ ส่งเข้าโปรแกรมเป็น environment variable",
+    "Secret": "ค่าลับ เช่น รหัสผ่าน ส่งเข้าโปรแกรมแบบเดียวกับ ConfigMap",
+    "NetworkPolicy": "กฎไฟร์วอลล์ของ pod: ออกไปคุยกับใครได้บ้าง",
+    "init": "init container: โปรแกรมที่รันให้จบก่อน container หลักเริ่ม",
+    "image": "ไฟล์ที่ห่อโปรแกรมพร้อมของที่ต้องใช้ ให้ Kubernetes เอาไปรัน",
+    "staging": "สภาพแวดล้อมทดสอบก่อนขึ้นจริง",
+    "Forbid": "ถ้ารอบก่อนยังไม่จบ ไม่เริ่มรอบใหม่ซ้อน",
+    "egress": "การเชื่อมต่อขาออกจาก pod"
   },
   "steps": [
     {
@@ -13,7 +29,10 @@
       "nodes": [
         "commit",
         "build"
-      ]
+      ],
+      "detail": "build image จากโค้ดบน main แล้วสแกนช่องโหว่",
+      "done": "มี image ใน registry และสแกนผ่าน",
+      "confirmed": true
     },
     {
       "id": "trigger",
@@ -23,7 +42,10 @@
         "build",
         "tagjob",
         "git"
-      ]
+      ],
+      "detail": "CI แก้ tag ของ image ใน deploy repo เอง ไม่มีใครแก้มือ",
+      "done": "มี commit อัตโนมัติใน deploy repo",
+      "confirmed": true
     },
     {
       "id": "manifests",
@@ -36,7 +58,9 @@
         "secret",
         "cronjob",
         "netpol"
-      ]
+      ],
+      "detail": "เขียน manifest ของ CronJob, ConfigMap และ NetworkPolicy ให้ ArgoCD สร้างใน staging",
+      "done": "ArgoCD sync แล้ว CronJob ขึ้นแบบ suspend"
     },
     {
       "id": "secrets",
@@ -47,7 +71,9 @@
         "wkey",
         "warehouse",
         "api"
-      ]
+      ],
+      "detail": "ใส่รหัสผ่าน API key และ key ของ warehouse และขอ infra เปิดทางออก :443",
+      "done": "CronJob อ่านค่าได้ครบ และต่อ warehouse ได้"
     },
     {
       "id": "run",
@@ -58,7 +84,9 @@
         "warehouse",
         "db",
         "api"
-      ]
+      ],
+      "detail": "เลิก suspend รันหนึ่งรอบ แล้วดูว่าส่งเข้า API ครบ",
+      "done": "ส่งครบ จุดที่ส่งถึงถูกบันทึก รอบซ้ำไม่ส่งซ้ำ"
     }
   ],
   "views": [
@@ -312,8 +340,8 @@
     },
     "git": {
       "name": "deploy repo",
-      "what": "Git",
-      "status": "ext",
+      "what": "ของทีมเรา (Git)",
+      "status": "done",
       "file": "apps/nightly-import/overlays/staging",
       "in": "commit จาก CI",
       "out": "manifest ที่ ArgoCD อ่าน",
@@ -403,8 +431,8 @@
     },
     "internet": {
       "name": "ที่อื่นทั้งหมด",
-      "what": "internet ทั่วไป",
-      "status": "todo",
+      "what": "internet ทั่วไป · ถูกบล็อก",
+      "status": "ext",
       "why": "ถูก NetworkPolicy บล็อก"
     }
   }

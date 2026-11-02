@@ -167,6 +167,31 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         }
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(item));
       });
+    } else if (route === "POST /api/settings") {
+      // Switches on the page change plan.json directly, and the agent hears about it in its next poll.
+      readBody(req, (err, v) => {
+        if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
+        const s = {};
+        if (typeof v?.teachBack === "boolean") s.teachBack = v.teachBack;
+        if (v?.commit === "auto" || v?.commit === "suggest") s.commit = v.commit;
+        if (err || !Object.keys(s).length) return res.writeHead(400).end('need teachBack (true|false) or commit ("auto"|"suggest")');
+        let plan;
+        try {
+          plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+        } catch {
+          return res.writeHead(409).end("plan.json cannot be read");
+        }
+        plan.settings = {...(plan.settings && typeof plan.settings === "object" && !Array.isArray(plan.settings) ? plan.settings : {}), ...s};
+        fs.writeFileSync(p.plan + ".tmp", JSON.stringify(plan, null, 1) + "\n");
+        fs.renameSync(p.plan + ".tmp", p.plan);
+        const text = typeof v.text === "string" && v.text.trim() ? v.text.trim().slice(0, 200) : Object.entries(s).map(([k, x]) => `${k}=${x}`).join(" ");
+        const item = {kind: "settings", settings: s, text, id: crypto.randomUUID(), at: new Date().toISOString()};
+        fs.appendFileSync(p.feedback, JSON.stringify(item) + "\n");
+        pending.push(item);
+        broadcast("feedback", item);
+        flush();
+        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(item));
+      });
     } else if (route === "GET /api/poll") {
       let timer;
       const send = (items) => {

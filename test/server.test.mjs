@@ -199,3 +199,21 @@ test("the page can read a short excerpt of a box's code, only inside the root", 
   assert.equal((await call(s, "/api/source?node=x")).status, 404);
   assert.equal((await call(s, "/api/source?node=constructor")).status, 404);
 });
+
+test("a switch on the page saves the setting and tells the agent", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const polled = call(s, "/api/poll").then((r) => r.json());
+  const r = await post(s, "/api/settings", {teachBack: false, commit: "auto", extra: 1, text: "Restate each step: off"});
+  assert.equal(r.status, 200);
+  const plan = JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8"));
+  assert.deepEqual(plan.settings, {teachBack: false, commit: "auto"});
+  assert.equal(plan.title, "t");
+  const [item] = await polled;
+  assert.equal(item.kind, "settings");
+  assert.deepEqual(item.settings, {teachBack: false, commit: "auto"});
+  assert.equal(item.text, "Restate each step: off");
+  assert.equal((await post(s, "/api/settings", {commit: "sometimes"})).status, 400);
+  assert.equal((await post(s, "/api/settings", {teachBack: "yes"})).status, 400);
+});

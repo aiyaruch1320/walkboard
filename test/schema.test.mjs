@@ -22,10 +22,15 @@ test("a minimal plan is valid", () => {
   assert.deepEqual(validate(base()), []);
 });
 
-test("settings must be asked for up front", () => {
+test("build mode asks about commits up front; restating defaults to on", async () => {
+  const {teachBackOn} = await import("../skills/planview/lib/schema.mjs");
   const p = base();
   delete p.settings;
   assert.match(validate(p)[0], /settings/);
+  assert.deepEqual(validate({...p, mode: "explain"}), []);
+  assert.deepEqual(validate({...p, settings: {commit: "auto"}}), []);
+  assert.equal(teachBackOn(p), true);
+  assert.equal(teachBackOn({settings: {teachBack: false}}), false);
   p.settings = {teachBack: "yes", commit: "always"};
   assert.equal(validate(p).length, 2);
 });

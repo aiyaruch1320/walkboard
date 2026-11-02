@@ -2,6 +2,7 @@ export const NODE_STATUS = {done: "done", new: "new", todo: "todo", ext: "ext"};
 export const STEP_STATUS = {done: "done", doing: "doing", review: "review", todo: "todo"};
 export const LINK_STATE = {ok: "ok", todo: "todo", blocked: "blocked"};
 export const LANGS = ["en", "th"];
+export const teachBackOn = (p) => p?.settings?.teachBack !== false;
 export const MODES = ["build", "explain"];
 export const EDITORS = ["vscode", "cursor", "idea", "none"];
 
@@ -78,12 +79,12 @@ export function validate(p) {
   if (p.lang != null && typeof p.lang !== "string") out.push('lang must be a language code such as "en" or "th"');
   const mode = p.mode ?? "build";
   if (!MODES.includes(mode)) out.push(`unknown mode "${p.mode}" (${MODES.join(", ")})`);
+  // Restating defaults to on and is switched on the page; build mode asks about commits up front.
   const s = p.settings;
-  if (!isObj(s)) out.push(mode === "explain"
-    ? 'no settings (ask the user first: {"teachBack": true|false})'
-    : 'no settings (ask the user first: {"teachBack": true|false, "commit": "auto"|"suggest"})');
-  else {
-    if (typeof s.teachBack !== "boolean") out.push("settings.teachBack must be true or false");
+  if (s != null && !isObj(s)) out.push("settings must be an object");
+  else if (!isObj(s) && mode === "build") out.push('no settings (ask the user first: {"commit": "auto"|"suggest"})');
+  else if (isObj(s)) {
+    if (s.teachBack != null && typeof s.teachBack !== "boolean") out.push("settings.teachBack must be true or false");
     if (mode === "build" && !["auto", "suggest"].includes(s.commit)) out.push('settings.commit must be "auto" or "suggest"');
   }
   if (p.approved != null && typeof p.approved !== "boolean") out.push("approved must be true or false");

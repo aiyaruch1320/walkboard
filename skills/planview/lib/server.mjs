@@ -73,14 +73,16 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   };
 
   const readBody = (req, cb) => {
-    let body = "";
+    const chunks = [];
+    let size = 0;
     req.on("data", (c) => {
-      body += c;
-      if (body.length > MAX_BODY) req.destroy();
+      size += c.length;
+      if (size <= MAX_BODY) chunks.push(c);
     });
     req.on("end", () => {
+      if (size > MAX_BODY) return cb(Object.assign(new Error("too large"), {status: 413}));
       try {
-        const v = JSON.parse(body);
+        const v = JSON.parse(Buffer.concat(chunks).toString("utf8"));
         if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error("not an object");
         cb(null, v);
       } catch (e) {
@@ -112,6 +114,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       res.on("close", () => streams.delete(res));
     } else if (route === "POST /api/feedback" || route === "POST /api/reply") {
       readBody(req, (err, v) => {
+        if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         if (err || typeof v.text !== "string" || !v.text.trim()) return res.writeHead(400).end("need a JSON object with text");
         const item = {...v, id: crypto.randomUUID(), at: new Date().toISOString()};
         if (route === "POST /api/reply") {

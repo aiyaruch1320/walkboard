@@ -150,3 +150,12 @@ test("a torn feedback line is skipped instead of stopping the server", async (t)
   t.after(s.close);
   assert.deepEqual((await (await call(s, "/api/poll")).json()).map((i) => i.text), ["kept"]);
 });
+
+test("long Thai text arrives intact and an oversized body gets 413", async (t) => {
+  const s = await startServer(planDir());
+  t.after(s.close);
+  const text = "ทดสอบภาษาไทย".repeat(1500);
+  const item = await (await post(s, "/api/feedback", {text})).json();
+  assert.equal(item.text, text);
+  assert.equal((await post(s, "/api/feedback", {text: "ก".repeat(30000)})).status, 413);
+});

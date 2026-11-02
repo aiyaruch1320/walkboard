@@ -1,0 +1,16 @@
+{
+  "name": "planview",
+  "owner": {
+    "name": "Aiyaruch Phengthong"
+  },
+  "metadata": {
+    "description": "planview: interactive, clickable plans for Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "planview",
+      "source": "./",
+      "description": "Plan work as small steps, show the plan as an interactive diagram, and let clicks on it talk back to the agent."
+    }
+  ]
+}

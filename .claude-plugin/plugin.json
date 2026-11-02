@@ -1,0 +1,9 @@
+{
+  "name": "planview",
+  "version": "0.1.0",
+  "description": "Plan work as small steps, show the plan as an interactive diagram, and let clicks on it talk back to the agent.",
+  "author": {"name": "Aiyaruch Phengthong"},
+  "homepage": "https://github.com/aiyaruch1320/planview",
+  "repository": "https://github.com/aiyaruch1320/planview",
+  "keywords": ["planning", "diagram", "kubernetes", "teach-back"]
+}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- While the agent works on a message, the page shows typing dots where you asked and "Agent is answering you" in the top bar, with the minutes elapsed; after 10 minutes without a reply it says to check Claude Code.
+- Restating each step is on by default and switched on the page, under **Agent settings**, together with how commits are made. The page saves the change to plan.json and the agent gets it as a `settings` message. The skill no longer asks about restating up front.
+- The agent replies to every message, approvals included, so the dots always end.
+
 ## 0.5.0
 
 - The agent plans and replies in the language the user writes in. `lang` sets the page's labels (English or Thai; others get English); without it, a Thai title or goal means Thai. Checker messages are in English.

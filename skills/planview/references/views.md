@@ -4,6 +4,26 @@ Every box in a view is a node id, so clicking it opens the same details and chat
 
 Pictures wider than the screen scroll sideways and say so. Glossary terms are underlined in `what`, `in`, `out`, `why`, step text, lane titles, sequence messages and transform notes.
 
+
+## Which picture
+
+| The reader asks | Picture |
+|---|---|
+| What are the steps, in order? | `flow` (default, built from the steps) |
+| What runs in the cluster, with what config, talking to what? | `k8s` |
+| What sits inside what (account › VPC › subnet, cluster › namespace)? | `map` |
+| Who calls whom, in what order, and what if it fails? | `sequence` |
+| What does the data look like before and after? | `transform` |
+| What happens to one piece of data along the way? | `journey` |
+| Which states can it be in, and what moves it between them? | `state` |
+| If this, then what? (rules, routing, validation) | `decision` |
+| When does it happen and how long does it take? (retries, timeouts, cron) | `timeline` |
+| What are the tables, keys and relations? | `datamodel` |
+| If this goes down, what breaks? | `impact` |
+| What changes between now and after? | `diff` |
+
+Use one or two pictures that answer the question; more is noise.
+
 ## flow: what feeds what
 
 Use always. Rows ("lanes") of boxes joined by arrows, left to right.
@@ -113,3 +133,59 @@ The fastest way to explain a data flow: an envelope travels through the boxes an
 
 - 3-9 stops; a node may appear more than once (there and back).
 - `data` is what the data looks like at that stop, short and made up (never real customer data); `note` says what this stop did to it.
+
+## state: states and what moves between them
+
+```json
+{"id": "life", "kind": "state", "start": "created", "end": ["delivered", "cancelled"],
+ "states": ["created", "paid", "delivered", "cancelled"],
+ "transitions": [{"from": "created", "to": "paid", "label": "paid"}, {"from": "created", "to": "cancelled", "label": "30 min unpaid"},
+   {"from": "paid", "to": "delivered", "label": "received"}, {"from": "paid", "to": "paid", "label": "retry"}]}
+```
+
+States are node ids. Loops and retries are fine: the page arcs them over the boxes.
+
+## decision: if this, then that
+
+```json
+{"id": "rule", "kind": "decision", "start": "hasEmail",
+ "edges": [{"from": "hasEmail", "to": "consent", "label": "yes"}, {"from": "hasEmail", "to": "admin", "label": "no"},
+   {"from": "consent", "to": "send", "label": "yes"}, {"from": "consent", "to": "sms", "label": "no"}]}
+```
+
+Questions (two or more ways out) are drawn as diamonds, outcomes as rounded boxes. Name questions as questions.
+
+## timeline: when and how long
+
+```json
+{"id": "retry", "kind": "timeline", "unit": "s", "marks": [{"at": 20, "label": "give up"}],
+ "lanes": [{"node": "worker", "events": [{"at": 0, "to": 3, "label": "wait (timeout 3 s)", "state": "todo"}, {"at": 3, "label": "fail #1", "state": "blocked"}, {"at": 5, "label": "retry #1"}]}]}
+```
+
+A lane per box. An event with `to` is a span, without it a point; `state` colours it (`ok`, `todo`, `blocked`). `marks` are lines across all lanes (a timeout, a deadline).
+
+## datamodel: tables and relations
+
+```json
+{"id": "schema", "kind": "datamodel", "tables": [
+  {"node": "users", "columns": [{"name": "id", "type": "bigint", "key": "pk"}, {"name": "email", "type": "text"}]},
+  {"node": "orders", "columns": [{"name": "id", "type": "uuid", "key": "pk"}, {"name": "user_id", "type": "bigint", "key": "fk", "ref": "users.id"}]}]}
+```
+
+`ref` (`table.column`) draws an N:1 relation; `relations: [{"from": "a.x", "to": "b.y", "kind": "1:1"}]` for anything else. Only the columns that matter.
+
+## impact: what breaks if it goes down
+
+```json
+{"id": "deps", "kind": "impact", "edges": [{"from": "web", "to": "api"}, {"from": "api", "to": "db"}, {"from": "worker", "to": "db"}]}
+```
+
+`from` depends on `to`. The reader clicks a box: what depends on it turns red, what it needs turns blue.
+
+## diff: before and after
+
+```json
+{"id": "change", "kind": "diff", "before": "old", "after": "new", "changed": ["api"]}
+```
+
+Two existing views side by side. Boxes only in `after` are marked added, only in `before` removed, and `changed` ones changed.

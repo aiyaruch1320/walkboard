@@ -10,7 +10,7 @@
   --bg:#f7f6f2;--card:#ffffff;--text:#1f1e1c;--muted:#6b6a65;--line:#d9d7cf;
   --done-bg:#e1f5ee;--done-bd:#1d9e75;--done-tx:#085041;
   --new-bg:#faeeda;--new-bd:#ef9f27;--new-tx:#633806;
-  --todo-bg:#f1efe8;--todo-bd:#b4b2a9;--todo-tx:#888780;
+  --todo-bg:#f1efe8;--todo-bd:#b4b2a9;--todo-tx:#5f5e5a;
   --ext-bg:#e6f1fb;--ext-bd:#378add;--ext-tx:#0c447c;
   --warn-bg:#fcebeb;--warn-bd:#d85a5a;--warn-tx:#7a1f1f;
   --you-bg:#eeedfe;--you-bd:#7f77dd;--you-tx:#3c3489;
@@ -20,7 +20,7 @@
   --bg:#1c1b19;--card:#262522;--text:#ecebe6;--muted:#a3a19a;--line:#3d3c38;
   --done-bg:#0b3d31;--done-bd:#5dcaa5;--done-tx:#c8f0e2;
   --new-bg:#4a3006;--new-bd:#ef9f27;--new-tx:#fae3b8;
-  --todo-bg:#2c2c2a;--todo-bd:#5f5e5a;--todo-tx:#888780;
+  --todo-bg:#2c2c2a;--todo-bd:#6f6e69;--todo-tx:#c2c0b8;
   --ext-bg:#0c2a4a;--ext-bd:#85b7eb;--ext-tx:#d6e7f8;
   --warn-bg:#4a1717;--warn-bd:#e07a7a;--warn-tx:#f8d6d6;
   --you-bg:#26215c;--you-bd:#afa9ec;--you-tx:#e4e1fb;
@@ -30,7 +30,7 @@
   --bg:#1c1b19;--card:#262522;--text:#ecebe6;--muted:#a3a19a;--line:#3d3c38;
   --done-bg:#0b3d31;--done-bd:#5dcaa5;--done-tx:#c8f0e2;
   --new-bg:#4a3006;--new-bd:#ef9f27;--new-tx:#fae3b8;
-  --todo-bg:#2c2c2a;--todo-bd:#5f5e5a;--todo-tx:#888780;
+  --todo-bg:#2c2c2a;--todo-bd:#6f6e69;--todo-tx:#c2c0b8;
   --ext-bg:#0c2a4a;--ext-bd:#85b7eb;--ext-tx:#d6e7f8;
   --warn-bg:#4a1717;--warn-bd:#e07a7a;--warn-tx:#f8d6d6;
   --you-bg:#26215c;--you-bd:#afa9ec;--you-tx:#e4e1fb;
@@ -38,6 +38,7 @@
 
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Noto Sans Thai","Sarabun",system-ui,sans-serif}
 main{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
 h1{font-size:22px;font-weight:500;margin:0}
@@ -66,7 +67,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw{width:16px;height:16px;border-radius:5px;border:1.5px solid;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-style:normal;line-height:1}
-.stepnav{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.stepnav{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;margin-bottom:12px;position:sticky;top:44px;z-index:14;background:var(--bg);padding:2px 0}
 .stepbar{display:flex;align-items:center;flex:1 1 480px;min-width:0;overflow-x:auto;padding:5px 6px 7px;scrollbar-width:thin}
 .stepbar .chip{flex:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stepbar .chip.sel{max-width:340px}
@@ -113,12 +114,13 @@ body.side-open .side-inner{opacity:1;transform:none}
 .pc-remove,.prop-remove .pbadge{background:var(--warn-bd);color:#fff}
 #view .node.prop{opacity:1;filter:none}
 .node.prop-add{border:2px dashed var(--you-bd);background:color-mix(in srgb,var(--you-bg) 75%,var(--card));color:var(--you-tx)}
-.node.prop-change{outline:2.5px solid #14a3b8;outline-offset:2px}
-.node.prop-remove{border-color:var(--warn-bd);border-style:dashed}
+.node.prop-change{border:2px dashed #14a3b8;background:var(--card);color:var(--text)}
+.node.prop-remove{border:2px dashed var(--warn-bd);background:var(--card);color:var(--text)}
+.node .pnote{font-size:12px;margin-top:5px;padding-top:5px;border-top:1px dashed currentColor;opacity:.9}
 .node.prop-remove .name{text-decoration:line-through;text-decoration-color:var(--warn-bd)}
 .pbadge{align-self:flex-start;font-size:10.5px;font-weight:600;border-radius:5px;padding:0 6px;margin-bottom:5px}
 .sw.prop-add{border:1.5px dashed var(--you-bd);background:var(--you-bg)}
-.sw.prop-change{border-color:#14a3b8;background:transparent}
+.sw.prop-change{border:1.5px dashed #14a3b8;background:transparent}
 .sw.prop-remove{border:1.5px dashed var(--warn-bd);background:transparent}
 .propcard{border:1.5px dashed var(--you-bd);border-radius:10px;padding:8px 12px;margin:0 0 12px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
 .propcard .pbadge{display:inline-block}
@@ -130,6 +132,20 @@ body.side-open .side-inner{opacity:1;transform:none}
 .pchoose{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
 .pchoose button{font-size:12px;padding:2px 10px;border-radius:999px}
 .pchoose button[aria-pressed="true"]{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-weight:600}
+.helpbtn{width:26px;height:26px;padding:0;border-radius:50%;font-weight:600;font-size:13px}
+.legendbox{margin:0 0 10px;font-size:13px}
+.legendbox summary{cursor:pointer;color:var(--muted);width:max-content}
+.legendbox .legend{margin:8px 0 4px}
+.thread:empty::before{content:attr(data-empty);display:block;font-size:12.5px;color:var(--muted);line-height:1.5}
+.tour{position:fixed;inset:0;z-index:40}
+.tour .spot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 0 2px var(--you-bd);transition:all .25s ease;pointer-events:none}
+.tour .tcard{position:fixed;width:min(360px,calc(100vw - 32px));background:var(--card);color:var(--text);border:1.5px solid var(--you-bd);border-radius:12px;padding:12px 14px;box-shadow:0 12px 36px rgba(0,0,0,.35);transition:top .25s ease,left .25s ease}
+.tour .tcard p{margin:0 0 10px;font-size:14px;line-height:1.55}
+.tour .trow{display:flex;align-items:center;gap:8px}
+.tour #tourStep{font-size:12px;color:var(--muted);margin-right:auto}
+.helpcard kbd{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg)}
+.helpcard ul{list-style:none;padding:0;margin:8px 0 10px}
+.helpcard li{margin:4px 0}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
 @media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
@@ -191,7 +207,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .new,.doing{background:var(--new-bg);border-color:var(--new-bd);color:var(--new-tx)}
 .node.new{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}
 .todo{background:var(--todo-bg);border-color:var(--todo-bd);color:var(--todo-tx);border-style:dashed}
-.node.todo{opacity:.6}
+.node.todo{opacity:1}
 .ext{background:var(--ext-bg);border-color:var(--ext-bd);color:var(--ext-tx)}
 .node.ext{background:color-mix(in srgb,var(--ext-bg) 45%,var(--card))}
 #view .dim{opacity:.4;filter:saturate(.3)}
@@ -221,6 +237,7 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monos
 details.code{margin:10px 0 0}
 details.code summary{cursor:pointer;font-size:13px;color:var(--muted)}
 .code .cscroll{margin:6px 0 0;background:var(--code);border-radius:6px;overflow-x:auto}
+.code .cscroll.more{-webkit-mask-image:linear-gradient(to right,#000 85%,transparent);mask-image:linear-gradient(to right,#000 85%,transparent)}
 /* The list is as wide as its longest line, so a highlight reaches the end when scrolled sideways. */
 .code ol{margin:0;padding:6px 0;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;list-style:none;width:max-content;min-width:100%}
 .code li{white-space:pre;padding:0 10px}
@@ -238,7 +255,7 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .badges>span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
 .badges>.mode{border:0;padding:0 4px 0 0;font-size:13px;color:var(--text);font-weight:500}
 .settings{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
-.settings .slabel{color:var(--you-tx);font-weight:600;margin-right:2px}
+.settings .slabel{color:var(--muted);font-weight:500;margin-right:2px}
 .setting{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 55%,var(--card));color:var(--you-tx);border-radius:9px;padding:2px 10px}
 .setting .sname{font-weight:600}
 .switch{display:inline-flex;align-items:center;gap:6px;border:0;background:none;padding:2px 0;font-size:12.5px;color:inherit;border-radius:6px}
@@ -281,6 +298,7 @@ button:disabled{opacity:.5;cursor:wait}
 .msg.agent{align-self:flex-start;background:var(--code);color:var(--text);border:1px solid var(--line)}
 .msg .who{display:block;font-size:11px;opacity:.75}
 .msg pre.mcode{margin:6px 0;white-space:pre;overflow-x:auto;font-size:12px;background:var(--bg);border:1px solid var(--line)}
+.msg a,.side a,.propbar a{color:var(--you-tx);text-decoration:underline}
 .msg code.mcode{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border-radius:4px;padding:0 4px}
 .side .panel>.talk:first-child{border-top:0;margin-top:0;padding-top:0}
 .count{align-self:flex-end;margin-top:6px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
@@ -371,6 +389,7 @@ details.glossary dd{margin:0;color:var(--muted)}
 <main>
   <div class="bar" id="bar">
     <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>planview</b></span>
+    <button id="help" class="helpbtn" aria-label="Help">?</button>
     <span class="conn off" id="conn"></span>
     <span id="barExtra"></span>
   </div>
@@ -395,10 +414,11 @@ details.glossary dd{margin:0;color:var(--muted)}
   </div>
   <div id="stepcard"></div>
   <div class="tabs" id="tabs"></div>
-  <div class="legend" id="legend"></div>
+  <details class="legendbox" id="legendbox"><summary id="legendSum"></summary><div class="legend" id="legend"></div></details>
   <div id="view"></div>
   <footer class="foot"><a href="https://github.com/aiyaruch1320/planview" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/planview</a></footer>
 </main>
+<div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
 <aside class="side" id="side" inert>
   <div class="side-inner">
     <div class="side-head"><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
@@ -443,19 +463,29 @@ const STRINGS = {
     change_explain: "Correct the picture", send_change_explain: "Send correction", ph_change_explain: "Say what is wrong or missing in this picture…", askStage: "Ask about this stage…",
     viaLegend: "← :port on a box: what the link uses", talkLegend: "💬 a conversation on the box", termsPage: (n) => `📖 Terms on this page (${n})`, approved: "✓ Plan approved", awaiting: "Waiting for approval",
     newReplies: (n) => `💬 ${n} new from the agent`, changedN: (n) => `✎ Plan changed in ${n} ${n === 1 ? "place" : "places"}`,
-    wholePlan: "The whole plan", askPlan: "Ask about the whole plan…", turnRestate: "Your turn: restate this step", turnCheck: "Your turn: check this step",
+    wholePlan: "The whole plan", askPlan: "Ask about the whole plan…", turnRestate: (u = "step") => `Your turn: restate this ${u}`, turnCheck: "Your turn: check this step",
     restated: "✓ Restated", doneWhen: "Done when: ", understoodWhen: "Understood when: ", askStep: "Ask about this step…",
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", legendSum: "ⓘ What the colours and marks mean", sentWait: "Sent · waiting for the agent",
+    approveOpen: (n) => `${n} ${n === 1 ? "proposal is" : "proposals are"} still open. Approve the plan anyway?`, helpSettings: "Restating and commits: the switches under the title.",
+    emptyBox: "Nothing asked here yet. Ask about this box, or propose adding, changing or removing it.", emptyStep: (u) => `Nothing here yet. Ask about this ${u}, restate it, or propose a change.`,
+    emptyPlan: "Ask about the whole plan, or propose something to add.",
+    tour1: "This is the plan as a picture. Each box is a part of the work; colours show what is done, in progress or still to do.",
+    tour1x: "This is how the code works, as a picture. Each box points at real code.",
+    tour2: "The steps, in order. 👉 marks a step waiting for you, and a purple bar says what to do.",
+    tour2x: "The stages, in order. Pick one to see only its boxes; ▶▶ plays them one by one.",
+    tour3: "Click any box: its details open on the side, where you ask or propose a change. Click it again to close.",
+    tourNext: "Next", tourDone: "Got it", tourSkip: "Skip", tourStep: (i, n) => `${i} / ${n}`,
+    helpTitle: "Shortcuts", helpKeys: [["← →", "previous / next step"], ["Esc", "close the side panel"], ["⌘/Ctrl + Enter", "send"]], replayTour: "Show the tour again",
     propose: "Propose", send_propose: "Send proposal", ph_propose_add: "What to add after this box, e.g. a cache in front of the database…", ph_propose_change: "How this box should change…",
     ph_propose_remove: "Why this box should go…", ph_propose_plan: "What to add or change in the picture…", pc_add: "+ Add after this", pc_change: "~ Change this", pc_remove: "− Remove",
     pb_add: "+ proposed", pb_change: "~ proposed change", pb_remove: "− proposed removal", lg_add: "Proposed: add", lg_change: "Proposed: change", lg_remove: "Proposed: remove",
     propCount: (n) => `📝 ${n} ${n === 1 ? "proposal" : "proposals"}`, seeProps: "See all", toPlan: "Turn into a plan →", applyPlan: "Change the plan →", propsTitle: "Proposals",
     confirmPlan: "Write a build plan from these", confirmApply: "Change the plan with these", plan: "Plan it", q_plan: "Turn these proposals into a build plan", apply: "Change the plan",
     q_apply: "Change the plan to include these proposals", withdraw: "Withdraw", q_withdraw: "Withdraw this proposal", linksLabel: "Plans from this page:", pickChange: "First choose: add, change or remove",
-    talkStep: (n) => (n ? `💬 Talk about this step (${n})` : "💬 Ask about this step"), talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"), openTurn: "Open", noNode: (id) => `No box "${id}"`,
+    talkStep: (n, u) => (n ? `💬 Talk about this ${u} (${n})` : `💬 Ask about this ${u}`), restateThis: (u) => `✍ Restate this ${u}`, talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"), openTurn: "Open", noNode: (id) => `No box "${id}"`,
     in: "In", out: "Out", inSteps: "In steps: ", inStages: "In stages: ", askBox: (n) => `Ask about "${n}"…`,
     newView: "New picture: ", planApproved: "Plan approved", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
     seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxRemoved: "The box you had open was removed from the plan",
@@ -488,19 +518,29 @@ const STRINGS = {
     change_explain: "ขอแก้ภาพ", send_change_explain: "ส่งคำขอแก้", ph_change_explain: "บอกว่าภาพนี้ผิดหรือขาดอะไร…", askStage: "ถามเกี่ยวกับช่วงนี้…",
     viaLegend: "← :port บนกล่อง: สิ่งที่เส้นนั้นใช้", talkLegend: "💬 มีการคุยบนกล่องนี้", termsPage: (n) => `📖 คำศัพท์ในหน้านี้ (${n})`, approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
     newReplies: (n) => `💬 ข้อความใหม่จาก agent ${n}`, changedN: (n) => `✎ แผนเปลี่ยน ${n} จุด`,
-    wholePlan: "คุยเรื่องทั้งแผน", askPlan: "ถามเกี่ยวกับแผนทั้งหมด…", turnRestate: "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้", turnCheck: "ถึงตาคุณ: ตรวจขั้นนี้",
+    wholePlan: "คุยเรื่องทั้งแผน", askPlan: "ถามเกี่ยวกับแผนทั้งหมด…", turnRestate: (u = "ขั้น") => `ถึงตาคุณ: ทวนความเข้าใจ${u}นี้`, turnCheck: "ถึงตาคุณ: ตรวจขั้นนี้",
     restated: "✓ ทวนผ่านแล้ว", doneWhen: "เสร็จเมื่อ: ", understoodWhen: "เข้าใจเมื่อ: ", askStep: "ถามเกี่ยวกับขั้นนี้…",
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", legendSum: "ⓘ สีและสัญลักษณ์หมายถึงอะไร", sentWait: "ส่งแล้ว · รอ agent",
+    approveOpen: (n) => `ยังมีข้อเสนอค้างอยู่ ${n} รายการ อนุมัติแผนเลยไหม`, helpSettings: "เปิด/ปิดการทวน และวิธี commit: สวิตช์ใต้ชื่อแผน",
+    emptyBox: "ยังไม่มีใครถามตรงนี้ ถามเรื่องกล่องนี้ได้เลย หรือเสนอให้เพิ่ม แก้ หรือเอาออก", emptyStep: (u) => `ยังไม่มีบทสนทนา ถามเรื่อง${u}นี้ ทวน หรือเสนอเปลี่ยนได้`,
+    emptyPlan: "ถามเรื่องทั้งแผน หรือเสนอสิ่งที่อยากเพิ่ม",
+    tour1: "นี่คือแผนในรูปภาพ แต่ละกล่องคือส่วนหนึ่งของงาน สีบอกว่าเสร็จแล้ว กำลังทำ หรือยังไม่ทำ",
+    tour1x: "นี่คือการทำงานของโค้ดในรูปภาพ ทุกกล่องชี้ไปที่โค้ดจริง",
+    tour2: "ขั้นทั้งหมดตามลำดับ 👉 คือขั้นที่รอคุณ และแถบสีม่วงจะบอกว่าต้องทำอะไร",
+    tour2x: "ช่วงทั้งหมดตามลำดับ เลือกช่วงเพื่อดูเฉพาะกล่องของช่วงนั้น ▶▶ เล่นทีละช่วง",
+    tour3: "คลิกกล่องไหนก็ได้ รายละเอียดจะเปิดที่ด้านข้าง ถามหรือเสนอเปลี่ยนได้ตรงนั้น คลิกซ้ำเพื่อปิด",
+    tourNext: "ถัดไป", tourDone: "เข้าใจแล้ว", tourSkip: "ข้าม", tourStep: (i, n) => `${i} / ${n}`,
+    helpTitle: "คีย์ลัด", helpKeys: [["← →", "ขั้นก่อน / ขั้นถัดไป"], ["Esc", "ปิดแผงด้านข้าง"], ["⌘/Ctrl + Enter", "ส่งข้อความ"]], replayTour: "ดูทัวร์อีกครั้ง",
     propose: "เสนอเปลี่ยน", send_propose: "ส่งข้อเสนอ", ph_propose_add: "จะเพิ่มอะไรต่อจากกล่องนี้ เช่น cache หน้าฐานข้อมูล…", ph_propose_change: "อยากให้กล่องนี้เปลี่ยนอย่างไร…",
     ph_propose_remove: "ทำไมควรเอากล่องนี้ออก…", ph_propose_plan: "อยากเพิ่มหรือเปลี่ยนอะไรในภาพ…", pc_add: "+ เพิ่มต่อจากนี้", pc_change: "~ แก้กล่องนี้", pc_remove: "− เอาออก",
     pb_add: "+ เสนอเพิ่ม", pb_change: "~ เสนอแก้", pb_remove: "− เสนอเอาออก", lg_add: "เสนอเพิ่ม", lg_change: "เสนอแก้", lg_remove: "เสนอเอาออก",
     propCount: (n) => `📝 ข้อเสนอ ${n} รายการ`, seeProps: "ดูทั้งหมด", toPlan: "เขียนเป็นแผน →", applyPlan: "ปรับแผนตามข้อเสนอ →", propsTitle: "ข้อเสนอ",
     confirmPlan: "เขียนแผนลงมือทำจากข้อเสนอนี้", confirmApply: "ปรับแผนตามข้อเสนอนี้", plan: "เขียนเป็นแผน", q_plan: "เขียนข้อเสนอทั้งหมดนี้เป็นแผนลงมือทำ", apply: "ปรับแผน",
     q_apply: "ปรับแผนตามข้อเสนอทั้งหมดนี้", withdraw: "ถอนข้อเสนอ", q_withdraw: "ถอนข้อเสนอนี้", linksLabel: "แผนที่สร้างจากหน้านี้:", pickChange: "เลือกก่อน: เพิ่ม แก้ หรือเอาออก",
-    talkStep: (n) => (n ? `💬 คุยเรื่องขั้นนี้ (${n})` : "💬 ถามเรื่องขั้นนี้"), talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"), openTurn: "เปิด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
+    talkStep: (n, u) => (n ? `💬 คุยเรื่อง${u}นี้ (${n})` : `💬 ถามเรื่อง${u}นี้`), restateThis: (u) => `✍ ทวน${u}นี้`, talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"), openTurn: "เปิด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
     in: "รับเข้า", out: "ได้ออกมา", inSteps: "อยู่ในขั้น: ", inStages: "อยู่ในช่วง: ", askBox: (n) => `ถามเกี่ยวกับ "${n}"…`,
     newView: "ภาพใหม่: ", planApproved: "อนุมัติแผนแล้ว", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
     seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxRemoved: "กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว",
@@ -574,6 +614,7 @@ const MARK = {done: "✓", new: "●", todo: "", ext: "↗"}, EXPLAIN_MARK = {do
 const statusLabel = (st) => t((plan?.mode === "explain" ? "ex_" : "st_") + (NODE_STATUS[st] ? st : plan?.mode === "explain" ? "done" : "todo"));
 
 function renderLegend() {
+  document.getElementById("legendSum").textContent = t("legendSum");
   const items = plan.mode === "explain"
     ? [["done", t("lg_code")], ["new", t("lg_focus")], ["ext", t("lg_ext")]]
     : [["done", t("lg_done")], ["new", t("lg_new")], ["todo", t("lg_todo")], ["ext", t("lg_ext")]];
@@ -769,7 +810,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     for (const k of quick) {
       const b = el("button", k === "approve" ? "primary" : null, t(k));
       b.title = t("quickTip");
-      b.onclick = () => go(k, t("q_" + k));
+      b.onclick = () => (k !== "approve" || approveOk()) && go(k, t("q_" + k));
       buttons.push(b);
       row.append(b);
     }
@@ -782,6 +823,8 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     b.dataset.change = k;
     b.onclick = () => {
       pchange = k;
+      note.textContent = hintText();
+      note.className = "note";
       setMode("propose");
       ta.focus();
     };
@@ -820,6 +863,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   row.append(note, sendBtn);
   const thr = el("div", "thread");
   thr.dataset.ctx = JSON.stringify(c);
+  thr.dataset.empty = c.step && !c.node ? t("emptyStep", unit()) : t(c.node ? "emptyBox" : "emptyPlan");
   box.append(ta, row, thr);
   return box;
 }
@@ -934,6 +978,7 @@ function renderBar() {
     b.title = t("quickTip");
     b.onclick = async (e) => {
       e.stopPropagation();
+      if (!approveOk()) return;
       b.disabled = true;
       try {
         await send({}, "approve", t("q_approve"));
@@ -957,6 +1002,12 @@ function renderBar() {
 }
 
 // What a step in review still waits for: a restatement, then (when the user commits) the commit.
+const approveOk = () => !proposals().length || confirm(t("approveOpen", proposals().length));
+
+// A step whose answer (restatement or commit) was sent and is waiting for the agent.
+const answered = (step) => thread.some((m, i) => m.step === step.id && !m.node && ["teachback", "commit", "committed"].includes(m.kind) &&
+  !thread.slice(i + 1).some((x) => x.from === "agent" && x.step === step.id && !x.node));
+
 function yourTurn(step) {
   if (step?.status !== "review") return null;
   if (teachBackOn(plan) && !step.confirmed) return "turnRestate";
@@ -1031,6 +1082,18 @@ function renderStepCard() {
   };
   if (!step) {
     const approve = (plan.mode ?? "build") === "build" && !plan.approved;
+    const waitingStep = steps().find((s) => yourTurn(s));
+    if (!approve && waitingStep) {
+      const c = el("div", "stepcard review");
+      const b = el("button", "turnbtn", `👉 ${unit(true)} ${steps().indexOf(waitingStep) + 1}: ${waitingStep.title} · ${t(yourTurn(waitingStep), unit())}`);
+      b.onclick = () => {
+        selectStep(waitingStep.id);
+        openSide({kind: "step", id: waitingStep.id});
+      };
+      c.append(b);
+      card.replaceChildren(c);
+      return refreshThreads();
+    }
     if (!approve) {
       card.replaceChildren();
       return refreshThreads();
@@ -1060,12 +1123,21 @@ function renderStepCard() {
   if (step.detail) c.append(richEl("p", "detail", step.detail));
   if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
   if (turn) {
-    const b = el("button", "turnbtn", "👉 " + t(turn));
+    const b = el("button", "turnbtn", answered(step) ? "✓ " + t("sentWait") : "👉 " + t(turn, unit()));
     b.onclick = () => openSide({kind: "step", id: step.id});
     c.append(b);
   } else {
     const n = thread.filter((m) => inCtx(m, {step: step.id}) && m.kind !== "settings").length;
-    c.append(talk({kind: "step", id: step.id}, t("talkStep", n)));
+    // With restating on in explain mode, every stage offers it right on the card.
+    if (explain && teachBackOn(plan) && !step.confirmed) {
+      const b = el("button", "turnbtn", t("restateThis", unit()));
+      b.onclick = () => {
+        picked[`step:${step.id}|${step.status}`] = "teachback";
+        openSide({kind: "step", id: step.id});
+      };
+      c.append(b);
+    }
+    c.append(talk({kind: "step", id: step.id}, t("talkStep", n, unit())));
   }
   card.replaceChildren(c);
   refreshThreads();
@@ -1171,13 +1243,13 @@ function renderSide() {
     title.textContent = `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`;
     const turn = yourTurn(step);
     const parts = [];
-    if (turn) parts.push(el("span", "turn", t(turn)));
+    if (turn) parts.push(el("span", "turn", answered(step) ? t("sentWait") : t(turn, unit())));
     if (turn === "turnCommit") parts.push(commitBox(step));
     const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     parts.push(talkBox({step: step.id}, {
       placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
       quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
-      modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
+      modes: teach && (turn === "turnRestate" || plan.mode === "explain") ? ["teachback", "question", "propose"] : ["question", "propose"],
       mode: turn === "turnRestate" ? "teachback" : "question",
       phase: step.status + (step.confirmed ? "+" : ""),
     }));
@@ -1186,7 +1258,7 @@ function renderSide() {
     title.textContent = t("wholePlan");
     const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
-    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change", "propose"]}));
+    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
     p.replaceChildren(...parts);
   }
   refreshThreads();
@@ -1242,6 +1314,7 @@ function nodeBox(id, family = null) {
   head.append(el("div", "name", n.name), st);
   d.append(head);
   if (n.what) d.append(richEl("div", "what", n.what));
+  if (pr?.note) d.append(richEl("div", "pnote", "→ " + (pr.note.length > 60 ? pr.note.slice(0, 58) + "…" : pr.note)));
   d.onclick = () => selectNode(id);
   d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id); };
   return d;
@@ -1683,6 +1756,8 @@ function codeBox(id) {
       const node = plan.nodes[id] || {};
       const marked = parseLines(node.highlight) || (r.focus && r.focus === r.end ? new Set([r.focus]) : new Set());
       const ol = el("ol");
+      const indent = Math.min(...r.lines.filter((l) => l.trim()).map((l) => l.match(/^[ \t]*/)[0].length));
+      r.lines = r.lines.map((l) => l.slice(Number.isFinite(indent) ? indent : 0));
       r.lines.forEach((t, i) => {
         const n = r.from + i;
         const li = el("li", marked.has(n) ? "focus" : null, t);
@@ -1691,7 +1766,10 @@ function codeBox(id) {
       });
       const scroll = el("div", "cscroll");
       scroll.append(ol);
+      const fade = () => scroll.classList.toggle("more", scroll.scrollLeft + scroll.clientWidth < scroll.scrollWidth - 4);
+      scroll.addEventListener("scroll", fade, {passive: true});
       box.lastChild.replaceWith(scroll);
+      requestAnimationFrame(fade);
       if (nodeId === id && plan.nodes[id]?.file) document.querySelector("#panel .fileline")?.replaceWith(fileLine(plan.nodes[id].file, r.path));
     })
     .catch(() => box.lastChild.replaceWith(el("div", "meta err", t("codeFail"))));
@@ -1749,7 +1827,7 @@ function renderNodePanel(id) {
   if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", (plan.mode === "explain" ? t("inStages") : t("inSteps")) + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "change", "propose"]}));
+  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "propose"]}));
   p.replaceChildren(...parts);
   refreshThreads();
 }
@@ -1769,8 +1847,8 @@ document.getElementById("next").onclick = () => { stop(); step(1); };
 document.getElementById("play").onclick = () => {
   if (timer) return stop();
   document.getElementById("play").textContent = "❚❚";
-  step(1);
-  timer = setInterval(() => (curStep() === steps().at(-1) ? stop() : step(1)), 3200);
+  if (!curStep()) step(1);
+  timer = setInterval(() => (curStep() === steps().at(-1) ? stop() : step(1)), 6000);
 };
 
 // Redraws replace the chat boxes; put the cursor back where the user was typing.
@@ -1794,9 +1872,11 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // What the agent changed since the user last acknowledged; outlines stay until then.
 const changes = {nodes: new Set(), steps: new Set(), notes: []};
 
+// Progress (statuses, restated, suggested commits) is not a change of plan.
+const content = (x, skip) => x && Object.fromEntries(Object.entries(x).filter(([k]) => !skip.includes(k)));
 function noteChanges(prev) {
-  for (const id of Object.keys(plan.nodes)) if (!same(prev.nodes?.[id], plan.nodes[id])) changes.nodes.add(id);
-  for (const st of steps()) if (!same((prev.steps || []).find((x) => x.id === st.id), st)) changes.steps.add(st.id);
+  for (const id of Object.keys(plan.nodes)) if (!same(content(prev.nodes?.[id], ["status"]), content(plan.nodes[id], ["status"]))) changes.nodes.add(id);
+  for (const st of steps()) if (!same(content((prev.steps || []).find((x) => x.id === st.id), ["status", "confirmed", "commitMessage", "commits"]), content(st, ["status", "confirmed", "commitMessage", "commits"]))) changes.steps.add(st.id);
   const views = new Set((prev.views || []).map((v) => v.id));
   for (const v of plan.views) if (!views.has(v.id)) changes.notes.push(t("newView") + (v.title || v.id));
   if (!prev.approved && plan.approved) changes.notes.push(t("planApproved"));
@@ -1820,6 +1900,7 @@ function showChangeList() {
   }
   for (const id of changes.nodes) if (plan.nodes[id]) ul.append(el("li", null, t("chBox") + plan.nodes[id].name));
   for (const n of changes.notes) ul.append(el("li", null, n));
+  box.style.left = box.style.top = box.style.right = "";
   const ok = el("button", "primary", t("seen"));
   ok.onclick = () => {
     changes.nodes.clear();
@@ -1841,7 +1922,8 @@ function draw(p) {
   plan.nodes ||= {};
   plan.views = viewsOf(plan);
   setLang(langOf(plan));
-  document.title = plan.title ? `${plan.title} · planview` : "planview";
+  const mine = ((plan.mode ?? "build") === "build" && !plan.approved) || steps().some((s) => yourTurn(s));
+  document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · planview` : "planview");
   document.getElementById("title").textContent = plan.title || "planview";
   setGlossary(plan.glossary);
   renderLegend();
@@ -1862,6 +1944,7 @@ function draw(p) {
   refreshThreads();
   if (!rendered) {
     rendered = true;
+    if (served && !store.get("planview.tour")) setTimeout(startTour, 700);
     // Links may open a given step, picture or box: ?step=…&view=…&node=…
     if (plan.views.some((v) => v.id === params.get("view"))) {
       viewId = params.get("view");
@@ -1937,13 +2020,20 @@ async function load() {
   events.onerror = () => setConn(false);
   events.addEventListener("plan", fetchPlan);
   const on = (name, fn) => events.addEventListener(name, (e) => { fn(JSON.parse(e.data)); refreshThreads(); });
+  // Turn bars say "sent, waiting" as soon as you answer, and drop that once the agent replies.
+  const turns = () => keepFocus(() => {
+    renderStepCard();
+    if (side?.kind === "step") renderSide();
+  });
   on("feedback", (m) => {
     thread.push({...m, from: "user", delivered: false});
     freshReply = m.id;
+    if (m.step) turns();
   });
   on("reply", (m) => {
     thread.push(m);
     freshReply = m.id;
+    if (m.step) turns();
   });
   on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
   on("agent", (a) => (waiting = a.waiting));
@@ -1952,6 +2042,86 @@ window.__planview = {get plan() { return plan; }, selectStep, selectNode, render
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
+
+// A three-stop tour the first time someone opens planview in this browser; "?" shows it again.
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+function startTour() {
+  const x = plan?.mode === "explain" ? "x" : "";
+  const stops = [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]].filter(([sel]) => document.querySelector(sel));
+  if (!stops.length) return;
+  const tour = document.getElementById("tour");
+  let i = 0;
+  const end = () => {
+    tour.hidden = true;
+    scrollTo({top: 0, behavior: "smooth"});
+    store.set("planview.tour", "seen");
+    removeEventListener("resize", place);
+  };
+  function place() {
+    const [sel, key] = stops[i];
+    const target = document.querySelector(sel);
+    const r = target.getBoundingClientRect();
+    const pad = 6, spot = tour.querySelector(".spot"), card = tour.querySelector(".tcard");
+    const top = Math.max(8, r.top - pad), height = Math.min(r.height + pad * 2, innerHeight - top - 8);
+    Object.assign(spot.style, {left: r.left - pad + "px", top: top + "px", width: r.width + pad * 2 + "px", height: height + "px"});
+    document.getElementById("tourText").textContent = t(key);
+    document.getElementById("tourStep").textContent = t("tourStep", i + 1, stops.length);
+    document.getElementById("tourNext").textContent = t(i === stops.length - 1 ? "tourDone" : "tourNext");
+    document.getElementById("tourSkip").textContent = t("tourSkip");
+    document.getElementById("tourSkip").hidden = i === stops.length - 1;
+    const below = top + height + 12, h = card.offsetHeight || 140;
+    card.style.top = (below + h < innerHeight ? below : Math.max(8, top - h - 12)) + "px";
+    card.style.left = Math.max(16, Math.min(r.left, innerWidth - card.offsetWidth - 16)) + "px";
+  }
+  const show = () => {
+    document.querySelector(stops[i][0]).scrollIntoView({block: "nearest"});
+    requestAnimationFrame(place);
+  };
+  document.getElementById("tourNext").onclick = () => (++i < stops.length ? show() : end());
+  document.getElementById("tourSkip").onclick = end;
+  tour.hidden = false;
+  addEventListener("resize", place);
+  show();
+}
+
+document.getElementById("help").onclick = (e) => {
+  e.stopPropagation();
+  const box = document.getElementById("toast");
+  const ul = el("ul");
+  for (const [k, what] of t("helpKeys")) {
+    const li = el("li");
+    li.append(el("kbd", null, k), " " + what);
+    ul.append(li);
+  }
+  const again = el("button", "primary", t("replayTour"));
+  again.onclick = () => {
+    box.hidden = true;
+    startTour();
+  };
+  box.className = "toast helpcard";
+  box.replaceChildren(el("b", null, t("helpTitle")), ul, el("p", "meta", t("helpSettings")), again);
+  const r = document.getElementById("help").getBoundingClientRect();
+  box.style.top = r.bottom + 8 + "px";
+  box.style.left = Math.max(16, Math.min(r.left, innerWidth - 436)) + "px";
+  box.style.right = "auto";
+  box.onclick = (ev) => ev.stopPropagation();
+  box.hidden = false;
+};
+
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName || "") || !document.getElementById("tour").hidden) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    stop();
+    step(e.key === "ArrowLeft" ? -1 : 1);
+  }
+});
+
+const legendBox = document.getElementById("legendbox");
+legendBox.open = store.get("planview.legend") === "open";
+legendBox.ontoggle = () => store.set("planview.legend", legendBox.open ? "open" : "closed");
 renderBadges();
 load();
 </script>

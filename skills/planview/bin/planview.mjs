@@ -4,7 +4,7 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths} from "../lib/server.mjs";
-import {validate} from "../lib/schema.mjs";
+import {validate, lint} from "../lib/schema.mjs";
 
 const USAGE = `planview <command> [options]
 
@@ -83,6 +83,7 @@ async function check() {
     console.error(problems.map((t) => `- ${t}`).join("\n"));
     process.exit(1);
   }
+  for (const w of lint(plan)) console.log(`warning: ${w}`);
   console.log(`ok: ${plan.steps?.length || 0} steps, ${plan.views.length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
 }
 

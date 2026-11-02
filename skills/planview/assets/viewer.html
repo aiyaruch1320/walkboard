@@ -158,6 +158,8 @@ svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--
 .seq-head{margin-bottom:6px}
 .seq-head .node{flex:none;min-width:0}
 .seq-row{position:relative;min-height:46px}
+.seq-group{border:1.5px dashed var(--you-bd);border-radius:10px;margin:8px 0;padding:18px 0 2px;position:relative}
+.seq-group>.glabel{position:absolute;top:-10px;left:10px;font-size:12px;background:var(--bg);color:var(--you-tx);border:1px solid var(--you-bd);border-radius:6px;padding:0 8px}
 .seq-cell{position:relative;grid-row:1}
 .seq-cell::before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1.5px dashed var(--line)}
 .seq-msg{grid-row:1;align-self:center;z-index:1;cursor:pointer;border-radius:6px}
@@ -702,7 +704,17 @@ function renderSequence(v) {
   head.style.gridTemplateColumns = cols;
   actors.forEach((id) => head.append(nodeBox(id)));
   seq.append(head);
+  let group = null, groupName = null;
   (v.messages || []).forEach((m, i) => {
+    if ((m.group || null) !== groupName) {
+      groupName = m.group || null;
+      group = null;
+      if (groupName) {
+        group = el("div", "seq-group");
+        group.append(richEl("span", "glabel", groupName));
+        seq.append(group);
+      }
+    }
     const row = el("div", "seq-row");
     row.style.gridTemplateColumns = cols;
     actors.forEach((_, c) => {
@@ -731,7 +743,7 @@ function renderSequence(v) {
     msg.title = "คลิกเพื่อดู " + (plan.nodes[target]?.name || target);
     msg.onclick = () => selectNode(target, true);
     row.append(msg);
-    seq.append(row);
+    (group || seq).append(row);
   });
   scroll.append(seq);
   return scroll;

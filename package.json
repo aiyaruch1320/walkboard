@@ -1,6 +1,6 @@
 {
   "name": "planview",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Draw an agent's plan as an interactive diagram; clicks on it go back to the agent.",
   "type": "module",
   "bin": {

@@ -1,0 +1,274 @@
+{
+ "Kubernetes": {
+  "en": "Runs and looks after containerised programs across many machines",
+  "th": "ระบบที่รันและดูแลโปรแกรมใน container ให้อัตโนมัติบนหลายเครื่อง"
+ },
+ "cluster": {
+  "en": "The group of machines Kubernetes manages as one",
+  "th": "กลุ่มเครื่องที่ Kubernetes ดูแลรวมกันเป็นที่เดียว"
+ },
+ "namespace": {
+  "en": "A separate room in a cluster, used to keep teams or systems apart",
+  "th": "ห้องแยกใน cluster ใช้แบ่งของแต่ละทีมหรือแต่ละระบบ"
+ },
+ "pod": {
+  "en": "The smallest thing Kubernetes runs: one or more containers",
+  "th": "หน่วยที่เล็กที่สุดที่ Kubernetes รัน มี container หนึ่งตัวขึ้นไป"
+ },
+ "container": {
+  "en": "A program packed with everything it needs, so it runs the same anywhere",
+  "th": "โปรแกรมที่ห่อพร้อมของที่ต้องใช้ ให้รันที่ไหนก็ได้ผลเหมือนกัน"
+ },
+ "image": {
+  "en": "A built template for a container, kept in a registry",
+  "th": "แม่แบบของ container ที่ build ไว้แล้ว เก็บใน registry"
+ },
+ "registry": {
+  "en": "Where images are stored for the cluster to pull",
+  "th": "ที่เก็บ image ให้ cluster ดึงไปใช้"
+ },
+ "Deployment": {
+  "en": "Tells Kubernetes to keep a program running with a set number of copies",
+  "th": "สั่ง Kubernetes ให้รันโปรแกรมค้างไว้ตามจำนวนที่ตั้ง ถ้าตายจะสร้างใหม่"
+ },
+ "Service": {
+  "en": "A stable name and address in the cluster for reaching pods",
+  "th": "ชื่อและที่อยู่คงที่ใน cluster สำหรับเรียกไปยัง pod"
+ },
+ "CronJob": {
+  "en": "A job Kubernetes starts by itself on a schedule",
+  "th": "งานที่ Kubernetes ปลุกขึ้นมารันเองตามเวลาที่ตั้งไว้"
+ },
+ "Job": {
+  "en": "Work that runs once until it finishes",
+  "th": "งานที่รันครั้งเดียวจนจบ"
+ },
+ "ConfigMap": {
+  "en": "Non-secret settings passed to a program as variables or files",
+  "th": "ค่าตั้งที่ไม่ลับ ส่งเข้าโปรแกรมเป็นตัวแปรหรือไฟล์"
+ },
+ "Secret": {
+  "en": "Secret values such as passwords, passed in like a ConfigMap",
+  "th": "ค่าลับ เช่น รหัสผ่าน ส่งเข้าโปรแกรมแบบเดียวกับ ConfigMap"
+ },
+ "NetworkPolicy": {
+  "en": "Firewall rules saying which pods may talk to what",
+  "th": "กฎไฟร์วอลล์ของ pod ว่าคุยกับใครได้บ้าง"
+ },
+ "Ingress": {
+  "en": "The door that lets traffic from outside reach a Service over HTTP",
+  "th": "ประตูให้คนนอก cluster เข้ามาถึง Service ผ่าน HTTP"
+ },
+ "egress": {
+  "en": "Outgoing connections from a pod",
+  "th": "การเชื่อมต่อขาออกจาก pod"
+ },
+ "init container": {
+  "en": "A container that runs to completion before the main one starts",
+  "th": "container ที่รันให้จบก่อน container หลักเริ่ม"
+ },
+ "initContainer": {
+  "en": "A container that runs to completion before the main one starts",
+  "th": "container ที่รันให้จบก่อน container หลักเริ่ม"
+ },
+ "probe": {
+  "en": "Kubernetes regularly asking a program whether it is still healthy",
+  "th": "การที่ Kubernetes ถามโปรแกรมเป็นระยะว่ายังทำงานปกติไหม"
+ },
+ "manifest": {
+  "en": "A YAML file telling Kubernetes what should exist",
+  "th": "ไฟล์ YAML ที่บอก Kubernetes ว่าต้องมีอะไรบ้าง"
+ },
+ "kustomize": {
+  "en": "Combines base manifests with the parts that differ per environment",
+  "th": "เครื่องมือรวม manifest พื้นฐานกับส่วนที่ต่างกันในแต่ละสภาพแวดล้อม"
+ },
+ "overlay": {
+  "en": "The changes on top of base manifests for one environment, e.g. staging",
+  "th": "ส่วนที่ทับ manifest พื้นฐานสำหรับสภาพแวดล้อมหนึ่ง เช่น staging"
+ },
+ "Helm": {
+  "en": "A package manager for Kubernetes that renders manifests from templates",
+  "th": "ตัวจัดการแพ็กเกจของ Kubernetes ใช้แม่แบบสร้าง manifest"
+ },
+ "ArgoCD": {
+  "en": "Reads manifests from Git and makes the cluster match them",
+  "th": "เครื่องมือที่อ่าน manifest จาก Git แล้วทำให้ cluster ตรงกัน"
+ },
+ "GitOps": {
+  "en": "Git is the source of truth; the cluster must match what is in Git",
+  "th": "วิธีที่ให้ Git เป็นแหล่งความจริง ของใน cluster ต้องตรงกับใน Git"
+ },
+ "CI": {
+  "en": "Builds and tests code automatically on every push",
+  "th": "ระบบที่ build และทดสอบโค้ดให้อัตโนมัติทุกครั้งที่ push"
+ },
+ "CD": {
+  "en": "Releases code that passed CI to environments automatically",
+  "th": "ระบบที่นำโค้ดที่ผ่านแล้วขึ้นสภาพแวดล้อมต่างๆ ให้อัตโนมัติ"
+ },
+ "pipeline": {
+  "en": "A sequence of automated CI jobs, e.g. build, then test, then deploy",
+  "th": "ลำดับงานอัตโนมัติใน CI เช่น build แล้ว test แล้ว deploy"
+ },
+ "commit": {
+  "en": "One recorded set of changes in Git",
+  "th": "การบันทึกการเปลี่ยนแปลงหนึ่งชุดลงใน Git"
+ },
+ "branch": {
+  "en": "A separate line of work in Git that does not affect the main line",
+  "th": "สายงานแยกใน Git ที่แก้ได้โดยไม่กระทบสายหลัก"
+ },
+ "merge request": {
+  "en": "A request to merge a branch into the main line, with review",
+  "th": "คำขอรวม branch เข้าสายหลัก พร้อมให้คนอื่นรีวิว"
+ },
+ "pull request": {
+  "en": "A request to merge a branch into the main line, with review",
+  "th": "คำขอรวม branch เข้าสายหลัก พร้อมให้คนอื่นรีวิว"
+ },
+ "staging": {
+  "en": "The test environment closest to production",
+  "th": "สภาพแวดล้อมทดสอบที่คล้ายของจริงที่สุดก่อนขึ้น production"
+ },
+ "production": {
+  "en": "The real system that users use",
+  "th": "ระบบจริงที่ผู้ใช้ใช้งาน"
+ },
+ "API": {
+  "en": "The way one program calls another",
+  "th": "ช่องทางที่โปรแกรมหนึ่งเรียกใช้อีกโปรแกรมหนึ่ง"
+ },
+ "endpoint": {
+  "en": "One address of an API, e.g. POST /orders",
+  "th": "ที่อยู่หนึ่งของ API เช่น POST /orders"
+ },
+ "HTTP": {
+  "en": "The standard protocol web pages and APIs talk over",
+  "th": "ภาษามาตรฐานที่เว็บและ API ใช้คุยกัน"
+ },
+ "JSON": {
+  "en": "A text format for structured data",
+  "th": "รูปแบบข้อความสำหรับส่งข้อมูลเป็นโครงสร้าง"
+ },
+ "YAML": {
+  "en": "A readable settings format that uses indentation for structure",
+  "th": "รูปแบบไฟล์ตั้งค่าที่อ่านง่าย ใช้ย่อหน้าบอกโครงสร้าง"
+ },
+ "401": {
+  "en": "HTTP status: not authenticated, or the token expired",
+  "th": "รหัสตอบกลับ HTTP: ยังไม่ได้ยืนยันตัวตน หรือ token หมดอายุ"
+ },
+ "403": {
+  "en": "HTTP status: known caller, but not allowed",
+  "th": "รหัสตอบกลับ HTTP: รู้ว่าเป็นใคร แต่ไม่มีสิทธิ์"
+ },
+ "404": {
+  "en": "HTTP status: not found",
+  "th": "รหัสตอบกลับ HTTP: หาไม่เจอ"
+ },
+ "timeout": {
+  "en": "Giving up after waiting too long; the other side may or may not have finished",
+  "th": "รอนานเกินที่ตั้งไว้แล้วเลิกรอ ไม่รู้ว่าอีกฝั่งทำสำเร็จหรือไม่"
+ },
+ "retry": {
+  "en": "Trying again after a failure",
+  "th": "ลองใหม่เมื่อครั้งก่อนล้ม"
+ },
+ "idempotency key": {
+  "en": "A request id that makes repeated sends take effect only once",
+  "th": "รหัสประจำคำขอ ส่งซ้ำกี่ครั้งก็ได้ผลครั้งเดียว"
+ },
+ "cache": {
+  "en": "Temporary storage of results so they need not be computed or fetched again",
+  "th": "ที่เก็บผลลัพธ์ชั่วคราว เพื่อไม่ต้องคำนวณหรือดึงซ้ำ"
+ },
+ "Redis": {
+  "en": "A fast in-memory database, often used as a cache or queue",
+  "th": "ฐานข้อมูลในหน่วยความจำ เร็ว นิยมใช้เป็น cache หรือคิว"
+ },
+ "PostgreSQL": {
+  "en": "A popular relational (table) database",
+  "th": "ฐานข้อมูลเชิงสัมพันธ์ (ตาราง) ที่นิยมมาก"
+ },
+ "BigQuery": {
+  "en": "Google's data warehouse for querying large data",
+  "th": "คลังข้อมูลของ Google สำหรับ query ข้อมูลจำนวนมาก"
+ },
+ "migration": {
+  "en": "A script that changes the database structure one step at a time, in order",
+  "th": "สคริปต์เปลี่ยนโครงสร้างฐานข้อมูลทีละขั้น เรียงตามลำดับ"
+ },
+ "schema": {
+  "en": "The structure of data, such as tables and columns",
+  "th": "โครงสร้างของข้อมูล เช่น ตารางและคอลัมน์"
+ },
+ "transaction": {
+  "en": "Database commands that all succeed, or none take effect",
+  "th": "ชุดคำสั่งฐานข้อมูลที่สำเร็จทั้งหมด หรือไม่เกิดอะไรเลย"
+ },
+ "queue": {
+  "en": "Work waiting to be done in order",
+  "th": "คิวงานที่รอทำตามลำดับ"
+ },
+ "webhook": {
+  "en": "One system calling another system's URL when something happens",
+  "th": "การที่ระบบหนึ่งเรียก URL ของอีกระบบเมื่อมีเหตุการณ์"
+ },
+ "JWT": {
+  "en": "A token signed by the server saying who you are and when it expires",
+  "th": "ข้อความที่เซิร์ฟเวอร์เซ็นรับรองไว้ บอกว่าเป็นใครและหมดอายุเมื่อไร"
+ },
+ "OAuth": {
+  "en": "A standard for letting one system act for a user without their password",
+  "th": "มาตรฐานให้ระบบหนึ่งเข้าถึงข้อมูลแทนผู้ใช้ โดยไม่รู้รหัสผ่าน"
+ },
+ "token": {
+  "en": "A code sent with each request instead of logging in again",
+  "th": "รหัสที่ใช้แทนการยืนยันตัวตนในแต่ละคำขอ"
+ },
+ "hash": {
+  "en": "A one-way transformation of data that cannot be reversed",
+  "th": "ผลจากการแปลงข้อมูลทางเดียว ย้อนกลับไม่ได้"
+ },
+ "bcrypt": {
+  "en": "A deliberately slow password hash, so passwords are hard to guess",
+  "th": "วิธีทำ hash รหัสผ่านที่ตั้งใจให้ช้า เพื่อเดารหัสได้ยาก"
+ },
+ "TLS": {
+  "en": "Encryption of a connection (the s in https)",
+  "th": "การเข้ารหัสการเชื่อมต่อ (ตัว s ใน https)"
+ },
+ "DNS": {
+  "en": "Turns host names into IP addresses",
+  "th": "ระบบแปลงชื่อเครื่องเป็น IP"
+ },
+ "middleware": {
+  "en": "Code that runs before the handler, e.g. checks a token or writes a log",
+  "th": "โค้ดที่รันก่อนถึง handler เช่น ตรวจ token หรือเขียน log"
+ },
+ "handler": {
+  "en": "The function that answers requests to one endpoint",
+  "th": "ฟังก์ชันที่ตอบคำขอของ endpoint หนึ่ง"
+ },
+ "batch": {
+  "en": "Working on a group of items at a time instead of one by one",
+  "th": "การทำงานทีละชุดแทนทีละรายการ"
+ },
+ "environment variable": {
+  "en": "A setting passed to a program when it starts",
+  "th": "ค่าตั้งที่ส่งให้โปรแกรมตอนเริ่มรัน"
+ },
+ "suspend": {
+  "en": "Paused: does not run until turned back on",
+  "th": "สั่งพักไว้ ยังไม่ให้รันจนกว่าจะเปิด"
+ },
+ "SDK": {
+  "en": "A ready-made toolkit for calling a service from code",
+  "th": "ชุดเครื่องมือสำเร็จรูปสำหรับเรียกใช้บริการหนึ่งจากโค้ด"
+ },
+ "CLI": {
+  "en": "A program used by typing commands",
+  "th": "โปรแกรมที่ใช้ผ่านการพิมพ์คำสั่ง"
+ }
+}

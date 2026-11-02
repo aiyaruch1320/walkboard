@@ -64,7 +64,7 @@ Answer from the code, reading more when needed; prefer new boxes or stages over 
 
 ## Keep it cheap
 
-- Write `plan.json` once; then `PV set` or a small Edit. Never rewrite or re-read the whole file to change a status.
+- Write `plan.json` once, compact (no indentation: about a third fewer tokens); then `PV set` or a small Edit. Never rewrite or re-read the whole file to change a status.
 - Leave out defaults (`views` for a plain flow, `status`, empty fields, common terms).
 - Point at code with `file:line`; replies stay short; do not repeat in chat what the page shows.
 

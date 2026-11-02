@@ -12,6 +12,12 @@ test("one call updates the plan, a step and a node", () => {
   assert.equal(p.goal, "ship it");
 });
 
+test("JSON values set lists such as a step's commits", () => {
+  const p = applySet(plan(), parseSet(["step:a", 'commits=[{"message":"refactor: x","files":["a.go"]},{"message":"feat: y"}]']));
+  assert.deepEqual(p.steps[0].commits, [{message: "refactor: x", files: ["a.go"]}, {message: "feat: y"}]);
+  assert.throws(() => applySet(plan(), parseSet(["step:a", "commits=[oops"])), /not valid JSON/);
+});
+
 test("unknown targets and prototype keys are refused", () => {
   assert.throws(() => applySet(plan(), parseSet(["step:nope", "status=done"])), /no step:nope/);
   assert.throws(() => applySet(plan(), parseSet(["node:constructor", "status=done"])), /no node:constructor/);

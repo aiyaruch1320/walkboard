@@ -15,7 +15,17 @@ export function parseSet(words) {
   return ops;
 }
 
-const coerce = (v) => (v === "true" ? true : v === "false" ? false : v === "null" ? null : /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v);
+// A value starting with [ or { is JSON, e.g. commits=[{"message":"feat: x","files":["a.go"]}].
+function coerce(v) {
+  if (/^[[{]/.test(v)) {
+    try {
+      return JSON.parse(v);
+    } catch {
+      throw new Error(`not valid JSON: ${v.slice(0, 60)}`);
+    }
+  }
+  return v === "true" ? true : v === "false" ? false : v === "null" ? null : /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v;
+}
 
 export function applySet(plan, ops) {
   for (const {target, key, value} of ops) {

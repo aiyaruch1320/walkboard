@@ -125,6 +125,8 @@ export function validate(p) {
   if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth must be "overview" or "detail"');
   if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" matches no step`);
   if (mode === "design") out.push(...checkDesign(p));
+  if (p.constraints != null && (!Array.isArray(p.constraints) || p.constraints.some((c) => !isObj(c) || !c.id || typeof c.text !== "string")))
+    out.push('constraints must be [{"id": "…", "text": "…", "confirmed": false}]');
   if (p.links != null && (!Array.isArray(p.links) || p.links.some((l) => !isObj(l) || typeof l.url !== "string" || !/^https?:\/\//.test(l.url))))
     out.push('links must be [{"title": "…", "url": "http://…"}]');
   if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary must be {"term": "explanation"}');
@@ -195,7 +197,6 @@ function checkDesign(p) {
   }
   for (const c of list(p.criteria)) if (!isObj(c) || !c.id || !c.label || (c.weight != null && !(Number.isInteger(c.weight) && c.weight >= 0 && c.weight <= 3))) out.push("every criterion needs an id, a label and a weight from 0 to 3");
   for (const s of list(p.sources)) if (!isObj(s) || !s.id || typeof s.url !== "string" || !/^https?:\/\//.test(s.url)) out.push("every source needs an id and an http(s) url");
-  for (const c of list(p.constraints)) if (!isObj(c) || !c.id || typeof c.text !== "string") out.push("every constraint needs an id and text");
   if (p.scores != null && !isObj(p.scores)) out.push("scores must be {option: {criterion: {rating, note, sources}}}");
   for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) {
     if (!ids(p.options).includes(o)) out.push(`scores: no option "${o}"`);

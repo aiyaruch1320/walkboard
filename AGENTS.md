@@ -7,7 +7,7 @@ Notes for AI agents (and people) changing this repository. To *use* planview, re
 | Path | What it is |
 |---|---|
 | `skills/planview/SKILL.md` | Instructions the agent follows when the skill runs. Keep it short: it is loaded every time |
-| `skills/planview/references/` | `plan.json` and view reference, read on demand |
+| `skills/planview/references/` | Read on demand: `plan.json` schema, views, and `messages.md` for the rarer page messages |
 | `skills/planview/bin/planview.mjs` | CLI: `check`, `set`, `open`, `poll`, `reply`, `status`, `stop`, `serve` |
 | `skills/planview/lib/server.mjs` | Local server: token, queue on disk, long poll, SSE, code excerpts |
 | `skills/planview/lib/schema.mjs` | Validation shared by the CLI and the page (runs in Node and the browser: no Node imports) |

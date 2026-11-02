@@ -67,12 +67,15 @@ The page does the explaining, so the agent spends tokens on content once and ver
 
 | Where tokens go | Hand-written explainer | planview |
 |---|---|---|
-| A rich plan with four pictures | ~38 KB of HTML and SVG, rewritten on every change | ~12.7 KB `plan.json` written once; a simple plan is ~0.5 KB |
-| Moving a step forward | rewrite the page | `planview set … step:x status=review` ≈ 130 bytes (~98× less) |
-| Code in explain mode | paste it | `file:line`; the server reads the excerpt |
-| Common terms | explain each time | ~70 ship with planview |
-| Each message from the page | — | one compact line, ~110 bytes |
-| Instructions loaded with the skill | — | SKILL.md ~8 KB (7% shorter than 0.3) |
+| A rich plan with four pictures | 26–43 KB of HTML and SVG, rewritten on every change | ~7 KB `plan.json` (compact JSON) written once; a simple plan is ~0.5 KB |
+| Moving a step forward | rewrite or edit the page | `planview set … step:x status=review` ≈ 90 bytes |
+| Code in explain mode | paste it | `file:line` + `highlight`; the server reads the excerpt |
+| Common terms | explain each time | ~70 ship with planview, in English and Thai |
+| Each message from the page | — | one compact line, ~100–150 bytes |
+| Switching restating or commits on the page | — | nothing: the agent is not woken; it reads the setting with its next message or step |
+| Instructions loaded with the skill | — | SKILL.md ~6.7 KB; rarer cases (proposals, suggested commits) in a 2.3 KB reference read only when needed |
+
+Every message from the page wakes the agent once, which re-reads the conversation (mostly from cache). That is why "Got it" was removed and settings never wake it: only clicks that need an answer cost a turn.
 
 ## FAQ
 

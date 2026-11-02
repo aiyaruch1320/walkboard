@@ -598,7 +598,11 @@ function renderView() {
   const tabs = document.getElementById("tabs");
   tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
     const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
-    b.onclick = () => { viewId = x.id; renderView(); };
+    b.onclick = () => {
+      viewId = x.id;
+      renderView();
+      if (nodeId && !document.querySelector(`#view [data-id="${CSS.escape(nodeId)}"]`)) clearPanel();
+    };
     return b;
   }) : []));
   const kind = VIEWS[v.kind];
@@ -638,6 +642,12 @@ function selectStep(id) {
   highlight();
   const step = curStep();
   if (step?.nodes?.length) selectNode(step.nodes[0]);
+}
+
+function clearPanel(text = "กดกล่องในภาพเพื่อดูรายละเอียด") {
+  nodeId = null;
+  highlight();
+  document.getElementById("panel").replaceChildren(el("h3", null, text));
 }
 
 function selectNode(id) {
@@ -726,8 +736,10 @@ function draw(p) {
     rendered = true;
     const cur = steps().find((s) => s.status === "review" || s.status === "doing");
     if (cur) selectStep(cur.id);
-  } else if (nodeId && plan.nodes[nodeId]) {
+  } else if (nodeId && Object.hasOwn(plan.nodes, nodeId)) {
     selectNode(nodeId);
+  } else if (nodeId) {
+    clearPanel("กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว");
   }
 }
 let rendered = false;
@@ -768,6 +780,7 @@ async function load() {
   await fetchPlan();
   const events = new EventSource("/api/events?token=" + encodeURIComponent(token));
   events.onopen = async () => {
+    await fetchPlan();
     const r = await fetch("/api/thread?token=" + encodeURIComponent(token));
     if (r.ok) ({items: thread, waiting} = await r.json());
     thread.sort((a, b) => a.at.localeCompare(b.at));

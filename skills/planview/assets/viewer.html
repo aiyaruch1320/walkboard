@@ -52,6 +52,11 @@ h1{font-size:22px;font-weight:500;margin:0}
 .bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:var(--bg);box-shadow:0 1px 0 var(--line)}
 .bar button.primary{font-weight:500}
 .bar #barExtra{display:contents}
+.brand{display:inline-flex;align-items:center;gap:7px;margin-right:auto;font-size:14px;letter-spacing:.2px}
+.brand b{font-weight:600}
+.foot{display:flex;justify-content:flex-end;margin-top:28px;padding-top:12px;border-top:1px solid var(--line);font-size:12px}
+.foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
+.foot a:hover{color:var(--text);text-decoration:underline}
 .bar button{font-size:12px;padding:2px 10px;border-radius:999px}
 .bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
 .toast{position:fixed;right:16px;top:52px;max-width:min(420px,calc(100vw - 32px));z-index:21;background:var(--card);color:var(--text);border:1.5px solid var(--you-bd);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.15)}
@@ -61,7 +66,42 @@ h1{font-size:22px;font-weight:500;margin:0}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw{width:16px;height:16px;border-radius:5px;border:1.5px solid;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-style:normal;line-height:1}
-.stepbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.stepnav{display:flex;gap:10px 16px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.stepbar{display:flex;align-items:center;flex:1 1 480px;min-width:0;overflow-x:auto;padding:5px 6px 7px;scrollbar-width:thin}
+.stepbar .chip{flex:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stepbar .chip.sel{max-width:340px}
+/* Fades show that more steps are off to the side. */
+.stepbar.fr{-webkit-mask-image:linear-gradient(to right,#000 88%,transparent);mask-image:linear-gradient(to right,#000 88%,transparent)}
+.stepbar.fl{-webkit-mask-image:linear-gradient(to left,#000 88%,transparent);mask-image:linear-gradient(to left,#000 88%,transparent)}
+.stepbar.fl.fr{-webkit-mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(to right,transparent,#000 12%,#000 88%,transparent)}
+.stepbar .link{flex:none;width:16px;border-top:1.5px solid var(--line)}
+.stepbar .link.done{border-color:var(--done-bd)}
+/* The side panel slides in; the page column narrows with it. */
+:root{--side-w:clamp(340px,32vw,440px)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 0px;transition:grid-template-columns .3s ease}
+body.side-open .layout{grid-template-columns:minmax(0,1fr) var(--side-w)}
+.layout>main{min-width:0;width:100%}
+.side{background:var(--card);color:var(--text);position:sticky;top:0;height:100vh;overflow:hidden;visibility:hidden;transition:visibility 0s .3s}
+body.side-open .side{visibility:visible;transition-delay:0s;border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.08)}
+.side-inner{width:var(--side-w);height:100%;overflow:auto;opacity:0;transform:translateX(28px);transition:transform .3s ease,opacity .25s ease}
+body.side-open .side-inner{opacity:1;transform:none}
+.side-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.side-head b{flex:1;font-weight:500;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-head button{padding:2px 9px}
+.side .panel{border:0;border-radius:0;margin:0;padding:14px 16px 24px;background:transparent}
+.side .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:8px;background:var(--you-bd);color:var(--card);font-weight:500}
+@media (max-width:1099px){
+  .layout{display:block}
+  .side{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;z-index:25;border-top:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.3);transform:translateY(100%);transition:transform .3s ease,visibility 0s .3s}
+  body.side-open .side{transform:none;border-left:0;transition:transform .3s ease}
+  .side-inner{width:auto;height:auto;max-height:80vh;opacity:1;transform:none}
+}
+@media (prefers-reduced-motion:reduce){.layout,.side,.side-inner{transition:none!important}}
+.turnbtn{display:flex;width:100%;align-items:center;gap:8px;margin-top:10px;text-align:left;background:var(--you-bg);color:var(--you-tx);border:1.5px solid var(--you-bd);border-radius:9px;padding:7px 12px;font-weight:500}
+.turnbtn::after{content:"→";margin-left:auto}
+.talklink{margin-top:10px;font-size:12.5px;padding:3px 10px;border-radius:999px;color:var(--muted)}
+.controls .talklink{margin:0 6px 0 0;font-size:12px;color:var(--text)}
+#stepcard:empty{display:none}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
 @media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
@@ -129,6 +169,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 #view .dim{opacity:.4;filter:saturate(.3)}
 #view .node.todo.dim{opacity:.35}
 #view .node.todo.instep{opacity:.9}
+#view .node.active,#view .stage.active{opacity:1;filter:none}
 .node.active{transform:translateY(-3px);opacity:1;outline:2px solid var(--text);outline-offset:2px}
 .gap{flex:0 0 12px}
 .arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
@@ -138,7 +179,6 @@ h1{font-size:22px;font-weight:500;margin:0}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--new-bd) 12%,transparent)}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:6px}
 .panel h3{margin:0 0 4px;font-size:16px;font-weight:500;display:flex;align-items:center;gap:10px}
-.panel .back{margin-left:auto;font-size:12px;padding:1px 10px;font-weight:400}
 .panel .meta{font-size:13px;color:var(--muted);margin-bottom:12px;word-break:break-all}
 .io{display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center}
 @media (max-width:720px){.io{grid-template-columns:1fr}.io .mid{transform:rotate(90deg)}}
@@ -157,7 +197,8 @@ details.code summary{cursor:pointer;font-size:13px;color:var(--muted)}
 .code li::before{content:attr(data-n);display:inline-block;min-width:3.5ch;margin-right:10px;color:var(--muted);text-align:right}
 .code li.focus{background:color-mix(in srgb,var(--new-bd) 25%,transparent)}
 .insteps{margin:10px 0 0;font-size:12px;color:var(--muted)}
-.controls{display:flex;gap:8px;align-items:center;margin:0 0 14px;flex-wrap:wrap}
+.controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.controls button{font-size:12px;padding:3px 10px}
 button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
 button:hover{border-color:var(--muted)}
 button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
@@ -208,6 +249,9 @@ button:disabled{opacity:.5;cursor:wait}
 .msg.user{align-self:flex-end;background:var(--you-bg);color:var(--you-tx)}
 .msg.agent{align-self:flex-start;background:var(--code);color:var(--text);border:1px solid var(--line)}
 .msg .who{display:block;font-size:11px;opacity:.75}
+.msg pre.mcode{margin:6px 0;white-space:pre;overflow-x:auto;font-size:12px;background:var(--bg);border:1px solid var(--line)}
+.msg code.mcode{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border-radius:4px;padding:0 4px}
+.side .panel>.talk:first-child{border-top:0;margin-top:0;padding-top:0}
 .count{align-self:flex-end;margin-top:6px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
 .plabel .count,.stage .count{position:static;margin-left:6px}
 .count.unread,.badges button.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
@@ -272,6 +316,7 @@ svg.links path{fill:none;stroke-width:1.8}
 .stage th,.stage td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top}
 .stage th{white-space:nowrap}
 .stage td{overflow-wrap:anywhere;min-width:6ch}
+.stage td.empty{color:var(--muted);text-align:center;font-style:italic}
 .stage th{background:var(--code);font-weight:500}
 .stage .snote{font-size:12px;color:var(--muted);margin:8px 0 0;padding-left:16px}
 .term{border-bottom:1.5px dotted currentColor;cursor:help}
@@ -290,8 +335,10 @@ details.glossary dd{margin:0;color:var(--muted)}
 </style>
 </head>
 <body>
+<div class="layout">
 <main>
   <div class="bar" id="bar">
+    <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>planview</b></span>
     <span class="conn off" id="conn"></span>
     <span id="barExtra"></span>
   </div>
@@ -304,18 +351,28 @@ details.glossary dd{margin:0;color:var(--muted)}
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
   <details class="glossary" id="glossary" hidden></details>
-  <div class="stepbar" id="stepbar"></div>
-  <div class="controls">
-    <button id="prev"></button>
-    <button id="play"></button>
-    <button id="next"></button>
+  <div class="stepnav">
+    <div class="stepbar" id="stepbar"></div>
+    <div class="controls">
+      <button id="planTalk" class="talklink"></button>
+      <button id="prev"></button>
+      <button id="play"></button>
+      <button id="next"></button>
+    </div>
   </div>
   <div id="stepcard"></div>
   <div class="tabs" id="tabs"></div>
   <div class="legend" id="legend"></div>
   <div id="view"></div>
-  <div class="panel" id="panel"><h3></h3></div>
+  <footer class="foot"><a href="https://github.com/aiyaruch1320/planview" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/planview</a></footer>
 </main>
+<aside class="side" id="side" inert>
+  <div class="side-inner">
+    <div class="side-head"><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
+    <div class="panel" id="panel"></div>
+  </div>
+</aside>
+</div>
 <script type="module">
 const params = new URLSearchParams(location.search);
 const token = params.get("token");
@@ -351,14 +408,14 @@ const STRINGS = {
     commit: "Commit", committed: "I committed, go on", q_committed: "I committed it myself. Go on to the next step", commitLabel: "Suggested commit message", commitsLabel: (n) => `Suggested commits (${n}), made in this order`, commitN: (i, n) => `Commit ${i} of ${n}`, filesN: (n) => `${n} ${n === 1 ? "file" : "files"} in this commit`,
     commitNow: "Commit and go on", noCommitMsg: "The agent has not suggested a message yet", approveSent: "Approval sent", quickLabel: "Tell the agent:", quickTip: "Sends this to the agent right away",
     change_explain: "Correct the picture", send_change_explain: "Send correction", ph_change_explain: "Say what is wrong or missing in this picture…", askStage: "Ask about this stage…",
-    backUp: "↑ Picture", viaLegend: "← :port on a box: what the link uses", talkLegend: "💬 a conversation on the box", termsPage: (n) => `📖 Terms on this page (${n})`, approved: "✓ Plan approved", awaiting: "Waiting for approval",
+    viaLegend: "← :port on a box: what the link uses", talkLegend: "💬 a conversation on the box", termsPage: (n) => `📖 Terms on this page (${n})`, approved: "✓ Plan approved", awaiting: "Waiting for approval",
     newReplies: (n) => `💬 ${n} new from the agent`, changedN: (n) => `✎ Plan changed in ${n} ${n === 1 ? "place" : "places"}`,
     wholePlan: "The whole plan", askPlan: "Ask about the whole plan…", turnRestate: "Your turn: restate this step", turnCheck: "Your turn: check this step",
     restated: "✓ Restated", doneWhen: "Done when: ", understoodWhen: "Understood when: ", askStep: "Ask about this step…",
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", pickBox: "Click a box in the picture to see its details", noNode: (id) => `No box "${id}"`,
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", talkStep: (n) => (n ? `💬 Talk about this step (${n})` : "💬 Ask about this step"), talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"), openTurn: "Open", noNode: (id) => `No box "${id}"`,
     in: "In", out: "Out", inSteps: "In steps: ", inStages: "In stages: ", askBox: (n) => `Ask about "${n}"…`,
     newView: "New picture: ", planApproved: "Plan approved", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
     seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxRemoved: "The box you had open was removed from the plan",
@@ -389,14 +446,14 @@ const STRINGS = {
     commit: "commit ให้", committed: "commit เองแล้ว ไปต่อ", q_committed: "commit เองแล้ว ไปขั้นถัดไปได้", commitLabel: "ข้อความ commit ที่แนะนำ", commitsLabel: (n) => `commit ที่แนะนำ (${n}) ทำตามลำดับนี้`, commitN: (i, n) => `commit ที่ ${i} จาก ${n}`, filesN: (n) => `ไฟล์ใน commit นี้ (${n})`,
     commitNow: "commit ให้เลย แล้วไปต่อ", noCommitMsg: "agent ยังไม่ได้เสนอข้อความ", approveSent: "ส่งการอนุมัติแล้ว", quickLabel: "บอก agent:", quickTip: "ส่งถึง agent ทันที",
     change_explain: "ขอแก้ภาพ", send_change_explain: "ส่งคำขอแก้", ph_change_explain: "บอกว่าภาพนี้ผิดหรือขาดอะไร…", askStage: "ถามเกี่ยวกับช่วงนี้…",
-    backUp: "↑ ภาพ", viaLegend: "← :port บนกล่อง: สิ่งที่เส้นนั้นใช้", talkLegend: "💬 มีการคุยบนกล่องนี้", termsPage: (n) => `📖 คำศัพท์ในหน้านี้ (${n})`, approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
+    viaLegend: "← :port บนกล่อง: สิ่งที่เส้นนั้นใช้", talkLegend: "💬 มีการคุยบนกล่องนี้", termsPage: (n) => `📖 คำศัพท์ในหน้านี้ (${n})`, approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
     newReplies: (n) => `💬 ข้อความใหม่จาก agent ${n}`, changedN: (n) => `✎ แผนเปลี่ยน ${n} จุด`,
     wholePlan: "คุยเรื่องทั้งแผน", askPlan: "ถามเกี่ยวกับแผนทั้งหมด…", turnRestate: "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้", turnCheck: "ถึงตาคุณ: ตรวจขั้นนี้",
     restated: "✓ ทวนผ่านแล้ว", doneWhen: "เสร็จเมื่อ: ", understoodWhen: "เข้าใจเมื่อ: ", askStep: "ถามเกี่ยวกับขั้นนี้…",
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", pickBox: "กดกล่องในภาพเพื่อดูรายละเอียด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", talkStep: (n) => (n ? `💬 คุยเรื่องขั้นนี้ (${n})` : "💬 ถามเรื่องขั้นนี้"), talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"), openTurn: "เปิด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
     in: "รับเข้า", out: "ได้ออกมา", inSteps: "อยู่ในขั้น: ", inStages: "อยู่ในช่วง: ", askBox: (n) => `ถามเกี่ยวกับ "${n}"…`,
     newView: "ภาพใหม่: ", planApproved: "อนุมัติแผนแล้ว", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
     seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxRemoved: "กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว",
@@ -414,10 +471,14 @@ function setLang(code) {
   lang = STRINGS[code] ? code : "en";
   document.documentElement.lang = lang;
   document.getElementById("banner").textContent = t("banner");
-  document.getElementById("prev").textContent = t("prev", unit());
-  document.getElementById("next").textContent = t("next", unit());
-  if (!timer) document.getElementById("play").textContent = t("play", unit());
-  if (!nodeId) document.querySelector("#panel > h3:only-child")?.replaceChildren(t("pickBox"));
+  for (const [id, label] of [["prev", t("prev", unit())], ["next", t("next", unit())], ["play", t("play", unit())]]) {
+    const b = document.getElementById(id);
+    b.title = label;
+    b.setAttribute("aria-label", label);
+  }
+  document.getElementById("prev").textContent = "◀";
+  document.getElementById("next").textContent = "▶";
+  if (!timer) document.getElementById("play").textContent = "▶▶";
 }
 let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
@@ -437,8 +498,19 @@ function msgEl(m) {
   const d = el("div", "msg " + (m.from === "agent" ? "agent" : "user"));
   d.dataset.id = m.id;
   const who = m.from === "agent" ? t("agent") : `${t("you")} · ${t(STRINGS.en[m.kind] ? m.kind : "question")} · ${m.delivered ? t("received") : t("waitingAgent")}`;
-  d.append(el("span", "who", who), document.createTextNode(m.text));
+  d.append(el("span", "who", who), msgBody(m.text));
   return d;
+}
+
+// ```fenced``` blocks become code blocks and `ticks` inline code; everything stays text, never HTML.
+function msgBody(text) {
+  const f = document.createDocumentFragment();
+  String(text ?? "").split(/```[a-z0-9]*\n?([\s\S]*?)```/i).forEach((part, i) => {
+    if (i % 2) return f.append(el("pre", "mcode", part.replace(/\n$/, "")));
+    if (i) part = part.replace(/^\n/, "");
+    part.split(/`([^`\n]+)`/).forEach((x, j) => f.append(j % 2 ? el("code", "mcode", x) : x));
+  });
+  return f;
 }
 
 const MARK = {done: "✓", new: "●", todo: "", ext: "↗"}, EXPLAIN_MARK = {done: "", new: "★", todo: "", ext: "↗"};
@@ -526,7 +598,12 @@ function showTip(anchor, term) {
   tip.style.setProperty("--cx", Math.max(14, Math.min(tip.offsetWidth - 14, r.left + scrollX + r.width / 2 - left)) + "px");
 }
 document.addEventListener("click", () => (document.getElementById("tip").hidden = true));
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.getElementById("tip").hidden = true; });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  const tip = document.getElementById("tip");
+  if (!tip.hidden) tip.hidden = true;
+  else if (side && document.activeElement?.tagName !== "TEXTAREA") closeSide();
+});
 
 const LINK_STATE_KEYS = ["ok", "todo", "blocked"];
 const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
@@ -556,14 +633,18 @@ function refreshThreads() {
     const id = c.dataset.step;
     c.classList.toggle("unread", waitingFor.some((m) => !m.node && (id ? m.step === id : !m.step)));
   });
+  const planTalk = document.getElementById("planTalk");
+  planTalk.textContent = t("talkPlan", thread.filter((m) => inCtx(m, {}) && m.kind !== "settings").length);
+  planTalk.onclick = () => openSide({kind: "plan"});
   renderBadges();
 }
 
 function openUnread() {
   const m = unread()[0];
   if (!m) return;
-  if (m.node) selectNode(m.node, true);
-  else selectStep(m.step || null);
+  if (m.node) return selectNode(m.node, false);
+  selectStep(m.step || null);
+  openSide(m.step ? {kind: "step", id: m.step} : {kind: "plan"});
 }
 
 async function send(c, kind, text, extra = {}) {
@@ -733,8 +814,8 @@ function renderBadges() {
     card(t("commits"), seg, s.commit === "auto" ? t("commitAutoFx") : t("commitOnlyFx"));
   }
   for (const b of box.querySelectorAll("button")) b.disabled = !connected;
-  items.push(box);
   if (!explain) items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
+  items.push(box);
   document.getElementById("badges").replaceChildren(...items);
   renderBar();
 }
@@ -750,9 +831,13 @@ function renderBar() {
     const all = list.every((s) => s.status === "done");
     if (a || all) {
       const i = list.indexOf(a) + 1, review = a && a.status !== "doing";
+      const more = list.filter((s) => yourTurn(s)).length - (review ? 1 : 0);
       const b = el("button", "progress " + (all ? "done" : review ? "review" : "doing"),
-        all ? t("progDone", list.length) : t(review ? "progReview" : "progDoing", i, list.length, a.title));
-      if (a) b.onclick = () => selectStep(a.id);
+        all ? t("progDone", list.length) : t(review ? "progReview" : "progDoing", i, list.length, a.title) + (more > 0 ? ` (+${more})` : ""));
+      if (a) b.onclick = () => {
+        selectStep(a.id);
+        if (review) openSide({kind: "step", id: a.id});
+      };
       extra.push(b);
     }
   }
@@ -853,44 +938,111 @@ function commitBox(step) {
   return box;
 }
 
+// The main column explains; everything you answer or decide opens in the side panel.
 function renderStepCard() {
   const card = document.getElementById("stepcard");
   const step = curStep();
+  const talk = (ctx, label, n) => {
+    const b = el("button", "talklink", label);
+    b.onclick = () => openSide(ctx);
+    return b;
+  };
   if (!step) {
-    const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
-    const c = el("div", "stepcard" + (approve.length ? " review" : ""));
-    if (approve.length) c.append(el("span", "turn", t("turnApprove")));
-    c.append(el("h3", null, t("wholePlan")), talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change"]}));
-    card.replaceChildren(c);
-  } else {
-    const explain = plan.mode === "explain";
-    const turn = yourTurn(step);
-    const c = el("div", "stepcard " + (turn ? "review" : ""));
-    if (turn) c.append(el("span", "turn", t(turn)));
-    const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
-    const st = !explain && (turn ? "review" : step.status === "done" || step.confirmed && step.status !== "doing" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
-    if (st) h.append(el("span", "sbadge " + st, (st === "done" ? "✓ " : "") + t("sb_" + st)));
-    if (step.confirmed && step.status !== "done") h.append(el("span", "passed", t("restated")));
-    c.append(h);
-    if (st === "doing") {
-      const line = el("div", "implementing");
-      const dots = el("span", "dots");
-      dots.append(el("i"), el("i"), el("i"));
-      line.append(dots, t("implementing"));
-      c.append(line);
+    const approve = (plan.mode ?? "build") === "build" && !plan.approved;
+    if (!approve) {
+      card.replaceChildren();
+      return refreshThreads();
     }
-    if (step.detail) c.append(richEl("p", "detail", step.detail));
-    if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
-    if (turn === "turnCommit") c.append(commitBox(step));
+    const c = el("div", "stepcard review");
+    const b = el("button", "turnbtn", "👉 " + t("turnApprove"));
+    b.onclick = () => openSide({kind: "plan"});
+    c.append(b);
+    card.replaceChildren(c);
+    return refreshThreads();
+  }
+  const explain = plan.mode === "explain";
+  const turn = yourTurn(step);
+  const c = el("div", "stepcard " + (turn ? "review" : ""));
+  const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
+  const st = !explain && (turn ? "review" : step.status === "done" || step.confirmed && step.status !== "doing" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
+  if (st) h.append(el("span", "sbadge " + st, (st === "done" ? "✓ " : "") + t("sb_" + st)));
+  if (step.confirmed && step.status !== "done") h.append(el("span", "passed", t("restated")));
+  c.append(h);
+  if (st === "doing") {
+    const line = el("div", "implementing");
+    const dots = el("span", "dots");
+    dots.append(el("i"), el("i"), el("i"));
+    line.append(dots, t("implementing"));
+    c.append(line);
+  }
+  if (step.detail) c.append(richEl("p", "detail", step.detail));
+  if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
+  if (turn) {
+    const b = el("button", "turnbtn", "👉 " + t(turn));
+    b.onclick = () => openSide({kind: "step", id: step.id});
+    c.append(b);
+  } else {
+    const n = thread.filter((m) => inCtx(m, {step: step.id}) && m.kind !== "settings").length;
+    c.append(talk({kind: "step", id: step.id}, t("talkStep", n)));
+  }
+  card.replaceChildren(c);
+  refreshThreads();
+}
+
+let side = null;
+
+function openSide(ctx) {
+  side = ctx;
+  if (ctx.kind !== "node") nodeId = null;
+  const was = document.body.classList.contains("side-open");
+  document.getElementById("side").inert = false;
+  document.body.classList.add("side-open");
+  renderSide();
+  highlight();
+  // Once the page column has narrowed, keep the box you clicked in sight.
+  setTimeout(() => {
+    scrollHints();
+    document.querySelector("#view .active")?.scrollIntoView({block: "nearest", inline: "nearest", behavior: "smooth"});
+  }, was ? 0 : 320);
+}
+
+function closeSide() {
+  side = null;
+  nodeId = null;
+  document.getElementById("side").inert = true;
+  document.body.classList.remove("side-open");
+  highlight();
+  setTimeout(scrollHints, 320);
+}
+
+function renderSide() {
+  if (!side) return;
+  const title = document.getElementById("sideTitle");
+  const p = document.getElementById("panel");
+  if (side.kind === "node") return renderNodePanel(side.id);
+  if (side.kind === "step") {
+    const step = steps().find((s) => s.id === side.id);
+    if (!step) return closeSide();
+    title.textContent = `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`;
+    const turn = yourTurn(step);
+    const parts = [];
+    if (turn) parts.push(el("span", "turn", t(turn)));
+    if (turn === "turnCommit") parts.push(commitBox(step));
     const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
-    c.append(talkBox({step: step.id}, {
-      placeholder: t(explain ? "askStage" : "askStep"),
-      quick: plan.mode === "explain" ? ["confused", "deeper"] : turn === "turnCommit" ? ["confused"] : ["confused"],
+    parts.push(talkBox({step: step.id}, {
+      placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
+      quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
       modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
       mode: turn === "turnRestate" ? "teachback" : "question",
       phase: step.status + (step.confirmed ? "+" : ""),
     }));
-    card.replaceChildren(c);
+    p.replaceChildren(...parts);
+  } else {
+    title.textContent = t("wholePlan");
+    const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
+    const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
+    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change"]}));
+    p.replaceChildren(...parts);
   }
   refreshThreads();
 }
@@ -940,8 +1092,8 @@ function nodeBox(id, family = null) {
   head.append(el("div", "name", n.name), st);
   d.append(head);
   if (n.what) d.append(richEl("div", "what", n.what));
-  d.onclick = () => selectNode(id, true);
-  d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id, true); };
+  d.onclick = () => selectNode(id);
+  d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id); };
   return d;
 }
 
@@ -1057,7 +1209,7 @@ function renderK8s(v) {
     pl.append(iconEl(plan.nodes[v.policy] || {}, v.policy, "k8s") || "🛡", plan.nodes[v.policy]?.name || v.policy);
     pl.dataset.id = v.policy;
     pl.tabIndex = 0;
-    pl.onclick = () => selectNode(v.policy, true);
+    pl.onclick = () => selectNode(v.policy);
     policy.append(pl);
   }
   for (const w of v.workloads || []) {
@@ -1085,8 +1237,19 @@ function renderK8s(v) {
     const b = l.label && grid.querySelector(`[data-anchor="${CSS.escape(l.to)}"]`);
     if (!b) continue;
     const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
+    const from = plan.nodes[l.from]?.name || l.from;
+    // The same port from several workloads is one chip with a count.
+    const same = [...row.children].find((c) => c.dataset.label === l.label && c.dataset.state === (l.state || "ok"));
+    if (same) {
+      same.dataset.n = (Number(same.dataset.n) || 1) + 1;
+      same.textContent = `← ${l.label} ×${same.dataset.n}`;
+      same.title += `\n${from} → ${plan.nodes[l.to]?.name || l.to}`;
+      continue;
+    }
     const chip = el("span", "via via-" + (LINK_STATE_KEYS.includes(l.state) ? l.state : "ok"), "← " + l.label);
-    chip.title = `${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to}`;
+    chip.dataset.label = l.label;
+    chip.dataset.state = l.state || "ok";
+    chip.title = `${from} → ${plan.nodes[l.to]?.name || l.to}`;
     row.append(chip);
   }
   drawLinks(grid, specs);
@@ -1164,7 +1327,7 @@ function renderSequence(v) {
     }
     const target = m.node || m.to;
     msg.title = t("seeBox", plan.nodes[target]?.name || target);
-    msg.onclick = () => selectNode(target, true);
+    msg.onclick = () => selectNode(target);
     row.append(msg);
     (group || seq).append(row);
   });
@@ -1181,7 +1344,7 @@ function renderTransform(v) {
     if (st.columns) card.style.flexBasis = Math.max(230, st.columns.length * 120) + "px";
     card.dataset.id = st.node;
     card.tabIndex = 0;
-    card.onclick = () => selectNode(st.node, true);
+    card.onclick = () => selectNode(st.node);
     const head = el("div", "shead");
     const ic = iconEl(n, st.node);
     if (ic) head.append(ic);
@@ -1192,6 +1355,12 @@ function renderTransform(v) {
       const table = el("table"), tr = el("tr");
       st.columns.forEach((c) => tr.append(el("th", null, c)));
       table.append(tr);
+      if (!(st.rows || []).length) {
+        const row = el("tr"), td = el("td", "empty", t("noRows"));
+        td.colSpan = st.columns.length;
+        row.append(td);
+        table.append(row);
+      }
       for (const r of st.rows || []) {
         const row = el("tr");
         r.forEach((c) => row.append(el("td", null, c == null || c === "" ? "∅" : String(c).replace(/^ +| +$/g, (sp) => "␠".repeat(sp.length)))));
@@ -1219,6 +1388,14 @@ const VIEWS = {
   transform: {render: renderTransform},
 };
 
+// "Wider than the screen" hints, checked again whenever the side panel changes the width.
+function scrollHints() {
+  for (const sc of document.querySelectorAll("#view .scroll")) {
+    sc.querySelector(":scope > .scrollhint")?.remove();
+    if (sc.scrollWidth > sc.clientWidth + 4) sc.prepend(el("div", "scrollhint", t("wider")));
+  }
+}
+
 function renderView() {
   const v = plan.views.find((x) => x.id === viewId) || plan.views[0];
   const tabs = document.getElementById("tabs");
@@ -1227,7 +1404,6 @@ function renderView() {
     b.onclick = () => {
       viewId = x.id;
       renderView();
-      if (nodeId && !document.querySelector(`#view [data-id="${CSS.escape(nodeId)}"]`)) clearPanel();
     };
     return b;
   }) : []));
@@ -1240,19 +1416,24 @@ function renderView() {
   requestAnimationFrame(() => {
     // An arrow left at the end of a wrapped row points at nothing.
     for (const a of document.querySelectorAll("#view .tf > .arrow")) a.style.visibility = a.nextElementSibling && a.nextElementSibling.offsetTop > a.offsetTop + a.offsetHeight / 2 ? "hidden" : "";
-    for (const sc of document.querySelectorAll("#view .scroll")) {
-      sc.querySelector(":scope > .scrollhint")?.remove();
-      if (sc.scrollWidth > sc.clientWidth + 4) sc.prepend(el("div", "scrollhint", t("wider")));
-    }
+    scrollHints();
   });
 }
+
+function stepFades() {
+  const bar = document.getElementById("stepbar");
+  bar.classList.toggle("fl", bar.scrollLeft > 4);
+  bar.classList.toggle("fr", bar.scrollLeft + bar.clientWidth < bar.scrollWidth - 4);
+}
+document.getElementById("stepbar").addEventListener("scroll", stepFades, {passive: true});
+addEventListener("resize", stepFades);
 
 function renderSteps() {
   const bar = document.getElementById("stepbar");
   const all = el("button", "chip all" + (stepId ? "" : " sel"), t("all"));
   all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
-  bar.replaceChildren(all, ...steps().map((s, i) => {
+  const chips = steps().map((s, i) => {
     const turn = yourTurn(s);
     const cls = plan.mode === "explain" && !s.status ? "plain" : turn ? "review" : s.confirmed ? "done" : STEP_STATUS[s.status] || "todo";
     const mark = turn ? "👉 " : s.status === "done" || s.confirmed ? "✓ " : "";
@@ -1262,7 +1443,16 @@ function renderSteps() {
     c.dataset.step = s.id;
     c.onclick = () => { stop(); selectStep(s.id); };
     return c;
-  }));
+  });
+  // Steps read as a line: ① ─ ② ─ ③, green where finished.
+  const row = [all];
+  chips.forEach((c, i) => {
+    if (i) row.push(el("i", "link" + (steps()[i - 1].status === "done" ? " done" : "")));
+    row.push(c);
+  });
+  all.style.marginRight = "10px";
+  bar.replaceChildren(...row);
+  requestAnimationFrame(stepFades);
 }
 
 function highlight() {
@@ -1295,7 +1485,8 @@ function selectStep(id) {
   renderStepCard();
   followStep(curStep());
   highlight();
-  if (nodeId && curStep() && !(curStep().nodes || []).includes(nodeId)) clearPanel();
+  document.querySelector(".stepbar .chip.sel")?.scrollIntoView({block: "nearest", inline: "center"});
+  stepFades();
 }
 
 const EDITOR_URL = {
@@ -1350,26 +1541,28 @@ function codeBox(id) {
   return box;
 }
 
-function clearPanel(text = t("pickBox")) {
-  nodeId = null;
-  highlight();
-  document.getElementById("panel").replaceChildren(el("h3", null, text));
+// Clicking the box whose panel is open closes it again.
+function selectNode(id, toggle = true) {
+  if (toggle && side?.kind === "node" && side.id === id) return closeSide();
+  nodeId = id;
+  openSide({kind: "node", id});
 }
 
-function selectNode(id, reveal = false) {
-  nodeId = id;
-  highlight();
+function renderNodePanel(id) {
   const n = plan.nodes[id];
   const p = document.getElementById("panel");
-  if (!n) return p.replaceChildren(el("h3", null, t("noNode", id)));
+  const title = document.getElementById("sideTitle");
+  if (!n) {
+    title.textContent = "";
+    return p.replaceChildren(el("p", "meta", t("boxRemoved")));
+  }
+  title.textContent = n.name;
   const h = el("h3");
   const ic = iconEl(n, id, document.querySelector(`#view .ns [data-id="${CSS.escape(id)}"]`) ? "k8s" : null);
   if (ic) h.append(ic);
   h.append(richEl("span", null, `${n.name} · ${statusLabel(n.status)}`));
-  const back = el("button", "back", t("backUp"));
-  back.onclick = () => document.getElementById("tabs").scrollIntoView({block: "start", behavior: "smooth"});
-  h.append(back);
   const parts = [h];
+  if (n.what) parts.push(richEl("p", "meta", n.what));
   if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
     const io = el("div", "io");
@@ -1385,16 +1578,15 @@ function selectNode(id, reveal = false) {
   if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", (plan.mode === "explain" ? t("inStages") : t("inSteps")) + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["ok", "confused", "deeper"], modes: ["question", "change"]}));
+  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "change"]}));
   p.replaceChildren(...parts);
   refreshThreads();
-  if (reveal) p.scrollIntoView({block: "nearest", behavior: "smooth"});
 }
 
 function stop() {
   clearInterval(timer);
   timer = null;
-  document.getElementById("play").textContent = t("play", unit());
+  document.getElementById("play").textContent = "▶▶";
 }
 function step(d) {
   const list = steps(), i = list.indexOf(curStep());
@@ -1405,7 +1597,7 @@ document.getElementById("prev").onclick = () => { stop(); step(-1); };
 document.getElementById("next").onclick = () => { stop(); step(1); };
 document.getElementById("play").onclick = () => {
   if (timer) return stop();
-  document.getElementById("play").textContent = t("pause");
+  document.getElementById("play").textContent = "❚❚";
   step(1);
   timer = setInterval(() => (curStep() === steps().at(-1) ? stop() : step(1)), 3200);
 };
@@ -1509,11 +1701,9 @@ function draw(p) {
       viewId = params.get("view");
       renderView();
     }
-    if (Object.hasOwn(plan.nodes, params.get("node") || "")) selectNode(params.get("node"));
-  } else if (nodeId && Object.hasOwn(plan.nodes, nodeId)) {
-    selectNode(nodeId);
-  } else if (nodeId) {
-    clearPanel(t("boxRemoved"));
+    if (Object.hasOwn(plan.nodes, params.get("node") || "")) selectNode(params.get("node"), false);
+  } else if (side) {
+    renderSide();
   }
   if (prev && !same(prev, p)) noteChanges(prev);
   // Follow the agent: when the step you were watching is finished, show the one it moved on to.
@@ -1589,7 +1779,7 @@ async function load() {
 window.__planview = {get plan() { return plan; }, selectStep, selectNode, render};
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
-document.querySelector("#panel h3").textContent = t("pickBox");
+document.getElementById("sideClose").onclick = closeSide;
 renderBadges();
 load();
 </script>

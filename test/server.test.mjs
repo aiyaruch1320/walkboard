@@ -186,3 +186,16 @@ test("a waiting poll is told when the server stops", async () => {
   const r = await polled;
   assert.equal(r.status, 410);
 });
+
+test("the page can read a short excerpt of a box's code, only inside the root", async (t) => {
+  const dir = planDir();
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "planview-root-"));
+  fs.writeFileSync(path.join(root, "a.go"), "package a\n\nfunc A() {}\n");
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", root, nodes: {a: {name: "A", file: "a.go:3"}, x: {name: "X", file: "../../etc/hosts:1"}}}));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const ok = await (await call(s, "/api/source?node=a")).json();
+  assert.equal(ok.lines[ok.focus - ok.from], "func A() {}");
+  assert.equal((await call(s, "/api/source?node=x")).status, 404);
+  assert.equal((await call(s, "/api/source?node=constructor")).status, 404);
+});

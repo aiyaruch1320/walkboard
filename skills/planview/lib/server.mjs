@@ -2,6 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import {excerpt} from "./source.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".planview");
@@ -130,6 +131,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } else if (route === "GET /api/plan") {
       if (!fs.existsSync(p.plan)) return res.writeHead(404, {"content-type": "text/plain; charset=utf-8"}).end(`no plan.json in ${dir}`);
       res.writeHead(200, {"content-type": "application/json; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(p.plan));
+    } else if (route === "GET /api/source") {
+      const plan = readJSON(p.plan);
+      const node = plan.nodes && Object.hasOwn(plan.nodes, url.searchParams.get("node") || "") ? plan.nodes[url.searchParams.get("node")] : null;
+      const r = node?.file ? excerpt(plan, node.file) : {error: "no file"};
+      res.writeHead(r.error ? 404 : 200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify(r));
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
       const replies = readLines(p.replies);

@@ -27,7 +27,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
 
 - 3-8 **steps**, each reviewable in minutes: `title`, `detail` (what it does), `done` (how we know), `nodes`.
 - **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when the guess is wrong (`aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, …).
-- **views**: leave out for a plain flow. Add `k8s`, `sequence` (alternatives in a `group`) or `transform` when they explain better; see [references/views.md](references/views.md).
+- **views**: leave out for a plain flow. Add `k8s`, `sequence` (alternatives in a `group`), `transform`, `map` (zones inside zones: cloud accounts, VPCs, clusters) or `journey` (one piece of data travelling stop by stop) when they explain better; see [references/views.md](references/views.md).
 - **glossary**: only project-specific terms. No secrets, tokens or real customer data.
 - `PV check <dir>` until ok.
 

@@ -83,3 +83,33 @@ Use when rows, files or payloads are mapped, cleaned or split.
 - Each stage needs `columns` + `rows` (every row as long as `columns`) or `text`.
 - Empty and `null` cells show as `∅`; leading and trailing spaces show as `␠`, so data problems are visible.
 - Use made-up sample values, never real customer data.
+
+## map: zones inside zones
+
+For cloud and network pictures that are hard to draw by hand: accounts, regions, VPCs, subnets, clusters, namespaces. The page nests the zones and routes the links between boxes on whichever sides face each other.
+
+```json
+{"id": "net", "kind": "map", "title": "VPC Peering",
+ "zones": [{"label": "ap-southeast-1", "icon": "aws:region", "zones": [
+   {"label": "Account A", "zones": [{"label": "VPC A", "icon": "aws:vpc", "note": "10.0.0.0/16", "nodes": ["ec2a"]}]},
+   {"label": "Link", "nodes": ["pcx"]},
+   {"label": "Account B", "zones": [{"label": "VPC B", "icon": "aws:vpc", "note": "10.1.0.0/16", "nodes": ["ec2b"]}]}]}],
+ "links": [{"from": "ec2a", "to": "pcx", "state": "ok", "label": "route 10.1.0.0/16"}, {"from": "pcx", "to": "ec2b"}]}
+```
+
+- A zone has `label`, optional `icon` and `note`, and `zones` and/or `nodes`. Keep it to four levels.
+- `links` as in `k8s`: `state` `ok` / `todo` / `blocked`; `label` is shown on the box the link reaches.
+
+## journey: one piece of data, stop by stop
+
+The fastest way to explain a data flow: an envelope travels through the boxes and each stop shows what the data looks like there; lines that changed since the previous stop are highlighted. The user plays it or steps through.
+
+```json
+{"id": "trip", "kind": "journey", "title": "One message", "item": "question #42",
+ "stops": [
+   {"node": "send", "note": "The page adds where you asked", "data": "{\"kind\": \"question\", \"node\": \"cronjob\"}"},
+   {"node": "route", "note": "The server adds an id and a time", "data": "{\"kind\": \"question\", \"node\": \"cronjob\", \"id\": \"7f3c…\"}"}]}
+```
+
+- 3-9 stops; a node may appear more than once (there and back).
+- `data` is what the data looks like at that stop, short and made up (never real customer data); `note` says what this stop did to it.

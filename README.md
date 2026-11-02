@@ -24,8 +24,8 @@
 
 Long AI-written plans are hard to follow, and it is easy to lose the feeling that the work is yours. planview has the agent show its work as small steps and pictures on a local page. Every step and box has a chat box. Your click wakes the agent, and its answer appears where you asked.
 
-- **Build**: plan a change in small steps, approve it, then follow along and restate each step.
-- **Explain**: understand existing code, with every box pointing at the real `file:line`.
+- **Build**: plan a change in small steps, approve it, then follow along. After each step you can restate it in your own words; the agent tells you what you got right and corrects the rest, so you know you really understand the work before it moves on.
+- **Explain**: understand code that already exists. Every box points at the real `file:line`, and the page shows that code beside the explanation.
 
 ## Install
 
@@ -50,7 +50,9 @@ Type `/planview` and say what you want, or just ask in your own words:
 1. The agent asks two quick questions (restate each step? commit for you?).
 2. It writes the plan and gives you a link to a page on your machine.
 3. You click, ask, or ask for changes. It answers on the page and updates the picture.
-4. In build mode, nothing starts until you press **อนุมัติแผน**.
+4. In build mode, nothing starts until you press **อนุมัติแผน** (approve plan). Keep Claude Code open while you use the page: that is where the agent works.
+
+The page's labels are in Thai; your plan can be in any language. Built and tested on macOS.
 
 <table>
   <tr>
@@ -73,12 +75,15 @@ agent ──writes──► plan.json ──► page (pictures + chat)
   └── wakes up ◄── local server ◄─────┘
 ```
 
-The agent writes a small JSON file once and updates it with one-line commands, while the page does the explaining. That keeps it light on tokens: moving a step forward costs about 130 bytes instead of a rewritten page. Everything stays on your machine: the server listens on 127.0.0.1 behind a random token, has no dependencies, and sends no telemetry.
+The agent writes a small JSON file once and updates it with one-line commands, while the page does the explaining, so it stays light on tokens ([numbers](docs/GUIDE.md#light-on-tokens)). Everything stays on your machine: the server listens on 127.0.0.1 behind a random token, has no dependencies, and sends no telemetry.
 
 ## For AI agents
 
-- **Using planview for a user**: read [skills/planview/SKILL.md](skills/planview/SKILL.md) and follow it. It covers the modes, the two questions, the plan format and every command.
-- **Installing it for a user**: ask first, because it changes their Claude Code setup. Then run `claude plugin marketplace add aiyaruch1320/planview` and `claude plugin install planview@planview`, or copy `skills/planview` to `~/.claude/skills/planview`.
+- **Using planview for a user**: read [skills/planview/SKILL.md](skills/planview/SKILL.md) and follow it. It covers the modes, the two questions, the plan format and every command. From a clone, the CLI also works without installing: `node skills/planview/bin/planview.mjs <command>`.
+- **Installing it for a user**: ask first, because it changes their Claude Code setup.
+  1. Check `node -v` is 18.18 or newer.
+  2. Prefer the plugin: `claude plugin marketplace add aiyaruch1320/planview`, then `claude plugin install planview@planview`. If plugins are not available, clone this repository and copy `skills/planview` to `~/.claude/skills/planview`.
+  3. Tell the user to start a new Claude Code session. It worked if `/planview` appears in the slash-command menu and `node <skill dir>/bin/planview.mjs` prints its usage.
 - **Changing this repository**: read [AGENTS.md](AGENTS.md) for the map, rules and checks.
 
 ## License

@@ -85,6 +85,15 @@ h1{font-size:22px;font-weight:500;margin:0}
 pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:6px;padding:8px}
 .mid{text-align:center;color:var(--muted);font-size:20px}
 .why{margin:12px 0 0;font-size:14px}
+.fileline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fileline a{color:inherit}
+.fileline button{font-size:12px;padding:1px 8px}
+details.code{margin:10px 0 0}
+details.code summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.code ol{margin:6px 0 0;padding:6px 0;background:var(--code);border-radius:6px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-x:auto;list-style:none}
+.code li{white-space:pre;padding:0 10px}
+.code li::before{content:attr(data-n);display:inline-block;min-width:3.5ch;margin-right:10px;color:var(--muted);text-align:right}
+.code li.focus{background:color-mix(in srgb,var(--new-bd) 25%,transparent)}
 .insteps{margin:10px 0 0;font-size:12px;color:var(--muted)}
 .controls{display:flex;gap:8px;align-items:center;margin:0 0 14px;flex-wrap:wrap}
 button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer}
@@ -210,7 +219,7 @@ details.glossary dd{margin:0;color:var(--muted)}
 <script type="module">
 const token = new URLSearchParams(location.search).get("token");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, LINK_STATE, KINDS, validate} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, KINDS: {}, validate: () => []};
+const {NODE_STATUS, STEP_STATUS, LINK_STATE, KINDS, validate, parseFile} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, KINDS: {}, validate: () => [], parseFile: () => null};
 let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
@@ -825,6 +834,56 @@ function selectStep(id) {
   if (step?.nodes?.length) selectNode(step.nodes[0]);
 }
 
+const EDITOR_URL = {
+  vscode: (f, l) => `vscode://file${encodeURI(f)}:${l || 1}`,
+  cursor: (f, l) => `cursor://file${encodeURI(f)}:${l || 1}`,
+  idea: (f, l) => `idea://open?file=${encodeURIComponent(f)}&line=${l || 1}`,
+};
+
+function fileLine(file) {
+  const ref = parseFile(file, plan);
+  const row = el("div", "meta fileline");
+  const editor = plan.settings?.editor ?? "vscode";
+  if (ref?.abs && EDITOR_URL[editor]) {
+    const a = el("a", null, file);
+    a.href = EDITOR_URL[editor](ref.abs, ref.line);
+    a.title = "เปิดใน " + editor;
+    row.append(a);
+  } else row.append(el("span", null, file));
+  const copy = el("button", null, "คัดลอก");
+  copy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(ref?.abs ? `${ref.abs}${ref.line ? ":" + ref.line : ""}` : file);
+      copy.textContent = "คัดลอกแล้ว";
+    } catch {
+      copy.textContent = "คัดลอกไม่ได้";
+    }
+  };
+  row.append(copy);
+  return row;
+}
+
+function codeBox(id) {
+  const box = el("details", "code");
+  box.open = true;
+  box.append(el("summary", null, "โค้ดตรงนี้"), el("div", "meta", "กำลังโหลด…"));
+  fetch(`/api/source?node=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`)
+    .then((r) => r.json())
+    .then((r) => {
+      if (r.error) return box.lastChild.replaceWith(el("div", "meta err", "อ่านโค้ดไม่ได้: " + r.error));
+      const ol = el("ol");
+      r.lines.forEach((t, i) => {
+        const n = r.from + i;
+        const li = el("li", r.focus && n >= r.focus && n <= r.end ? "focus" : null, t);
+        li.dataset.n = n;
+        ol.append(li);
+      });
+      box.lastChild.replaceWith(ol);
+    })
+    .catch(() => box.lastChild.replaceWith(el("div", "meta err", "อ่านโค้ดไม่ได้")));
+  return box;
+}
+
 function clearPanel(text = "กดกล่องในภาพเพื่อดูรายละเอียด") {
   nodeId = null;
   highlight();
@@ -838,7 +897,7 @@ function selectNode(id, reveal = false) {
   const p = document.getElementById("panel");
   if (!n) return p.replaceChildren(el("h3", null, `ไม่มี node "${id}"`));
   const parts = [richEl("h3", null, `${n.name} · ${statusLabel(n.status)}`)];
-  if (n.file) parts.push(el("div", "meta", n.file));
+  if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
     const io = el("div", "io");
     for (const [lbl, txt] of [["รับเข้า", n.in], ["ได้ออกมา", n.out]]) {
@@ -850,6 +909,7 @@ function selectNode(id, reveal = false) {
     parts.push(io);
   }
   if (n.why) parts.push(richEl("p", "why", n.why));
+  if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + where.join(", ")));
   parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused"], modes: ["question", "change"]}));

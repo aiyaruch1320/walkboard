@@ -56,7 +56,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .todo{background:var(--todo-bg);border-color:var(--todo-bd);color:var(--todo-tx);border-style:dashed}
 .node.todo{opacity:.6}
 .ext{background:var(--ext-bg);border-color:var(--ext-bd);color:var(--ext-tx)}
-.node.dim{opacity:.2}
+#view .dim{opacity:.2}
 .node.active{transform:translateY(-3px);opacity:1;outline:2px solid var(--text);outline-offset:2px}
 .arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .arrow svg{width:26px;height:14px}
@@ -125,7 +125,6 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 <script>
 const NODE_STATUS = {done: "ทำแล้ว", new: "เพิ่งทำ", todo: "ยังไม่ทำ", ext: "ภายนอก"};
 const STEP_STATUS = {done: "done", doing: "doing", review: "doing", todo: "todo"};
-const VIEW_KINDS = ["flow"];
 const token = new URLSearchParams(location.search).get("token");
 let plan, viewId, stepIdx = -1, nodeId = null, timer = null;
 let thread = [], waiting = 0, connected = false;
@@ -272,8 +271,13 @@ function validate(p) {
   }
   if (!(p.views || []).length) out.push("ไม่มี views");
   for (const v of p.views || []) {
-    if (!VIEW_KINDS.includes(v.kind)) out.push(`view "${v.id}" kind "${v.kind}" ยังไม่รองรับ`);
-    for (const l of v.lanes || []) for (const k of l.nodes || []) if (!nodes[k]) out.push(`view "${v.id}" อ้าง node "${k}" ที่ไม่มี`);
+    const kind = VIEWS[v.kind];
+    if (!kind) {
+      out.push(`view "${v.id}" kind "${v.kind}" ไม่รู้จัก (มี: ${Object.keys(VIEWS).join(", ")})`);
+      continue;
+    }
+    for (const k of kind.refs(v)) if (!nodes[k]) out.push(`view "${v.id}" อ้าง node "${k}" ที่ไม่มี`);
+    for (const t of kind.check?.(v, p) || []) out.push(`view "${v.id}": ${t}`);
   }
   return out;
 }
@@ -314,6 +318,10 @@ function renderFlow(v) {
   return wrap;
 }
 
+const VIEWS = {
+  flow: {render: renderFlow, refs: (v) => (v.lanes || []).flatMap((l) => l.nodes || [])},
+};
+
 function renderView() {
   const v = plan.views.find((x) => x.id === viewId) || plan.views[0];
   const tabs = document.getElementById("tabs");
@@ -322,7 +330,9 @@ function renderView() {
     b.onclick = () => { viewId = x.id; renderView(); };
     return b;
   }) : []));
-  document.getElementById("view").replaceChildren(v.kind === "flow" ? renderFlow(v) : el("p", null, `ยังวาด ${v.kind} ไม่ได้`));
+  const kind = VIEWS[v.kind];
+  document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, `ยังวาด ${v.kind} ไม่ได้`));
+  kind?.after?.();
   highlight();
 }
 
@@ -340,10 +350,11 @@ function renderSteps() {
 function highlight() {
   const step = plan.steps?.[stepIdx];
   const inStep = step ? new Set(step.nodes || []) : null;
-  document.querySelectorAll(".node[data-id]").forEach((d) => {
+  document.querySelectorAll("#view [data-id]").forEach((d) => {
     d.classList.toggle("dim", !!inStep && !inStep.has(d.dataset.id));
     d.classList.toggle("active", d.dataset.id === nodeId);
   });
+  document.querySelectorAll("#view [data-step]").forEach((d) => d.classList.toggle("dim", !!step && d.dataset.step !== step.id));
 }
 
 function selectStep(i) {

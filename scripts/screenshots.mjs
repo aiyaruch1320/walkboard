@@ -59,7 +59,7 @@ await post(urls.demo, "/api/reply", {step: "manifests", from: "agent", text: "à¸
 
 const page = await launch();
 try {
-  const at = (u, q) => `${u}&theme=light&${q}`;
+  const at = (u, q) => `${u}&theme=dark&${q}`;
   await shot(page, at(urls.build, "step=manifests"), "build-overview.png", {select: ["#bar", "main > .top", "#stepcard", "#view"]});
   await shot(page, at(urls.build, "view=k8s&step=all"), "k8s.png", {select: ["#view"]});
   await shot(page, at(urls.explain, "view=seq&step=all"), "sequence.png", {select: ["#view"]});

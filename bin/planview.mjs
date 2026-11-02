@@ -4,9 +4,11 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths} from "../lib/server.mjs";
+import {validate} from "../lib/schema.mjs";
 
 const USAGE = `planview <command> [options]
 
+  check  [dir]                  validate dir/plan.json, print problems, exit 1 if any
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
   poll   [dir]                  wait for feedback from the page, print it as JSON, exit
   reply  [--dir d] [--node n] [--step s] <text>   show an agent reply on the page
@@ -63,6 +65,21 @@ const urlOf = (s) => `http://127.0.0.1:${s.port}/?token=${s.token}`;
 function openBrowser(url) {
   const opener = {darwin: ["open", [url]], win32: ["cmd", ["/c", "start", "", url]]}[process.platform] ?? ["xdg-open", [url]];
   spawn(opener[0], opener[1], {stdio: "ignore", detached: true}).on("error", () => {}).unref();
+}
+
+async function check() {
+  let plan;
+  try {
+    plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  } catch (e) {
+    fail(`cannot read ${p.plan}: ${e.message}`);
+  }
+  const problems = validate(plan);
+  if (problems.length) {
+    console.error(problems.map((t) => `- ${t}`).join("\n"));
+    process.exit(1);
+  }
+  console.log(`ok: ${plan.steps?.length || 0} steps, ${plan.views.length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
 }
 
 async function open() {
@@ -143,7 +160,7 @@ function fail(msg) {
   process.exit(1);
 }
 
-const commands = {open, poll, reply, status, stop, serve};
+const commands = {check, open, poll, reply, status, stop, serve};
 if (!commands[cmd]) {
   console.error(USAGE);
   process.exit(cmd ? 2 : 0);

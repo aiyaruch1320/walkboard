@@ -49,7 +49,11 @@ h1{font-size:22px;font-weight:500;margin:0}
 .conn.idle{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
 .banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:14px}
 .problems{position:fixed;left:16px;bottom:16px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.15)}
-.bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:var(--bg)}
+.bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;pointer-events:none}
+.bar>*,.bar #barExtra>*{pointer-events:auto}
+.bar .conn,.bar button{box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.bar .conn{background:var(--card)}
+.bar button.primary{font-weight:500}
 .bar #barExtra{display:contents}
 .bar button{font-size:12px;padding:2px 10px;border-radius:999px}
 .bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
@@ -62,9 +66,11 @@ h1{font-size:22px;font-weight:500;margin:0}
 .sw{width:16px;height:16px;border-radius:5px;border:1.5px solid;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-style:normal;line-height:1}
 .stepbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
-.chip.sel{outline:2px solid var(--text);outline-offset:2px}
+.chip.sel{outline:2px solid var(--text);outline-offset:1px}
 .chip.all{border-color:var(--line);color:var(--muted)}
-.chip.review,.stepcard.review{background:var(--you-bg);border-color:var(--you-bd);color:var(--you-tx)}
+.chip.review{background:var(--you-bg);border-color:var(--you-bd);color:var(--you-tx)}
+.stepcard.review{border-color:var(--you-bd);border-left:5px solid var(--you-bd)}
+.stepcard.review .turn{font-weight:500}
 .chip.plain{border-color:var(--line)}
 .stepcard .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:6px;background:var(--you-bd);color:var(--card)}
 .stepcard .detail{margin:0 0 4px;font-size:14px}
@@ -76,12 +82,12 @@ h1{font-size:22px;font-weight:500;margin:0}
 .lane-title{font-size:13px;color:var(--muted);margin-bottom:10px}
 .row{display:flex;align-items:stretch;padding:10px 2px 12px}
 .lane .scroll{margin:0}
-.row .node{flex:1 0 150px;min-width:150px}
+.row .node{flex:0 1 230px;min-width:150px}
 .node{flex:1 1 140px;min-width:140px;border:1.5px solid;border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;transition:transform .25s,opacity .25s;display:flex;flex-direction:column}
 .nhead{display:flex;align-items:flex-start;gap:8px}
 .node .name{font-weight:500;font-size:14px;line-height:1.35;flex:1;min-width:0;padding-top:3px;overflow-wrap:break-word}
 .node .what{font-size:12px;margin-top:4px}
-.node .st{flex:none;width:18px;height:18px;margin-top:4px;border-radius:50%;border:1.5px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:10px;line-height:1;opacity:.85}
+.node .st{flex:none;min-width:14px;margin-top:3px;font-size:13px;line-height:1.3;text-align:center;opacity:.9}
 .node .st:empty{display:none}
 .icon{flex:none;width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,currentColor 14%,transparent)}
 .icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -98,7 +104,10 @@ h1{font-size:22px;font-weight:500;margin:0}
 .todo{background:var(--todo-bg);border-color:var(--todo-bd);color:var(--todo-tx);border-style:dashed}
 .node.todo{opacity:.6}
 .ext{background:var(--ext-bg);border-color:var(--ext-bd);color:var(--ext-tx)}
-#view .dim{opacity:.2}
+.node.ext{background:color-mix(in srgb,var(--ext-bg) 45%,var(--card))}
+#view .dim{opacity:.4;filter:saturate(.3)}
+#view .node.todo.dim{opacity:.35}
+#view .node.todo.instep{opacity:.9}
 .node.active{transform:translateY(-3px);opacity:1;outline:2px solid var(--text);outline-offset:2px}
 .gap{flex:0 0 12px}
 .arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
@@ -108,6 +117,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--new-bd) 12%,transparent)}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:6px}
 .panel h3{margin:0 0 4px;font-size:16px;font-weight:500;display:flex;align-items:center;gap:10px}
+.panel .back{margin-left:auto;font-size:12px;padding:1px 10px;font-weight:400}
 .panel .meta{font-size:13px;color:var(--muted);margin-bottom:12px;word-break:break-all}
 .io{display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center}
 @media (max-width:720px){.io{grid-template-columns:1fr}.io .mid{transform:rotate(90deg)}}
@@ -137,7 +147,8 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
-.talk .quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.talk .quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.talk .quick .qlabel{font-size:12px;color:var(--muted);margin-right:2px}
 .talk .modes{display:inline-flex;margin-bottom:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .talk .modes button{border:0;border-radius:0;padding:3px 12px}
 .talk .modes button+button{border-left:1px solid var(--line)}
@@ -147,8 +158,8 @@ button:disabled{opacity:.5;cursor:wait}
 .talk .send{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
 .thread{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .msg{max-width:88%;border-radius:10px;padding:6px 10px;font-size:14px;white-space:pre-wrap;word-break:break-word}
-.msg.user{align-self:flex-end;background:var(--new-bg);color:var(--new-tx)}
-.msg.agent{align-self:flex-start;background:var(--ext-bg);color:var(--ext-tx)}
+.msg.user{align-self:flex-end;background:var(--you-bg);color:var(--you-tx)}
+.msg.agent{align-self:flex-start;background:var(--code);color:var(--text);border:1px solid var(--line)}
 .msg .who{display:block;font-size:11px;opacity:.75}
 .count{align-self:flex-end;margin-top:6px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
 .plabel .count,.stage .count{position:static;margin-left:6px}
@@ -165,16 +176,17 @@ svg.links path{fill:none;stroke-width:1.8}
 .l-uses{stroke:var(--muted);stroke-width:1.1!important;opacity:.7}
 .l-ok{stroke:var(--done-bd)}
 .l-todo{stroke:var(--new-bd);stroke-dasharray:6 4}
-.l-blocked{stroke:var(--warn-bd);stroke-dasharray:3 4}
-.k8s{display:grid;grid-template-columns:minmax(130px,170px) 1fr minmax(150px,210px);gap:44px;min-width:880px;align-items:start;padding:12px 8px}
+.l-blocked{stroke:var(--warn-bd);stroke-dasharray:1.5 5;stroke-linecap:round}
+.l-blocked.head{stroke-width:2.6!important}
+.k8s{display:grid;grid-template-columns:minmax(130px,170px) 1fr minmax(150px,210px);gap:44px 84px;min-width:920px;align-items:start;padding:12px 8px}
 .col{display:flex;flex-direction:column;gap:18px}
 .col .node{flex:none;min-width:0}
 .ns{border:1.5px solid var(--line);border-radius:14px;padding:12px;background:var(--card)}
 .ns-title{font-size:12px;color:var(--muted);margin-bottom:14px}
 .ns-grid{display:grid;grid-template-columns:minmax(140px,1fr) 1.7fr;gap:40px;align-items:start}
-.policy{border:1.5px dashed var(--new-bd);border-radius:12px;padding:24px 10px 10px;position:relative;display:flex;flex-direction:column;gap:20px}
+.policy{border:1.5px dashed var(--you-bd);border-radius:12px;padding:24px 10px 10px;position:relative;display:flex;flex-direction:column;gap:20px}
 .policy.none{border-color:transparent;padding-top:0}
-.plabel{position:absolute;top:-12px;left:10px;font-size:12px;background:var(--card);padding:1px 8px 1px 4px;border-radius:6px;border:1px solid var(--new-bd);color:var(--new-tx);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.plabel{position:absolute;top:-12px;left:10px;font-size:12px;background:var(--card);padding:1px 8px 1px 4px;border-radius:6px;border:1px solid var(--you-bd);color:var(--you-tx);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .plabel .icon{width:18px;height:18px;border-radius:5px}
 .plabel .icon svg{width:13px;height:13px}
 .plabel.active{outline:2px solid var(--text);outline-offset:2px}
@@ -185,7 +197,8 @@ svg.links path{fill:none;stroke-width:1.8}
 .seq-head{margin-bottom:6px}
 .seq-head .node{flex:none;min-width:0}
 .seq-row{position:relative;min-height:46px}
-.seq-group{border:1.5px dashed var(--you-bd);border-radius:10px;margin:8px 0;padding:18px 0 2px;position:relative}
+.seq-group{border:1.5px dashed var(--you-bd);border-radius:10px;margin:0;padding:0;position:relative}
+.seq-row.spacer{min-height:22px}
 .seq-group>.glabel{position:absolute;top:-10px;left:10px;font-size:12px;background:var(--bg);color:var(--you-tx);border:1px solid var(--you-bd);border-radius:6px;padding:0 8px}
 .seq-cell{position:relative;grid-row:1}
 .seq-cell::before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1.5px dashed var(--line)}
@@ -194,13 +207,13 @@ svg.links path{fill:none;stroke-width:1.8}
 .seq-msg .lbl{font-size:13px;text-align:center;line-height:1.3;padding:0 4px}
 .seq-msg .lbl>*{background:var(--bg);border-radius:4px;padding:0 3px;position:relative}
 #view .seq-msg.dim{opacity:.4}
-.seq-msg .num{display:inline-block;min-width:18px;font-size:11px;border-radius:9px;background:var(--text);color:var(--bg);text-align:center;margin-right:4px}
+.seq-msg .num{display:inline-block;min-width:18px;padding:0 5px;line-height:16px;font-size:11px;border-radius:999px;background:var(--text);color:var(--bg);text-align:center;margin-right:4px}
 .seq-msg .line{border-top:1.6px solid var(--muted);position:relative;margin-top:4px}
 .seq-msg.reply .line{border-top-style:dashed}
 .seq-msg .line::after{content:"";position:absolute;top:-6px;border:5px solid transparent}
 .seq-msg.right .line::after{right:-3px;border-left-color:var(--muted)}
 .seq-msg.left .line::after{left:-3px;border-right-color:var(--muted)}
-.seq-msg.self{margin-left:calc(50% + 8px);font-size:13px;border:1px dashed var(--muted);padding:2px 8px;justify-self:start;width:max-content;max-width:calc(150% - 8px);background:var(--bg)}
+.seq-msg.self{margin-left:calc(50% + 8px);font-size:13px;border:1px dashed var(--muted);padding:2px 8px;justify-self:start;width:max-content;max-width:calc(100% - 16px);background:var(--bg)}
 .tf{display:flex;flex-wrap:wrap;align-items:stretch;row-gap:12px;margin-bottom:14px}
 .stage{flex:1 1 230px;min-width:230px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity .25s}
 .stage.active{outline:2px solid var(--text);outline-offset:2px}
@@ -243,7 +256,6 @@ details.glossary dd{margin:0;color:var(--muted)}
   <div id="problems" class="problems" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
-  <div class="legend" id="legend"></div>
   <details class="glossary" id="glossary" hidden></details>
   <div class="stepbar" id="stepbar"></div>
   <div class="controls">
@@ -253,6 +265,7 @@ details.glossary dd{margin:0;color:var(--muted)}
   </div>
   <div id="stepcard"></div>
   <div class="tabs" id="tabs"></div>
+  <div class="legend" id="legend"></div>
   <div id="view"></div>
   <div class="panel" id="panel"><h3></h3></div>
 </main>
@@ -279,8 +292,11 @@ const STRINGS = {
     lg_done: "Done", lg_new: "In progress / just done", lg_todo: "To do", lg_ext: "External system", lg_code: "Existing code", lg_focus: "Focus of this question",
     step: "step", stage: "stage", Step: "Step", Stage: "Stage", prev: (u) => `◀ Previous ${u}`, next: (u) => `Next ${u} ▶`, play: (u) => `▶ Play ${u}s`, pause: "❚❚ Pause",
     terms: (n) => `📖 Terms in this plan (${n})`, typeChange: "Type what to change first", typeFirst: "Type a message first", sent: "Sent", sendFail: "Could not send: ",
-    modeExplain: "Mode: explain existing code", modeBuild: "Mode: plan and build", restate: "Restate each step", on: "on", off: "off",
-    commitBy: "Commit: by the agent", commitSuggest: "Commit: suggested messages", approved: "✓ Plan approved", awaiting: "Waiting for approval",
+    modeExplain: "Explaining existing code", modeBuild: "Plan first, then build", restate: (u) => `You restate each ${u}`, noRestate: "No restating",
+    commitBy: "Agent commits for you", commitSuggest: "Agent suggests commit messages",
+    turnApprove: "Your turn: review the plan below, ask on any box or step, then approve it", approveSent: "Approval sent", quickLabel: "Tell the agent:", quickTip: "Sends this to the agent right away",
+    change_explain: "Correct the picture", send_change_explain: "Send correction", ph_change_explain: "Say what is wrong or missing in this picture…", askStage: "Ask about this stage…",
+    backUp: "↑ Picture", viaLegend: "← :port on a box: what the link uses", talkLegend: "💬 a conversation on the box", termsPage: (n) => `📖 Terms on this page (${n})`, approved: "✓ Plan approved", awaiting: "Waiting for approval",
     newReplies: (n) => `💬 ${n} new from the agent`, changedN: (n) => `✎ Plan changed in ${n} ${n === 1 ? "place" : "places"}`,
     wholePlan: "The whole plan", askPlan: "Ask about the whole plan…", turnRestate: "Your turn: restate this step", turnCheck: "Your turn: check this step",
     restated: "✓ Restated", doneWhen: "Done when: ", understoodWhen: "Understood when: ", askStep: "Ask about this step…",
@@ -306,8 +322,11 @@ const STRINGS = {
     lg_done: "ทำแล้ว", lg_new: "ทำอยู่ / เพิ่งทำ", lg_todo: "ยังไม่ทำ", lg_ext: "ระบบภายนอก", lg_code: "โค้ดที่มีอยู่", lg_focus: "จุดสำคัญของคำถามนี้",
     step: "ขั้น", stage: "ช่วง", Step: "ขั้น", Stage: "ช่วงที่", prev: (u) => `◀ ${u}ก่อน`, next: (u) => `${u}ถัดไป ▶`, play: (u) => `▶ เล่นทีละ${u}`, pause: "❚❚ หยุด",
     terms: (n) => `📖 คำศัพท์ในแผนนี้ (${n})`, typeChange: "พิมพ์สิ่งที่อยากให้แก้ก่อน", typeFirst: "พิมพ์ข้อความก่อน", sent: "ส่งแล้ว", sendFail: "ส่งไม่สำเร็จ: ",
-    modeExplain: "โหมด: อธิบายโค้ดที่มีอยู่", modeBuild: "โหมด: วางแผนและลงมือ", restate: "ทวนทีละขั้น", on: "เปิด", off: "ปิด",
-    commitBy: "commit: agent ทำให้", commitSuggest: "commit: แนะนำข้อความ", approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
+    modeExplain: "อธิบายโค้ดที่มีอยู่", modeBuild: "วางแผนก่อน แล้วลงมือ", restate: (u) => `คุณทวนทีละ${u}`, noRestate: "ไม่ทวน",
+    commitBy: "agent commit ให้", commitSuggest: "agent แนะนำข้อความ commit",
+    turnApprove: "ถึงตาคุณ: ตรวจแผนด้านล่าง ถามได้ทุกกล่องหรือทุกขั้น แล้วกดอนุมัติ", approveSent: "ส่งการอนุมัติแล้ว", quickLabel: "บอก agent:", quickTip: "ส่งถึง agent ทันที",
+    change_explain: "ขอแก้ภาพ", send_change_explain: "ส่งคำขอแก้", ph_change_explain: "บอกว่าภาพนี้ผิดหรือขาดอะไร…", askStage: "ถามเกี่ยวกับช่วงนี้…",
+    backUp: "↑ ภาพ", viaLegend: "← :port บนกล่อง: สิ่งที่เส้นนั้นใช้", talkLegend: "💬 มีการคุยบนกล่องนี้", termsPage: (n) => `📖 คำศัพท์ในหน้านี้ (${n})`, approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
     newReplies: (n) => `💬 ข้อความใหม่จาก agent ${n}`, changedN: (n) => `✎ แผนเปลี่ยน ${n} จุด`,
     wholePlan: "คุยเรื่องทั้งแผน", askPlan: "ถามเกี่ยวกับแผนทั้งหมด…", turnRestate: "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้", turnCheck: "ถึงตาคุณ: ตรวจขั้นนี้",
     restated: "✓ ทวนผ่านแล้ว", doneWhen: "เสร็จเมื่อ: ", understoodWhen: "เข้าใจเมื่อ: ", askStep: "ถามเกี่ยวกับขั้นนี้…",
@@ -370,7 +389,7 @@ function renderLegend() {
     const sp = el("span");
     sp.append(el("i", "sw " + c, (plan.mode === "explain" ? EXPLAIN_MARK : MARK)[c]), label);
     return sp;
-  }));
+  }), el("span", null, t("talkLegend")));
 }
 
 let termRe = null;
@@ -394,7 +413,7 @@ function setGlossary(own) {
   if (!terms.length) return;
   const dl = el("dl");
   for (const t of [...terms].sort((a, b) => a.localeCompare(b))) dl.append(el("dt", null, t), el("dd", null, g[t]));
-  box.replaceChildren(el("summary", null, t("terms", terms.length)), dl);
+  box.replaceChildren(el("summary", null, t(plan.mode === "explain" ? "termsPage" : "terms", terms.length)), dl);
 }
 
 // Text with glossary terms that explain themselves on click or tap.
@@ -533,8 +552,10 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   };
   if (quick.length) {
     const row = el("div", "quick");
+    row.append(el("span", "qlabel", t("quickLabel")));
     for (const k of quick) {
       const b = el("button", k === "approve" ? "primary" : null, t(k));
+      b.title = t("quickTip");
       b.onclick = () => go(k, t("q_" + k));
       buttons.push(b);
       row.append(b);
@@ -543,15 +564,16 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   }
   const setMode = (m) => {
     current = m;
-    ta.placeholder = m === "question" ? placeholder : t("ph_" + m);
-    sendBtn.textContent = t("send_" + m);
+    const x = m === "change" && plan.mode === "explain" ? "_explain" : "";
+    ta.placeholder = m === "question" ? placeholder : t("ph_" + m + x);
+    sendBtn.textContent = t("send_" + m + x);
     seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
   };
   const seg = el("div", "modes");
   if (modes.length > 1) {
     seg.setAttribute("role", "group");
     for (const m of modes) {
-      const b = el("button", null, t(m));
+      const b = el("button", null, t(m === "change" && plan.mode === "explain" ? "change_explain" : m));
       b.dataset.mode = m;
       b.onclick = () => {
         picked[pickKey] = m;
@@ -583,7 +605,7 @@ function renderBadges() {
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
   const items = [el("span", null, explain ? t("modeExplain") : t("modeBuild"))];
-  items.push(el("span", null, `${t("restate")}: ${s.teachBack ? t("on") : t("off")}`));
+  items.push(el("span", null, s.teachBack ? t("restate", unit()) : t("noRestate")));
   if (!explain) {
     items.push(el("span", null, s.commit === "auto" ? t("commitBy") : t("commitSuggest")));
     items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
@@ -598,6 +620,21 @@ function renderBar() {
   if (news) {
     const b = el("button", "unread", t("newReplies", news));
     b.onclick = openUnread;
+    extra.push(b);
+  }
+  if ((plan.mode ?? "build") === "build" && !plan.approved && connected) {
+    const b = el("button", "primary", "✓ " + t("approve"));
+    b.title = t("quickTip");
+    b.onclick = async (e) => {
+      e.stopPropagation();
+      b.disabled = true;
+      try {
+        await send({}, "approve", t("q_approve"));
+        b.textContent = t("approveSent");
+      } catch {
+        b.disabled = false;
+      }
+    };
     extra.push(b);
   }
   const n = changes.nodes.size + changes.steps.size + changes.notes.length;
@@ -616,8 +653,9 @@ function renderStepCard() {
   const card = document.getElementById("stepcard");
   const step = curStep();
   if (!step) {
-    const c = el("div", "stepcard");
     const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
+    const c = el("div", "stepcard" + (approve.length ? " review" : ""));
+    if (approve.length) c.append(el("span", "turn", t("turnApprove")));
     c.append(el("h3", null, t("wholePlan")), talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change"]}));
     card.replaceChildren(c);
   } else {
@@ -631,7 +669,7 @@ function renderStepCard() {
     if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
     const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
-      placeholder: t("askStep"),
+      placeholder: t(explain ? "askStage" : "askStep"),
       quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
       modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
       mode: teach && step.status === "review" && !step.confirmed ? "teachback" : "question",
@@ -725,8 +763,12 @@ function drawLinks(container, specs) {
     svg.replaceChildren();
     const step = curStep();
     const inStep = step ? new Set(step.nodes || []) : null;
-    const fan = {};
-    for (const l of specs) if (!l.down) (fan[l.from] ||= []).push(l);
+    const fan = {}, fanIn = {};
+    for (const l of specs) if (!l.down) {
+      (fan[l.from] ||= []).push(l);
+      (fanIn[l.to] ||= []).push(l);
+    }
+    const ns = container.querySelector(".ns")?.getBoundingClientRect();
     for (const l of specs) {
       const a = box(l.from)?.getBoundingClientRect(), b = box(l.to)?.getBoundingClientRect();
       if (!a || !b) continue;
@@ -736,14 +778,17 @@ function drawLinks(container, specs) {
         d = `M${x} ${y1} L${x} ${y2}`;
         head = `M${x - 4} ${y2 - 7} L${x} ${y2} L${x + 4} ${y2 - 7}`;
       } else {
-        const x1 = a.right - base.left, x2 = b.left - base.left - 2;
-        const out = fan[l.from], k = out.indexOf(l);
-        const y1 = a.top + (a.height * (k + 1)) / (out.length + 1) - base.top, y2 = b.top + Math.min(b.height / 2, 40) - base.top;
-        const dx = Math.max(24, (x2 - x1) / 2);
-        d = `M${x1} ${y1} C${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
-        head = `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
+        const out = fan[l.from], k = out.indexOf(l), into = fanIn[l.to], j = into.indexOf(l);
+        const x2 = b.left - base.left - 4;
+        const y1 = a.top + (Math.min(a.height, 120) * 0.8 * (k + 1)) / (out.length + 1) - base.top;
+        const y2 = b.top + (Math.min(b.height, 90) * (j + 1)) / (into.length + 1) - base.top;
+        // Leave the namespace on a straight line, so a link never runs along its border.
+        const leave = ns && a.right <= ns.right && b.left >= ns.right ? ns.right - base.left + 14 : a.right - base.left;
+        const x1 = a.right - base.left, dx = Math.max(20, (x2 - leave) / 2);
+        d = `M${x1} ${y1} L${leave} ${y1} C${leave + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        head = l.state === "blocked" ? `M${x2} ${y2 - 6} L${x2} ${y2 + 6}` : `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
       }
-      const dim = inStep && !inStep.has(l.from) && !inStep.has(l.to);
+      const dim = inStep && !(inStep.has(l.from) && (inStep.has(l.to) || l.to === "#namespace"));
       for (const [path, extra] of [[d, ""], [head, " head"]]) {
         const e = document.createElementNS(svg.namespaceURI, "path");
         e.setAttribute("d", path);
@@ -767,6 +812,7 @@ function anchored(id, elx = nodeBox(id)) {
 function linkLegend(states, uses) {
   const lg = el("div", "linklegend");
   if (uses) lg.append(el("span", null, t("usesLegend")));
+  lg.append(el("span", null, t("viaLegend")));
   const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)"};
   for (const st of states) {
     const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + t("lk_" + st));
@@ -855,6 +901,17 @@ function renderSequence(v) {
   head.style.gridTemplateColumns = cols;
   actors.forEach((id) => head.append(nodeBox(id)));
   seq.append(head);
+  // Rows of bare lifelines keep the lines unbroken around a group's frame and label.
+  const spacer = () => {
+    const row = el("div", "seq-row spacer");
+    row.style.gridTemplateColumns = cols;
+    actors.forEach((_, c) => {
+      const cell = el("div", "seq-cell");
+      cell.style.gridColumn = String(c + 1);
+      row.append(cell);
+    });
+    return row;
+  };
   let group = null, groupName = null;
   (v.messages || []).forEach((m, i) => {
     if ((m.group || null) !== groupName) {
@@ -862,8 +919,8 @@ function renderSequence(v) {
       group = null;
       if (groupName) {
         group = el("div", "seq-group");
-        group.append(richEl("span", "glabel", groupName));
-        seq.append(group);
+        group.append(richEl("span", "glabel", groupName), spacer());
+        seq.append(spacer(), group);
       }
     }
     const row = el("div", "seq-row");
@@ -981,7 +1038,7 @@ function renderSteps() {
   all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
   bar.replaceChildren(all, ...steps().map((s, i) => {
-    const cls = plan.mode === "explain" && !s.status ? "plain" : STEP_STATUS[s.status] || "todo";
+    const cls = plan.mode === "explain" && !s.status ? "plain" : s.confirmed ? "done" : STEP_STATUS[s.status] || "todo";
     const mark = s.confirmed ? "✓ " : s.status === "review" ? "👉 " : "";
     const c = el("button", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
     c.setAttribute("aria-pressed", String(s.id === stepId));
@@ -997,6 +1054,7 @@ function highlight() {
   const inStep = step ? new Set(step.nodes || []) : null;
   document.querySelectorAll("#view [data-id]").forEach((d) => {
     d.classList.toggle("dim", !!inStep && !inStep.has(d.dataset.id));
+    d.classList.toggle("instep", !!inStep && inStep.has(d.dataset.id));
     d.classList.toggle("active", d.dataset.id === nodeId);
   });
   document.querySelectorAll("#view [data-step]").forEach((d) => d.classList.toggle("dim", !!step && d.dataset.step !== step.id));
@@ -1021,8 +1079,7 @@ function selectStep(id) {
   renderStepCard();
   followStep(curStep());
   highlight();
-  const step = curStep();
-  if (step?.nodes?.length) selectNode(step.nodes[0]);
+  if (nodeId && curStep() && !(curStep().nodes || []).includes(nodeId)) clearPanel();
 }
 
 const EDITOR_URL = {
@@ -1089,9 +1146,13 @@ function selectNode(id, reveal = false) {
   const n = plan.nodes[id];
   const p = document.getElementById("panel");
   if (!n) return p.replaceChildren(el("h3", null, t("noNode", id)));
-  const h = richEl("h3", null, `${n.name} · ${statusLabel(n.status)}`);
+  const h = el("h3");
   const ic = iconEl(n, id, document.querySelector(`#view .ns [data-id="${CSS.escape(id)}"]`) ? "k8s" : null);
-  if (ic) h.prepend(ic);
+  if (ic) h.append(ic);
+  h.append(richEl("span", null, `${n.name} · ${statusLabel(n.status)}`));
+  const back = el("button", "back", t("backUp"));
+  back.onclick = () => document.getElementById("tabs").scrollIntoView({block: "start", behavior: "smooth"});
+  h.append(back);
   const parts = [h];
   if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
@@ -1293,7 +1354,10 @@ async function load() {
   events.onerror = () => setConn(false);
   events.addEventListener("plan", fetchPlan);
   const on = (name, fn) => events.addEventListener(name, (e) => { fn(JSON.parse(e.data)); refreshThreads(); });
-  on("feedback", (m) => thread.push({...m, from: "user", delivered: false}));
+  on("feedback", (m) => {
+    thread.push({...m, from: "user", delivered: false});
+    freshReply = m.id;
+  });
   on("reply", (m) => {
     thread.push(m);
     freshReply = m.id;

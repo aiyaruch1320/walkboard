@@ -33,7 +33,7 @@
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 -apple-system,"Noto Sans Thai","Sarabun",system-ui,sans-serif}
 main{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
-h1{font-size:22px;font-weight:500;margin:0}
+h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .goal{color:var(--muted);margin:2px 0 12px}
 .top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 .conn{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
@@ -89,7 +89,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .side-head button{padding:2px 9px}
 .side .panel{border:0;border-radius:0;margin:0;padding:14px 16px 24px;background:transparent}
 .side .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:8px;background:var(--you-bd);color:var(--card);font-weight:500}
-@media (max-width:1099px){
+@media (max-width:819px){
   .layout{display:block}
   .side{position:fixed;left:0;right:0;bottom:0;top:auto;height:auto;z-index:25;border-top:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.3);transform:translateY(100%);transition:transform .3s ease,visibility 0s .3s}
   body.side-open .side{transform:none;border-left:0;transition:transform .3s ease}
@@ -239,6 +239,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .er{position:relative;display:grid;grid-auto-columns:max-content;gap:30px 110px;align-items:start;padding:10px 6px 14px;min-width:max-content}
 .ertable{background:var(--card);border:1.5px solid var(--line);border-radius:10px;min-width:220px;cursor:pointer;overflow:hidden}
 .ertable.active{outline:2px solid var(--text);outline-offset:2px}
+.g-q.active{border-color:var(--text);background:var(--you-bg)}
 .erhead{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:7px 10px;background:var(--code);border-bottom:1px solid var(--line)}
 .ertable ul{list-style:none;margin:0;padding:4px 0}
 .ertable li{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:2px 10px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}

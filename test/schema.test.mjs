@@ -234,3 +234,11 @@ test("design ids are unique and one option is recommended", () => {
   assert.match(out, /option id "x" is used twice/);
   assert.match(out, /only one option can be recommended/);
 });
+
+test("a copied column must name a real column", () => {
+  const p = {title: "t", settings: {commit: "auto"}, nodes: {a: {name: "A"}, b: {name: "B"}},
+    views: [{id: "d", kind: "datamodel", tables: [{node: "a", columns: [{name: "email"}]}, {node: "b", columns: [{name: "email", copy: "a.mail"}]}]}]};
+  assert.match(validate(p).join("\n"), /no column "a.mail"/);
+  p.views[0].tables[1].columns[0].copy = "a.email";
+  assert.deepEqual(validate(p), []);
+});

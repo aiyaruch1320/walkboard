@@ -151,7 +151,7 @@ export const KINDS = {
     refs: (v) => list(v.tables).map((tb) => tb?.node),
     check: (v) => {
       const cols = new Set(list(v.tables).flatMap((tb) => list(tb?.columns).map((c) => `${tb?.node}.${c?.name}`)));
-      return [...list(v.tables).flatMap((tb) => list(tb?.columns).filter((c) => c?.ref).map((c) => [`${tb.node}.${c.name}`, c.ref])), ...list(v.relations).map((r) => [r?.from, r?.to])]
+      return [...list(v.tables).flatMap((tb) => list(tb?.columns).filter((c) => c?.ref || c?.copy).flatMap((c) => [...(c.ref ? [[`${tb.node}.${c.name}`, c.ref]] : []), ...(c.copy ? [[`${tb.node}.${c.name}`, c.copy]] : [])])), ...list(v.relations).map((r) => [r?.from, r?.to])]
         .flatMap(([a, b]) => [a, b]).filter((k) => !cols.has(k)).map((k) => `no column "${k}" (use table.column)`);
     },
   },

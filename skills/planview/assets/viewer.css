@@ -254,6 +254,15 @@ body.side-open .side-inner{opacity:1;transform:none}
 .erkey.pk{color:var(--new-tx)}
 .erkey.fk{color:var(--ext-tx)}
 .ertype{color:var(--muted)}
+.erkey.copy{color:#b87400;font-size:12px}
+.ertable li.ercopy .ername{color:#b87400}
+.ertable li.same{background:rgba(217,138,0,.18)}
+.ertable li.ercopy.keep .ername,.ertable li.ercopy.keep .erkey{color:var(--muted)}
+svg.links .l-copy{fill:none;stroke:#d98a00;stroke-width:1.5;stroke-dasharray:4 4;opacity:0;transition:opacity .15s}
+svg.links .l-copy.show{opacity:1}
+.ersum{border:1.5px dashed #d98a00;border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ersum>span{flex-basis:100%}
+.ergroup{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 8px;border-radius:6px;border-color:#d98a00;cursor:default}
 svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-order:stroke;stroke:var(--bg);stroke-width:4px}
 /* before / after */
 .diffview{display:grid;grid-template-columns:1fr 1fr;gap:18px}
@@ -268,6 +277,8 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 .dedge{border-radius:6px;padding:1px 8px;border:1.5px solid}
 .dedge.del{border-style:dashed;color:var(--warn-tx);text-decoration:line-through}
 .dedge.add{color:var(--done-tx)}
+.diffview.stack{grid-template-columns:1fr}
+.ertable .dnote{font-size:12px;padding:6px 10px;border-top:1px dashed currentColor;color:#b87400}
 .node .dnote{font-size:12px;margin-top:5px;padding-top:5px;border-top:1px dashed currentColor}
 #view .d-chg{box-shadow:0 0 0 3px #d98a00!important}
 .dl{border-radius:6px;padding:0 7px;font-weight:600}

@@ -1990,8 +1990,9 @@ function renderDataModel(v) {
     for (const c of tb.columns || []) {
       const li = el("li");
       li.dataset.col = `${tb.node}.${c.name}`;
-      li.append(el("span", "erkey " + (c.key || ""), c.key ? c.key.toUpperCase() : ""), el("span", "ername", c.name), el("span", "ertype", c.type || ""));
-      if (c.note) li.title = c.note;
+      li.append(el("span", "erkey " + (c.copy ? "copy" : c.key || ""), c.copy ? "⧉" : c.key ? c.key.toUpperCase() : ""), el("span", "ername", c.name), el("span", "ertype", c.type || ""));
+      if (c.copy) li.classList.add("ercopy", ...(c.keep ? ["keep"] : []));
+      if (c.note || c.copy) li.title = [c.copy && t("erCopyOf", c.copy), c.note].filter(Boolean).join("\n");
       ul.append(li);
     }
     card.append(head, ul);
@@ -1999,7 +2000,26 @@ function renderDataModel(v) {
     card.style.gridRow = String((rows[level[tb.node]] = (rows[level[tb.node]] || 0) + 1));
     grid.append(card);
   }
-  const rels = v.relations || tables.flatMap((tb) => (tb.columns || []).filter((c) => c.ref).map((c) => ({from: `${tb.node}.${c.name}`, to: c.ref, kind: "N:1"})));
+  const cols = (f) => tables.flatMap((tb) => (tb.columns || []).filter((c) => c?.[f]).map((c) => ({from: `${tb.node}.${c.name}`, to: c[f]})));
+  // Copies point back to their original; a copy of a copy belongs to the same original.
+  const copyOf = Object.fromEntries(cols("copy").map((r) => [r.from, r.to]));
+  const root = (k, n = 0) => (copyOf[k] && n < 9 ? root(copyOf[k], n + 1) : k);
+  const rels = [...cols("ref").map((r) => ({...r, kind: "N:1"})), ...(v.relations || []), ...cols("copy").map((r) => ({...r, copy: root(r.to)}))];
+  // The same data kept in several places: one group per original. Its lines show only while you point at one of them.
+  const groups = {};
+  for (const r of cols("copy")) (groups[root(r.to)] ||= []).push(r.from);
+  let lit = null;
+  const light = (orig) => {
+    lit = orig;
+    grid.querySelectorAll("li[data-col]").forEach((li) => li.classList.toggle("same", !!orig && (li.dataset.col === orig || root(li.dataset.col) === orig)));
+    svg.querySelectorAll(".l-copy").forEach((p) => p.classList.toggle("show", p.dataset.group === orig));
+  };
+  for (const [orig, copies] of Object.entries(groups)) for (const k of [orig, ...copies]) {
+    const li = grid.querySelector(`[data-col="${CSS.escape(k)}"]`);
+    if (!li) continue;
+    li.onmouseenter = () => light(orig);
+    li.onmouseleave = () => light(null);
+  }
   const svg = linkLayer(grid);
   const row = (key) => grid.querySelector(`[data-col="${CSS.escape(key)}"]`)?.getBoundingClientRect();
   const draw = () => {
@@ -2013,8 +2033,10 @@ function renderDataModel(v) {
       const dx = Math.max(30, Math.abs(x2 - x1) / 2) * (right ? 1 : -1);
       const path = document.createElementNS(svg.namespaceURI, "path");
       path.setAttribute("d", `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`);
-      path.setAttribute("class", "l-flow");
+      path.setAttribute("class", r.copy ? "l-copy" + (r.copy === lit ? " show" : "") : "l-flow");
+      if (r.copy) path.dataset.group = r.copy;
       svg.append(path);
+      if (r.copy) continue;
       const [m, n] = String(r.kind || "N:1").split(":");
       for (const [txt, x, y, anchor] of [[m, x1 + (right ? 6 : -6), y1 - 5, right ? "start" : "end"], [n, x2 + (right ? -6 : 6), y2 - 5, right ? "end" : "start"]]) {
         const tx = document.createElementNS(svg.namespaceURI, "text");
@@ -2030,13 +2052,28 @@ function renderDataModel(v) {
   addDrawer(draw, grid);
   const scroll = el("div", "scroll");
   scroll.append(grid);
-  return scroll;
+  const n = Object.values(groups).reduce((a, x) => a + x.length, 0);
+  if (!n) return scroll;
+  const kept = tables.flatMap((tb) => (tb.columns || []).filter((c) => c?.copy && c.keep)).length;
+  const sum = el("div", "ersum");
+  sum.append(el("span", null, t("erCopies", n, kept)));
+  for (const [orig, copies] of Object.entries(groups)) {
+    const chip = el("button", "ergroup", `${orig} ×${copies.length + 1}`);
+    chip.title = copies.join("\n");
+    chip.onmouseenter = chip.onfocus = () => light(orig);
+    chip.onmouseleave = chip.onblur = () => light(null);
+    sum.append(chip);
+  }
+  const wrap = el("div");
+  wrap.append(sum, scroll);
+  return wrap;
 }
 
 // ---------- before / after: two pictures side by side, with what was added, removed or changed marked
 function renderDiff(v) {
   const before = plan.views.find((x) => x.id === v.before), after = plan.views.find((x) => x.id === v.after);
-  const wrap = el("div", "diffview");
+  // Wide pictures read better one above the other than squeezed side by side.
+  const wrap = el("div", "diffview" + ([v.before, v.after].some((id) => plan.views.find((x) => x.id === id)?.kind !== "flow") ? " stack" : ""));
   if (!before || !after || !VIEWS[before.kind] || !VIEWS[after.kind] || before.kind === "diff" || after.kind === "diff") return el("p", null, t("cannotDraw", "diff"));
   const ids = (x) => new Set(KINDS[x.kind]?.refs(x) || []);
   // changed: ["api"], or {"api": "now publishes instead of sending"} to say what changed.

@@ -24,7 +24,7 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 | Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; a sheet from the bottom on narrow screens. |
 | Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
 | Dotted words | Glossary: tap for a plain explanation (inside a box, hover; a tap opens the box). |
-| Mode pill | Next to the logo: plan, explain or design. Click it for what each mode is for. |
+| Mode pill | Next to the logo: plan, explain or design. Click it for one line on what this mode does; click again to close. |
 
 ## Pictures
 

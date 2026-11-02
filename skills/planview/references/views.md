@@ -128,7 +128,7 @@ A lane per box; `to` makes a span; `marks` cross all lanes.
  {"node":"orders","columns":[{"name":"id","type":"uuid","key":"pk"},{"name":"user_id","type":"bigint","key":"fk","ref":"users.id"}]}]}
 ```
 
-`ref` draws N:1; `relations: [{"from":"a.x","to":"b.y","kind":"1:1"}]` for others. Only the columns that matter.
+`ref` draws N:1; `relations: [{"from":"a.x","to":"b.y","kind":"1:1"}]` for others. `copy: "users.email"` marks a column that stores the same data again (⧉): the page counts the copies and shows where each one comes from on hover; add `"keep": true` for a copy kept on purpose (price at the time of sale). Only the columns that matter.
 
 ## impact
 

@@ -41,7 +41,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
 ## 3. Show and listen
 
 1. `PV open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "?" shows a tour.
-2. Keep exactly one `PV poll <dir>` running **in the background**. It exits when the page sends something, waking you with one JSON line per message (`kind`, `text`, `node` or `step`):
+2. Keep exactly one `PV poll <dir>` running **in the background**. It exits when the page sends something, waking you with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen). `[]` means the server stopped: `PV open` again.
    - `question` / `confused`: `PV reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `PV set <dir> step:<id> confirmed=true`.
@@ -57,7 +57,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
 Not before `approved` is true. For each step:
 
 1. `PV set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
-2. `PV set <dir> step:<id> status=review node:<a> status=done …`.
+2. `PV set <dir> step:<id> status=review node:<a> status=done …`, and `PV reply <dir> --step <id>` with one line on what you built and the files touched, so the user has something to check or restate.
 3. `PV status <dir>` shows the current `settings`. Teach-back on: wait for `confirmed` (skip only if the user asks).
 4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (references/messages.md). No `Co-Authored-By` or other line naming an AI or tool: the user who installed planview does not want them.
 5. `PV set <dir> step:<id> status=done`, next step. Teach-back off and `"auto"`: nothing waits.

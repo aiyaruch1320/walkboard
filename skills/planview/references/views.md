@@ -1,6 +1,6 @@
 # Views
 
-Every box is a node id, so a click opens the same details and chat. Wide pictures scroll sideways. Full examples: `examples/nightly-import` and `examples/explain-login` in the planview repository.
+Every box is a node id, so a click opens the same details and chat. Wide pictures scroll sideways.
 
 ## Which picture
 

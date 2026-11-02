@@ -11,8 +11,6 @@ One JSON object, written compact. `PV check <dir>` validates it with the page's 
    "in":"image, config, secret","out":"one Job per night","why":"Stays suspended until secrets exist"}}}
 ```
 
-Full examples: `examples/nightly-import` (build) and `examples/explain-login` (explain) in the planview repository.
-
 ## Top level
 
 | Field | Meaning |

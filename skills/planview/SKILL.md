@@ -15,6 +15,7 @@ Use the language the user writes in for everything: questions, the plan, replies
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
+- **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [references/design.md](references/design.md), then section 3.
 
 `settings`, first match wins: what the request says ("no restating", "commit for me") · existing `settings` · `~/.planview/config.json` (same fields). Still missing: ask one question (AskUserQuestion when available): build → commit for them or only suggest messages (`"commit": "auto"|"suggest"`); explain → overview or detail (`"depth"`). Then offer to save it to `~/.planview/config.json`. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
 
@@ -43,7 +44,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
    - `deeper`: add boxes, a stage or a view (with `file` evidence), reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `PV set <dir> step:<id> confirmed=true`.
    - `approve`: `PV set <dir> approved=true`, reply in one line.
-   - `propose`, `change`, `withdraw`, `plan`, `apply`, `commit`, `committed`: read [references/messages.md](references/messages.md) the first time.
+   - `propose`, `change`, `withdraw`, `plan`, `apply`, `commit`, `committed`: read [references/messages.md](references/messages.md) the first time; `confirm`, `decide`: references/design.md.
    - `settings`: switches already saved in plan.json; arrives only with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
 3. Refer to steps by title. Start `PV poll` again. The user may also answer in chat.

@@ -40,7 +40,7 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 |---|---|---|
 | `title` | yes | Page heading |
 | `goal` | no | One sentence under the heading |
-| `mode` | no | `"build"` (default) or `"explain"` |
+| `mode` | no | `"build"` (default), `"explain"` or `"design"` (options, criteria, scores, sources, constraints, decision: see [design.md](design.md)) |
 | `lang` | no | Language of the plan and of the page's labels: `"en"` or `"th"` (others get English labels). Default: Thai if the title or goal is Thai, else English |
 | `settings` | yes | The answers to the up-front questions |
 | `approved` | no | build: `true` once the user approved the plan; do not build before |
@@ -90,6 +90,7 @@ The page opens on the first step in `review`, else `doing`.
 | `icon` | Optional; guessed from `name` when left out. `"provider:service"` for cloud parts, drawn in the provider's colours: `aws:` s3, lambda, ec2, rds, dynamodb, sqs, sns, eventbridge, kinesis, apigateway, cloudfront, route53, elb, iam, cognito, cloudwatch, eks, ecs, ecr, secretsmanager, kms, ses, stepfunctions, redshift, athena, bedrock, elasticache · `gcp:` gcs, bigquery, pubsub, cloudrun, functions, gke, cloudsql, firestore, spanner, secretmanager, dataflow, vertexai · `azure:` blob, functions, aks, sql, cosmosdb, servicebus, eventhubs, eventgrid, keyvault, entra, appservice · `k8s:` pod, deployment, statefulset, cronjob, job, service, ingress, configmap, secret, namespace, networkpolicy, pvc. Plain: user, users, browser, mobile, server, vm, api, database, cache, queue, topic, stream, bucket, file, folder, function, container, clock, job, secret, key, identity, login, config, network, gateway, loadbalancer, dns, cdn, email, chat, cloud, monitor, log, git, ci, registry, terminal, code, shield, search, payment, warehouse, table, plug, workflow, ai. `"none"` for no icon |
 | `highlight` | Lines to highlight in the code excerpt, e.g. `"146-152"` or `"12, 15-16"`, or lines with a short note shown under them: `{"146": "waits here", "152": "prints, then exits: this wakes the agent"}`. Without it, a single `path:line` is highlighted and a `path:from-to` range is shown as plain context |
 | `proposal` | Something the user proposed on the page and you drew: `{"type": "add" \| "change" \| "remove", "note": "…"}`. Shown with its own colour until it becomes a plan (`plan` / `apply` messages) or is withdrawn |
+| `basis` / `source` / `checked` | Where a box's facts come from: `"iac"`, `"cli"`, `"doc"` or `"assumed"` (shown as a mark; assumed boxes are dashed and can be confirmed on the page), the `sources` id, and the date seen |
 | `in` / `out` | What goes in and comes out; a concrete example beats a description. Newlines allowed |
 | `why` | One or two lines: the reason, not a restatement of `name` |
 

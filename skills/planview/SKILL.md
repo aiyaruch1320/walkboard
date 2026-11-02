@@ -9,19 +9,21 @@ Long text loses people. You write `plan.json`; planview draws it as a local page
 
 `PV` = `node <this skill's base directory>/bin/planview.mjs` (Node 18.18+, no install).
 
-## 0. Language, mode and one question
+## 0. Language, mode and settings
 
 Use the language the user writes in for everything: questions, the plan, replies, commit-message suggestions. Set `"lang"` in the plan to its code (`"en"`, `"th"`, …); the page's buttons and labels follow it (English for languages planview has no labels for). Code, ids and file paths stay as they are.
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 
-Ask one question (AskUserQuestion when available) and store the answer in `settings`:
+`settings` in the plan, in this order of precedence:
 
-- build: commit for them, or only suggest messages? → `{"commit": "auto"|"suggest"}`
-- explain: overview or detail? → `{"depth": "overview"|"detail"}`
+1. What the request says ("no restating", "commit for me", "just an overview").
+2. Existing `settings` in the plan; never ask again.
+3. The user's defaults in `~/.planview/config.json`, e.g. `{"teachBack": true, "commit": "suggest", "depth": "overview"}`.
+4. Still missing: ask one question (AskUserQuestion when available). build: commit for them, or only suggest messages? → `"commit": "auto"|"suggest"`; explain: overview or detail? → `"depth"`. Then offer to save the answer to `~/.planview/config.json` so it is never asked again.
 
-Do not ask about restating (teach-back): it is on by default and the user switches it, and commits, on the page. Reuse existing `settings` without asking again.
+Do not ask about restating (`teachBack`): it is on unless set to `false`. The user can switch it, and commits, on the page.
 
 ## 1. Write the plan (build)
 
@@ -50,7 +52,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
    - `change`: change the plan, `PV check`, reply with what changed (the page highlights it).
    - `teachback`: say what is right, correct what is not; when it matches, `PV set <dir> step:<id> confirmed=true`.
    - `approve`: `PV set <dir> approved=true`, then reply in one line. `ok`: acknowledge in one line.
-   - `settings`: the user changed `teachBack` or `commit` on the page; plan.json already has it. Follow it from now on; no reply needed.
+   - `settings`: switches the user changed on the page (already in plan.json). It only arrives together with another message and needs no reply.
    Reply to every other message, even in one line: the page shows you as typing from the moment you take a message until you reply or poll again.
 3. Refer to steps by title, not number. Start `PV poll` again. The user may also answer in chat; handle both.
 
@@ -61,7 +63,7 @@ Do not start until `approved` is true. For each step:
 1. `PV set <dir> step:<id> status=doing node:<a> status=new …`
 2. Do the work, limited to that step.
 3. `PV set <dir> step:<id> status=review node:<a> status=done …` (the page shows "Your turn").
-4. With teach-back on (`teachBack` is not `false`), wait until the step is `confirmed`. Otherwise skip.
+4. Read the current `settings` first (`PV status <dir>` prints them; the user may have switched them on the page). With teach-back on (`teachBack` is not `false`), wait until the step is `confirmed`; if the user asks to skip restating this step, go on without it. Otherwise skip.
 5. Commit per `settings.commit`: `"auto"` → small commits, one context each; `"suggest"` → give the messages, do not commit. The user who installed planview wants no `Co-Authored-By` or other line naming an AI or tool in these messages.
 6. `PV set <dir> step:<id> status=done`.
 

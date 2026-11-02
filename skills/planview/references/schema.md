@@ -57,6 +57,7 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | Field | Mode | Values |
 |---|---|---|
 | `teachBack` | both | Default `true`: the user restates each step. The user switches it on the page; do not ask |
+| | | Defaults for every plan can live in `~/.planview/config.json` (same fields) |
 | `commit` | build | `"auto"` = you commit after each step; `"suggest"` = only suggest messages |
 | `depth` | explain | `"overview"` or `"detail"` (down to functions and files) |
 | `editor` | both | Where file links open: `"vscode"` (default), `"cursor"`, `"idea"`, `"none"` |

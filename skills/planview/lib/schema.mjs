@@ -1,6 +1,7 @@
-export const NODE_STATUS = {done: "ทำแล้ว", new: "เพิ่งทำ", todo: "ยังไม่ทำ", ext: "ภายนอก"};
+export const NODE_STATUS = {done: "done", new: "new", todo: "todo", ext: "ext"};
 export const STEP_STATUS = {done: "done", doing: "doing", review: "review", todo: "todo"};
-export const LINK_STATE = {ok: "อนุญาต / ใช้ได้", todo: "รอเปิด / ยังไม่ทำ", blocked: "ถูกบล็อก"};
+export const LINK_STATE = {ok: "ok", todo: "todo", blocked: "blocked"};
+export const LANGS = ["en", "th"];
 export const MODES = ["build", "explain"];
 export const EDITORS = ["vscode", "cursor", "idea", "none"];
 
@@ -29,29 +30,37 @@ const isObj = (x) => x != null && typeof x === "object" && !Array.isArray(x);
 export const KINDS = {
   flow: {
     refs: (v) => list(v.lanes).flatMap((l) => list(l?.nodes)),
-    check: (v) => (Array.isArray(v.lanes) ? [] : ["lanes ต้องเป็น array"]),
+    check: (v) => (Array.isArray(v.lanes) ? [] : ["lanes must be an array"]),
   },
   k8s: {
     refs: (v) => [...list(v.outside), ...list(v.configs), ...list(v.targets), ...(v.policy ? [v.policy] : []),
       ...list(v.workloads).flatMap((w) => [w?.node, ...list(w?.uses)]), ...list(v.links).flatMap((l) => [l?.from, l?.to])],
-    check: (v) => list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to} state "${l.state}" ไม่รู้จัก (ok, todo, blocked)`),
+    check: (v) => list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked)`),
   },
   sequence: {
     refs: (v) => [...list(v.actors), ...list(v.messages).flatMap((m) => (m?.node ? [m.node] : []))],
     check: (v, p) => list(v.messages).flatMap((m, i) => [
-      ...[m?.from, m?.to].filter((a) => !list(v.actors).includes(a)).map((a) => `ข้อความที่ ${i + 1} อ้าง actor "${a}" ที่ไม่อยู่ใน actors`),
-      ...(m?.step && !list(p.steps).some((s) => s?.id === m.step) ? [`ข้อความที่ ${i + 1} อ้าง step "${m.step}" ที่ไม่มี`] : []),
-      ...(m?.group != null && typeof m.group !== "string" ? [`ข้อความที่ ${i + 1} group ต้องเป็นข้อความ`] : []),
+      ...[m?.from, m?.to].filter((a) => !list(v.actors).includes(a)).map((a) => `message ${i + 1}: actor "${a}" is not in actors`),
+      ...(m?.step && !list(p.steps).some((s) => s?.id === m.step) ? [`message ${i + 1}: no step "${m.step}"`] : []),
+      ...(m?.group != null && typeof m.group !== "string" ? [`message ${i + 1}: group must be a string`] : []),
     ]),
   },
   transform: {
     refs: (v) => list(v.stages).map((st) => st?.node),
     check: (v) => list(v.stages).flatMap((st, i) => [
-      ...(!st?.columns && !st?.text ? [`stage ที่ ${i + 1} ต้องมี columns+rows หรือ text`] : []),
-      ...list(st?.rows).filter((r) => st.columns && (!Array.isArray(r) || r.length !== st.columns.length)).map(() => `stage ที่ ${i + 1} มีแถวที่จำนวนช่องไม่เท่า columns`),
+      ...(!st?.columns && !st?.text ? [`stage ${i + 1} needs columns + rows, or text`] : []),
+      ...list(st?.rows).filter((r) => st.columns && (!Array.isArray(r) || r.length !== st.columns.length)).map(() => `stage ${i + 1} has a row whose length differs from columns`),
     ]),
   },
 };
+
+// Page labels follow the plan: "lang" when set, otherwise Thai if the title or goal is Thai, otherwise English.
+export function langOf(p) {
+  const code = typeof p?.lang === "string" ? p.lang.toLowerCase().split(/[-_]/)[0] : "";
+  if (LANGS.includes(code)) return code;
+  if (code) return "en";
+  return /[\u0E00-\u0E7F]/.test(`${p?.title ?? ""} ${p?.goal ?? ""}`) ? "th" : "en";
+}
 
 const dupes = (ids) => ids.filter((id, i) => id && ids.indexOf(id) !== i);
 
@@ -59,71 +68,73 @@ const dupes = (ids) => ids.filter((id, i) => id && ids.indexOf(id) !== i);
 export function viewsOf(p) {
   if (list(p?.views).length) return p.views;
   const lanes = list(p?.steps).filter((s) => list(s?.nodes).length).map((s) => ({title: s.title, nodes: s.nodes}));
-  return lanes.length ? [{id: "flow", kind: "flow", title: "ภาพรวม", lanes}] : [];
+  return lanes.length ? [{id: "flow", kind: "flow", title: langOf(p) === "th" ? "ภาพรวม" : "Overview", lanes}] : [];
 }
 
 export function validate(p) {
   const out = [];
-  if (!isObj(p)) return ["plan.json ไม่ใช่ object"];
-  if (!p.title) out.push("ไม่มี title");
+  if (!isObj(p)) return ["plan.json is not an object"];
+  if (!p.title) out.push("no title");
+  if (p.lang != null && typeof p.lang !== "string") out.push('lang must be a language code such as "en" or "th"');
   const mode = p.mode ?? "build";
-  if (!MODES.includes(mode)) out.push(`mode "${p.mode}" ไม่รู้จัก (${MODES.join(", ")})`);
+  if (!MODES.includes(mode)) out.push(`unknown mode "${p.mode}" (${MODES.join(", ")})`);
   const s = p.settings;
   if (!isObj(s)) out.push(mode === "explain"
-    ? 'ไม่มี settings (ถามผู้ใช้ก่อนเริ่ม: {"teachBack": true|false})'
-    : 'ไม่มี settings (ถามผู้ใช้ก่อนเริ่ม: {"teachBack": true|false, "commit": "auto"|"suggest"})');
+    ? 'no settings (ask the user first: {"teachBack": true|false})'
+    : 'no settings (ask the user first: {"teachBack": true|false, "commit": "auto"|"suggest"})');
   else {
-    if (typeof s.teachBack !== "boolean") out.push("settings.teachBack ต้องเป็น true หรือ false");
-    if (mode === "build" && !["auto", "suggest"].includes(s.commit)) out.push('settings.commit ต้องเป็น "auto" หรือ "suggest"');
+    if (typeof s.teachBack !== "boolean") out.push("settings.teachBack must be true or false");
+    if (mode === "build" && !["auto", "suggest"].includes(s.commit)) out.push('settings.commit must be "auto" or "suggest"');
   }
-  if (p.approved != null && typeof p.approved !== "boolean") out.push("approved ต้องเป็น true หรือ false");
-  if (p.root != null && (typeof p.root !== "string" || !p.root)) out.push("root ต้องเป็น path (เต็ม หรือนับจากโฟลเดอร์แผน)");
-  if (p.roots != null && (!isObj(p.roots) || Object.values(p.roots).some((r) => typeof r !== "string" || !r))) out.push('roots ต้องเป็น {"ชื่อ": "path"}');
-  if (isObj(s) && s.editor != null && !EDITORS.includes(s.editor)) out.push(`settings.editor ต้องเป็น ${EDITORS.join(", ")}`);
-  if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth ต้องเป็น "overview" หรือ "detail"');
-  if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" ไม่ตรงกับ step ไหน`);
-  if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary ต้องเป็น {"คำ": "คำอธิบาย"}');
+  if (p.approved != null && typeof p.approved !== "boolean") out.push("approved must be true or false");
+  if (p.root != null && (typeof p.root !== "string" || !p.root)) out.push("root must be a path (absolute, or relative to the plan folder)");
+  if (p.roots != null && (!isObj(p.roots) || Object.values(p.roots).some((r) => typeof r !== "string" || !r))) out.push('roots must be {"name": "path"}');
+  if (isObj(s) && s.editor != null && !EDITORS.includes(s.editor)) out.push(`settings.editor must be one of ${EDITORS.join(", ")}`);
+  if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth must be "overview" or "detail"');
+  if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" matches no step`);
+  if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary must be {"term": "explanation"}');
 
-  if (p.nodes != null && !isObj(p.nodes)) out.push("nodes ต้องเป็น object");
+  if (p.nodes != null && !isObj(p.nodes)) out.push("nodes must be an object");
   const nodes = isObj(p.nodes) ? p.nodes : {};
   for (const [id, n] of Object.entries(nodes)) {
     if (!isObj(n)) {
-      out.push(`node "${id}" ต้องเป็น object`);
+      out.push(`node "${id}" must be an object`);
       continue;
     }
-    if (!n.name) out.push(`node "${id}" ไม่มี name`);
-    if (n.status && !has(NODE_STATUS, n.status)) out.push(`node "${id}" status "${n.status}" ไม่รู้จัก (${Object.keys(NODE_STATUS).join(", ")})`);
+    if (!n.name) out.push(`node "${id}" has no name`);
+    if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
+    if (n.status && !has(NODE_STATUS, n.status)) out.push(`node "${id}": unknown status "${n.status}" (${Object.keys(NODE_STATUS).join(", ")})`);
   }
   const known = (k) => has(nodes, k) && isObj(nodes[k]);
 
-  if (p.steps != null && !Array.isArray(p.steps)) out.push("steps ต้องเป็น array");
+  if (p.steps != null && !Array.isArray(p.steps)) out.push("steps must be an array");
   const steps = list(p.steps);
-  for (const id of dupes(steps.map((x) => x?.id))) out.push(`step id "${id}" ซ้ำ`);
+  for (const id of dupes(steps.map((x) => x?.id))) out.push(`step id "${id}" is used twice`);
   for (const st of steps) {
     if (!isObj(st) || !st.id || !st.title) {
-      out.push("step ต้องมี id และ title");
+      out.push("every step needs an id and a title");
       continue;
     }
-    if (st.status && !has(STEP_STATUS, st.status)) out.push(`step "${st.id}" status "${st.status}" ไม่รู้จัก (${Object.keys(STEP_STATUS).join(", ")})`);
-    if (st.confirmed != null && typeof st.confirmed !== "boolean") out.push(`step "${st.id}" confirmed ต้องเป็น true หรือ false`);
-    for (const k of list(st.nodes)) if (!known(k)) out.push(`step "${st.id}" อ้าง node "${k}" ที่ไม่มี`);
+    if (st.status && !has(STEP_STATUS, st.status)) out.push(`step "${st.id}": unknown status "${st.status}" (${Object.keys(STEP_STATUS).join(", ")})`);
+    if (st.confirmed != null && typeof st.confirmed !== "boolean") out.push(`step "${st.id}" confirmed must be true or false`);
+    for (const k of list(st.nodes)) if (!known(k)) out.push(`step "${st.id}": no node "${k}"`);
   }
 
-  if (p.views != null && !Array.isArray(p.views)) out.push("views ต้องเป็น array");
+  if (p.views != null && !Array.isArray(p.views)) out.push("views must be an array");
   const views = viewsOf(p);
-  if (!views.length) out.push("ไม่มี views และไม่มี step ที่บอก nodes ให้สร้างภาพได้");
-  for (const id of dupes(views.map((v) => v?.id))) out.push(`view id "${id}" ซ้ำ`);
+  if (!views.length) out.push("no views, and no step lists nodes to draw a picture from");
+  for (const id of dupes(views.map((v) => v?.id))) out.push(`view id "${id}" is used twice`);
   for (const v of views) {
     if (!isObj(v)) {
-      out.push("view ต้องเป็น object");
+      out.push("every view must be an object");
       continue;
     }
     const kind = has(KINDS, v.kind) ? KINDS[v.kind] : null;
     if (!kind) {
-      out.push(`view "${v.id}" kind "${v.kind}" ไม่รู้จัก (มี: ${Object.keys(KINDS).join(", ")})`);
+      out.push(`view "${v.id}": unknown kind "${v.kind}" (${Object.keys(KINDS).join(", ")})`);
       continue;
     }
-    for (const k of new Set(kind.refs(v))) if (!known(k)) out.push(`view "${v.id}" อ้าง node "${k}" ที่ไม่มี`);
+    for (const k of new Set(kind.refs(v))) if (!known(k)) out.push(`view "${v.id}": no node "${k}"`);
     for (const t of kind.check?.(v, p) || []) out.push(`view "${v.id}": ${t}`);
   }
   return out;
@@ -136,14 +147,14 @@ export function lint(p) {
   const shown = new Set(viewsOf(p).flatMap((v) => (isObj(v) && has(KINDS, v.kind) ? KINDS[v.kind].refs(v) : [])));
   for (const [id, n] of Object.entries(p.nodes)) {
     if (!isObj(n)) continue;
-    if (!shown.has(id)) out.push(`node "${id}" ไม่อยู่ในภาพไหนเลย`);
-    if (String(n.name || "").length > 40) out.push(`node "${id}" ชื่อยาวเกิน 40 ตัวอักษร ย่อให้สั้นลง`);
-    if (p.mode === "explain" && n.status !== "ext" && !n.file) out.push(`node "${id}" ไม่มี file (โหมดอธิบายต้องชี้ไปที่โค้ดจริง)`);
-    if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" ไม่มีเลขบรรทัด (path:line)`);
-    if (String(n.what || "").length > 60) out.push(`node "${id}" what ยาวเกิน 60 ตัวอักษร`);
+    if (!shown.has(id)) out.push(`node "${id}" is in no picture`);
+    if (String(n.name || "").length > 40) out.push(`node "${id}": name over 40 characters, shorten it`);
+    if (p.mode === "explain" && n.status !== "ext" && !n.file) out.push(`node "${id}" has no file (explain mode points at real code)`);
+    if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" has no line (path:line)`);
+    if (String(n.what || "").length > 60) out.push(`node "${id}": what over 60 characters`);
   }
-  for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" ไม่มี detail (ขั้นนี้ทำอะไร)`);
-  if (list(p.steps).length > 10) out.push(`มี ${list(p.steps).length} ขั้น เกิน 10 ลองรวมหรือแยกเป็นอีกแผน`);
-  if (p.mode === "explain" && !p.root && !p.roots) out.push("โหมดอธิบายควรมี root (path ของ repo) เพื่อให้ตรวจและเปิด file:line ได้");
+  for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" has no detail (what the step does)`);
+  if (list(p.steps).length > 10) out.push(`${list(p.steps).length} steps, more than 10: merge some or split the plan`);
+  if (p.mode === "explain" && !p.root && !p.roots) out.push("explain mode should have root (the repository path) so file:line can be checked and opened");
   return out;
 }

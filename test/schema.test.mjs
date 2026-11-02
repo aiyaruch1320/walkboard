@@ -39,7 +39,7 @@ test("references to missing nodes, steps and actors are reported", () => {
     {id: "t", kind: "transform", stages: [{node: "a", columns: ["x", "y"], rows: [["1"]]}, {node: "b"}]},
   );
   const out = validate(p).join("\n");
-  for (const want of [/node "ghost"/, /node "cfg"/, /state "maybe"/, /actor "b"/, /step "nope"/, /จำนวนช่อง/, /stage ที่ 2/]) assert.match(out, want);
+  for (const want of [/node "ghost"/, /node "cfg"/, /state "maybe"/, /actor "b"/, /step "nope"/, /length differs/, /stage 2 needs/]) assert.match(out, want);
 });
 
 test("unknown kinds, statuses and duplicate ids are reported", () => {
@@ -48,7 +48,7 @@ test("unknown kinds, statuses and duplicate ids are reported", () => {
   p.steps.push({id: "s1", title: "again", status: "later"});
   p.nodes.a.status = "wip";
   const out = validate(p).join("\n");
-  for (const want of [/kind "pie"/, /view id "f" ซ้ำ/, /step id "s1" ซ้ำ/, /status "later"/, /status "wip"/]) assert.match(out, want);
+  for (const want of [/kind "pie"/, /view id "f" is used twice/, /step id "s1" is used twice/, /status "later"/, /status "wip"/]) assert.match(out, want);
 });
 
 test("wrong types are reported instead of crashing", () => {
@@ -56,7 +56,7 @@ test("wrong types are reported instead of crashing", () => {
     const out = validate({...base(), ...bad});
     assert.ok(out.length, JSON.stringify(bad));
   }
-  assert.deepEqual(validate("x"), ["plan.json ไม่ใช่ object"]);
+  assert.deepEqual(validate("x"), ["plan.json is not an object"]);
 });
 
 test("prototype names are not mistaken for nodes or statuses", () => {
@@ -73,8 +73,8 @@ test("explain mode needs no commit setting, and lint asks for evidence", async (
   const p = {...base(), mode: "explain", settings: {teachBack: true}};
   assert.deepEqual(validate(p), []);
   const warn = lint(p).join("\n");
-  assert.match(warn, /node "a" ไม่มี file/);
-  assert.match(warn, /step "s1" ไม่มี detail/);
+  assert.match(warn, /node "a" has no file/);
+  assert.match(warn, /step "s1" has no detail/);
   assert.doesNotMatch(warn, /node "b"/);
 });
 
@@ -100,7 +100,7 @@ test("file references parse with lines, ranges and named roots", async () => {
 test("root, roots, start, editor and depth are checked", () => {
   const p = {...base(), root: 7, roots: {d: 1}, start: "nope", settings: {teachBack: true, commit: "auto", editor: "notepad", depth: "deep"}};
   const out = validate(p).join("\n");
-  for (const want of [/root ต้องเป็น/, /roots ต้องเป็น/, /start "nope"/, /settings.editor/, /settings.depth/]) assert.match(out, want);
+  for (const want of [/root must be/, /roots must be/, /start "nope"/, /settings.editor/, /settings.depth/]) assert.match(out, want);
   assert.deepEqual(validate({...base(), root: "/repo", start: "s1"}), []);
 });
 
@@ -111,5 +111,19 @@ test("a plan without views gets a flow from its steps", async () => {
   assert.deepEqual(validate(p), []);
   assert.deepEqual(viewsOf(p)[0].lanes, [{title: "one", nodes: ["a"]}]);
   p.steps[0].nodes = [];
-  assert.match(validate(p).join("\n"), /ไม่มี views/);
+  assert.match(validate(p).join("\n"), /no views/);
+});
+
+test("page language comes from lang, else from the title and goal", async () => {
+  const {langOf, viewsOf} = await import("../skills/planview/lib/schema.mjs");
+  assert.equal(langOf({title: "Nightly import"}), "en");
+  assert.equal(langOf({title: "นำเข้าลูกค้า"}), "th");
+  assert.equal(langOf({title: "นำเข้า", lang: "en"}), "en");
+  assert.equal(langOf({title: "x", lang: "th-TH"}), "th");
+  assert.equal(langOf({title: "x", lang: "ja"}), "en");
+  const p = base();
+  delete p.views;
+  assert.equal(viewsOf({...p, lang: "th"})[0].title, "ภาพรวม");
+  assert.equal(viewsOf(p)[0].title, "Overview");
+  assert.match(validate({...base(), lang: 3}).join("\n"), /lang must be/);
 });

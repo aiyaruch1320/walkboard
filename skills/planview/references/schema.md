@@ -25,7 +25,7 @@ One JSON object, written compact. `PV check <dir>` validates it with the page's 
 | `start` | Step id to open on (default: first in `review`, else `doing`) |
 | `constraints` | `[{"id","text","confirmed":false}]`: assumptions the user should confirm; shown dashed until confirmed |
 | `links` | Plans started from this page: `[{"title","url"}]` |
-| `glossary` | `{"term": "one-line explanation"}`, only project terms; ~70 common ones ship with planview |
+| `glossary` | `{"term": "one-line explanation"}`, only project terms; ~95 common ones ship with planview |
 | `steps` | Ordered steps (build) or stages (explain) |
 | `views` | Pictures as tabs ([views.md](views.md)); leave out for a plain flow built from the steps |
 | `nodes` | Required. Every box, keyed by a short id |

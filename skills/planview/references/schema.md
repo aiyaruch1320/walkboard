@@ -45,9 +45,9 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | `root` | explain: expected | Repository the `file` paths are relative to; absolute, or relative to the plan folder |
 | `roots` | no | More repositories by name, e.g. `{"deploy": "/path/to/deploy-repo"}`; refer to them as `deploy:path:line` |
 | `start` | no | Step id the page opens on (default: first step in `review`, else `doing`) |
-| `glossary` | no (expected) | `{"term": "plain one-line explanation"}`; terms are underlined wherever they appear and explain themselves on click |
+| `glossary` | no | `{"term": "plain one-line explanation"}` for terms specific to this project; about 70 common terms (Kubernetes, CI, HTTP, JWT, …) ship with planview in `assets/glossary.th.json`. Terms are underlined wherever they appear and explain themselves on click |
 | `steps` | no (expected) | Ordered steps (build) or stages of the flow (explain) |
-| `views` | yes, ≥ 1 | Pictures, shown as tabs when there is more than one |
+| `views` | no | Pictures, shown as tabs. Leave out for a plain flow: each step becomes a lane of its boxes |
 | `nodes` | yes | Every box, keyed by a short id that views and steps refer to |
 
 ## settings
@@ -79,7 +79,7 @@ The page opens on the first step in `review`, else `doing`.
 |---|---|
 | `name` | Required, ≤ 4 words |
 | `what` | Subtitle, ≤ 6 words |
-| `status` | `done` (exists; "โค้ด" in explain mode), `new` (being built; "จุดสำคัญ" in explain mode), `todo`, `ext` (outside this work) |
+| `status` | `done` (exists; "โค้ด" in explain mode), `new` (being built; "จุดสำคัญ" in explain mode), `todo`, `ext` (outside this work). Default: `todo`, or `done` in explain mode |
 | `file` | Main file: `path`, `path:line`, `path:from-to`, or `name:path:line` with a named root. In explain mode it is required, must exist (checked), and the page shows the excerpt with an editor link |
 | `in` / `out` | What goes in and comes out; a concrete example beats a description. Newlines allowed |
 | `why` | One or two lines: the reason, not a restatement of `name` |

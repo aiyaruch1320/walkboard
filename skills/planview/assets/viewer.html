@@ -44,7 +44,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .sw{width:14px;height:14px;border-radius:4px;border:1.5px solid}
 .stepbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-.chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card)}
+.chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.sel{outline:2px solid var(--text);outline-offset:2px}
 .chip.all{border-color:var(--line);color:var(--muted)}
 .chip.review,.stepcard.review{background:var(--you-bg);border-color:var(--you-bd);color:var(--you-tx)}
@@ -517,6 +517,7 @@ function nodeBox(id) {
   const d = el("div", "node " + status);
   d.dataset.id = id;
   d.tabIndex = 0;
+  d.setAttribute("role", "button");
   d.append(el("span", "tag", statusLabel(status)), el("div", "name", n.name));
   if (n.what) d.append(richEl("div", "what", n.what));
   d.onclick = () => selectNode(id, true);
@@ -777,13 +778,14 @@ function renderView() {
 
 function renderSteps() {
   const bar = document.getElementById("stepbar");
-  const all = el("span", "chip all" + (stepId ? "" : " sel"), "ทั้งหมด");
+  const all = el("button", "chip all" + (stepId ? "" : " sel"), "ทั้งหมด");
   all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
   bar.replaceChildren(all, ...steps().map((s, i) => {
     const cls = plan.mode === "explain" && !s.status ? "plain" : STEP_STATUS[s.status] || "todo";
     const mark = s.confirmed ? "✓ " : s.status === "review" ? "👉 " : "";
-    const c = el("span", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
+    const c = el("button", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
+    c.setAttribute("aria-pressed", String(s.id === stepId));
     c.title = s.confirmed ? "ทวนผ่านแล้ว" : s.status === "review" ? "ถึงตาคุณตรวจหรือทวนขั้นนี้" : "";
     c.dataset.step = s.id;
     c.onclick = () => { stop(); selectStep(s.id); };

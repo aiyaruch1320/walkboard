@@ -18,8 +18,11 @@ const W = 960, H = 600, SCALE = 2;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "planview-gif-"));
 const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
-plan.approved = true;
-for (const s of plan.steps) if (s.id === "manifests") delete s.confirmed;
+plan.approved = false;
+for (const s of plan.steps) {
+  s.status = "todo";
+  delete s.confirmed;
+}
 fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
 const url = pv("open", dir, "--no-browser");
 const {origin, searchParams} = new URL(url);
@@ -109,20 +112,24 @@ async function snap(delay) {
   shoot(lastSrc, delay);
 }
 const ov = (js) => page.eval(`${OVERLAY}; ${js}`);
-// text: measure the text itself rather than the (often full-width) block around it.
+// One selector or several (their union). text: measure the text itself, not the full-width block around it.
 const rect = (sel, text = false) => page.eval(`
-  const el = document.querySelector(${JSON.stringify(sel)});
-  if (!el) return null;
-  let r = el.getBoundingClientRect();
-  if (${text}) { const range = document.createRange(); range.selectNodeContents(el); r = range.getBoundingClientRect(); }
-  return {x: r.left, y: r.top, w: r.width, h: r.height};`);
+  const rs = [].concat(${JSON.stringify(sel)}).map((q) => document.querySelector(q)).filter(Boolean).map((el) => {
+    if (!${text}) return el.getBoundingClientRect();
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return range.getBoundingClientRect();
+  });
+  if (!rs.length) return null;
+  const x = Math.min(...rs.map((r) => r.left)), y = Math.min(...rs.map((r) => r.top));
+  return {x, y, w: Math.max(...rs.map((r) => r.right)) - x, h: Math.max(...rs.map((r) => r.bottom)) - y};`);
 
 async function goto(u, wait = 1800) {
   await page.goto(u, wait);
   await ov(`__ov.cursor(${cur.x}, ${cur.y}, ${cur.shown})`);
 }
 
-async function moveTo(sel, {steps = 11, dx = 0.5, dy = 0.5} = {}) {
+async function moveTo(sel, {steps = 9, dx = 0.5, dy = 0.5} = {}) {
   const r = await rect(sel);
   if (!r) throw new Error(`not found: ${sel}`);
   const to = {x: r.x + r.w * dx, y: r.y + r.h * dy}, from = {...cur};
@@ -146,7 +153,7 @@ async function click(sel, {hold = 600} = {}) {
 }
 
 // The camera only changes how the capture is cropped; the page stays as it is.
-async function camera(to, steps = 10) {
+async function camera(to, steps = 9) {
   const from = {...cam};
   for (let i = 1; i <= steps; i++) {
     const k = ease(i / steps);
@@ -160,9 +167,9 @@ async function zoomTo(sel, s, hold = 2200, text = false) {
   await camera({s, cx: r.x + r.w / 2, cy: r.y + r.h / 2});
   frames.at(-1).delay = hold;
 }
-const zoomOut = () => camera({s: 1, cx: W / 2, cy: H / 2}, 9);
+const zoomOut = () => camera({s: 1, cx: W / 2, cy: H / 2}, 8);
 
-async function scrollTo(sel, offset = 70, steps = 9) {
+async function scrollTo(sel, offset = 70, steps = 8) {
   const target = await page.eval(`return Math.max(0, document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top + scrollY - ${offset});`);
   const from = await page.eval(`return scrollY;`);
   for (let i = 1; i <= steps; i++) {
@@ -211,15 +218,18 @@ const TERMINAL_LINES = [
 const CAPTIONS = [
   "พิมพ์ /planview แล้วบอกงานที่อยากทำ",
   "agent ถามสองข้อ เขียนแผน แล้วเปิดเป็นหน้าเว็บ",
-  "ขั้นตอนอยู่ข้างบน ภาพของงานอยู่ข้างล่าง",
-  "เลือกขั้น แล้วหน้าพาไปส่วนที่เกี่ยวข้อง",
+  "ตรวจแผนก่อน: ขั้นตอนอยู่บน ภาพของงานอยู่ล่าง",
+  "พอใจแล้วกด อนุมัติแผน agent จึงเริ่มทำ",
+  "เลือกขั้นไหนก็ได้ หน้าพาไปภาพที่เกี่ยวข้อง",
   "คลิกกล่อง: รับอะไร ได้อะไร ทำไม",
   "สงสัยตรงไหน ถามบนกล่องนั้นเลย",
   "คลิกของคุณปลุก agent ให้มาตอบ",
   "คำตอบขึ้นตรงที่ถาม",
-  "agent อัปเดตแผน: ขั้นนี้ถึงตาคุณทวน",
+  "ขั้นเสร็จแล้ว: ถึงตาคุณทวนว่าเข้าใจตรงกัน",
   "ทวนถูก agent ยืนยัน ✓ แล้วไปขั้นถัดไป",
 ];
+// Clears the fake browser bar and the sticky status bar when scrolling to something.
+const TOP = 100;
 
 try {
   await renderCaptions(CAPTIONS);
@@ -227,60 +237,72 @@ try {
   // Scene 1: the request, typed in Claude Code.
   await goto(terminalUrl, 700);
   caption = CAPTIONS[0];
-  await snap(800);
+  await snap(900);
   await camera({s: 1.1, cx: W / 2, cy: 210});
   const g = graphemes(PROMPT);
   for (let i = 0; i < g.length; i += 4) {
     await page.eval(`typeTo(${JSON.stringify(g.slice(0, i + 4).join(""))});`);
     await snap(70);
   }
-  await snap(600);
+  await snap(700);
   await zoomOut();
   caption = CAPTIONS[1];
   for (const [html, cls] of TERMINAL_LINES) {
     await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
-    await snap(420);
+    await snap(560);
   }
-  await snap(1000);
+  await snap(1800);
   await moveTo("#planlink", {dx: 0.3});
   await ov(`__ov.ripple(${cur.x}, ${cur.y}, true)`);
-  await snap(260);
+  await snap(300);
 
-  // Scene 2: the plan page.
+  // Scene 2: review the plan, then approve it.
   listen();
   caption = CAPTIONS[2];
   await crossfade(async () => {
-    await goto(`${url}&theme=dark&step=manifests`, 2000);
+    await goto(`${url}&theme=dark&step=all`, 2000);
     await ov(`__ov.chrome(${JSON.stringify(shortUrl)})`);
-    cur = {x: 600, y: 320, shown: true};
+    cur = {x: 640, y: 330, shown: true};
     await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
   });
-  await snap(1800);
-
+  await snap(2300);
   caption = CAPTIONS[3];
+  await snap(900);
+  await moveTo("#stepcard .quick button.primary");
+  await click("#stepcard .quick button.primary", {hold: 500});
+  listen();
+  pv("set", dir, "approved=true", "step:image", "status=done", "step:trigger", "status=done", "step:manifests", "status=doing");
+  await sleep(1300);
+  await snap(2100);
+
+  // Scene 3: look ahead at another step, open a box and ask about it.
+  caption = CAPTIONS[4];
   await moveTo('.chip[data-step="secrets"]');
   await click('.chip[data-step="secrets"]', {hold: 400});
-  await scrollTo("#tabs", 50);
-  await snap(700);
-  await zoomTo('#view [data-id="warehouse"]', 1.7, 2000);
+  await scrollTo("#tabs", TOP - 40);
+  await snap(900);
+  await zoomTo(['#view [data-id="secret"]', '#view [data-id="wkey"]', '#view [data-id="cronjob"]'], 1.45, 2000);
   await zoomOut();
 
-  caption = CAPTIONS[4];
-  await moveTo('#view [data-id="cronjob"]');
-  await click('#view [data-id="cronjob"]', {hold: 500});
-  await scrollTo("#panel", 50);
-  await snap(1800);
-
   caption = CAPTIONS[5];
+  await moveTo('#view [data-id="cronjob"]', {steps: 9});
+  await click('#view [data-id="cronjob"]', {hold: 400});
+  await scrollTo("#panel", TOP);
+  await snap(2500);
+
+  caption = CAPTIONS[6];
   await moveTo("#panel textarea", {dx: 0.2});
   await click("#panel textarea", {hold: 200});
   await typeInto("#panel textarea", "ทำไมต้อง suspend ไว้ก่อน");
-  await snap(400);
+  await snap(500);
   await moveTo("#panel .send button");
-  await click("#panel .send button", {hold: 700});
+  await click("#panel .send button", {hold: 200});
+  listen();
+  await sleep(300);
+  await snap(1200);
 
-  // Scene 3: the agent wakes in Claude Code and answers.
-  caption = CAPTIONS[6];
+  // Scene 4: the agent wakes in Claude Code and answers on the page.
+  caption = CAPTIONS[7];
   await crossfade(async () => {
     await goto(terminalUrl, 500);
     cur.shown = false;
@@ -289,43 +311,46 @@ try {
     for (const [html, cls] of TERMINAL_LINES.slice(0, 5)) await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
     await page.eval(`addLine('<span class="ask">◆ คำถามจากหน้าแผน · CronJob import</span>'); addLine('  “ทำไมต้อง suspend ไว้ก่อน”'); addLine('<span class="ok">● ตอบบนหน้าแผนแล้ว</span>');`);
   });
-  await snap(2200);
+  await snap(2500);
   await api("/api/reply", {node: "cronjob", from: "agent", text: "เพราะ Secret และทางไป warehouse ยังไม่พร้อม เปิดตอนนี้ Job จะล้มทุกคืน"});
   listen();
 
-  caption = CAPTIONS[7];
+  caption = CAPTIONS[8];
   await crossfade(async () => {
     await goto(`${url}&theme=dark&step=secrets&view=k8s&node=cronjob`, 2000);
     await ov(`__ov.chrome(${JSON.stringify(shortUrl)})`);
-    await page.eval(`document.querySelector("#panel .msg.agent").scrollIntoView({block: "center"});`);
-    cur = {x: 760, y: 470, shown: true};
+    await page.eval(`document.querySelector("#panel .thread").scrollIntoView({block: "center"});`);
+    cur = {x: 780, y: 470, shown: true};
     await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
   });
-  await snap(400);
-  await zoomTo("#panel .msg.agent", 1.4, 2400);
-  await zoomOut();
+  await moveTo("#panel .msg.agent", {dx: 0.15, dy: 0.7});
+  await snap(3000);
 
-  // Scene 4: the agent moves the plan on; the user restates the step.
+  // Scene 5: the step is ready; the user restates it and the agent confirms.
   pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:netpol", "status=done", "node:cm", "status=done");
   await sleep(1300);
-  caption = CAPTIONS[8];
+  caption = CAPTIONS[9];
   await scrollTo("main", 0);
-  await snap(1200);
+  await snap(900);
   await moveTo('.chip[data-step="manifests"]');
-  await click('.chip[data-step="manifests"]', {hold: 1300});
+  await click('.chip[data-step="manifests"]', {hold: 400});
+  await scrollTo("#stepcard", TOP);
+  await snap(1600);
   await moveTo("#stepcard textarea", {dx: 0.2});
   await click("#stepcard textarea", {hold: 200});
   await typeInto("#stepcard textarea", "เขียน manifest ให้ CronJob พักไว้ก่อน รอ key", 4);
-  await snap(300);
-  await moveTo("#stepcard .send button");
-  await click("#stepcard .send button", {hold: 500});
-  await api("/api/reply", {step: "manifests", from: "agent", text: "ถูกครับ ✓"});
-  listen();
-  pv("set", dir, "step:manifests", "confirmed=true", "status=done");
-  await sleep(1300);
-  caption = CAPTIONS[9];
   await snap(400);
-  await zoomTo("#stepcard h3", 1.6, 2200, true);
+  await moveTo("#stepcard .send button");
+  await click("#stepcard .send button", {hold: 300});
+  await api("/api/reply", {step: "manifests", from: "agent", text: "ถูกครับ ✓ ต่อไปขั้น: ใส่ key ของ warehouse"});
+  listen();
+  pv("set", dir, "step:manifests", "confirmed=true", "status=done", "step:secrets", "status=doing");
+  await sleep(1300);
+  caption = CAPTIONS[10];
+  await page.eval(`document.querySelector("#stepcard .thread").scrollIntoView({block: "center"});`);
+  await snap(2300);
+  await scrollTo("main", 0);
+  await zoomTo(['.chip[data-step="manifests"]', '.chip[data-step="secrets"]'], 1.6, 2000);
   await zoomOut();
 
   caption = null;
@@ -333,7 +358,7 @@ try {
     await goto(endUrl, 800);
     await ov(`__ov.cursor(0, 0, false)`);
   }, 7);
-  await snap(2800);
+  await snap(3300);
 } finally {
   page.close();
   pv("stop", dir);

@@ -194,7 +194,7 @@ function talkBox(c, {placeholder, kinds}) {
   ta.placeholder = placeholder;
   ta.value = drafts[key] || "";
   ta.oninput = () => (drafts[key] = ta.value);
-  const note = el("span", null, connected ? "⌘/Ctrl + Enter เพื่อส่ง" : "ยังไม่ได้ต่อกับ agent");
+  const note = el("span", "hint", connected ? "⌘/Ctrl + Enter เพื่อส่ง" : "ยังไม่ได้ต่อกับ agent");
   const go = async (kind, fallback) => {
     const text = ta.value.trim() || fallback;
     if (!text) {
@@ -592,6 +592,7 @@ let rendered = false;
 
 function setConn(on) {
   connected = on;
+  document.querySelectorAll(".talk .hint").forEach((n) => (n.textContent = on ? "⌘/Ctrl + Enter เพื่อส่ง" : "ยังไม่ได้ต่อกับ agent"));
   renderBadges();
   const conn = document.getElementById("conn");
   conn.className = "conn " + (on ? "on" : "off");

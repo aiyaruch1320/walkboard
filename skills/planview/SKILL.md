@@ -74,6 +74,8 @@ Do not start until `approved` is true. For each step:
 
 Answer from the code, reading more when needed and adding `file` evidence. Prefer new boxes, stages or views over long replies. With teach-back on, confirm each stage as above.
 
+The picture must match the code. A `change` request that contradicts the code is not drawn: reply with what the code does and its `file:line`. Something that should exist but does not becomes a box with `"status": "todo"` (shown as "missing"), and you say so. Explain mode never edits the project's code.
+
 ## Keep it cheap
 
 The page carries the explanation, so tokens go into the plan once and stay small afterwards:

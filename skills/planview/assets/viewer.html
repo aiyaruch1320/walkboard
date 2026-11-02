@@ -53,7 +53,12 @@ h1{font-size:22px;font-weight:500;margin:0}
 .bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:var(--bg);box-shadow:0 1px 0 var(--line)}
 .bar button.primary{font-weight:500}
 .bar #barExtra{display:contents}
-.brand{display:inline-flex;align-items:center;gap:7px;margin-right:auto;font-size:14px;letter-spacing:.2px}
+.brand{display:inline-flex;align-items:center;gap:7px;margin-right:auto;font-size:14px;letter-spacing:.2px;order:-2}
+.modepill{order:-1;margin-right:auto;margin-left:-4px;font-size:12.5px;font-weight:600;border:1.5px solid;border-radius:999px;padding:2px 11px;cursor:help}
+.bar .brand{margin-right:10px}
+.modepill.build{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
+.modepill.explain{color:var(--done-tx);background:var(--done-bg);border-color:var(--done-bd)}
+.modepill.design{color:var(--you-tx);background:var(--you-bg);border-color:var(--you-bd)}
 .brand b{font-weight:600}
 .foot{display:flex;justify-content:flex-end;margin-top:28px;padding-top:12px;border-top:1px solid var(--line);font-size:12px}
 .foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
@@ -443,6 +448,7 @@ details.glossary dd{margin:0;color:var(--muted)}
 <div class="layout">
 <main>
   <div class="bar" id="bar">
+    <span id="modePill" class="modepill" hidden></span>
     <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>planview</b></span>
     <button id="help" class="helpbtn" aria-label="Help">?</button>
     <span class="conn off" id="conn"></span>
@@ -526,7 +532,9 @@ const STRINGS = {
     usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
     seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
     all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
-    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", modeDesign: "Designing: compare options", constraintsLabel: "Constraints:", checkCons: "Check", consTitle: "Constraints",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", noRows: "(no rows)", pill_build: "🗺 Plan mode", pill_explain: "🔍 Explain mode", pill_design: "🧭 Design mode",
+    pillTip_build: "Plan in small steps, approve, then the agent builds step by step", pillTip_explain: "How existing code works, drawn from the real code; nothing is changed",
+    pillTip_design: "Options for something not built yet, compared with sources; choose one to plan it", modeDesign: "Designing: compare options", constraintsLabel: "Constraints:", checkCons: "Check", consTitle: "Constraints",
     assumedTip: "Assumed by the agent; not confirmed yet", confirm: "Confirm", q_confirm: (x) => `Confirmed: ${x}`, recommended: "★ recommended", choose: "Choose this → write a plan",
     askOption: (o) => `Ask about ${o}…`, compareTitle: "Comparison", weightTip: "How much this matters to you; click to change (saved, the agent is not woken)", total: "Total, by your weights",
     sourcesTitle: (n) => `📚 Sources (${n})`, checkedOn: (d) => `checked ${d}`, decideTitle: (o) => `Choose ${o}`, decideWarn: (n) => `${n} ${n === 1 ? "assumption is" : "assumptions are"} not confirmed yet`,
@@ -589,7 +597,9 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
     all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", modeDesign: "ออกแบบ: เทียบทางเลือก", constraintsLabel: "ข้อจำกัด:", checkCons: "ตรวจ", consTitle: "ข้อจำกัด",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", pill_build: "🗺 โหมดวางแผน", pill_explain: "🔍 โหมดอธิบาย", pill_design: "🧭 โหมดออกแบบ",
+    pillTip_build: "วางแผนเป็นขั้นเล็กๆ อนุมัติแล้ว agent ลงมือทำทีละขั้น", pillTip_explain: "อธิบายโค้ดที่มีอยู่จากโค้ดจริง ไม่แก้อะไร",
+    pillTip_design: "เทียบทางเลือกของสิ่งที่ยังไม่มี พร้อมแหล่งอ้างอิง เลือกแล้วต่อเป็นแผน", modeDesign: "ออกแบบ: เทียบทางเลือก", constraintsLabel: "ข้อจำกัด:", checkCons: "ตรวจ", consTitle: "ข้อจำกัด",
     assumedTip: "agent สมมติไว้ ยังไม่มีใครยืนยัน", confirm: "ยืนยัน", q_confirm: (x) => `ยืนยัน: ${x}`, recommended: "★ แนะนำ", choose: "เลือกทางนี้ → เขียนเป็นแผน",
     askOption: (o) => `ถามเรื่อง ${o}…`, compareTitle: "เทียบทางเลือก", weightTip: "เกณฑ์นี้สำคัญกับคุณแค่ไหน คลิกเพื่อเปลี่ยน (บันทึกทันที ไม่ปลุก agent)", total: "รวมตามน้ำหนักของคุณ",
     sourcesTitle: (n) => `📚 แหล่งอ้างอิง (${n})`, checkedOn: (d) => `ตรวจ ${d}`, decideTitle: (o) => `เลือก ${o}`, decideWarn: (n) => `ยังมีสมมติฐาน ${n} ข้อที่ยังไม่ยืนยัน`,
@@ -985,7 +995,14 @@ function renderBadges() {
   if (!plan) return;
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
-  const items = [el("span", "mode", plan.mode === "design" ? t("modeDesign") : explain ? t("modeExplain") : t("modeBuild"))];
+  // The mode is always in sight, next to the logo.
+  const mode = MODES_SHOWN.includes(plan.mode) ? plan.mode : "build";
+  const pill = document.getElementById("modePill");
+  pill.hidden = false;
+  pill.className = "modepill " + mode;
+  pill.textContent = t("pill_" + mode);
+  pill.title = t("pillTip_" + mode);
+  const items = [];
   if (plan.mode === "design") {
     document.getElementById("badges").replaceChildren(...items);
     return renderBar();
@@ -1290,6 +1307,7 @@ function renderPropsPanel() {
 
 // ---------- design mode: options, a comparison by weighted criteria, constraints and sources
 const BASIS_KEYS = ["iac", "cli", "doc", "assumed"];
+const MODES_SHOWN = ["build", "explain", "design"];
 const isDesign = () => plan?.mode === "design";
 const options = () => (isDesign() && Array.isArray(plan.options) ? plan.options.filter((o) => o?.id) : []);
 const criteria = () => (Array.isArray(plan?.criteria) ? plan.criteria.filter((c) => c?.id) : []);

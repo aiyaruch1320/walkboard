@@ -52,6 +52,8 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
    - `change`: change the plan, `PV check`, reply with what changed (the page highlights it).
    - `teachback`: say what is right, correct what is not; when it matches, `PV set <dir> step:<id> confirmed=true`.
    - `approve`: `PV set <dir> approved=true`, then reply in one line. `commit` / `committed`: see section 4. `ok`: acknowledge in one line.
+   - `propose` (`change` = `add`, `change` or `remove`; any mode): draw it, do not build it. `add`: a new node with `"proposal": {"type": "add", "note": "…"}`, placed in the views next to the box it came from. `change` / `remove`: `PV set <dir> node:<id> 'proposal={"type":"change","note":"…"}'`. Reply in one line. Proposals are the only part of an explanation that is not in the code. `withdraw`: remove that proposal (and a proposed node with it).
+   - `plan` (explain): write a build plan from the `proposals` ids in a new folder, carrying their context (root, related boxes and their `file`), `PV open` it, add `{"title": "…", "url": "…"}` to this plan's `links`, and reply with the URL. `apply` (build): turn the proposals into real steps and nodes, drop their `proposal` field, `PV check`, reply with what changed.
    - `settings`: switches the user changed on the page (already in plan.json). It only arrives together with another message and needs no reply.
    Reply to every other message, even in one line: the page shows you as typing from the moment you take a message until you reply or poll again.
 3. Refer to steps by title, not number. Start `PV poll` again. The user may also answer in chat; handle both.

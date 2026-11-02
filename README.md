@@ -1,24 +1,21 @@
 # planview
 
-A Claude Code skill that turns an agent's plan into a picture you can click.
+A Claude Code skill that turns an agent's plan, or an explanation of existing code, into a picture you can click and talk to.
 
-Long text plans are hard to follow, and it is easy to lose the feeling that the work is yours. With planview the agent shows its work as an interactive page: a flow, a Kubernetes map when something is deployed, a sequence of calls, how data changes shape. Click any box to see what goes in, what comes out and why, then press เข้าใจแล้ว / ยังงง, or pick ถาม / ขอแก้ / ทวน and type. The agent is woken by your click, answers on the page, and updates the picture.
+![A plan in planview: steps on top, the selected step's details and chat, and the flow picture below](docs/images/build-overview.png)
 
-Two modes:
+Long text plans are hard to follow, and it is easy to lose the feeling that the work is yours. With planview the agent shows its work as a local web page: small steps, pictures instead of paragraphs, and a chat box on every step and box. You click, ask, ask for changes or restate what you understood; the agent is woken by your click, answers on the page, and updates the picture.
 
-- **build**: plan a feature as small steps, approve the plan, then follow the agent building it step by step.
-- **explain**: understand code that already exists, e.g. "/planview อธิบายการเข้าใช้ระบบใน project A". The agent reads the code and draws the real flow. Every box points at `file:line`, which `check` verifies exists; the page shows the code excerpt and opens it in your editor, and "ลึกขึ้น" asks for more detail on a box or stage.
+It has two modes:
 
-```
-agent ──writes──► plan.json ──► page (picture + details + chat)
-  ▲                                   │ click / type / restate
-  │ poll (wait) / reply (answer)       ▼
-  └──────── local server (127.0.0.1, token) ◄── queue on disk
-```
+| Mode | Use it when | You get |
+|---|---|---|
+| **build** | you want something made or changed | a plan in small steps, an approval button, then the agent builds step by step while you follow, ask and restate |
+| **explain** | you want to understand code that already exists | the real flow through the code, each box pointing at `file:line`, with the code shown and a link to open it in your editor |
 
 ## Install
 
-As a plugin (recommended), in Claude Code:
+As a plugin, inside Claude Code:
 
 ```
 /plugin marketplace add aiyaruch1320/planview
@@ -35,7 +32,7 @@ claude plugin marketplace add aiyaruch1320/planview
 claude plugin install planview@planview
 ```
 
-Or copy the skill folder by hand:
+Or copy the skill folder by hand (then it is called `/planview` instead of `/planview:planview`):
 
 ```bash
 git clone https://github.com/aiyaruch1320/planview.git && cp -R planview/skills/planview ~/.claude/skills/planview
@@ -43,32 +40,109 @@ git clone https://github.com/aiyaruch1320/planview.git && cp -R planview/skills/
 
 Needs Node.js 18.18 or newer. Nothing else is installed.
 
-## Use
+## Examples of what to ask
 
-Ask in your own words ("plan this with planview", "วางแผนเป็นภาพให้หน่อย", "อธิบาย flow การ login ให้ดูหน่อย") or run `/planview:planview` (`/planview` when installed by hand). The agent first asks:
+Use your own words; the slash command is optional.
 
-- build: (1) restate your understanding after each step (teach-back)? (2) commit for you, or only suggest commit messages? Commits never carry a co-author or AI line.
-- explain: (1) teach-back? (2) overview, or down to functions and files?
+**build**
 
-Then it writes the plan, opens the page and waits for you. On the page:
+- `/planview:planview เพิ่ม endpoint /healthz และ probe ใน Deployment ของ service นี้`
+- "วางแผน deploy CronJob ตัวนี้ขึ้น staging เป็นภาพให้หน่อย"
+- "Plan the migration from the old orders table to the new one with planview"
+- "ขอแผนแก้บั๊ก login ค้าง แบบทีละขั้น ให้ผมทวนทุกขั้นด้วย"
 
-- the status badge says whether the agent is listening right now; if not, your message waits in the queue
-- the step bar: click a step to fade everything it does not touch and jump to a picture that shows it; 👉 means it is your turn, ✓ means your restatement matched; ▶ plays the steps once
-- tabs for each picture: `flow`, `k8s`, `sequence`, `transform`
-- click a box for its details and a chat box; 💬 marks boxes with a conversation, red ones have an unread reply
-- dotted words are in the glossary: click or tap them; 📖 lists them all
-- in build mode, "อนุมัติแผน" on the whole-plan box lets the agent start
-- the bar at the top stays visible while you scroll: agent status, unread replies, and "✎ แผนเปลี่ยน N จุด"; changed steps and boxes stay outlined until you press รับทราบ
-- in explain mode, boxes show the code they point at, with a link to open it in VS Code (or Cursor / IntelliJ, set in `settings.editor`)
+**explain**
+
+- `/planview:planview อธิบายการเข้าใช้ระบบใน project A`
+- "อธิบาย flow ตั้งแต่รับไฟล์จนส่งเข้า API ใน repo นี้เป็นภาพ"
+- "Explain how a request reaches the database in this service"
+- "ผมเพิ่งเข้าทีม ช่วยอธิบายว่า job รายวันของระบบนี้ทำงานอย่างไร ลงลึกถึงไฟล์"
+
+## Walkthrough: build mode
+
+### 1. Two questions first
+
+Before planning, the agent asks:
+
+1. *Do you want to restate your understanding after each step?* (teach-back)
+2. *Should I commit for you, or only suggest commit messages?* Commits never carry a co-author or AI line.
+
+### 2. The plan opens as a page
+
+The agent writes the plan, checks it, and gives you a link such as `http://127.0.0.1:61778/?token=…` (it only works on your machine).
+
+- **Step bar**: click a step and everything it does not touch fades; the page also switches to a picture that shows that step. ▶ plays the steps once.
+- **Step card**: what the step does, how we know it is done, and a chat box.
+- **Pictures** as tabs. Dotted words are in the glossary: click or tap one for a plain explanation, or open 📖 for the whole list.
+- **Bar at the top** (stays while you scroll): whether the agent is listening right now, unread replies, and what the agent changed.
+
+### 3. Pictures that fit the work
+
+| Kubernetes: what runs, what it uses, where it may connect | Sequence: who calls whom, with alternative paths framed |
+|---|---|
+| ![Kubernetes view](docs/images/k8s.png) | ![Sequence view](docs/images/sequence.png) |
+
+How data changes shape, with empty values (∅) and stray spaces (␠) made visible:
+
+![Transform view](docs/images/transform.png)
+
+### 4. Ask, or ask for a change, right on the box
+
+Click any box: what goes in, what comes out, why, and a chat box. เข้าใจแล้ว and ยังงง send at once; pick **ถาม** or **ขอแก้** and type for anything else. The agent's answer appears under your message. If you ask for a change, the agent edits the plan, the page redraws by itself, and "✎ แผนเปลี่ยน" outlines what changed until you press รับทราบ.
+
+![A question and the agent's answer on a box, with a glossary explanation open](docs/images/chat.png)
+
+### 5. Approve, then follow the build
+
+Press **อนุมัติแผน** on the whole-plan box (or say so in chat). The agent builds one step at a time. When a step is ready, it turns purple with **👉 ถึงตาคุณ**: restate it in your own words, the agent says what is right and corrects the rest, and the step gets **✓** once you match. Then it commits (or suggests the commit message) and moves on.
+
+![A step waiting for the user's restatement, with the agent's confirmation](docs/images/teachback.png)
+
+## Walkthrough: explain mode
+
+Ask about existing code. The agent asks whether you want teach-back and how deep to go, reads the code, and opens the flow as stages ("ช่วงที่ 1, 2, 3…").
+
+![Explain mode: stages of the login flow, the selected stage's explanation and the overview picture](docs/images/explain-overview.png)
+
+Every box that is code points at `file:line`. `planview check` fails if a file or line does not exist, the page shows the code right there, and the path opens in VS Code (or Cursor / IntelliJ). **ลึกขึ้น** asks the agent to break that part down further.
+
+![A box showing its code excerpt and a link to open it in the editor](docs/images/explain-code.png)
+
+Try it with the example, which ships its own made-up sample code:
+
+```bash
+node skills/planview/bin/planview.mjs open examples/explain-login
+```
+
+## Page reference
+
+| On the page | What it does |
+|---|---|
+| ● / ◐ / ○ badge | Agent listening now / connected but agent busy (your message waits in a queue) / server not reachable |
+| 💬 ข้อความใหม่จาก agent | Jump to an unread reply; red dots mark where |
+| ✎ แผนเปลี่ยน N จุด | List what the agent changed; รับทราบ clears the outlines |
+| Step chips | ✓ restated and confirmed, 👉 your turn |
+| เข้าใจแล้ว · ยังงง · ลึกขึ้น | Quick replies, sent at once |
+| ถาม · ขอแก้ · ทวน | What the text you type is sent as |
+| อนุมัติแผน | Lets the agent start building (build mode) |
+| 📖 / dotted words | Glossary |
+
+Links can open a given place: add `&step=<id>`, `&view=<id>`, `&node=<id>` (or `&step=all`) and `&theme=light|dark` to the URL.
 
 ## How it works
 
-- The agent writes only data (`plan.json`); the page draws it, so every plan looks the same and is cheap to change.
-- `planview poll`, run in the background, is a long poll: it exits when you click, and its exit wakes the agent.
-- Feedback is appended to `.planview/feedback.jsonl` next to the plan with a delivered counter, so nothing is lost or repeated when the agent is busy or the server restarts.
-- The page reloads the plan by itself when the file changes and keeps your selection.
+```
+agent ──writes──► plan.json ──► page (picture + details + chat)
+  ▲                                   │ click / type / restate
+  │ poll (wait) / reply (answer)       ▼
+  └──────── local server (127.0.0.1, token) ◄── queue on disk
+```
 
-Security: the server listens on 127.0.0.1 only, every request needs the random token in the URL, the page loads nothing from the internet, and plan text is always rendered as text. One server runs per plan folder, and `stop` only signals a process that proves it is that server. There is no telemetry and no sharing.
+- The agent writes only data (`plan.json`); the page draws it, so every plan looks the same and is cheap to change.
+- `planview poll`, run in the background, waits for the page and exits when you click; that exit wakes the agent. Messages queue on disk, so nothing is lost while the agent is busy or the server restarts.
+- The page reloads the plan by itself when the file changes and keeps your selection and what you were typing.
+
+**Security**: the server listens on 127.0.0.1 only, every request needs the random token in the URL, the page loads nothing from the internet, and plan text is always shown as text. Code excerpts are read only from inside the folders the plan declares. One server runs per plan folder, and `stop` only signals a process that proves it is that server. There is no telemetry and no sharing.
 
 If permission prompts interrupt the loop, allow `node …/skills/planview/bin/planview.mjs` commands and edits under `~/.planview/` in your Claude Code permissions.
 
@@ -78,23 +152,17 @@ The skill runs these for you; they also work by hand from the repository root:
 
 | Command | Does |
 |---|---|
-| `node skills/planview/bin/planview.mjs check <dir>` | Validate `<dir>/plan.json` |
+| `node skills/planview/bin/planview.mjs check <dir>` | Validate `<dir>/plan.json` (and in explain mode, that every `file:line` exists) |
 | `… open <dir> [--no-browser]` | Start or reuse the server, print the URL |
 | `… poll <dir>` | Wait for the page, print what it sent |
 | `… reply <dir> [--node id \| --step id] <text>` | Answer on the page |
 | `… status <dir>` / `… stop <dir>` | Show the URL and queue / stop the server |
 
-Try the examples:
+Examples (all data is made up):
 
-```bash
-node skills/planview/bin/planview.mjs open examples/nightly-import
-```
-
-- `examples/nightly-import`: a CronJob deployed to staging, using all four pictures
-- `examples/explain-login`: explain mode, the login flow of a made-up `shop-api` whose sample code ships with the example
+- `examples/nightly-import`: build mode, a CronJob deployed to staging, all four pictures
+- `examples/explain-login`: explain mode, the login flow of a sample `shop-api`
 - `examples/planview`: the plan that built planview
-
-All example data is made up.
 
 The plan format is described in [skills/planview/references/schema.md](skills/planview/references/schema.md) and the pictures in [views.md](skills/planview/references/views.md).
 
@@ -104,6 +172,12 @@ The plan format is described in [skills/planview/references/schema.md](skills/pl
 npm test
 ```
 
+Regenerate the screenshots in `docs/images` (needs Google Chrome and Node 22):
+
+```bash
+node scripts/screenshots.mjs
+```
+
 ```
 skills/planview/
   SKILL.md            what the agent does
@@ -111,7 +185,8 @@ skills/planview/
   bin/planview.mjs    CLI
   lib/server.mjs      local server, queue, live reload
   lib/schema.mjs      validation shared by the CLI and the page
+  lib/source.mjs      code excerpts and file:line checks
   assets/viewer.html  the page (one file, no dependencies)
 ```
 
-Inspired by [lavish-axi](https://github.com/kunchenguid/lavish-axi).
+Inspired by [lavish-axi](https://github.com/kunchenguid/lavish-axi). MIT licensed.

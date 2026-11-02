@@ -282,7 +282,8 @@ let termRe = null;
 function setGlossary(g) {
   const terms = Object.keys(g && typeof g === "object" ? g : {}).filter(Boolean).sort((a, b) => b.length - a.length);
   const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const edge = (t) => (/^\w/.test(t) ? "(?<!\\w)" : "") + esc(t) + (/\w$/.test(t) ? "(?!\\w)" : "");
+  // Not inside identifiers or paths such as usecase/extract/extract.go.
+  const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + esc(t) + (/\w$/.test(t) ? "(?![\\w-]|\\.\\w)" : "");
   termRe = terms.length ? new RegExp(terms.map(edge).join("|"), "g") : null;
   const box = document.getElementById("glossary");
   box.hidden = !terms.length;
@@ -386,9 +387,10 @@ async function send(c, kind, text) {
 }
 
 // quick: buttons that send at once; modes: what the typed text is sent as.
-function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
+function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = ""}) {
   const key = ctxKey(c);
-  let current = modes.includes(picked[key]) ? picked[key] : mode && modes.includes(mode) ? mode : modes[0];
+  const pickKey = key + "|" + phase;
+  let current = modes.includes(picked[pickKey]) ? picked[pickKey] : mode && modes.includes(mode) ? mode : modes[0];
   const box = el("div", "talk");
   const ta = el("textarea");
   ta.dataset.key = key;
@@ -444,7 +446,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
       const b = el("button", null, MODE[m].label);
       b.dataset.mode = m;
       b.onclick = () => {
-        picked[key] = m;
+        picked[pickKey] = m;
         setMode(m);
         ta.focus();
       };
@@ -512,19 +514,20 @@ function renderStepCard() {
     card.replaceChildren(c);
   } else {
     const explain = plan.mode === "explain";
-    const c = el("div", "stepcard " + (step.status === "review" ? "review" : ""));
-    if (step.status === "review") c.append(el("span", "turn", plan.settings?.teachBack ? "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้" : "ถึงตาคุณ: ตรวจขั้นนี้"));
+    const c = el("div", "stepcard " + (step.status === "review" && !step.confirmed ? "review" : ""));
+    if (step.status === "review" && !step.confirmed) c.append(el("span", "turn", plan.settings?.teachBack ? "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้" : "ถึงตาคุณ: ตรวจขั้นนี้"));
     const h = el("h3", null, `${explain ? "ช่วงที่" : "ขั้น"} ${steps().indexOf(step) + 1}: ${step.title}`);
     if (step.confirmed) h.append(el("span", "passed", "✓ ทวนผ่านแล้ว"));
     c.append(h);
     if (step.detail) c.append(richEl("p", "detail", step.detail));
-    if (step.done) c.append(richEl("p", "donewhen", "เสร็จเมื่อ: " + step.done));
+    if (step.done) c.append(richEl("p", "donewhen", (explain ? "เข้าใจเมื่อ: " : "เสร็จเมื่อ: ") + step.done));
     const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: "ถามเกี่ยวกับขั้นนี้…",
       quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
       modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
-      mode: teach && step.status === "review" ? "teachback" : "question",
+      mode: teach && step.status === "review" && !step.confirmed ? "teachback" : "question",
+      phase: step.status + (step.confirmed ? "+" : ""),
     }));
     card.replaceChildren(c);
   }
@@ -1060,7 +1063,7 @@ function draw(p) {
   refreshThreads();
   if (!rendered) {
     rendered = true;
-    const cur = steps().find((s) => s.status === "review" || s.status === "doing");
+    const cur = steps().find((s) => s.id === plan.start) || steps().find((s) => s.status === "review") || steps().find((s) => s.status === "doing");
     if (cur) selectStep(cur.id);
   } else if (nodeId && Object.hasOwn(plan.nodes, nodeId)) {
     selectNode(nodeId);

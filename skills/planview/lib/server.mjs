@@ -20,6 +20,7 @@ export const paths = (dir) => {
 
 const viewerFile = new URL("../assets/viewer.html", import.meta.url);
 const schemaFile = new URL("./schema.mjs", import.meta.url);
+const glossaryFile = new URL("../assets/glossary.th.json", import.meta.url);
 const MAX_BODY = 64 * 1024;
 
 // A torn or hand-edited line must not keep the server from starting.
@@ -128,6 +129,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(viewerFile));
     } else if (route === "GET /schema.mjs") {
       res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(schemaFile));
+    } else if (route === "GET /glossary.json") {
+      res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(fs.readFileSync(glossaryFile));
     } else if (route === "GET /api/plan") {
       if (!fs.existsSync(p.plan)) return res.writeHead(404, {"content-type": "text/plain; charset=utf-8"}).end(`no plan.json in ${dir}`);
       res.writeHead(200, {"content-type": "application/json; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(p.plan));

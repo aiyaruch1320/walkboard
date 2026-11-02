@@ -296,11 +296,18 @@ function renderLegend() {
 
 let termRe = null;
 
-function setGlossary(g) {
-  const terms = Object.keys(g && typeof g === "object" ? g : {}).filter(Boolean).sort((a, b) => b.length - a.length);
-  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Not inside identifiers or paths such as usecase/extract/extract.go.
-  const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + esc(t) + (/\w$/.test(t) ? "(?![\\w-]|\\.\\w)" : "");
+let commonGlossary = {}, glossary = {};
+const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Not inside identifiers or paths such as usecase/extract/extract.go.
+const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + escRe(t) + (/\w$/.test(t) ? "(?![\\w-]|\\.\\w)" : "");
+
+// Shared terms ship with planview; the plan only adds its own. Only terms the plan uses are shown.
+function setGlossary(own) {
+  const text = JSON.stringify({...plan, glossary: undefined});
+  const used = Object.fromEntries(Object.entries(commonGlossary).filter(([t]) => new RegExp(edge(t)).test(text)));
+  glossary = {...used, ...(own && typeof own === "object" ? own : {})};
+  const g = glossary;
+  const terms = Object.keys(g).filter(Boolean).sort((a, b) => b.length - a.length);
   termRe = terms.length ? new RegExp(terms.map(edge).join("|"), "g") : null;
   const box = document.getElementById("glossary");
   box.hidden = !terms.length;
@@ -324,7 +331,7 @@ function rich(text) {
     const t = el("span", "term", m[0]);
     t.tabIndex = 0;
     t.setAttribute("role", "button");
-    t.title = plan.glossary[m[0]];
+    t.title = glossary[m[0]];
     const open = (e) => {
       e.stopPropagation();
       showTip(t, m[0]);
@@ -346,7 +353,7 @@ function richEl(tag, cls, text) {
 
 function showTip(anchor, term) {
   const tip = document.getElementById("tip");
-  tip.replaceChildren(el("b", null, term), document.createTextNode(plan.glossary[term]));
+  tip.replaceChildren(el("b", null, term), document.createTextNode(glossary[term]));
   tip.hidden = false;
   const r = anchor.getBoundingClientRect();
   const left = Math.min(r.left + scrollX, scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8);
@@ -1161,6 +1168,9 @@ async function load() {
     document.getElementById("banner").hidden = false;
     return;
   }
+  try {
+    commonGlossary = await (await fetch("/glossary.json?token=" + encodeURIComponent(token))).json();
+  } catch {}
   await fetchPlan();
   const events = new EventSource("/api/events?token=" + encodeURIComponent(token));
   events.onopen = async () => {

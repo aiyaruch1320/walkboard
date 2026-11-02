@@ -454,6 +454,7 @@ function renderBadges() {
   conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
   conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
   if (!plan) return;
+  updateTitle();
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
   // The mode is always in sight, next to the logo.
@@ -2413,14 +2414,19 @@ function showChangeList() {
 }
 document.addEventListener("click", () => (document.getElementById("toast").hidden = true));
 
+// The tab title says when it is your turn, and stops saying so once you have answered.
+function updateTitle() {
+  const mine = ((plan.mode ?? "build") === "build" && !plan.approved && !approvePending()) || steps().some((s) => yourTurn(s) && !answered(s));
+  document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · planview` : "planview");
+}
+
 function draw(p) {
   const prev = plan;
   plan = p;
   plan.nodes ||= {};
   plan.views = viewsOf(plan);
   setLang(langOf(plan));
-  const mine = ((plan.mode ?? "build") === "build" && !plan.approved) || steps().some((s) => yourTurn(s));
-  document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · planview` : "planview");
+  updateTitle();
   document.getElementById("title").textContent = plan.title || "planview";
   setGlossary(plan.glossary);
   renderLegend();

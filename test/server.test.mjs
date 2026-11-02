@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {startServer} from "../lib/server.mjs";
+import {startServer} from "../skills/planview/lib/server.mjs";
 
 function planDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "planview-"));

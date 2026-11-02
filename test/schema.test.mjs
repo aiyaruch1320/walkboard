@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {validate} from "../lib/schema.mjs";
+import {validate} from "../skills/planview/lib/schema.mjs";
 
 const base = () => ({
   title: "t",

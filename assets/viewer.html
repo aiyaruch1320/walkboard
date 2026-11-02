@@ -132,6 +132,17 @@ svg.links text{font-size:11px;fill:var(--muted)}
 .seq-msg.right .line::after{right:-3px;border-left-color:var(--muted)}
 .seq-msg.left .line::after{left:-3px;border-right-color:var(--muted)}
 .seq-msg.self{margin-left:calc(50% + 8px);font-size:13px;border:1px dashed var(--muted);padding:2px 8px;justify-self:start}
+.tf{display:flex;flex-wrap:wrap;align-items:stretch;row-gap:12px;margin-bottom:14px}
+.stage{flex:1 1 230px;min-width:230px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity .25s}
+.stage.active{outline:2px solid var(--text);outline-offset:2px}
+.stage .shead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.stage .sname{font-weight:500;font-size:14px;border-radius:6px;padding:0 8px;border:1.5px solid}
+.stage .slabel{font-size:12px;color:var(--muted)}
+.stage table{border-collapse:collapse;width:100%;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.stage .tbl{overflow-x:auto}
+.stage th,.stage td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top;white-space:nowrap}
+.stage th{background:var(--code);font-weight:500}
+.stage .snote{font-size:12px;color:var(--muted);margin:8px 0 0;padding-left:16px}
 .linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
 </style>
 </head>
@@ -520,8 +531,53 @@ function renderSequence(v) {
   return scroll;
 }
 
+function renderTransform(v) {
+  const wrap = el("div", "tf");
+  (v.stages || []).forEach((st, i) => {
+    if (i > 0) wrap.append(arrow());
+    const n = plan.nodes[st.node] || {name: st.node};
+    const card = el("div", "stage");
+    card.dataset.id = st.node;
+    card.tabIndex = 0;
+    card.onclick = () => selectNode(st.node);
+    const head = el("div", "shead");
+    head.append(el("span", "sname " + (NODE_STATUS[n.status] ? n.status : "todo"), n.name));
+    if (st.label) head.append(el("span", "slabel", st.label));
+    card.append(head);
+    if (st.columns) {
+      const t = el("table"), tr = el("tr");
+      st.columns.forEach((c) => tr.append(el("th", null, c)));
+      t.append(tr);
+      for (const r of st.rows || []) {
+        const row = el("tr");
+        r.forEach((c) => row.append(el("td", null, c == null || c === "" ? "∅" : String(c).replace(/^ +| +$/g, (sp) => "␠".repeat(sp.length)))));
+        t.append(row);
+      }
+      const tbl = el("div", "tbl");
+      tbl.append(t);
+      card.append(tbl);
+    }
+    if (st.text) card.append(el("pre", null, st.text));
+    if (st.notes?.length) {
+      const ul = el("ul", "snote");
+      st.notes.forEach((t) => ul.append(el("li", null, t)));
+      card.append(ul);
+    }
+    wrap.append(card);
+  });
+  return wrap;
+}
+
 const VIEWS = {
   flow: {render: renderFlow, refs: (v) => (v.lanes || []).flatMap((l) => l.nodes || [])},
+  transform: {
+    render: renderTransform,
+    refs: (v) => (v.stages || []).map((st) => st.node),
+    check: (v) => (v.stages || []).flatMap((st, i) => [
+      ...(!st.columns && !st.text ? [`stage ที่ ${i + 1} ต้องมี columns+rows หรือ text`] : []),
+      ...(st.rows || []).filter((r) => st.columns && r.length !== st.columns.length).map(() => `stage ที่ ${i + 1} มีแถวที่จำนวนช่องไม่เท่า columns`),
+    ]),
+  },
   sequence: {
     render: renderSequence,
     refs: (v) => [...(v.actors || []), ...(v.messages || []).flatMap((m) => (m.node ? [m.node] : []))],

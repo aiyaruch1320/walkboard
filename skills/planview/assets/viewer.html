@@ -122,7 +122,7 @@ button:disabled{opacity:.5;cursor:wait}
 .scroll{overflow-x:auto;margin-bottom:14px}
 svg.links{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
 svg.links path{fill:none;stroke-width:1.8}
-svg.links text{font-size:11px;fill:var(--muted)}
+svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
 .l-uses{stroke:var(--muted);stroke-width:1.1!important;opacity:.7}
 .l-ok{stroke:var(--done-bd)}
 .l-todo{stroke:var(--new-bd);stroke-dasharray:6 4}
@@ -149,13 +149,15 @@ svg.links text{font-size:11px;fill:var(--muted)}
 .seq-msg{grid-row:1;align-self:center;z-index:1;cursor:pointer;border-radius:6px}
 .seq-msg:hover .lbl{text-decoration:underline}
 .seq-msg .lbl{font-size:13px;text-align:center;line-height:1.3;padding:0 4px}
+.seq-msg .lbl>*{background:var(--bg);border-radius:4px;padding:0 3px;position:relative}
+#view .seq-msg.dim{opacity:.4}
 .seq-msg .num{display:inline-block;min-width:18px;font-size:11px;border-radius:9px;background:var(--text);color:var(--bg);text-align:center;margin-right:4px}
 .seq-msg .line{border-top:1.6px solid var(--muted);position:relative;margin-top:4px}
 .seq-msg.reply .line{border-top-style:dashed}
 .seq-msg .line::after{content:"";position:absolute;top:-6px;border:5px solid transparent}
 .seq-msg.right .line::after{right:-3px;border-left-color:var(--muted)}
 .seq-msg.left .line::after{left:-3px;border-right-color:var(--muted)}
-.seq-msg.self{margin-left:calc(50% + 8px);font-size:13px;border:1px dashed var(--muted);padding:2px 8px;justify-self:start}
+.seq-msg.self{margin-left:calc(50% + 8px);font-size:13px;border:1px dashed var(--muted);padding:2px 8px;justify-self:start;width:max-content;max-width:calc(150% - 8px);background:var(--bg)}
 .tf{display:flex;flex-wrap:wrap;align-items:stretch;row-gap:12px;margin-bottom:14px}
 .stage{flex:1 1 230px;min-width:230px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity .25s}
 .stage.active{outline:2px solid var(--text);outline-offset:2px}
@@ -164,7 +166,9 @@ svg.links text{font-size:11px;fill:var(--muted)}
 .stage .slabel{font-size:12px;color:var(--muted)}
 .stage table{border-collapse:collapse;width:100%;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
 .stage .tbl{overflow-x:auto}
-.stage th,.stage td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top;white-space:nowrap}
+.stage th,.stage td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top}
+.stage th{white-space:nowrap}
+.stage td{word-break:keep-all;overflow-wrap:break-word}
 .stage th{background:var(--code);font-weight:500}
 .stage .snote{font-size:12px;color:var(--muted);margin:8px 0 0;padding-left:16px}
 .term{border-bottom:1.5px dotted currentColor;cursor:help}
@@ -176,6 +180,7 @@ details.glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 1
 details.glossary dt{font-weight:500}
 details.glossary dd{margin:0;color:var(--muted)}
 .linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
+.scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px}
 </style>
 </head>
 <body>
@@ -583,8 +588,9 @@ function anchored(id, elx = nodeBox(id)) {
   return elx;
 }
 
-function linkLegend(states) {
+function linkLegend(states, uses) {
   const lg = el("div", "linklegend");
+  if (uses) lg.append(el("span", null, "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy"));
   const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)"};
   for (const st of states) {
     const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + LINK_STATE[st]);
@@ -597,7 +603,8 @@ function linkLegend(states) {
 function renderK8s(v) {
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
-  if (states.length) scroll.append(linkLegend(states));
+  const uses = (v.outside || []).length || (v.workloads || []).some((w) => (w.uses || []).length);
+  if (states.length || uses) scroll.append(linkLegend(states, uses));
   const grid = el("div", "k8s diagram");
   const outside = el("div", "col");
   (v.outside || []).forEach((id) => outside.append(anchored(id)));
@@ -690,6 +697,7 @@ function renderTransform(v) {
     if (i > 0) wrap.append(arrow());
     const n = plan.nodes[st.node] || {name: st.node};
     const card = el("div", "stage");
+    if (st.columns) card.style.flexBasis = Math.max(230, st.columns.length * 120) + "px";
     card.dataset.id = st.node;
     card.tabIndex = 0;
     card.onclick = () => selectNode(st.node, true);
@@ -746,6 +754,12 @@ function renderView() {
   document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, `ยังวาด ${v.kind} ไม่ได้`));
   kind?.after?.();
   highlight();
+  requestAnimationFrame(() => {
+    for (const sc of document.querySelectorAll("#view .scroll")) {
+      sc.querySelector(":scope > .scrollhint")?.remove();
+      if (sc.scrollWidth > sc.clientWidth + 4) sc.prepend(el("div", "scrollhint", "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ"));
+    }
+  });
 }
 
 function renderSteps() {

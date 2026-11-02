@@ -50,3 +50,39 @@ test("unknown kinds, statuses and duplicate ids are reported", () => {
   const out = validate(p).join("\n");
   for (const want of [/kind "pie"/, /view id "f" ซ้ำ/, /step id "s1" ซ้ำ/, /status "later"/, /status "wip"/]) assert.match(out, want);
 });
+
+test("wrong types are reported instead of crashing", () => {
+  for (const bad of [{steps: "abc"}, {views: {}}, {nodes: {a: null}}, {views: [{id: "f", kind: "flow", lanes: {}}]}, {nodes: []}, {glossary: {x: 1}}]) {
+    const out = validate({...base(), ...bad});
+    assert.ok(out.length, JSON.stringify(bad));
+  }
+  assert.deepEqual(validate("x"), ["plan.json ไม่ใช่ object"]);
+});
+
+test("prototype names are not mistaken for nodes or statuses", () => {
+  const p = base();
+  p.steps[0].nodes.push("constructor");
+  p.nodes.a.status = "toString";
+  const out = validate(p).join("\n");
+  assert.match(out, /node "constructor"/);
+  assert.match(out, /status "toString"/);
+});
+
+test("explain mode needs no commit setting, and lint asks for evidence", async () => {
+  const {lint} = await import("../skills/planview/lib/schema.mjs");
+  const p = {...base(), mode: "explain", settings: {teachBack: true}};
+  assert.deepEqual(validate(p), []);
+  const warn = lint(p).join("\n");
+  assert.match(warn, /node "a" ไม่มี file/);
+  assert.match(warn, /step "s1" ไม่มี detail/);
+  assert.doesNotMatch(warn, /node "b"/);
+});
+
+test("approval, teach-back records and the glossary are checked", () => {
+  const p = {...base(), approved: "yes", glossary: {CronJob: "งานที่ตั้งเวลารันเอง"}};
+  p.steps[0].confirmed = "ok";
+  const out = validate(p).join("\n");
+  assert.match(out, /approved/);
+  assert.match(out, /confirmed/);
+  assert.doesNotMatch(out, /glossary/);
+});

@@ -90,6 +90,34 @@ export const KINDS = {
     refs: (v) => list(v.stops).map((st) => st?.node),
     check: (v) => (list(v.stops).length < 2 ? ["journey needs at least two stops: [{\"node\", \"data\", \"note\"}]"] : []),
   },
+  state: {
+    refs: (v) => [...list(v.states), ...list(v.transitions).flatMap((x) => [x?.from, x?.to])],
+    check: (v) => (v.start != null && !list(v.states).includes(v.start) ? [`start "${v.start}" is not in states`] : []),
+  },
+  decision: {
+    refs: (v) => [...list(v.nodes), ...list(v.edges).flatMap((x) => [x?.from, x?.to])],
+    check: (v) => (!list(v.edges).length ? ["decision needs edges: [{\"from\", \"to\", \"label\"}]"] : []),
+  },
+  impact: {
+    refs: (v) => [...list(v.nodes), ...list(v.edges).flatMap((x) => [x?.from, x?.to])],
+    check: () => [],
+  },
+  timeline: {
+    refs: (v) => list(v.lanes).map((l) => l?.node),
+    check: (v) => list(v.lanes).flatMap((l, i) => list(l?.events).filter((e) => typeof e?.at !== "number" || (e.to != null && !(typeof e.to === "number" && e.to >= e.at))).map(() => `lane ${i + 1}: every event needs a number "at" (and "to" ≥ "at" for a span)`)),
+  },
+  datamodel: {
+    refs: (v) => list(v.tables).map((tb) => tb?.node),
+    check: (v) => {
+      const cols = new Set(list(v.tables).flatMap((tb) => list(tb?.columns).map((c) => `${tb?.node}.${c?.name}`)));
+      return [...list(v.tables).flatMap((tb) => list(tb?.columns).filter((c) => c?.ref).map((c) => [`${tb.node}.${c.name}`, c.ref])), ...list(v.relations).map((r) => [r?.from, r?.to])]
+        .flatMap(([a, b]) => [a, b]).filter((k) => !cols.has(k)).map((k) => `no column "${k}" (use table.column)`);
+    },
+  },
+  diff: {
+    refs: () => [],
+    check: (v, p) => [v.before, v.after].filter((id) => !list(p.views).some((x) => x?.id === id && x.kind !== "diff")).map((id) => `no view "${id}" to compare`),
+  },
   transform: {
     refs: (v) => list(v.stages).map((st) => st?.node),
     check: (v) => list(v.stages).flatMap((st, i) => [

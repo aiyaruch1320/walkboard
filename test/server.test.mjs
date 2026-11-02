@@ -140,3 +140,13 @@ test("editing plan.json tells the page to reload", async (t) => {
   assert.ok(ev.at);
   assert.equal((await (await call(s, "/api/plan")).json()).title, "changed");
 });
+
+test("a torn feedback line is skipped instead of stopping the server", async (t) => {
+  const dir = planDir();
+  fs.mkdirSync(path.join(dir, ".planview"));
+  fs.writeFileSync(path.join(dir, ".planview", "feedback.jsonl"), '{"id":"1","text":"kept"}\n{"kind":"question","te\n');
+  fs.writeFileSync(path.join(dir, ".planview", "session.json"), "{oops");
+  const s = await startServer(dir);
+  t.after(s.close);
+  assert.deepEqual((await (await call(s, "/api/poll")).json()).map((i) => i.text), ["kept"]);
+});

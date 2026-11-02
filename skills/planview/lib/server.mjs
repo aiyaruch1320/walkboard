@@ -20,14 +20,34 @@ const viewerFile = new URL("../assets/viewer.html", import.meta.url);
 const schemaFile = new URL("./schema.mjs", import.meta.url);
 const MAX_BODY = 64 * 1024;
 
-const readLines = (file) =>
-  fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)) : [];
+// A torn or hand-edited line must not keep the server from starting.
+function readLines(file) {
+  if (!fs.existsSync(file)) return [];
+  const out = [];
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      out.push(JSON.parse(line));
+    } catch {
+      console.error(`planview: skipped an unreadable line in ${file}`);
+    }
+  }
+  return out;
+}
+
+function readJSON(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return {};
+  }
+}
 
 export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   const p = paths(dir);
   fs.mkdirSync(p.state, {recursive: true});
   // Same port and token after a restart, so an open page reconnects by itself.
-  const session = fs.existsSync(p.session) ? JSON.parse(fs.readFileSync(p.session, "utf8")) : {};
+  const session = readJSON(p.session);
   const token = session.token ?? crypto.randomBytes(16).toString("hex");
 
   // Feedback survives restarts: everything after the delivered count is still pending.

@@ -2,6 +2,25 @@ export const NODE_STATUS = {done: "ทำแล้ว", new: "เพิ่งท
 export const STEP_STATUS = {done: "done", doing: "doing", review: "review", todo: "todo"};
 export const LINK_STATE = {ok: "อนุญาต / ใช้ได้", todo: "รอเปิด / ยังไม่ทำ", blocked: "ถูกบล็อก"};
 export const MODES = ["build", "explain"];
+export const EDITORS = ["vscode", "cursor", "idea", "none"];
+
+// "src/a.go:12", "src/a.go:12-20", or "deploy:k8s/job.yaml:7" when "deploy" is a key of plan.roots.
+export function parseFile(file, plan = {}) {
+  if (typeof file !== "string" || !file) return null;
+  const roots = isObj(plan.roots) ? plan.roots : {};
+  let rest = file, rootName = null;
+  const head = file.split(":")[0];
+  if (Object.hasOwn(roots, head) && file.length > head.length + 1) {
+    rootName = head;
+    rest = file.slice(head.length + 1);
+  }
+  const m = rest.match(/^(.*?):(\d+)(?:-(\d+))?$/);
+  const rel = m ? m[1] : rest;
+  const line = m ? Number(m[2]) : null;
+  const end = m && m[3] ? Number(m[3]) : line;
+  const root = rootName ? roots[rootName] : typeof plan.root === "string" ? plan.root : null;
+  return {rootName, root, rel, line, end, abs: root ? root.replace(/\/+$/, "") + "/" + rel.replace(/^\.?\//, "") : null};
+}
 
 const has = (o, k) => o != null && typeof o === "object" && Object.hasOwn(o, k);
 const list = (x) => (Array.isArray(x) ? x : []);
@@ -50,6 +69,11 @@ export function validate(p) {
     if (mode === "build" && !["auto", "suggest"].includes(s.commit)) out.push('settings.commit ต้องเป็น "auto" หรือ "suggest"');
   }
   if (p.approved != null && typeof p.approved !== "boolean") out.push("approved ต้องเป็น true หรือ false");
+  if (p.root != null && (typeof p.root !== "string" || !p.root.startsWith("/"))) out.push("root ต้องเป็น path เต็มที่ขึ้นต้นด้วย /");
+  if (p.roots != null && (!isObj(p.roots) || Object.values(p.roots).some((r) => typeof r !== "string" || !r.startsWith("/")))) out.push('roots ต้องเป็น {"ชื่อ": "/path/เต็ม"}');
+  if (isObj(s) && s.editor != null && !EDITORS.includes(s.editor)) out.push(`settings.editor ต้องเป็น ${EDITORS.join(", ")}`);
+  if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth ต้องเป็น "overview" หรือ "detail"');
+  if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" ไม่ตรงกับ step ไหน`);
   if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary ต้องเป็น {"คำ": "คำอธิบาย"}');
 
   if (p.nodes != null && !isObj(p.nodes)) out.push("nodes ต้องเป็น object");
@@ -107,7 +131,11 @@ export function lint(p) {
     if (!shown.has(id)) out.push(`node "${id}" ไม่อยู่ในภาพไหนเลย`);
     if (String(n.name || "").length > 40) out.push(`node "${id}" ชื่อยาวเกิน 40 ตัวอักษร ย่อให้สั้นลง`);
     if (p.mode === "explain" && n.status !== "ext" && !n.file) out.push(`node "${id}" ไม่มี file (โหมดอธิบายต้องชี้ไปที่โค้ดจริง)`);
+    if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" ไม่มีเลขบรรทัด (path:line)`);
+    if (String(n.what || "").length > 60) out.push(`node "${id}" what ยาวเกิน 60 ตัวอักษร`);
   }
   for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" ไม่มี detail (ขั้นนี้ทำอะไร)`);
+  if (list(p.steps).length > 10) out.push(`มี ${list(p.steps).length} ขั้น เกิน 10 ลองรวมหรือแยกเป็นอีกแผน`);
+  if (p.mode === "explain" && !p.root && !p.roots) out.push("โหมดอธิบายควรมี root (path ของ repo) เพื่อให้ตรวจและเปิด file:line ได้");
   return out;
 }

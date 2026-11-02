@@ -86,3 +86,20 @@ test("approval, teach-back records and the glossary are checked", () => {
   assert.match(out, /confirmed/);
   assert.doesNotMatch(out, /glossary/);
 });
+
+test("file references parse with lines, ranges and named roots", async () => {
+  const {parseFile} = await import("../skills/planview/lib/schema.mjs");
+  const plan = {root: "/repo/app", roots: {deploy: "/repo/deploy/"}};
+  assert.deepEqual(parseFile("src/a.go:12", plan), {rootName: null, root: "/repo/app", rel: "src/a.go", line: 12, end: 12, abs: "/repo/app/src/a.go"});
+  assert.equal(parseFile("src/a.go:12-20", plan).end, 20);
+  assert.equal(parseFile("deploy:k8s/job.yaml:7", plan).abs, "/repo/deploy/k8s/job.yaml");
+  assert.equal(parseFile("README.md", plan).line, null);
+  assert.equal(parseFile("x.go:3", {}).abs, null);
+});
+
+test("root, roots, start, editor and depth are checked", () => {
+  const p = {...base(), root: "relative", roots: {d: 1}, start: "nope", settings: {teachBack: true, commit: "auto", editor: "notepad", depth: "deep"}};
+  const out = validate(p).join("\n");
+  for (const want of [/root ต้องเป็น/, /roots ต้องเป็น/, /start "nope"/, /settings.editor/, /settings.depth/]) assert.match(out, want);
+  assert.deepEqual(validate({...base(), root: "/repo", start: "s1"}), []);
+});

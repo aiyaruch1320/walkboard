@@ -152,3 +152,16 @@ test("highlighted lines are parsed and checked", async () => {
   p.nodes.a.highlight = "x";
   assert.match(validate(p).join("\n"), /highlight must be/);
 });
+
+test("proposals and links from a page are checked", async () => {
+  const {lint} = await import("../skills/planview/lib/schema.mjs");
+  const p = {...base(), mode: "explain", settings: {}, links: [{title: "plan", url: "http://127.0.0.1:5000/?token=x"}]};
+  p.nodes.a.proposal = {type: "add", note: "a cache in front"};
+  assert.deepEqual(validate(p), []);
+  assert.doesNotMatch(lint(p).join("\n"), /node "a" has no file/);
+  p.nodes.a.proposal = {type: "maybe"};
+  p.links = [{url: "javascript:alert(1)"}];
+  const out = validate(p).join("\n");
+  assert.match(out, /proposal must be/);
+  assert.match(out, /links must be/);
+});

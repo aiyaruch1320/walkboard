@@ -105,6 +105,8 @@ export function validate(p) {
   if (isObj(s) && s.editor != null && !EDITORS.includes(s.editor)) out.push(`settings.editor must be one of ${EDITORS.join(", ")}`);
   if (isObj(s) && s.depth != null && !["overview", "detail"].includes(s.depth)) out.push('settings.depth must be "overview" or "detail"');
   if (p.start != null && !list(p.steps).some((x) => x?.id === p.start)) out.push(`start "${p.start}" matches no step`);
+  if (p.links != null && (!Array.isArray(p.links) || p.links.some((l) => !isObj(l) || typeof l.url !== "string" || !/^https?:\/\//.test(l.url))))
+    out.push('links must be [{"title": "…", "url": "http://…"}]');
   if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary must be {"term": "explanation"}');
 
   if (p.nodes != null && !isObj(p.nodes)) out.push("nodes must be an object");
@@ -117,6 +119,8 @@ export function validate(p) {
     if (!n.name) out.push(`node "${id}" has no name`);
     if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
     if (n.highlight != null && !parseLines(n.highlight)) out.push(`node "${id}" highlight must be lines like "12", "12-14" or "12, 15-16"`);
+    if (n.proposal != null && (!isObj(n.proposal) || !["add", "change", "remove"].includes(n.proposal.type) || (n.proposal.note != null && typeof n.proposal.note !== "string")))
+      out.push(`node "${id}" proposal must be {"type": "add"|"change"|"remove", "note": "…"}`);
     if (n.status && !has(NODE_STATUS, n.status)) out.push(`node "${id}": unknown status "${n.status}" (${Object.keys(NODE_STATUS).join(", ")})`);
   }
   const known = (k) => has(nodes, k) && isObj(nodes[k]);
@@ -166,7 +170,7 @@ export function lint(p) {
     if (!isObj(n)) continue;
     if (!shown.has(id)) out.push(`node "${id}" is in no picture`);
     if (String(n.name || "").length > 40) out.push(`node "${id}": name over 40 characters, shorten it`);
-    if (p.mode === "explain" && n.status !== "ext" && !n.file) out.push(`node "${id}" has no file (explain mode points at real code)`);
+    if (p.mode === "explain" && n.status !== "ext" && !n.file && !n.proposal) out.push(`node "${id}" has no file (explain mode points at real code)`);
     if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" has no line (path:line)`);
     if (String(n.what || "").length > 60) out.push(`node "${id}": what over 60 characters`);
   }

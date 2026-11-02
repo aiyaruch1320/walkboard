@@ -1135,16 +1135,60 @@ function addDrawer(fn, container) {
   (linkObserver ||= new ResizeObserver(() => linkDrawer?.())).observe(container);
 }
 
-function drawLinks(container, specs) {
+// Labels (ports, notes) sit on the box the link reaches, not on the line; the same label from several boxes is one chip with a count.
+function viaChips(container, links) {
+  for (const l of links || []) {
+    const b = l.label && container.querySelector(`[data-anchor="${CSS.escape(l.to)}"]`);
+    if (!b) continue;
+    const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
+    const state = LINK_STATE_KEYS.includes(l.state) ? l.state : "ok";
+    const tip = `${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to}`;
+    const same = [...row.children].find((c) => c.dataset.label === l.label && c.dataset.state === state);
+    if (same) {
+      same.dataset.n = (Number(same.dataset.n) || 1) + 1;
+      same.textContent = `← ${l.label} ×${same.dataset.n}`;
+      same.title += "\n" + tip;
+      continue;
+    }
+    const chip = el("span", "via via-" + state, "← " + l.label);
+    chip.dataset.label = l.label;
+    chip.dataset.state = state;
+    chip.title = tip;
+    row.append(chip);
+  }
+}
+
+// The SVG under a picture's boxes that its links are drawn on; clear() resizes it to the picture and returns the picture's rectangle.
+function linkLayer(container) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add("links");
   container.append(svg);
-  const box = (id) => container.querySelector(`[data-anchor="${CSS.escape(id)}"]`);
-  const draw = () => {
-    const base = container.getBoundingClientRect();
+  svg.clear = () => {
     svg.setAttribute("width", container.scrollWidth);
     svg.setAttribute("height", container.scrollHeight);
     svg.replaceChildren();
+    return container.getBoundingClientRect();
+  };
+  return svg;
+}
+
+// A link is a line plus its head; the head is never dashed.
+function linkPaths(svg, line, head, cls, dim) {
+  for (const [d, extra] of [[line, ""], [head, " head"]]) {
+    const e = document.createElementNS(svg.namespaceURI, "path");
+    e.setAttribute("d", d);
+    e.setAttribute("class", cls + extra);
+    if (extra) e.style.strokeDasharray = "none";
+    if (dim) e.style.opacity = ".15";
+    svg.append(e);
+  }
+}
+
+function drawLinks(container, specs) {
+  const svg = linkLayer(container);
+  const box = (id) => container.querySelector(`[data-anchor="${CSS.escape(id)}"]`);
+  const draw = () => {
+    const base = svg.clear();
     const step = curStep();
     const inStep = step ? new Set(step.nodes || []) : null;
     const fan = {}, fanIn = {};
@@ -1173,14 +1217,7 @@ function drawLinks(container, specs) {
         head = l.state === "blocked" ? `M${x2} ${y2 - 6} L${x2} ${y2 + 6}` : `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
       }
       const dim = inStep && !(inStep.has(l.from) && (inStep.has(l.to) || l.to === "#namespace"));
-      for (const [path, extra] of [[d, ""], [head, " head"]]) {
-        const e = document.createElementNS(svg.namespaceURI, "path");
-        e.setAttribute("d", path);
-        e.setAttribute("class", `l-${l.state || "uses"}${extra}`);
-        if (extra) e.style.strokeDasharray = "none";
-        if (dim) e.style.opacity = ".15";
-        svg.append(e);
-      }
+      linkPaths(svg, d, head, `l-${l.state || "uses"}`, dim);
     }
   };
   addDrawer(draw, container);
@@ -1247,26 +1284,7 @@ function renderK8s(v) {
   out.forEach((id, i) => specs.push(i < out.length - 1 ? {from: id, to: out[i + 1], down: true, state: "uses"} : {from: id, to: "#namespace", state: "uses"}));
   for (const w of v.workloads || []) for (const u of w.uses || []) specs.push({from: u, to: w.node, state: "uses"});
   for (const l of v.links || []) specs.push({...l, state: l.state || "ok"});
-  // Labels (ports, notes) sit on the box the link reaches, not on the line.
-  for (const l of v.links || []) {
-    const b = l.label && grid.querySelector(`[data-anchor="${CSS.escape(l.to)}"]`);
-    if (!b) continue;
-    const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
-    const from = plan.nodes[l.from]?.name || l.from;
-    // The same port from several workloads is one chip with a count.
-    const same = [...row.children].find((c) => c.dataset.label === l.label && c.dataset.state === (l.state || "ok"));
-    if (same) {
-      same.dataset.n = (Number(same.dataset.n) || 1) + 1;
-      same.textContent = `← ${l.label} ×${same.dataset.n}`;
-      same.title += `\n${from} → ${plan.nodes[l.to]?.name || l.to}`;
-      continue;
-    }
-    const chip = el("span", "via via-" + (LINK_STATE_KEYS.includes(l.state) ? l.state : "ok"), "← " + l.label);
-    chip.dataset.label = l.label;
-    chip.dataset.state = l.state || "ok";
-    chip.title = `${from} → ${plan.nodes[l.to]?.name || l.to}`;
-    row.append(chip);
-  }
+  viaChips(grid, v.links);
   drawLinks(grid, specs);
   const wrap = el("div");
   wrap.append(scroll);
@@ -1420,23 +1438,11 @@ function renderMap(v) {
   const map = el("div", "map diagram");
   for (const z of (v.zones || []).filter((x) => x && typeof x === "object")) map.append(zoneEl(z, 0));
   scroll.append(map);
-  for (const l of v.links || []) {
-    const b = l.label && map.querySelector(`[data-anchor="${CSS.escape(l.to)}"]`);
-    if (!b) continue;
-    const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
-    const chip = el("span", "via via-" + (LINK_STATE_KEYS.includes(l.state) ? l.state : "ok"), "← " + l.label);
-    chip.title = `${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to}`;
-    row.append(chip);
-  }
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add("links");
-  map.append(svg);
+  viaChips(map, v.links);
+  const svg = linkLayer(map);
   const at = (id) => map.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
   const draw = () => {
-    const base = map.getBoundingClientRect();
-    svg.setAttribute("width", map.scrollWidth);
-    svg.setAttribute("height", map.scrollHeight);
-    svg.replaceChildren();
+    const base = svg.clear();
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     for (const l of v.links || []) {
       const a = at(l.from), b = at(l.to);
@@ -1457,16 +1463,8 @@ function renderMap(v) {
       const o = (x, y) => `${x - base.left} ${y - base.top}`;
       const ang = Math.atan2(y2 - c2[1], x2 - c2[0]);
       const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
-      const parts = [[`M${o(x1, y1)} C${o(...c1)}, ${o(...c2)}, ${o(x2, y2)}`, ""], [l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`, " head"]];
-      const dim = inStep && !(inStep.has(l.from) && inStep.has(l.to));
-      for (const [d, extra] of parts) {
-        const e = document.createElementNS(svg.namespaceURI, "path");
-        e.setAttribute("d", d);
-        e.setAttribute("class", `l-${l.state || "ok"}${extra}`);
-        if (extra) e.style.strokeDasharray = "none";
-        if (dim) e.style.opacity = ".15";
-        svg.append(e);
-      }
+      const head = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;
+      linkPaths(svg, `M${o(x1, y1)} C${o(...c1)}, ${o(...c2)}, ${o(x2, y2)}`, head, `l-${l.state || "ok"}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)));
     }
   };
   addDrawer(draw, map);
@@ -1611,16 +1609,12 @@ function renderGraph(v, {ids, edges, starts = [], shape}) {
     shape?.(b, id, out[id] || []);
     grid.append(b);
   });
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add("links");
+  const svg = linkLayer(grid);
   const labels = el("div", "elabels");
-  grid.append(svg, labels);
+  grid.append(labels);
   const box = (id) => grid.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
   const draw = () => {
-    const base = grid.getBoundingClientRect();
-    svg.setAttribute("width", grid.scrollWidth);
-    svg.setAttribute("height", grid.scrollHeight);
-    svg.replaceChildren();
+    const base = svg.clear();
     labels.replaceChildren();
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     let arcs = 0;
@@ -1669,14 +1663,8 @@ function renderGraph(v, {ids, edges, starts = [], shape}) {
       const ang = Math.atan2(p3[1] - p2[1], p3[0] - p2[0]);
       const tip = (k) => `${p3[0] - 7 * Math.cos(ang + k)} ${p3[1] - 7 * Math.sin(ang + k)}`;
       const dim = inStep && !(inStep.has(e.from) && inStep.has(e.to));
-      for (const [d, extra] of [[detour ? detour.d : `M${p0} C${p1}, ${p2}, ${p3}`, ""], [`M${tip(0.45)} L${p3} L${tip(-0.45)}`, " head"]]) {
-        const path = document.createElementNS(svg.namespaceURI, "path");
-        path.setAttribute("d", d.replaceAll(",", " ").replace(/ +/g, " "));
-        path.setAttribute("class", `l-${e.state || "flow"}${extra}`);
-        if (extra) path.style.strokeDasharray = "none";
-        if (dim) path.style.opacity = ".15";
-        svg.append(path);
-      }
+      const flat = (d) => d.replaceAll(",", " ").replace(/ +/g, " ");
+      linkPaths(svg, flat(detour ? detour.d : `M${p0} C${p1}, ${p2}, ${p3}`), flat(`M${tip(0.45)} L${p3} L${tip(-0.45)}`), `l-${e.state || "flow"}`, dim);
       if (e.label) {
         const [mx, my] = detour ? detour.mid : bezierMid(p0, p1, p2, p3);
         const lab = el("span", "elabel" + (dim ? " dim" : ""));
@@ -1857,15 +1845,10 @@ function renderDataModel(v) {
     grid.append(card);
   }
   const rels = v.relations || tables.flatMap((tb) => (tb.columns || []).filter((c) => c.ref).map((c) => ({from: `${tb.node}.${c.name}`, to: c.ref, kind: "N:1"})));
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add("links");
-  grid.append(svg);
+  const svg = linkLayer(grid);
   const row = (key) => grid.querySelector(`[data-col="${CSS.escape(key)}"]`)?.getBoundingClientRect();
   const draw = () => {
-    const base = grid.getBoundingClientRect();
-    svg.setAttribute("width", grid.scrollWidth);
-    svg.setAttribute("height", grid.scrollHeight);
-    svg.replaceChildren();
+    const base = svg.clear();
     for (const r of rels) {
       const a = row(r.from), b = row(r.to);
       if (!a || !b) continue;

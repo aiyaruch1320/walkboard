@@ -3,7 +3,8 @@
 ## 0.6.0
 
 - While the agent works on a message, the page shows typing dots where you asked and "Agent is answering you" in the top bar, with the minutes elapsed; after 10 minutes without a reply it says to check Claude Code.
-- Restating each step is on by default and switched on the page, under **Agent settings**, together with how commits are made. The page saves the change to plan.json and the agent gets it as a `settings` message. The skill no longer asks about restating up front.
+- Restating each step is on by default and switched on the page, under **Agent settings**, together with how commits are made; each setting is a card that says what its current value means. The page saves the change to plan.json without waking the agent: the agent reads it before its next step, and gets it alongside your next message. The skill no longer asks about restating up front.
+- Defaults for every plan in `~/.planview/config.json`; the skill asks its one question only when nothing says the answer, and offers to save it. `planview status` prints the current settings.
 - The agent replies to every message, approvals included, so the dots always end.
 
 ## 0.5.0

@@ -47,10 +47,10 @@ Type `/planview` and say what you want, or just ask in your own words:
 
 <sub>If another command is already called `/planview`, use the full name `/planview:planview`.</sub>
 
-1. The agent asks one quick question (commit for you, or only suggest messages?).
+1. The agent asks one quick question (commit for you, or only suggest messages?), once: save your answer in `~/.planview/config.json` and it is never asked again.
 2. It writes the plan and gives you a link to a page on your machine.
 3. You click, ask, or ask for changes. Dots show while the agent works on your message; the answer appears on the page and the picture updates.
-4. Restating each step is on by default; switch it, and how commits are made, under **Agent settings** at the top of the page. In build mode, nothing starts until you press **Approve plan**. Keep Claude Code open while you use the page: that is where the agent works.
+4. Restating each step is on by default; switch it, and how commits are made, under **Agent settings** at the top of the page; switching does not wake the agent or cost tokens. In build mode, nothing starts until you press **Approve plan**. Keep Claude Code open while you use the page: that is where the agent works.
 
 The agent plans and answers in the language you write in, and the page's labels follow (English and Thai). Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours, so the picture maps onto your system at a glance. Built and tested on macOS.
 

@@ -176,7 +176,9 @@ svg.links text{font-size:11px;fill:var(--muted)}
 const token = new URLSearchParams(location.search).get("token");
 const served = location.protocol !== "file:" && token;
 const {NODE_STATUS, STEP_STATUS, LINK_STATE, validate} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, validate: () => []};
-let plan, viewId, stepIdx = -1, nodeId = null, timer = null;
+let plan, viewId, stepId = null, nodeId = null, timer = null;
+const steps = () => plan.steps || [];
+const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
 const drafts = {};
 const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", change: "ขอแก้", question: "ถาม", teachback: "ทวน"};
@@ -275,14 +277,14 @@ function renderBadges() {
 
 function renderStepCard() {
   const card = document.getElementById("stepcard");
-  const step = plan.steps?.[stepIdx];
+  const step = curStep();
   if (!step) {
     const c = el("div", "stepcard");
     c.append(el("h3", null, "คุยเรื่องทั้งแผน"), talkBox({}, {placeholder: "ถามหรือสั่งเกี่ยวกับแผนทั้งหมด…", kinds: ["question"]}));
     card.replaceChildren(c);
   } else {
     const c = el("div", "stepcard " + (STEP_STATUS[step.status] || "todo"));
-    c.append(el("h3", null, `ขั้น ${stepIdx + 1}: ${step.title}`));
+    c.append(el("h3", null, `ขั้น ${steps().indexOf(step) + 1}: ${step.title}`));
     const teach = plan.settings?.teachBack;
     c.append(talkBox({step: step.id}, teach
       ? {placeholder: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…", kinds: ["teachback"]}
@@ -347,7 +349,7 @@ function drawLinks(container, specs) {
     svg.setAttribute("width", container.scrollWidth);
     svg.setAttribute("height", container.scrollHeight);
     svg.replaceChildren();
-    const step = plan.steps?.[stepIdx];
+    const step = curStep();
     const inStep = step ? new Set(step.nodes || []) : null;
     const fan = {};
     for (const l of specs) if (!l.down) (fan[l.from] ||= []).push(l);
@@ -559,17 +561,17 @@ function renderView() {
 
 function renderSteps() {
   const bar = document.getElementById("stepbar");
-  const all = el("span", "chip all" + (stepIdx < 0 ? " sel" : ""), "ทั้งหมด");
-  all.onclick = () => { stop(); selectStep(-1); };
-  bar.replaceChildren(all, ...(plan.steps || []).map((s, i) => {
-    const c = el("span", "chip " + (STEP_STATUS[s.status] || "todo") + (i === stepIdx ? " sel" : ""), `${i + 1}. ${s.title}`);
-    c.onclick = () => { stop(); selectStep(i); };
+  const all = el("span", "chip all" + (stepId ? "" : " sel"), "ทั้งหมด");
+  all.onclick = () => { stop(); selectStep(null); };
+  bar.replaceChildren(all, ...steps().map((s, i) => {
+    const c = el("span", "chip " + (STEP_STATUS[s.status] || "todo") + (s.id === stepId ? " sel" : ""), `${i + 1}. ${s.title}`);
+    c.onclick = () => { stop(); selectStep(s.id); };
     return c;
   }));
 }
 
 function highlight() {
-  const step = plan.steps?.[stepIdx];
+  const step = curStep();
   const inStep = step ? new Set(step.nodes || []) : null;
   document.querySelectorAll("#view [data-id]").forEach((d) => {
     d.classList.toggle("dim", !!inStep && !inStep.has(d.dataset.id));
@@ -579,12 +581,12 @@ function highlight() {
   linkDrawer?.();
 }
 
-function selectStep(i) {
-  stepIdx = i;
+function selectStep(id) {
+  stepId = id;
   renderSteps();
   renderStepCard();
   highlight();
-  const step = plan.steps?.[i];
+  const step = curStep();
   if (step?.nodes?.length) selectNode(step.nodes[0]);
 }
 
@@ -607,8 +609,8 @@ function selectNode(id) {
     parts.push(io);
   }
   if (n.why) parts.push(el("p", "why", n.why));
-  const steps = (plan.steps || []).map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
-  if (steps.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + steps.join(", ")));
+  const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
+  if (where.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + where.join(", ")));
   parts.push(talkBox({node: id}, {placeholder: `ถามหรือสั่งเกี่ยวกับ "${n.name}"…`, kinds: ["ok", "confused", "change", "question"]}));
   p.replaceChildren(...parts);
   refreshThreads();
@@ -620,8 +622,9 @@ function stop() {
   document.getElementById("play").textContent = "▶ เล่นทีละขั้น";
 }
 function step(d) {
-  const n = (plan.steps || []).length;
-  if (n) selectStep(((stepIdx < 0 ? (d > 0 ? -1 : 0) : stepIdx) + d + n) % n);
+  const list = steps(), i = list.indexOf(curStep());
+  if (!list.length) return;
+  selectStep(list[((i < 0 ? (d > 0 ? -1 : 0) : i) + d + list.length) % list.length].id);
 }
 document.getElementById("prev").onclick = () => { stop(); step(-1); };
 document.getElementById("next").onclick = () => { stop(); step(1); };
@@ -647,15 +650,15 @@ function render(p) {
     problems.forEach((t) => ul.append(el("li", null, t)));
     box.replaceChildren(el("b", null, "plan.json มีปัญหา"), ul);
   }
-  if (stepIdx >= (plan.steps || []).length) stepIdx = -1;
+  if (stepId && !curStep()) stepId = null;
   renderSteps();
   renderStepCard();
   if (plan.views.length) renderView();
   refreshThreads();
   if (!rendered) {
     rendered = true;
-    const cur = (plan.steps || []).findIndex((s) => s.status === "doing" || s.status === "review");
-    if (cur >= 0) selectStep(cur);
+    const cur = steps().find((s) => s.status === "review" || s.status === "doing");
+    if (cur) selectStep(cur.id);
   } else if (nodeId && plan.nodes[nodeId]) {
     selectNode(nodeId);
   }

@@ -2,7 +2,12 @@
   "title": "การเข้าใช้ระบบของ shop-api ทำงานอย่างไร",
   "goal": "ตั้งแต่ผู้ใช้กรอกอีเมลกับรหัสผ่าน จนเรียก API ที่ต้องล็อกอินได้ และต่ออายุ token (โปรเจกต์ตัวอย่างสมมติ)",
   "mode": "explain",
-  "settings": {"teachBack": true},
+  "root": "shop-api",
+  "start": "submit",
+  "settings": {
+    "teachBack": true,
+    "depth": "detail"
+  },
   "glossary": {
     "JWT": "ข้อความที่เซิร์ฟเวอร์เซ็นรับรองไว้ บอกว่าเป็นผู้ใช้คนไหนและหมดอายุเมื่อไร ใครแก้เนื้อหาลายเซ็นจะไม่ตรง",
     "access token": "JWT อายุสั้น (15 นาที) แนบไปกับทุก request เพื่อบอกว่าเป็นใคร",
@@ -13,57 +18,309 @@
     "Redis": "ฐานข้อมูลในหน่วยความจำ ที่นี่ใช้เก็บ refresh token พร้อมวันหมดอายุ"
   },
   "steps": [
-    {"id": "submit", "title": "ผู้ใช้ส่งอีเมล + รหัสผ่าน", "nodes": ["web", "route"],
+    {
+      "id": "submit",
+      "title": "ผู้ใช้ส่งอีเมล + รหัสผ่าน",
+      "nodes": [
+        "web",
+        "route"
+      ],
       "detail": "หน้าเว็บส่ง POST /auth/login พร้อมอีเมลและรหัสผ่าน route ตรวจรูปแบบก่อนส่งต่อ",
-      "done": "เข้าใจว่าข้อมูลอะไรเข้ามา และอะไรถูกปฏิเสธตั้งแต่ประตูแรก"},
-    {"id": "verify", "title": "ตรวจรหัสผ่าน", "nodes": ["service", "repo", "pg"],
+      "done": "เข้าใจว่าข้อมูลอะไรเข้ามา และอะไรถูกปฏิเสธตั้งแต่ประตูแรก"
+    },
+    {
+      "id": "verify",
+      "title": "ตรวจรหัสผ่าน",
+      "nodes": [
+        "service",
+        "repo",
+        "pg"
+      ],
       "detail": "authService หา user จากอีเมล แล้วเทียบรหัสผ่านกับ hash ด้วย bcrypt ผิดกี่ครั้งก็ตอบข้อความเดียวกัน",
-      "done": "อธิบายได้ว่าทำไมไม่เก็บรหัสผ่านจริง และทำไมตอบผิดแบบเดียวกันทุกกรณี"},
-    {"id": "issue", "title": "ออก token สองใบ", "nodes": ["service", "redis", "web"],
+      "done": "อธิบายได้ว่าทำไมไม่เก็บรหัสผ่านจริง และทำไมตอบผิดแบบเดียวกันทุกกรณี"
+    },
+    {
+      "id": "issue",
+      "title": "ออก token สองใบ",
+      "nodes": [
+        "service",
+        "redis",
+        "web"
+      ],
       "detail": "ออก access token (JWT 15 นาที) กับ refresh token (14 วัน เก็บใน Redis) ส่งกลับไปให้หน้าเว็บ",
-      "done": "บอกได้ว่าสองใบต่างกันอย่างไร และเก็บไว้ที่ไหน"},
-    {"id": "call", "title": "เรียก API ด้วย token", "nodes": ["web", "guard", "orders"],
+      "done": "บอกได้ว่าสองใบต่างกันอย่างไร และเก็บไว้ที่ไหน"
+    },
+    {
+      "id": "call",
+      "title": "เรียก API ด้วย token",
+      "nodes": [
+        "web",
+        "guard",
+        "orders"
+      ],
       "detail": "ทุก request แนบ access token middleware requireAuth ตรวจลายเซ็นและวันหมดอายุ ก่อนให้ผ่านไปถึง handler",
-      "done": "รู้ว่าถ้า token หมดอายุจะได้ 401 และใครเป็นคนตรวจ"},
-    {"id": "refresh", "title": "ต่ออายุ token", "nodes": ["web", "route", "service", "redis"],
+      "done": "รู้ว่าถ้า token หมดอายุจะได้ 401 และใครเป็นคนตรวจ"
+    },
+    {
+      "id": "refresh",
+      "title": "ต่ออายุ token",
+      "nodes": [
+        "web",
+        "route",
+        "service",
+        "redis"
+      ],
       "detail": "เมื่อได้ 401 หน้าเว็บส่ง refresh token ไป /auth/refresh ได้ access token ใบใหม่ และ refresh token เดิมถูกยกเลิก",
-      "done": "อธิบายได้ว่าทำไมต้องยกเลิกใบเดิมทุกครั้ง"}
+      "done": "อธิบายได้ว่าทำไมต้องยกเลิกใบเดิมทุกครั้ง"
+    }
   ],
   "views": [
-    {"id": "flow", "kind": "flow", "title": "ภาพรวม", "lanes": [
-      {"title": "ล็อกอิน", "nodes": ["web", "route", "service", "repo", "pg"]},
-      {"title": "ใช้งานหลังล็อกอิน", "nodes": ["web", "guard", "orders"]},
-      {"title": "เก็บ refresh token", "nodes": ["service", "redis"]}
-    ]},
-    {"id": "seq", "kind": "sequence", "title": "ลำดับการเรียก", "actors": ["web", "route", "service", "pg", "redis", "guard"], "messages": [
-      {"from": "web", "to": "route", "text": "POST /auth/login", "step": "submit"},
-      {"from": "route", "to": "service", "text": "login(email, password)", "step": "verify"},
-      {"from": "service", "to": "pg", "text": "หา user จากอีเมล", "node": "repo", "step": "verify"},
-      {"from": "pg", "to": "service", "text": "user + password_hash", "reply": true, "step": "verify"},
-      {"from": "service", "to": "service", "text": "bcrypt.compare", "step": "verify"},
-      {"from": "service", "to": "redis", "text": "เก็บ refresh token 14 วัน", "step": "issue"},
-      {"from": "service", "to": "web", "text": "access + refresh token", "reply": true, "step": "issue"},
-      {"from": "web", "to": "guard", "text": "GET /orders + access token", "step": "call"},
-      {"from": "guard", "to": "web", "text": "401 เมื่อหมดอายุ", "reply": true, "step": "call"},
-      {"from": "web", "to": "route", "text": "POST /auth/refresh", "step": "refresh"},
-      {"from": "service", "to": "redis", "text": "ยกเลิกใบเดิม ออกใบใหม่", "step": "refresh"}
-    ]},
-    {"id": "data", "kind": "transform", "title": "ข้อมูลระหว่างทาง", "stages": [
-      {"node": "route", "label": "body ที่รับ", "text": "{\n  \"email\": \"a@example.com\",\n  \"password\": \"••••••••\"\n}", "notes": ["อีเมลถูกแปลงเป็นตัวเล็กก่อนค้นหา"]},
-      {"node": "pg", "label": "แถวใน users", "columns": ["id", "email", "password_hash", "locked"], "rows": [["42", "a@example.com", "$2b$12$Qe…", "false"]],
-        "notes": ["ไม่มีรหัสผ่านจริงในฐานข้อมูล มีแต่ hash"]},
-      {"node": "service", "label": "claims ใน access token", "columns": ["sub", "role", "exp"], "rows": [["42", "customer", "+15 นาที"]],
-        "notes": ["ไม่ใส่อีเมลหรือข้อมูลส่วนตัวใน JWT เพราะใครก็ถอดอ่านได้"]}
-    ]}
+    {
+      "id": "flow",
+      "kind": "flow",
+      "title": "ภาพรวม",
+      "lanes": [
+        {
+          "title": "ล็อกอิน",
+          "nodes": [
+            "web",
+            "route",
+            "service",
+            "repo",
+            "pg"
+          ]
+        },
+        {
+          "title": "ใช้งานหลังล็อกอิน",
+          "nodes": [
+            "web",
+            "guard",
+            "orders"
+          ]
+        },
+        {
+          "title": "เก็บ refresh token",
+          "nodes": [
+            "service",
+            "redis"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "seq",
+      "kind": "sequence",
+      "title": "ลำดับการเรียก",
+      "actors": [
+        "web",
+        "route",
+        "service",
+        "pg",
+        "redis",
+        "guard"
+      ],
+      "messages": [
+        {
+          "from": "web",
+          "to": "route",
+          "text": "POST /auth/login",
+          "step": "submit"
+        },
+        {
+          "from": "route",
+          "to": "service",
+          "text": "login(email, password)",
+          "step": "verify"
+        },
+        {
+          "from": "service",
+          "to": "pg",
+          "text": "หา user จากอีเมล",
+          "node": "repo",
+          "step": "verify"
+        },
+        {
+          "from": "pg",
+          "to": "service",
+          "text": "user + password_hash",
+          "reply": true,
+          "step": "verify"
+        },
+        {
+          "from": "service",
+          "to": "service",
+          "text": "bcrypt.compare",
+          "step": "verify"
+        },
+        {
+          "from": "service",
+          "to": "redis",
+          "text": "เก็บ refresh token 14 วัน",
+          "step": "issue"
+        },
+        {
+          "from": "service",
+          "to": "web",
+          "text": "access + refresh token",
+          "reply": true,
+          "step": "issue"
+        },
+        {
+          "from": "web",
+          "to": "guard",
+          "text": "GET /orders + access token",
+          "step": "call"
+        },
+        {
+          "from": "guard",
+          "to": "web",
+          "text": "401 เมื่อหมดอายุ",
+          "reply": true,
+          "step": "call",
+          "group": "ถ้า access token หมดอายุ"
+        },
+        {
+          "from": "web",
+          "to": "route",
+          "text": "POST /auth/refresh",
+          "step": "refresh",
+          "group": "ถ้า access token หมดอายุ"
+        },
+        {
+          "from": "service",
+          "to": "redis",
+          "text": "ยกเลิกใบเดิม ออกใบใหม่",
+          "step": "refresh",
+          "group": "ถ้า access token หมดอายุ"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "kind": "transform",
+      "title": "ข้อมูลระหว่างทาง",
+      "stages": [
+        {
+          "node": "route",
+          "label": "body ที่รับ",
+          "text": "{\n  \"email\": \"a@example.com\",\n  \"password\": \"••••••••\"\n}",
+          "notes": [
+            "อีเมลถูกแปลงเป็นตัวเล็กก่อนค้นหา"
+          ]
+        },
+        {
+          "node": "pg",
+          "label": "แถวใน users",
+          "columns": [
+            "id",
+            "email",
+            "password_hash",
+            "locked"
+          ],
+          "rows": [
+            [
+              "42",
+              "a@example.com",
+              "$2b$12$Qe…",
+              "false"
+            ]
+          ],
+          "notes": [
+            "ไม่มีรหัสผ่านจริงในฐานข้อมูล มีแต่ hash"
+          ]
+        },
+        {
+          "node": "service",
+          "label": "claims ใน access token",
+          "columns": [
+            "sub",
+            "role",
+            "exp"
+          ],
+          "rows": [
+            [
+              "42",
+              "customer",
+              "+15 นาที"
+            ]
+          ],
+          "notes": [
+            "ไม่ใส่อีเมลหรือข้อมูลส่วนตัวใน JWT เพราะใครก็ถอดอ่านได้"
+          ]
+        }
+      ]
+    }
   ],
   "nodes": {
-    "web": {"name": "หน้าเว็บ", "what": "ฟอร์มล็อกอิน + เก็บ token", "status": "ext", "in": "อีเมล รหัสผ่าน", "out": "เก็บ access token ในหน่วยความจำ, refresh token ใน cookie httpOnly", "why": "อยู่นอก repo นี้ แต่เป็นคนเริ่มทุกอย่าง"},
-    "route": {"name": "auth routes", "what": "POST /auth/login, /auth/refresh", "status": "done", "file": "src/routes/auth.ts:14", "in": "body JSON", "out": "เรียก authService หรือตอบ 400 ถ้ารูปแบบผิด", "why": "ตรวจรูปแบบที่ประตูแรก โค้ดข้างในจึงไม่ต้องกังวลเรื่องข้อมูลขยะ"},
-    "service": {"name": "authService", "what": "ตรวจรหัส + ออก token", "status": "new", "file": "src/services/authService.ts:27", "in": "อีเมล รหัสผ่าน หรือ refresh token", "out": "access token (JWT 15 นาที) + refresh token (14 วัน)", "why": "รวมกฎความปลอดภัยไว้ที่เดียว: ตอบผิดแบบเดียวกันทุกกรณี และหมุน refresh token ทุกครั้ง"},
-    "repo": {"name": "userRepo", "what": "ค้น user จากอีเมล", "status": "done", "file": "src/db/userRepo.ts:9", "in": "อีเมล (ตัวเล็ก)", "out": "id, password_hash, locked", "why": "ไม่ดึงคอลัมน์อื่นมา ลดข้อมูลส่วนตัวที่ผ่านมือ"},
-    "pg": {"name": "PostgreSQL", "what": "ตาราง users", "status": "ext", "in": "SELECT ด้วยอีเมล", "out": "แถวเดียวหรือไม่มี", "why": "เก็บ hash ไม่ใช่รหัสผ่านจริง"},
-    "redis": {"name": "Redis", "what": "refresh token", "status": "ext", "file": "src/services/tokenStore.ts:6", "in": "refresh token + วันหมดอายุ", "out": "ยืนยันหรือปฏิเสธตอนต่ออายุ", "why": "ยกเลิก token ได้ทันที ต่างจาก JWT ที่ยกเลิกไม่ได้จนหมดอายุ"},
-    "guard": {"name": "requireAuth", "what": "middleware ตรวจ token", "status": "done", "file": "src/middleware/requireAuth.ts:8", "in": "Authorization: Bearer <access token>", "out": "req.user = {id, role} หรือ 401", "why": "ทุก route ที่ต้องล็อกอินผ่านจุดนี้ จุดเดียว"},
-    "orders": {"name": "orders handler", "what": "ตัวอย่าง route ที่ต้องล็อกอิน", "status": "done", "file": "src/routes/orders.ts:21", "in": "req.user", "out": "คำสั่งซื้อของผู้ใช้คนนั้น", "why": "ใช้ req.user.id เสมอ ไม่เชื่อ id ที่ส่งมาใน body"}
+    "web": {
+      "name": "หน้าเว็บ",
+      "what": "ฟอร์มล็อกอิน + เก็บ token",
+      "status": "ext",
+      "in": "อีเมล รหัสผ่าน",
+      "out": "เก็บ access token ในหน่วยความจำ, refresh token ใน cookie httpOnly",
+      "why": "อยู่นอก repo นี้ แต่เป็นคนเริ่มทุกอย่าง"
+    },
+    "route": {
+      "name": "auth routes",
+      "what": "POST /auth/login, /auth/refresh",
+      "status": "done",
+      "file": "src/routes/auth.ts:14-20",
+      "in": "body JSON",
+      "out": "เรียก authService หรือตอบ 400 ถ้ารูปแบบผิด",
+      "why": "ตรวจรูปแบบที่ประตูแรก โค้ดข้างในจึงไม่ต้องกังวลเรื่องข้อมูลขยะ"
+    },
+    "service": {
+      "name": "authService",
+      "what": "ตรวจรหัส + ออก token",
+      "status": "new",
+      "file": "src/services/authService.ts:26-31",
+      "in": "อีเมล รหัสผ่าน หรือ refresh token",
+      "out": "access token (JWT 15 นาที) + refresh token (14 วัน)",
+      "why": "รวมกฎความปลอดภัยไว้ที่เดียว: ตอบผิดแบบเดียวกันทุกกรณี และหมุน refresh token ทุกครั้ง"
+    },
+    "repo": {
+      "name": "userRepo",
+      "what": "ค้น user จากอีเมล",
+      "status": "done",
+      "file": "src/db/userRepo.ts:5-11",
+      "in": "อีเมล (ตัวเล็ก)",
+      "out": "id, password_hash, locked",
+      "why": "ไม่ดึงคอลัมน์อื่นมา ลดข้อมูลส่วนตัวที่ผ่านมือ"
+    },
+    "pg": {
+      "name": "PostgreSQL",
+      "what": "ตาราง users",
+      "status": "ext",
+      "in": "SELECT ด้วยอีเมล",
+      "out": "แถวเดียวหรือไม่มี",
+      "why": "เก็บ hash ไม่ใช่รหัสผ่านจริง"
+    },
+    "redis": {
+      "name": "Redis",
+      "what": "refresh token",
+      "status": "ext",
+      "file": "src/services/tokenStore.ts:5-14",
+      "in": "refresh token + วันหมดอายุ",
+      "out": "ยืนยันหรือปฏิเสธตอนต่ออายุ",
+      "why": "ยกเลิก token ได้ทันที ต่างจาก JWT ที่ยกเลิกไม่ได้จนหมดอายุ"
+    },
+    "guard": {
+      "name": "requireAuth",
+      "what": "middleware ตรวจ token",
+      "status": "done",
+      "file": "src/middleware/requireAuth.ts:8-18",
+      "in": "Authorization: Bearer <access token>",
+      "out": "req.user = {id, role} หรือ 401",
+      "why": "ทุก route ที่ต้องล็อกอินผ่านจุดนี้ จุดเดียว"
+    },
+    "orders": {
+      "name": "orders handler",
+      "what": "ตัวอย่าง route ที่ต้องล็อกอิน",
+      "status": "done",
+      "file": "src/routes/orders.ts:19-23",
+      "in": "req.user",
+      "out": "คำสั่งซื้อของผู้ใช้คนนั้น",
+      "why": "ใช้ req.user.id เสมอ ไม่เชื่อ id ที่ส่งมาใน body"
+    }
   }
 }

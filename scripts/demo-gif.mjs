@@ -209,7 +209,6 @@ async function crossfade(load, steps = 6) {
 
 const TERMINAL_LINES = [
   ['● planview <span class="muted">· build mode</span>', ""],
-  ['? Restate each step as we go?  <span class="ok">› Yes</span>', "ask"],
   ['? Commit for you?  <span class="ok">› Suggest messages only</span>', "ask"],
   ['● Read 14 files · wrote a plan: 5 steps, 4 pictures · <span class="ok">planview check ok</span>', ""],
   [`● Plan page  <span class="link" id="planlink">http://${shortUrl}</span>`, ""],
@@ -217,16 +216,18 @@ const TERMINAL_LINES = [
 ];
 const CAPTIONS = [
   "Type /planview and describe the task",
-  "The agent asks two questions, writes the plan and opens it as a page",
+  "The agent asks one question, writes the plan and opens it as a page",
   "Review the plan first: steps on top, the picture of the work below",
   "When it looks right, approve the plan. Only then does the agent start",
   "Pick any step: the page shows the picture it belongs to",
   "Click a box: what goes in, what comes out, and why",
   "Ask about a box right where it is",
-  "Your message wakes the agent",
+  "Your message wakes the agent in Claude Code",
   "The answer appears where you asked",
   "Step finished: your turn to restate it in your own words",
   "Restated correctly: the agent confirms ✓ and moves on",
+  "Restating and commits are switches on the page",
+  "Dots show the agent is working on your message",
 ];
 // Clears the fake browser bar and the sticky status bar when scrolling to something.
 const TOP = 100;
@@ -266,8 +267,12 @@ try {
     await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
   });
   await snap(2300);
+  caption = CAPTIONS[11];
+  await moveTo(".settings .switch");
+  await zoomTo(".settings", 1.5, 2600);
+  await zoomOut();
   caption = CAPTIONS[3];
-  await snap(900);
+  await snap(700);
   await moveTo("#stepcard .quick button.primary");
   await click("#stepcard .quick button.primary", {hold: 500});
   listen();
@@ -297,9 +302,10 @@ try {
   await snap(500);
   await moveTo("#panel .send button");
   await click("#panel .send button", {hold: 200});
-  listen();
-  await sleep(300);
-  await snap(1200);
+  caption = CAPTIONS[12];
+  await sleep(500);
+  await page.eval(`scrollBy(0, document.querySelector("#panel .typing").getBoundingClientRect().bottom - innerHeight * 0.72);`);
+  await snap(2400);
 
   // Scene 4: the agent wakes in Claude Code and answers on the page.
   caption = CAPTIONS[7];
@@ -342,6 +348,8 @@ try {
   await snap(400);
   await moveTo("#stepcard .send button");
   await click("#stepcard .send button", {hold: 300});
+  await sleep(500);
+  await snap(1500);
   await api("/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ Next step: add the BigQuery and API keys"});
   listen();
   pv("set", dir, "step:manifests", "confirmed=true", "status=done", "step:secrets", "status=doing");

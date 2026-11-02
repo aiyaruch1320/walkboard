@@ -159,3 +159,21 @@ test("long Thai text arrives intact and an oversized body gets 413", async (t) =
   assert.equal(item.text, text);
   assert.equal((await post(s, "/api/feedback", {text: "ก".repeat(30000)})).status, 413);
 });
+
+test("only one server runs per plan folder", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  assert.throws(() => startServer(dir), /already running/);
+  assert.equal((await (await call(s, "/api/status")).json()).pid, process.pid);
+  assert.equal(fs.statSync(path.join(dir, ".planview", "session.json")).mode & 0o777, 0o600);
+});
+
+test("a lock left by a dead process is taken over", async (t) => {
+  const dir = planDir();
+  fs.mkdirSync(path.join(dir, ".planview"));
+  fs.writeFileSync(path.join(dir, ".planview", "server.lock"), "999999");
+  const s = await startServer(dir);
+  t.after(s.close);
+  assert.equal((await call(s, "/")).status, 200);
+});

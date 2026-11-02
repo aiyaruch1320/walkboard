@@ -13,6 +13,7 @@ export const paths = (dir) => {
     feedback: path.join(state, "feedback.jsonl"),
     delivered: path.join(state, "delivered"),
     replies: path.join(state, "replies.jsonl"),
+    lock: path.join(state, "server.lock"),
   };
 };
 
@@ -43,9 +44,34 @@ function readJSON(file) {
   }
 }
 
+const alive = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return e.code === "EPERM";
+  }
+};
+
+function takeLock(file) {
+  for (let i = 0; i < 2; i++) {
+    try {
+      fs.writeSync(fs.openSync(file, "wx", 0o600), String(process.pid));
+      return;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+      const holder = Number(fs.readFileSync(file, "utf8"));
+      if (holder && alive(holder)) throw Object.assign(new Error(`already running (pid ${holder})`), {code: "PLANVIEW_RUNNING"});
+      fs.rmSync(file, {force: true});
+    }
+  }
+  throw new Error(`cannot lock ${file}`);
+}
+
 export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   const p = paths(dir);
-  fs.mkdirSync(p.state, {recursive: true});
+  fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
+  takeLock(p.lock);
   // Same port and token after a restart, so an open page reconnects by itself.
   const session = readJSON(p.session);
   const token = session.token ?? crypto.randomBytes(16).toString("hex");
@@ -152,7 +178,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       agentState();
       flush();
     } else if (route === "GET /api/status") {
-      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pending: pending.length, waiting: waiters.length, viewers: streams.size}));
+      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, viewers: streams.size}));
     } else {
       res.writeHead(404).end();
     }
@@ -173,14 +199,20 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   return new Promise((resolve, reject) => {
     const preferred = port || session.port || 0;
     server.once("error", (e) => {
-      if (e.code !== "EADDRINUSE" || !preferred) return reject(e);
+      if (e.code !== "EADDRINUSE" || !preferred) {
+        clearInterval(heartbeat);
+        fs.unwatchFile(p.plan);
+        fs.rmSync(p.lock, {force: true});
+        return reject(e);
+      }
       server.listen(0, "127.0.0.1");
     });
     server.listen(preferred, "127.0.0.1");
     server.once("listening", () => {
       const info = {port: server.address().port, token, pid: process.pid, dir};
-      fs.writeFileSync(p.server, JSON.stringify(info));
-      fs.writeFileSync(p.session, JSON.stringify({port: info.port, token}));
+      fs.writeFileSync(p.server, JSON.stringify(info), {mode: 0o600});
+      fs.writeFileSync(p.session, JSON.stringify({port: info.port, token}), {mode: 0o600});
+      for (const f of [p.server, p.session]) fs.chmodSync(f, 0o600);
       resolve({
         ...info,
         url: `http://127.0.0.1:${info.port}/?token=${token}`,
@@ -192,6 +224,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             server.closeAllConnections();
             server.close(done);
             fs.rmSync(p.server, {force: true});
+            fs.rmSync(p.lock, {force: true});
           }),
       });
     });

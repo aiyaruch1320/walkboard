@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="th">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -59,7 +59,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 .problems ul{margin:4px 0 0;padding-left:20px}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-bottom:14px}
 .legend span{display:inline-flex;align-items:center;gap:6px}
-.sw{width:14px;height:14px;border-radius:4px;border:1.5px solid}
+.sw{width:16px;height:16px;border-radius:5px;border:1.5px solid;display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-style:normal;line-height:1}
 .stepbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
 .chip.sel{outline:2px solid var(--text);outline-offset:2px}
@@ -77,10 +77,21 @@ h1{font-size:22px;font-weight:500;margin:0}
 .row{display:flex;align-items:stretch;padding:10px 2px 12px}
 .lane .scroll{margin:0}
 .row .node{flex:1 0 150px;min-width:150px}
-.node{flex:1 1 140px;min-width:140px;border:1.5px solid;border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;transition:transform .25s,opacity .25s}
-.node .name{font-weight:500;font-size:14px}
-.node .what{font-size:12px;margin-top:2px}
-.node .tag{position:absolute;top:-9px;right:8px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid;background:var(--card)}
+.node{flex:1 1 140px;min-width:140px;border:1.5px solid;border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;transition:transform .25s,opacity .25s;display:flex;flex-direction:column}
+.nhead{display:flex;align-items:flex-start;gap:8px}
+.node .name{font-weight:500;font-size:14px;line-height:1.35;flex:1;min-width:0;padding-top:3px;overflow-wrap:break-word}
+.node .what{font-size:12px;margin-top:4px}
+.node .st{flex:none;width:18px;height:18px;margin-top:4px;border-radius:50%;border:1.5px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:10px;line-height:1;opacity:.85}
+.node .st:empty{display:none}
+.icon{flex:none;width:26px;height:26px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;background:color-mix(in srgb,currentColor 14%,transparent)}
+.icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icon.fam{box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.node.todo .icon.fam{filter:grayscale(1);opacity:.7}
+.vias{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.via{font-size:11px;border:1px solid;border-radius:6px;padding:0 6px;background:var(--card)}
+.via-ok{border-color:var(--done-bd);color:var(--done-tx)}
+.via-todo{border-color:var(--new-bd);color:var(--new-tx);border-style:dashed}
+.via-blocked{border-color:var(--warn-bd);color:var(--warn-tx);border-style:dashed}
 .done{background:var(--done-bg);border-color:var(--done-bd);color:var(--done-tx)}
 .new,.doing{background:var(--new-bg);border-color:var(--new-bd);color:var(--new-tx)}
 .node.new{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}
@@ -96,7 +107,7 @@ h1{font-size:22px;font-weight:500;margin:0}
 @media (prefers-reduced-motion:no-preference){.node.new{animation:pulse 1.8s ease-in-out infinite}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--new-bd) 12%,transparent)}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:6px}
-.panel h3{margin:0 0 4px;font-size:16px;font-weight:500}
+.panel h3{margin:0 0 4px;font-size:16px;font-weight:500;display:flex;align-items:center;gap:10px}
 .panel .meta{font-size:13px;color:var(--muted);margin-bottom:12px;word-break:break-all}
 .io{display:grid;grid-template-columns:1fr 40px 1fr;gap:10px;align-items:center}
 @media (max-width:720px){.io{grid-template-columns:1fr}.io .mid{transform:rotate(90deg)}}
@@ -139,7 +150,7 @@ button:disabled{opacity:.5;cursor:wait}
 .msg.user{align-self:flex-end;background:var(--new-bg);color:var(--new-tx)}
 .msg.agent{align-self:flex-start;background:var(--ext-bg);color:var(--ext-tx)}
 .msg .who{display:block;font-size:11px;opacity:.75}
-.count{position:absolute;bottom:-9px;right:8px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
+.count{align-self:flex-end;margin-top:6px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
 .plabel .count,.stage .count{position:static;margin-left:6px}
 .count.unread,.badges button.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
 .badges button.unread{font-size:12px;padding:1px 10px;border-radius:999px}
@@ -151,7 +162,6 @@ button:disabled{opacity:.5;cursor:wait}
 .scroll{overflow-x:auto;margin-bottom:14px}
 svg.links{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
 svg.links path{fill:none;stroke-width:1.8}
-svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round}
 .l-uses{stroke:var(--muted);stroke-width:1.1!important;opacity:.7}
 .l-ok{stroke:var(--done-bd)}
 .l-todo{stroke:var(--new-bd);stroke-dasharray:6 4}
@@ -164,7 +174,9 @@ svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--
 .ns-grid{display:grid;grid-template-columns:minmax(140px,1fr) 1.7fr;gap:40px;align-items:start}
 .policy{border:1.5px dashed var(--new-bd);border-radius:12px;padding:24px 10px 10px;position:relative;display:flex;flex-direction:column;gap:20px}
 .policy.none{border-color:transparent;padding-top:0}
-.plabel{position:absolute;top:-11px;left:10px;font-size:12px;background:var(--card);padding:0 8px;border-radius:6px;border:1px solid var(--new-bd);color:var(--new-tx);cursor:pointer}
+.plabel{position:absolute;top:-12px;left:10px;font-size:12px;background:var(--card);padding:1px 8px 1px 4px;border-radius:6px;border:1px solid var(--new-bd);color:var(--new-tx);cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.plabel .icon{width:18px;height:18px;border-radius:5px}
+.plabel .icon svg{width:13px;height:13px}
 .plabel.active{outline:2px solid var(--text);outline-offset:2px}
 .containers{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .containers span{font-size:11px;border:1px solid currentColor;border-radius:6px;padding:0 6px}
@@ -192,7 +204,7 @@ svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--
 .tf{display:flex;flex-wrap:wrap;align-items:stretch;row-gap:12px;margin-bottom:14px}
 .stage{flex:1 1 230px;min-width:230px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity .25s}
 .stage.active{outline:2px solid var(--text);outline-offset:2px}
-.stage .shead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.stage .shead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .stage .sname{font-weight:500;font-size:14px;border-radius:6px;padding:0 8px;border:1.5px solid}
 .stage .slabel{font-size:12px;color:var(--muted)}
 .stage table{border-collapse:collapse;width:100%;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
@@ -203,8 +215,10 @@ svg.links text{font-size:11px;fill:var(--muted);paint-order:stroke;stroke:var(--
 .stage th{background:var(--code);font-weight:500}
 .stage .snote{font-size:12px;color:var(--muted);margin:8px 0 0;padding-left:16px}
 .term{border-bottom:1.5px dotted currentColor;cursor:help}
-.tip{position:absolute;z-index:30;max-width:300px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5;box-shadow:0 4px 18px rgba(0,0,0,.18)}
-.tip b{display:block}
+.tip{position:absolute;z-index:30;max-width:320px;background:var(--card);color:var(--text);border:1px solid var(--you-bd);border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.5;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.tip::before{content:"";position:absolute;top:-6px;left:var(--cx,16px);width:10px;height:10px;background:var(--card);border-left:1px solid var(--you-bd);border-top:1px solid var(--you-bd);transform:translateX(-50%) rotate(45deg)}
+.tip.above::before{top:auto;bottom:-6px;transform:translateX(-50%) rotate(225deg)}
+.tip b{display:block;color:var(--you-tx)}
 details.glossary{margin:-6px 0 14px;font-size:13px}
 details.glossary summary{cursor:pointer;color:var(--muted)}
 details.glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:8px 0 0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
@@ -218,14 +232,14 @@ details.glossary dd{margin:0;color:var(--muted)}
 <body>
 <main>
   <div class="bar" id="bar">
-    <span class="conn off" id="conn">○ ยังไม่ได้ต่อกับ server</span>
+    <span class="conn off" id="conn"></span>
     <span id="barExtra"></span>
   </div>
   <div class="top">
     <div><h1 id="title">planview</h1><p class="goal" id="goal"></p></div>
   </div>
   <div class="badges" id="badges"></div>
-  <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
+  <div id="banner" class="banner" hidden></div>
   <div id="problems" class="problems" hidden></div>
   <div id="toast" class="toast" hidden></div>
   <div id="tip" class="tip" hidden></div>
@@ -233,38 +247,106 @@ details.glossary dd{margin:0;color:var(--muted)}
   <details class="glossary" id="glossary" hidden></details>
   <div class="stepbar" id="stepbar"></div>
   <div class="controls">
-    <button id="prev">◀ ขั้นก่อน</button>
-    <button id="play">▶ เล่นทีละขั้น</button>
-    <button id="next">ขั้นถัดไป ▶</button>
+    <button id="prev"></button>
+    <button id="play"></button>
+    <button id="next"></button>
   </div>
   <div id="stepcard"></div>
   <div class="tabs" id="tabs"></div>
   <div id="view"></div>
-  <div class="panel" id="panel"><h3>กดกล่องเพื่อดูรายละเอียด</h3></div>
+  <div class="panel" id="panel"><h3></h3></div>
 </main>
 <script type="module">
 const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, LINK_STATE, KINDS, validate, parseFile, viewsOf} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, KINDS: {}, validate: () => [], parseFile: () => null, viewsOf: () => []};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, viewsOf, langOf} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, viewsOf: () => [], langOf: () => "en"};
+const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
+
+// Page labels follow the plan's language (see langOf); anything else falls back to English.
+const STRINGS = {
+  en: {
+    connOff: "○ Not connected to the server", connLost: "○ Lost the server · reconnecting", connOn: "● Agent is listening", connIdle: "◐ Connected · agent is busy, messages wait in a queue",
+    connLostTip: "The page cannot reach the local server", connOnTip: "Click or type: the agent sees it right away", connIdleTip: "The agent is working on something else; your message reaches it when it listens again",
+    banner: "This page was opened as a file, so it is not connected to the agent and clicks reach no one. Open it with planview open instead.",
+    ok: "Got it", confused: "Still unclear", deeper: "Go deeper", change: "Request change", question: "Ask", teachback: "Restate", approve: "Approve plan",
+    send_question: "Send question", send_change: "Send change request", send_teachback: "Send restatement",
+    ph_change: "Say what to change, e.g. split this step in two…", ph_teachback: "Restate this step in your own words…",
+    q_ok: "Got it", q_confused: "This part is unclear. Can you explain it another way?", q_deeper: "Show me this part one level deeper", q_approve: "Plan approved, go ahead",
+    sendHint: "⌘/Ctrl + Enter to send", noAgent: "Not connected to the agent", you: "You", agent: "Agent", received: "received", waitingAgent: "waiting for the agent",
+    st_done: "done", st_new: "in progress", st_todo: "to do", st_ext: "external", ex_done: "code", ex_new: "focus", ex_todo: "missing", ex_ext: "external",
+    lg_done: "Done", lg_new: "In progress / just done", lg_todo: "To do", lg_ext: "External system", lg_code: "Existing code", lg_focus: "Focus of this question",
+    step: "step", stage: "stage", Step: "Step", Stage: "Stage", prev: (u) => `◀ Previous ${u}`, next: (u) => `Next ${u} ▶`, play: (u) => `▶ Play ${u}s`, pause: "❚❚ Pause",
+    terms: (n) => `📖 Terms in this plan (${n})`, typeChange: "Type what to change first", typeFirst: "Type a message first", sent: "Sent", sendFail: "Could not send: ",
+    modeExplain: "Mode: explain existing code", modeBuild: "Mode: plan and build", restate: "Restate each step", on: "on", off: "off",
+    commitBy: "Commit: by the agent", commitSuggest: "Commit: suggested messages", approved: "✓ Plan approved", awaiting: "Waiting for approval",
+    newReplies: (n) => `💬 ${n} new from the agent`, changedN: (n) => `✎ Plan changed in ${n} ${n === 1 ? "place" : "places"}`,
+    wholePlan: "The whole plan", askPlan: "Ask about the whole plan…", turnRestate: "Your turn: restate this step", turnCheck: "Your turn: check this step",
+    restated: "✓ Restated", doneWhen: "Done when: ", understoodWhen: "Understood when: ", askStep: "Ask about this step…",
+    usesLegend: "─ thin grey: uses a config, file or deploy order", lk_ok: "allowed / works", lk_todo: "to open / not yet", lk_blocked: "blocked",
+    seeBox: (n) => `Click to see ${n}`, cannotDraw: (k) => `Cannot draw "${k}" yet`, wider: "↔ Wider than the screen: scroll sideways for the rest",
+    all: "All", chipRestated: "Restated", chipTurn: "Your turn to check or restate this step", openIn: (e) => `Open in ${e}`, copy: "Copy", copied: "Copied", copyFail: "Cannot copy",
+    codeHere: "Code here", loading: "Loading…", codeFail: "Cannot read the code", pickBox: "Click a box in the picture to see its details", noNode: (id) => `No box "${id}"`,
+    in: "In", out: "Out", inSteps: "In steps: ", inStages: "In stages: ", askBox: (n) => `Ask about "${n}"…`,
+    newView: "New picture: ", planApproved: "Plan approved", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
+    seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxRemoved: "The box you had open was removed from the plan",
+    loadFail: (s) => `Cannot load the plan (${s}): `, parseFail: "plan.json cannot be read: ", problems: "plan.json has problems",
+  },
+  th: {
+    connOff: "○ ยังไม่ได้ต่อกับ server", connLost: "○ หลุดจาก server · กำลังต่อใหม่", connOn: "● agent กำลังฟังอยู่", connIdle: "◐ ต่อแล้ว · agent ยังไม่ได้ฟัง ข้อความจะรอในคิว",
+    connLostTip: "หน้าเว็บติดต่อ server ในเครื่องไม่ได้", connOnTip: "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที", connIdleTip: "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง",
+    banner: "หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน planview open แทน",
+    ok: "เข้าใจแล้ว", confused: "ยังงง", deeper: "ลึกขึ้น", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน",
+    send_question: "ส่งคำถาม", send_change: "ส่งคำขอแก้", send_teachback: "ส่งคำทวน",
+    ph_change: "บอกว่าอยากให้แก้อะไร เช่น แยกขั้นนี้เป็นสองขั้น…", ph_teachback: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…",
+    q_ok: "เข้าใจแล้ว", q_confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", q_deeper: "ขอดูส่วนนี้ลึกลงไปอีกชั้น", q_approve: "อนุมัติแผนนี้ เริ่มทำได้",
+    sendHint: "⌘/Ctrl + Enter เพื่อส่ง", noAgent: "ยังไม่ได้ต่อกับ agent", you: "คุณ", agent: "agent", received: "agent รับแล้ว", waitingAgent: "รอ agent",
+    st_done: "ทำแล้ว", st_new: "เพิ่งทำ", st_todo: "ยังไม่ทำ", st_ext: "ภายนอก", ex_done: "โค้ด", ex_new: "จุดสำคัญ", ex_todo: "ยังไม่มี", ex_ext: "ภายนอก",
+    lg_done: "ทำแล้ว", lg_new: "ทำอยู่ / เพิ่งทำ", lg_todo: "ยังไม่ทำ", lg_ext: "ระบบภายนอก", lg_code: "โค้ดที่มีอยู่", lg_focus: "จุดสำคัญของคำถามนี้",
+    step: "ขั้น", stage: "ช่วง", Step: "ขั้น", Stage: "ช่วงที่", prev: (u) => `◀ ${u}ก่อน`, next: (u) => `${u}ถัดไป ▶`, play: (u) => `▶ เล่นทีละ${u}`, pause: "❚❚ หยุด",
+    terms: (n) => `📖 คำศัพท์ในแผนนี้ (${n})`, typeChange: "พิมพ์สิ่งที่อยากให้แก้ก่อน", typeFirst: "พิมพ์ข้อความก่อน", sent: "ส่งแล้ว", sendFail: "ส่งไม่สำเร็จ: ",
+    modeExplain: "โหมด: อธิบายโค้ดที่มีอยู่", modeBuild: "โหมด: วางแผนและลงมือ", restate: "ทวนทีละขั้น", on: "เปิด", off: "ปิด",
+    commitBy: "commit: agent ทำให้", commitSuggest: "commit: แนะนำข้อความ", approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
+    newReplies: (n) => `💬 ข้อความใหม่จาก agent ${n}`, changedN: (n) => `✎ แผนเปลี่ยน ${n} จุด`,
+    wholePlan: "คุยเรื่องทั้งแผน", askPlan: "ถามเกี่ยวกับแผนทั้งหมด…", turnRestate: "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้", turnCheck: "ถึงตาคุณ: ตรวจขั้นนี้",
+    restated: "✓ ทวนผ่านแล้ว", doneWhen: "เสร็จเมื่อ: ", understoodWhen: "เข้าใจเมื่อ: ", askStep: "ถามเกี่ยวกับขั้นนี้…",
+    usesLegend: "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูกบล็อก",
+    seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`, wider: "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ",
+    all: "ทั้งหมด", chipRestated: "ทวนผ่านแล้ว", chipTurn: "ถึงตาคุณตรวจหรือทวนขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
+    codeHere: "โค้ดตรงนี้", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", pickBox: "กดกล่องในภาพเพื่อดูรายละเอียด", noNode: (id) => `ไม่มีกล่อง "${id}"`,
+    in: "รับเข้า", out: "ได้ออกมา", inSteps: "อยู่ในขั้น: ", inStages: "อยู่ในช่วง: ", askBox: (n) => `ถามเกี่ยวกับ "${n}"…`,
+    newView: "ภาพใหม่: ", planApproved: "อนุมัติแผนแล้ว", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
+    seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxRemoved: "กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว",
+    loadFail: (s) => `โหลดแผนไม่ได้ (${s}): `, parseFail: "plan.json อ่านไม่ได้: ", problems: "plan.json มีปัญหา",
+  },
+};
+let lang = /^th\b/i.test(navigator.language) ? "th" : "en";
+const t = (k, ...a) => {
+  const v = STRINGS[lang][k] ?? STRINGS.en[k] ?? k;
+  return typeof v === "function" ? v(...a) : v;
+};
+const unit = (cap) => t((plan?.mode === "explain" ? "stage" : "step").replace(/^./, (c) => (cap ? c.toUpperCase() : c)));
+
+function setLang(code) {
+  lang = STRINGS[code] ? code : "en";
+  document.documentElement.lang = lang;
+  document.getElementById("banner").textContent = t("banner");
+  document.getElementById("prev").textContent = t("prev", unit());
+  document.getElementById("next").textContent = t("next", unit());
+  if (!timer) document.getElementById("play").textContent = t("play", unit());
+  if (!nodeId) document.querySelector("#panel > h3:only-child")?.replaceChildren(t("pickBox"));
+}
 let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
 const drafts = {};
-const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", deeper: "ลึกขึ้น", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน"};
-const MODE = {
-  question: {label: "ถาม", send: "ส่งคำถาม"},
-  change: {label: "ขอแก้", send: "ส่งคำขอแก้", placeholder: "บอกว่าอยากให้แก้อะไร เช่น แยกขั้นนี้เป็นสองขั้น…"},
-  teachback: {label: "ทวน", send: "ส่งคำทวน", placeholder: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…"},
-};
-const QUICK = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", deeper: "ขอดูส่วนนี้ลึกลงไปอีกชั้น", approve: "อนุมัติแผนนี้ เริ่มทำได้"};
 const touch = matchMedia("(pointer: coarse)").matches;
 const picked = {};
 const seen = new Set();
 let freshReply = null;
-const hintText = () => (connected ? (touch ? "" : "⌘/Ctrl + Enter เพื่อส่ง") : "ยังไม่ได้ต่อกับ agent");
+const hintText = () => (connected ? (touch ? "" : t("sendHint")) : t("noAgent"));
 
 const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : "plan");
 const inCtx = (m, c) => (c.node ? m.node === c.node : c.step ? m.step === c.step && !m.node : !m.node && !m.step);
@@ -272,27 +354,23 @@ const inCtx = (m, c) => (c.node ? m.node === c.node : c.step ? m.step === c.step
 function msgEl(m) {
   const d = el("div", "msg " + (m.from === "agent" ? "agent" : "user"));
   d.dataset.id = m.id;
-  const who = m.from === "agent" ? "agent" : `คุณ · ${KIND[m.kind] || "ถาม"} · ${m.delivered ? "agent รับแล้ว" : "รอ agent"}`;
+  const who = m.from === "agent" ? t("agent") : `${t("you")} · ${t(STRINGS.en[m.kind] ? m.kind : "question")} · ${m.delivered ? t("received") : t("waitingAgent")}`;
   d.append(el("span", "who", who), document.createTextNode(m.text));
   return d;
 }
 
-const EXPLAIN_STATUS = {done: "โค้ด", new: "จุดสำคัญ", todo: "ยังไม่มี", ext: "ภายนอก"};
-const statusLabel = (st) => (plan?.mode === "explain" ? EXPLAIN_STATUS : NODE_STATUS)[st] || NODE_STATUS.todo;
+const MARK = {done: "✓", new: "●", todo: "", ext: "↗"}, EXPLAIN_MARK = {done: "", new: "★", todo: "", ext: "↗"};
+const statusLabel = (st) => t((plan?.mode === "explain" ? "ex_" : "st_") + (NODE_STATUS[st] ? st : "todo"));
 
 function renderLegend() {
   const items = plan.mode === "explain"
-    ? [["done", "โค้ดที่มีอยู่"], ["new", "จุดสำคัญของคำถามนี้"], ["ext", "ระบบภายนอก"]]
-    : [["done", "ทำแล้ว"], ["new", "ทำอยู่ / เพิ่งทำ"], ["todo", "ยังไม่ทำ"], ["ext", "ระบบภายนอก"]];
-  document.getElementById("legend").replaceChildren(...items.map(([c, t]) => {
+    ? [["done", t("lg_code")], ["new", t("lg_focus")], ["ext", t("lg_ext")]]
+    : [["done", t("lg_done")], ["new", t("lg_new")], ["todo", t("lg_todo")], ["ext", t("lg_ext")]];
+  document.getElementById("legend").replaceChildren(...items.map(([c, label]) => {
     const sp = el("span");
-    sp.append(el("i", "sw " + c), t);
+    sp.append(el("i", "sw " + c, (plan.mode === "explain" ? EXPLAIN_MARK : MARK)[c]), label);
     return sp;
   }));
-  const unit = plan.mode === "explain" ? "ช่วง" : "ขั้น";
-  document.getElementById("prev").textContent = `◀ ${unit}ก่อน`;
-  document.getElementById("next").textContent = `${unit}ถัดไป ▶`;
-  if (!timer) document.getElementById("play").textContent = `▶ เล่นทีละ${unit}`;
 }
 
 let termRe = null;
@@ -306,7 +384,8 @@ const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + escRe(t) + (/\w$/.t
 function setGlossary(own) {
   const text = JSON.stringify({...plan, glossary: undefined});
   const used = Object.fromEntries(Object.entries(commonGlossary).filter(([t]) => new RegExp(edge(t)).test(text)));
-  glossary = {...used, ...(own && typeof own === "object" ? own : {})};
+  const pick = (v) => (typeof v === "string" ? v : v?.[lang] ?? v?.en);
+  glossary = {...Object.fromEntries(Object.entries(used).map(([k, v]) => [k, pick(v)])), ...(own && typeof own === "object" ? own : {})};
   const g = glossary;
   const terms = Object.keys(g).filter(Boolean).sort((a, b) => b.length - a.length);
   termRe = terms.length ? new RegExp(terms.map(edge).join("|"), "g") : null;
@@ -315,7 +394,7 @@ function setGlossary(own) {
   if (!terms.length) return;
   const dl = el("dl");
   for (const t of [...terms].sort((a, b) => a.localeCompare(b))) dl.append(el("dt", null, t), el("dd", null, g[t]));
-  box.replaceChildren(el("summary", null, `📖 คำศัพท์ในแผนนี้ (${terms.length})`), dl);
+  box.replaceChildren(el("summary", null, t("terms", terms.length)), dl);
 }
 
 // Text with glossary terms that explain themselves on click or tap.
@@ -357,13 +436,17 @@ function showTip(anchor, term) {
   tip.replaceChildren(el("b", null, term), document.createTextNode(glossary[term]));
   tip.hidden = false;
   const r = anchor.getBoundingClientRect();
-  const left = Math.min(r.left + scrollX, scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8);
-  tip.style.left = Math.max(8, left) + "px";
-  tip.style.top = r.bottom + scrollY + 6 + "px";
+  const left = Math.max(8, Math.min(r.left + scrollX - 10, scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8));
+  const above = r.bottom + tip.offsetHeight + 14 > innerHeight && r.top > tip.offsetHeight + 14;
+  tip.classList.toggle("above", above);
+  tip.style.left = left + "px";
+  tip.style.top = (above ? r.top + scrollY - tip.offsetHeight - 9 : r.bottom + scrollY + 9) + "px";
+  tip.style.setProperty("--cx", Math.max(14, Math.min(tip.offsetWidth - 14, r.left + scrollX + r.width / 2 - left)) + "px");
 }
 document.addEventListener("click", () => (document.getElementById("tip").hidden = true));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.getElementById("tip").hidden = true; });
 
+const LINK_STATE_KEYS = ["ok", "todo", "blocked"];
 const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
 
 function refreshThreads() {
@@ -429,7 +512,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     if (busy) return;
     const text = ta.value.trim() || fallback;
     if (!text) {
-      note.textContent = kind === "change" ? "พิมพ์สิ่งที่อยากให้แก้ก่อน" : "พิมพ์ข้อความก่อน";
+      note.textContent = kind === "change" ? t("typeChange") : t("typeFirst");
       note.className = "note err";
       return ta.focus();
     }
@@ -438,10 +521,10 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     try {
       await send(c, kind, text);
       if (ta.value.trim()) ta.value = drafts[key] = "";
-      note.textContent = "ส่งแล้ว";
+      note.textContent = t("sent");
       note.className = "note";
     } catch (e) {
-      note.textContent = "ส่งไม่สำเร็จ: " + e.message;
+      note.textContent = t("sendFail") + e.message;
       note.className = "note err";
     } finally {
       busy = false;
@@ -451,8 +534,8 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   if (quick.length) {
     const row = el("div", "quick");
     for (const k of quick) {
-      const b = el("button", k === "approve" ? "primary" : null, KIND[k]);
-      b.onclick = () => go(k, QUICK[k]);
+      const b = el("button", k === "approve" ? "primary" : null, t(k));
+      b.onclick = () => go(k, t("q_" + k));
       buttons.push(b);
       row.append(b);
     }
@@ -460,15 +543,15 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   }
   const setMode = (m) => {
     current = m;
-    ta.placeholder = MODE[m].placeholder || placeholder;
-    sendBtn.textContent = MODE[m].send;
+    ta.placeholder = m === "question" ? placeholder : t("ph_" + m);
+    sendBtn.textContent = t("send_" + m);
     seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
   };
   const seg = el("div", "modes");
   if (modes.length > 1) {
     seg.setAttribute("role", "group");
     for (const m of modes) {
-      const b = el("button", null, MODE[m].label);
+      const b = el("button", null, t(m));
       b.dataset.mode = m;
       b.onclick = () => {
         picked[pickKey] = m;
@@ -485,25 +568,25 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(current, ""); };
   const row = el("div", "send");
   row.append(note, sendBtn);
-  const t = el("div", "thread");
-  t.dataset.ctx = JSON.stringify(c);
-  box.append(ta, row, t);
+  const thr = el("div", "thread");
+  thr.dataset.ctx = JSON.stringify(c);
+  box.append(ta, row, thr);
   return box;
 }
 
 function renderBadges() {
   const conn = document.getElementById("conn");
   conn.className = "conn " + (!connected ? "off" : waiting ? "on" : "idle");
-  conn.textContent = !connected ? "○ หลุดจาก server · กำลังต่อใหม่" : waiting ? "● agent กำลังฟังอยู่" : "◐ ต่อแล้ว · agent ยังไม่ได้ฟัง ข้อความจะรอในคิว";
-  conn.title = !connected ? "หน้าเว็บติดต่อ server ในเครื่องไม่ได้" : waiting ? "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที" : "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง";
+  conn.textContent = !connected ? t(served && rendered ? "connLost" : "connOff") : waiting ? t("connOn") : t("connIdle");
+  conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : t("connIdleTip");
   if (!plan) return;
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
-  const items = [el("span", null, explain ? "โหมด: อธิบายโค้ดที่มีอยู่" : "โหมด: วางแผนและลงมือ")];
-  items.push(el("span", null, `ทวนทีละขั้น: ${s.teachBack ? "เปิด" : "ปิด"}`));
+  const items = [el("span", null, explain ? t("modeExplain") : t("modeBuild"))];
+  items.push(el("span", null, `${t("restate")}: ${s.teachBack ? t("on") : t("off")}`));
   if (!explain) {
-    items.push(el("span", null, `commit: ${s.commit === "auto" ? "agent ทำให้" : "แนะนำข้อความ"}`));
-    items.push(plan.approved ? el("span", "ok", "✓ อนุมัติแผนแล้ว") : el("span", "wait", "รออนุมัติแผน"));
+    items.push(el("span", null, s.commit === "auto" ? t("commitBy") : t("commitSuggest")));
+    items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
   }
   document.getElementById("badges").replaceChildren(...items);
   renderBar();
@@ -513,13 +596,13 @@ function renderBar() {
   const extra = [];
   const news = unread().length;
   if (news) {
-    const b = el("button", "unread", `💬 ข้อความใหม่จาก agent ${news}`);
+    const b = el("button", "unread", t("newReplies", news));
     b.onclick = openUnread;
     extra.push(b);
   }
   const n = changes.nodes.size + changes.steps.size + changes.notes.length;
   if (n) {
-    const b = el("button", "changes", `✎ แผนเปลี่ยน ${n} จุด`);
+    const b = el("button", "changes", t("changedN", n));
     b.onclick = (e) => {
       e.stopPropagation();
       showChangeList();
@@ -535,20 +618,20 @@ function renderStepCard() {
   if (!step) {
     const c = el("div", "stepcard");
     const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
-    c.append(el("h3", null, "คุยเรื่องทั้งแผน"), talkBox({}, {placeholder: "ถามเกี่ยวกับแผนทั้งหมด…", quick: approve, modes: ["question", "change"]}));
+    c.append(el("h3", null, t("wholePlan")), talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "change"]}));
     card.replaceChildren(c);
   } else {
     const explain = plan.mode === "explain";
     const c = el("div", "stepcard " + (step.status === "review" && !step.confirmed ? "review" : ""));
-    if (step.status === "review" && !step.confirmed) c.append(el("span", "turn", plan.settings?.teachBack ? "ถึงตาคุณ: ทวนความเข้าใจขั้นนี้" : "ถึงตาคุณ: ตรวจขั้นนี้"));
-    const h = el("h3", null, `${explain ? "ช่วงที่" : "ขั้น"} ${steps().indexOf(step) + 1}: ${step.title}`);
-    if (step.confirmed) h.append(el("span", "passed", "✓ ทวนผ่านแล้ว"));
+    if (step.status === "review" && !step.confirmed) c.append(el("span", "turn", plan.settings?.teachBack ? t("turnRestate") : t("turnCheck")));
+    const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
+    if (step.confirmed) h.append(el("span", "passed", t("restated")));
     c.append(h);
     if (step.detail) c.append(richEl("p", "detail", step.detail));
-    if (step.done) c.append(richEl("p", "donewhen", (explain ? "เข้าใจเมื่อ: " : "เสร็จเมื่อ: ") + step.done));
+    if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
     const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
-      placeholder: "ถามเกี่ยวกับขั้นนี้…",
+      placeholder: t("askStep"),
       quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
       modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
       mode: teach && step.status === "review" && !step.confirmed ? "teachback" : "question",
@@ -572,7 +655,22 @@ function arrow() {
   return a;
 }
 
-function nodeBox(id) {
+// Glyphs are planview's own constants; plan text never goes into innerHTML.
+function iconEl(n, id, family) {
+  const ic = iconOf(n, id, family);
+  if (!ic || !GLYPHS[ic.glyph]) return null;
+  const f = FAMILIES[ic.family];
+  const s = el("span", "icon" + (f ? " fam" : ""));
+  if (f) {
+    s.style.background = f.bg;
+    s.style.color = f.fg;
+    s.title = f.label;
+  }
+  s.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${GLYPHS[ic.glyph]}</svg>`;
+  return s;
+}
+
+function nodeBox(id, family = null) {
   const n = plan.nodes[id];
   if (!n) return el("div", "node todo", `? ${id}`);
   const status = NODE_STATUS[n.status] ? n.status : plan.mode === "explain" ? "done" : "todo";
@@ -580,7 +678,14 @@ function nodeBox(id) {
   d.dataset.id = id;
   d.tabIndex = 0;
   d.setAttribute("role", "button");
-  d.append(el("span", "tag", statusLabel(status)), el("div", "name", n.name));
+  const head = el("div", "nhead");
+  const ic = iconEl(n, id, family);
+  if (ic) head.append(ic);
+  const st = el("span", "st", (plan.mode === "explain" ? EXPLAIN_MARK : MARK)[status]);
+  st.title = statusLabel(status);
+  st.setAttribute("aria-label", statusLabel(status));
+  head.append(el("div", "name", n.name), st);
+  d.append(head);
   if (n.what) d.append(richEl("div", "what", n.what));
   d.onclick = () => selectNode(id, true);
   d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id, true); };
@@ -637,23 +742,6 @@ function drawLinks(container, specs) {
         const dx = Math.max(24, (x2 - x1) / 2);
         d = `M${x1} ${y1} C${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
         head = `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
-        if (l.label) {
-          const t = document.createElementNS(svg.namespaceURI, "text");
-          t.setAttribute("x", x2 - 10);
-          t.setAttribute("y", y2 - 6);
-          t.setAttribute("text-anchor", "end");
-          t.textContent = l.label;
-          svg.append(t);
-          const room = Math.max(30, x2 - x1 - 24);
-          if (t.getComputedTextLength() > room) {
-            const full = l.label;
-            let cut = full.length;
-            while (cut > 3 && t.getComputedTextLength() > room) t.textContent = full.slice(0, --cut) + "…";
-            const tip = document.createElementNS(svg.namespaceURI, "title");
-            tip.textContent = full;
-            t.append(tip);
-          }
-        }
       }
       const dim = inStep && !inStep.has(l.from) && !inStep.has(l.to);
       for (const [path, extra] of [[d, ""], [head, " head"]]) {
@@ -678,10 +766,10 @@ function anchored(id, elx = nodeBox(id)) {
 
 function linkLegend(states, uses) {
   const lg = el("div", "linklegend");
-  if (uses) lg.append(el("span", null, "─ เส้นบางสีเทา: ใช้ค่า config / ไฟล์ / ลำดับการ deploy"));
+  if (uses) lg.append(el("span", null, t("usesLegend")));
   const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)"};
   for (const st of states) {
-    const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + LINK_STATE[st]);
+    const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + t("lk_" + st));
     sp.style.color = color[st];
     lg.append(sp);
   }
@@ -701,17 +789,18 @@ function renderK8s(v) {
   ns.append(el("div", "ns-title", [v.namespace && `namespace ${v.namespace}`, v.cluster && `cluster ${v.cluster}`].filter(Boolean).join(" · ") || "namespace"));
   const nsGrid = el("div", "ns-grid");
   const configs = el("div", "col");
-  (v.configs || []).forEach((id) => configs.append(anchored(id)));
+  (v.configs || []).forEach((id) => configs.append(anchored(id, nodeBox(id, "k8s"))));
   const policy = el("div", "policy" + (v.policy ? "" : " none"));
   if (v.policy) {
-    const pl = el("span", "plabel", "🛡 " + (plan.nodes[v.policy]?.name || v.policy));
+    const pl = el("span", "plabel");
+    pl.append(iconEl(plan.nodes[v.policy] || {}, v.policy, "k8s") || "🛡", plan.nodes[v.policy]?.name || v.policy);
     pl.dataset.id = v.policy;
     pl.tabIndex = 0;
     pl.onclick = () => selectNode(v.policy, true);
     policy.append(pl);
   }
   for (const w of v.workloads || []) {
-    const b = anchored(w.node);
+    const b = anchored(w.node, nodeBox(w.node, "k8s"));
     if (w.containers?.length) {
       const c = el("div", "containers");
       w.containers.forEach((name) => c.append(el("span", null, name)));
@@ -730,6 +819,15 @@ function renderK8s(v) {
   out.forEach((id, i) => specs.push(i < out.length - 1 ? {from: id, to: out[i + 1], down: true, state: "uses"} : {from: id, to: "#namespace", state: "uses"}));
   for (const w of v.workloads || []) for (const u of w.uses || []) specs.push({from: u, to: w.node, state: "uses"});
   for (const l of v.links || []) specs.push({...l, state: l.state || "ok"});
+  // Labels (ports, notes) sit on the box the link reaches, not on the line.
+  for (const l of v.links || []) {
+    const b = l.label && grid.querySelector(`[data-anchor="${CSS.escape(l.to)}"]`);
+    if (!b) continue;
+    const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
+    const chip = el("span", "via via-" + (LINK_STATE_KEYS.includes(l.state) ? l.state : "ok"), "← " + l.label);
+    chip.title = `${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to}`;
+    row.append(chip);
+  }
   drawLinks(grid, specs);
   const wrap = el("div");
   wrap.append(scroll);
@@ -738,7 +836,7 @@ function renderK8s(v) {
     const ul = el("ul", "linklist");
     for (const l of listed) {
       const li = el("li");
-      li.append(`${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to} · ${LINK_STATE[l.state || "ok"]}`);
+      li.append(`${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to} · ${t("lk_" + (l.state || "ok"))}`);
       if (l.label) li.append(" · ", rich(l.label));
       ul.append(li);
     }
@@ -793,7 +891,7 @@ function renderSequence(v) {
       msg.append(lbl, el("div", "line"));
     }
     const target = m.node || m.to;
-    msg.title = "คลิกเพื่อดู " + (plan.nodes[target]?.name || target);
+    msg.title = t("seeBox", plan.nodes[target]?.name || target);
     msg.onclick = () => selectNode(target, true);
     row.append(msg);
     (group || seq).append(row);
@@ -813,20 +911,22 @@ function renderTransform(v) {
     card.tabIndex = 0;
     card.onclick = () => selectNode(st.node, true);
     const head = el("div", "shead");
+    const ic = iconEl(n, st.node);
+    if (ic) head.append(ic);
     head.append(el("span", "sname " + (NODE_STATUS[n.status] ? n.status : "todo"), n.name));
     if (st.label) head.append(el("span", "slabel", st.label));
     card.append(head);
     if (st.columns) {
-      const t = el("table"), tr = el("tr");
+      const table = el("table"), tr = el("tr");
       st.columns.forEach((c) => tr.append(el("th", null, c)));
-      t.append(tr);
+      table.append(tr);
       for (const r of st.rows || []) {
         const row = el("tr");
         r.forEach((c) => row.append(el("td", null, c == null || c === "" ? "∅" : String(c).replace(/^ +| +$/g, (sp) => "␠".repeat(sp.length)))));
-        t.append(row);
+        table.append(row);
       }
       const tbl = el("div", "tbl");
-      tbl.append(t);
+      tbl.append(table);
       card.append(tbl);
     }
     if (st.text) card.append(el("pre", null, st.text));
@@ -862,20 +962,22 @@ function renderView() {
   const kind = VIEWS[v.kind];
   linkDrawer = null;
   linkObserver?.disconnect();
-  document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, `ยังวาด ${v.kind} ไม่ได้`));
+  document.getElementById("view").replaceChildren(kind ? kind.render(v) : el("p", null, t("cannotDraw", v.kind)));
   kind?.after?.();
   highlight();
   requestAnimationFrame(() => {
+    // An arrow left at the end of a wrapped row points at nothing.
+    for (const a of document.querySelectorAll("#view .tf > .arrow")) a.style.visibility = a.nextElementSibling && a.nextElementSibling.offsetTop > a.offsetTop + a.offsetHeight / 2 ? "hidden" : "";
     for (const sc of document.querySelectorAll("#view .scroll")) {
       sc.querySelector(":scope > .scrollhint")?.remove();
-      if (sc.scrollWidth > sc.clientWidth + 4) sc.prepend(el("div", "scrollhint", "↔ ภาพกว้างกว่าจอ เลื่อนข้างเพื่อดูส่วนที่เหลือ"));
+      if (sc.scrollWidth > sc.clientWidth + 4) sc.prepend(el("div", "scrollhint", t("wider")));
     }
   });
 }
 
 function renderSteps() {
   const bar = document.getElementById("stepbar");
-  const all = el("button", "chip all" + (stepId ? "" : " sel"), "ทั้งหมด");
+  const all = el("button", "chip all" + (stepId ? "" : " sel"), t("all"));
   all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
   bar.replaceChildren(all, ...steps().map((s, i) => {
@@ -883,7 +985,7 @@ function renderSteps() {
     const mark = s.confirmed ? "✓ " : s.status === "review" ? "👉 " : "";
     const c = el("button", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
     c.setAttribute("aria-pressed", String(s.id === stepId));
-    c.title = s.confirmed ? "ทวนผ่านแล้ว" : s.status === "review" ? "ถึงตาคุณตรวจหรือทวนขั้นนี้" : "";
+    c.title = s.confirmed ? t("chipRestated") : s.status === "review" ? t("chipTurn") : "";
     c.dataset.step = s.id;
     c.onclick = () => { stop(); selectStep(s.id); };
     return c;
@@ -937,16 +1039,16 @@ function fileLine(file, resolved) {
   if (resolved && EDITOR_URL[editor]) {
     const a = el("a", null, file);
     a.href = EDITOR_URL[editor](resolved, ref?.line);
-    a.title = "เปิดใน " + editor;
+    a.title = t("openIn", editor);
     row.append(a);
   } else row.append(el("span", null, file));
-  const copy = el("button", null, "คัดลอก");
+  const copy = el("button", null, t("copy"));
   copy.onclick = async () => {
     try {
       await navigator.clipboard.writeText(resolved ? `${resolved}${ref?.line ? ":" + ref.line : ""}` : file);
-      copy.textContent = "คัดลอกแล้ว";
+      copy.textContent = t("copied");
     } catch {
-      copy.textContent = "คัดลอกไม่ได้";
+      copy.textContent = t("copyFail");
     }
   };
   row.append(copy);
@@ -956,11 +1058,11 @@ function fileLine(file, resolved) {
 function codeBox(id) {
   const box = el("details", "code");
   box.open = true;
-  box.append(el("summary", null, "โค้ดตรงนี้"), el("div", "meta", "กำลังโหลด…"));
+  box.append(el("summary", null, t("codeHere")), el("div", "meta", t("loading")));
   fetch(`/api/source?node=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`)
     .then((r) => r.json())
     .then((r) => {
-      if (r.error) return box.lastChild.replaceWith(el("div", "meta err", "อ่านโค้ดไม่ได้: " + r.error));
+      if (r.error) return box.lastChild.replaceWith(el("div", "meta err", `${t("codeFail")}: ${r.error}`));
       const ol = el("ol");
       r.lines.forEach((t, i) => {
         const n = r.from + i;
@@ -971,11 +1073,11 @@ function codeBox(id) {
       box.lastChild.replaceWith(ol);
       if (nodeId === id && plan.nodes[id]?.file) document.querySelector("#panel .fileline")?.replaceWith(fileLine(plan.nodes[id].file, r.path));
     })
-    .catch(() => box.lastChild.replaceWith(el("div", "meta err", "อ่านโค้ดไม่ได้")));
+    .catch(() => box.lastChild.replaceWith(el("div", "meta err", t("codeFail"))));
   return box;
 }
 
-function clearPanel(text = "กดกล่องในภาพเพื่อดูรายละเอียด") {
+function clearPanel(text = t("pickBox")) {
   nodeId = null;
   highlight();
   document.getElementById("panel").replaceChildren(el("h3", null, text));
@@ -986,24 +1088,27 @@ function selectNode(id, reveal = false) {
   highlight();
   const n = plan.nodes[id];
   const p = document.getElementById("panel");
-  if (!n) return p.replaceChildren(el("h3", null, `ไม่มี node "${id}"`));
-  const parts = [richEl("h3", null, `${n.name} · ${statusLabel(n.status)}`)];
+  if (!n) return p.replaceChildren(el("h3", null, t("noNode", id)));
+  const h = richEl("h3", null, `${n.name} · ${statusLabel(n.status)}`);
+  const ic = iconEl(n, id, document.querySelector(`#view .ns [data-id="${CSS.escape(id)}"]`) ? "k8s" : null);
+  if (ic) h.prepend(ic);
+  const parts = [h];
   if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
     const io = el("div", "io");
-    for (const [lbl, txt] of [["รับเข้า", n.in], ["ได้ออกมา", n.out]]) {
+    for (const [k, txt] of [["in", n.in], ["out", n.out]]) {
       const b = el("div", "box");
-      b.append(el("div", "lbl", lbl), richEl("pre", null, txt || "—"));
+      b.append(el("div", "lbl", t(k)), richEl("pre", null, txt || "—"));
       io.append(b);
-      if (lbl === "รับเข้า") io.append(el("div", "mid", "→"));
+      if (k === "in") io.append(el("div", "mid", "→"));
     }
     parts.push(io);
   }
   if (n.why) parts.push(richEl("p", "why", n.why));
   if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
-  if (where.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused", "deeper"], modes: ["question", "change"]}));
+  if (where.length) parts.push(el("p", "insteps", (plan.mode === "explain" ? t("inStages") : t("inSteps")) + where.join(", ")));
+  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["ok", "confused", "deeper"], modes: ["question", "change"]}));
   p.replaceChildren(...parts);
   refreshThreads();
   if (reveal) p.scrollIntoView({block: "nearest", behavior: "smooth"});
@@ -1012,7 +1117,7 @@ function selectNode(id, reveal = false) {
 function stop() {
   clearInterval(timer);
   timer = null;
-  document.getElementById("play").textContent = `▶ เล่นทีละ${plan?.mode === "explain" ? "ช่วง" : "ขั้น"}`;
+  document.getElementById("play").textContent = t("play", unit());
 }
 function step(d) {
   const list = steps(), i = list.indexOf(curStep());
@@ -1023,7 +1128,7 @@ document.getElementById("prev").onclick = () => { stop(); step(-1); };
 document.getElementById("next").onclick = () => { stop(); step(1); };
 document.getElementById("play").onclick = () => {
   if (timer) return stop();
-  document.getElementById("play").textContent = "❚❚ หยุด";
+  document.getElementById("play").textContent = t("pause");
   step(1);
   timer = setInterval(() => (curStep() === steps().at(-1) ? stop() : step(1)), 3200);
 };
@@ -1053,10 +1158,10 @@ function noteChanges(prev) {
   for (const id of Object.keys(plan.nodes)) if (!same(prev.nodes?.[id], plan.nodes[id])) changes.nodes.add(id);
   for (const st of steps()) if (!same((prev.steps || []).find((x) => x.id === st.id), st)) changes.steps.add(st.id);
   const views = new Set((prev.views || []).map((v) => v.id));
-  for (const v of plan.views) if (!views.has(v.id)) changes.notes.push(`ภาพใหม่: ${v.title || v.id}`);
-  if (!prev.approved && plan.approved) changes.notes.push("อนุมัติแผนแล้ว");
-  if (!same(prev.glossary, plan.glossary)) changes.notes.push("คำศัพท์เปลี่ยน");
-  if (prev.title !== plan.title || prev.goal !== plan.goal) changes.notes.push("ชื่อหรือเป้าหมายเปลี่ยน");
+  for (const v of plan.views) if (!views.has(v.id)) changes.notes.push(t("newView") + (v.title || v.id));
+  if (!prev.approved && plan.approved) changes.notes.push(t("planApproved"));
+  if (!same(prev.glossary, plan.glossary)) changes.notes.push(t("glossaryChanged"));
+  if (prev.title !== plan.title || prev.goal !== plan.goal) changes.notes.push(t("titleChanged"));
   changes.notes = [...new Set(changes.notes)];
 }
 
@@ -1067,26 +1172,26 @@ function markChanges() {
 }
 
 function showChangeList() {
-  const t = document.getElementById("toast");
+  const box = document.getElementById("toast");
   const ul = el("ul");
   for (const id of changes.steps) {
     const st = steps().find((x) => x.id === id);
-    if (st) ul.append(el("li", null, "ขั้น: " + st.title));
+    if (st) ul.append(el("li", null, t("chStep") + st.title));
   }
-  for (const id of changes.nodes) if (plan.nodes[id]) ul.append(el("li", null, "กล่อง: " + plan.nodes[id].name));
+  for (const id of changes.nodes) if (plan.nodes[id]) ul.append(el("li", null, t("chBox") + plan.nodes[id].name));
   for (const n of changes.notes) ul.append(el("li", null, n));
-  const ok = el("button", "primary", "รับทราบ");
+  const ok = el("button", "primary", t("seen"));
   ok.onclick = () => {
     changes.nodes.clear();
     changes.steps.clear();
     changes.notes = [];
-    t.hidden = true;
+    box.hidden = true;
     markChanges();
     renderBar();
   };
-  t.replaceChildren(el("b", null, "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)"), ul, ok);
-  t.onclick = (e) => e.stopPropagation();
-  t.hidden = false;
+  box.replaceChildren(el("b", null, t("changedTitle")), ul, ok);
+  box.onclick = (e) => e.stopPropagation();
+  box.hidden = false;
 }
 document.addEventListener("click", () => (document.getElementById("toast").hidden = true));
 
@@ -1095,6 +1200,7 @@ function draw(p) {
   plan = p;
   plan.nodes ||= {};
   plan.views = viewsOf(plan);
+  setLang(langOf(plan));
   document.title = plan.title ? `${plan.title} · planview` : "planview";
   document.getElementById("title").textContent = plan.title || "planview";
   setGlossary(plan.glossary);
@@ -1105,8 +1211,8 @@ function draw(p) {
   box.hidden = !problems.length;
   if (problems.length) {
     const ul = el("ul");
-    problems.forEach((t) => ul.append(el("li", null, t)));
-    box.replaceChildren(el("b", null, "plan.json มีปัญหา"), ul);
+    problems.forEach((x) => ul.append(el("li", null, x)));
+    box.replaceChildren(el("b", null, t("problems")), ul);
   }
   if (stepId && !curStep()) stepId = null;
   renderSteps();
@@ -1130,7 +1236,7 @@ function draw(p) {
   } else if (nodeId && Object.hasOwn(plan.nodes, nodeId)) {
     selectNode(nodeId);
   } else if (nodeId) {
-    clearPanel("กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว");
+    clearPanel(t("boxRemoved"));
   }
   if (prev && !same(prev, p)) noteChanges(prev);
   markChanges();
@@ -1153,14 +1259,14 @@ async function fetchPlan() {
   const box = document.getElementById("problems");
   if (!r.ok) {
     box.hidden = false;
-    box.textContent = `โหลดแผนไม่ได้ (${r.status}): ${await r.text()}`;
+    box.textContent = t("loadFail", r.status) + (await r.text());
     return;
   }
   try {
     render(JSON.parse(await r.text()));
   } catch (e) {
     box.hidden = false;
-    box.textContent = "plan.json อ่านไม่ได้: " + e.message;
+    box.textContent = t("parseFail") + e.message;
   }
 }
 
@@ -1196,6 +1302,9 @@ async function load() {
   on("agent", (a) => (waiting = a.waiting));
 }
 window.__planview = {get plan() { return plan; }, selectStep, selectNode, render};
+setLang(lang);
+document.querySelector("#panel h3").textContent = t("pickBox");
+renderBadges();
 load();
 </script>
 </body>

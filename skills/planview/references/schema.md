@@ -48,6 +48,7 @@ Complete examples: `examples/nightly-import` (build, all four views) and `exampl
 | `roots` | no | More repositories by name, e.g. `{"deploy": "/path/to/deploy-repo"}`; refer to them as `deploy:path:line` |
 | `start` | no | Step id the page opens on (default: first step in `review`, else `doing`) |
 | `links` | no | Plans started from this page: `[{"title": "…", "url": "http://127.0.0.1:…"}]`, shown next to the proposals |
+| `constraints` | no | Any mode: what the plan assumes or must respect, `[{"id": "…", "text": "…", "confirmed": false}]`; unconfirmed ones are shown dashed with a confirm button |
 | `glossary` | no | `{"term": "plain one-line explanation"}` for terms specific to this project; about 70 common terms (Kubernetes, CI, HTTP, JWT, …) ship with planview in English and Thai (`assets/glossary.json`). Terms are underlined wherever they appear and explain themselves on click |
 | `steps` | no (expected) | Ordered steps (build) or stages of the flow (explain) |
 | `views` | no | Pictures, shown as tabs. Leave out for a plain flow: each step becomes a lane of its boxes |

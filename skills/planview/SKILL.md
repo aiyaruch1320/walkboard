@@ -17,6 +17,8 @@ Use the language the user writes in for everything: questions, the plan, replies
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 - **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [references/design.md](references/design.md), then section 3.
 
+Before writing anything, if the request leaves open something that changes the picture (scope, which repository or service, environment, what "done" means), ask up to three short questions in one go, together with any settings question below. Do not guess what you can ask; whatever you still assume, show on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`), so the user can confirm or correct it there.
+
 `settings`, first match wins: what the request says ("no restating", "commit for me") · existing `settings` · `~/.planview/config.json` (same fields). Still missing: ask one question (AskUserQuestion when available): build → commit for them or only suggest messages (`"commit": "auto"|"suggest"`); explain → overview or detail (`"depth"`). Then offer to save it to `~/.planview/config.json`. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
 
 ## 1. Write the plan (build)
@@ -44,7 +46,8 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
    - `deeper`: add boxes, a stage or a view (with `file` evidence), reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `PV set <dir> step:<id> confirmed=true`.
    - `approve`: `PV set <dir> approved=true`, reply in one line.
-   - `propose`, `change`, `withdraw`, `plan`, `apply`, `commit`, `committed`: read [references/messages.md](references/messages.md) the first time; `confirm`, `decide`: references/design.md.
+   - `propose`, `change`, `withdraw`, `plan`, `apply`, `commit`, `committed`: read [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
+   - `confirm` (`constraint` or `node`): mark it confirmed (`confirmed: true`, or the box's real `basis`); if the user corrects it, update it and what depended on it, and say what changed.
    - `settings`: switches already saved in plan.json; arrives only with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
 3. Refer to steps by title. Start `PV poll` again. The user may also answer in chat.

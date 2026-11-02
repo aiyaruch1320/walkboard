@@ -34,8 +34,82 @@ export function decodePng(buf) {
     }
   }
   const rgb = new Uint32Array(width * height);
-  for (let i = 0; i < rgb.length; i++) rgb[i] = (px[i * bpp] << 16) | (px[i * bpp + 1] << 8) | px[i * bpp + 2];
-  return {width, height, rgb};
+  const alpha = bpp === 4 ? new Uint8Array(width * height) : null;
+  for (let i = 0; i < rgb.length; i++) {
+    rgb[i] = (px[i * bpp] << 16) | (px[i * bpp + 1] << 8) | px[i * bpp + 2];
+    if (alpha) alpha[i] = px[i * bpp + 3];
+  }
+  return {width, height, rgb, alpha};
+}
+
+export function encodePng({width, height, rgb}) {
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const c = rgb[y * width + x], o = y * (width * 3 + 1) + 1 + x * 3;
+      raw[o] = (c >> 16) & 255;
+      raw[o + 1] = (c >> 8) & 255;
+      raw[o + 2] = c & 255;
+    }
+  const crcTable = Array.from({length: 256}, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc = (buf) => {
+    let c = 0xffffffff;
+    for (const b of buf) c = crcTable[(c ^ b) & 255] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4), body = Buffer.concat([Buffer.from(type), data]), sum = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    sum.writeUInt32BE(crc(body));
+    return Buffer.concat([len, body, sum]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+}
+
+// Bilinear crop-and-scale: the camera of the demo recording.
+export function view(src, {x, y, w, h}, outW, outH) {
+  const rgb = new Uint32Array(outW * outH);
+  for (let oy = 0; oy < outH; oy++) {
+    const sy = Math.min(src.height - 1.001, Math.max(0, y + ((oy + 0.5) * h) / outH - 0.5));
+    const y0 = Math.floor(sy), fy = sy - y0;
+    for (let ox = 0; ox < outW; ox++) {
+      const sx = Math.min(src.width - 1.001, Math.max(0, x + ((ox + 0.5) * w) / outW - 0.5));
+      const x0 = Math.floor(sx), fx = sx - x0;
+      const i = y0 * src.width + x0;
+      const a = src.rgb[i], b = src.rgb[i + 1], c = src.rgb[i + src.width], d = src.rgb[i + src.width + 1];
+      let v = 0;
+      for (const sh of [16, 8, 0]) {
+        const top = ((a >> sh) & 255) * (1 - fx) + ((b >> sh) & 255) * fx, bot = ((c >> sh) & 255) * (1 - fx) + ((d >> sh) & 255) * fx;
+        v |= Math.round(top * (1 - fy) + bot * fy) << sh;
+      }
+      rgb[oy * outW + ox] = v;
+    }
+  }
+  return {width: outW, height: outH, rgb};
+}
+
+// Draws an RGBA image (e.g. a caption) over a frame.
+export function overlay(dst, img, left, top) {
+  for (let y = 0; y < img.height; y++)
+    for (let x = 0; x < img.width; x++) {
+      const dx = left + x, dy = top + y;
+      if (dx < 0 || dy < 0 || dx >= dst.width || dy >= dst.height) continue;
+      const a = (img.alpha ? img.alpha[y * img.width + x] : 255) / 255;
+      if (!a) continue;
+      const s = img.rgb[y * img.width + x], d = dst.rgb[dy * dst.width + dx];
+      let v = 0;
+      for (const sh of [16, 8, 0]) v |= Math.round(((s >> sh) & 255) * a + ((d >> sh) & 255) * (1 - a)) << sh;
+      dst.rgb[dy * dst.width + dx] = v;
+    }
 }
 
 // The 256 most common colours of all frames; everything else maps to its nearest one.

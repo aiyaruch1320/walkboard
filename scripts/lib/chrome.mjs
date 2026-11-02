@@ -7,7 +7,7 @@ import path from "node:path";
 const chromePath = process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export async function launch({width = 1200, height = 900, port = 9333} = {}) {
+export async function launch({width = 1200, height = 900, port = 9333, scale = 1} = {}) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "planview-chrome-"));
   const proc = spawn(chromePath, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", `--user-data-dir=${profile}`, `--remote-debugging-port=${port}`, `--window-size=${width},${height}`, "about:blank"], {stdio: "ignore"});
   for (let i = 0; i < 50; i++) {
@@ -16,7 +16,7 @@ export async function launch({width = 1200, height = 900, port = 9333} = {}) {
       const t = targets.find((x) => x.type === "page");
       if (t) {
         const page = await new Page(t.webSocketDebuggerUrl, proc).ready();
-        await page.send("Emulation.setDeviceMetricsOverride", {width, height, deviceScaleFactor: 1, mobile: false});
+        await page.send("Emulation.setDeviceMetricsOverride", {width, height, deviceScaleFactor: scale, mobile: false});
         return page;
       }
     } catch {}

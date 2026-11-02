@@ -1,19 +1,20 @@
 #!/usr/bin/env node
-// Records docs/images/demo.gif: from typing in Claude Code to a confirmed step, with a cursor, clicks and zooms.
+// Records docs/images/demo.gif: from typing /planview in Claude Code to a confirmed step.
 // The terminal is a plain mock-up; the planview page is real (a copy of examples/nightly-import).
-// Needs Google Chrome and Node 22: node scripts/demo-gif.mjs   (DEMO_FRAMES=<dir> also keeps every frame as PNG)
+// Pages are captured at 2x and a camera crops and scales the captures, so zooming never touches the page layout.
+// Needs Google Chrome and Node 22: node scripts/demo-gif.mjs   (DEMO_FRAMES=<dir> also writes every output frame as PNG)
 import {execFileSync} from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {fileURLToPath, pathToFileURL} from "node:url";
 import {launch, sleep} from "./lib/chrome.mjs";
-import {decodePng, encodeGif} from "./lib/gif.mjs";
+import {decodePng, encodeGif, encodePng, overlay, view} from "./lib/gif.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(repo, "skills/planview/bin/planview.mjs");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
-const W = 960, H = 600;
+const W = 960, H = 600, SCALE = 2;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "planview-gif-"));
 const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
@@ -27,23 +28,43 @@ const listen = () => api("/api/poll").catch(() => {});
 const terminalUrl = pathToFileURL(path.join(repo, "scripts/demo/terminal.html")).href;
 const endUrl = pathToFileURL(path.join(repo, "scripts/demo/end.html")).href;
 const shortUrl = `127.0.0.1:${new URL(url).port}/?token=…`;
+const PROMPT = "/planview วางแผน deploy CronJob นำเข้าลูกค้าขึ้น staging";
 
-const page = await launch({width: W, height: H});
+const page = await launch({width: W, height: H, scale: SCALE});
 const frames = [];
 const graphemes = (t) => [...new Intl.Segmenter("th", {granularity: "grapheme"}).segment(t)].map((s) => s.segment);
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
 
-// Cursor, click ripple, caption, camera and (on the plan page) a small browser bar, drawn above the page.
+// Captions are drawn on the output frames, so they stay sharp and the same size while the camera zooms.
+const captions = new Map();
+async function renderCaptions(texts) {
+  await page.send("Emulation.setDeviceMetricsOverride", {width: W, height: 120, deviceScaleFactor: 1, mobile: false});
+  await page.send("Emulation.setDefaultBackgroundColorOverride", {color: {r: 0, g: 0, b: 0, a: 0}});
+  await page.goto("about:blank", 200);
+  for (const t of texts) {
+    const box = await page.eval(`
+      document.body.style.margin = "0";
+      document.body.innerHTML = '<div id="c" style="display:inline-block;margin:12px;background:rgba(127,119,221,.96);color:#fff;padding:9px 20px;border-radius:999px;font:600 16px -apple-system,\\'Noto Sans Thai\\',system-ui;box-shadow:0 6px 18px rgba(0,0,0,.45);white-space:nowrap"></div>';
+      const c = document.getElementById("c");
+      c.textContent = ${JSON.stringify(t)};
+      const r = c.getBoundingClientRect();
+      return {x: r.left - 8, y: r.top - 6, width: r.width + 16, height: r.height + 16};`);
+    captions.set(t, decodePng(await page.png(box)));
+  }
+  await page.send("Emulation.setDefaultBackgroundColorOverride", {});
+  await page.send("Emulation.setDeviceMetricsOverride", {width: W, height: H, deviceScaleFactor: SCALE, mobile: false});
+}
+
+// Cursor, click ripple and (on the plan page) a small browser bar, drawn in the page.
 const OVERLAY = `
   if (!window.__ov) {
     const css = document.createElement("style");
     css.textContent = \`
-      #ovCursor{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;width:24px;height:24px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
-      #ovRipple{position:fixed;z-index:2147483646;pointer-events:none;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #7f77dd;background:rgba(127,119,221,.2);display:none}
-      #ovCap{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:2147483645;background:#26215c;color:#fff;padding:8px 18px;border-radius:999px;font:500 15px -apple-system,"Noto Sans Thai",system-ui;box-shadow:0 4px 16px rgba(0,0,0,.25);white-space:nowrap;display:none}
-      #ovChrome{position:fixed;left:0;right:0;top:0;height:40px;z-index:2147483644;background:#e8e6e0;display:flex;align-items:center;gap:8px;padding:0 14px;font:13px -apple-system,system-ui;color:#55534d;box-shadow:0 1px 0 #d4d2ca}
+      #ovCursor{position:fixed;left:0;top:0;z-index:2147483647;pointer-events:none;width:24px;height:24px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+      #ovRipple{position:fixed;z-index:2147483646;pointer-events:none;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:3px solid #afa9ec;background:rgba(175,169,236,.22);display:none}
+      #ovChrome{position:fixed;left:0;right:0;top:0;height:40px;z-index:2147483644;background:#2b2a33;display:flex;align-items:center;gap:8px;padding:0 14px;font:13px -apple-system,system-ui;color:#c9c7d6;box-shadow:0 1px 0 #3d3c44}
       #ovChrome i{width:11px;height:11px;border-radius:50%;display:inline-block}
-      #ovChrome span{margin-left:14px;background:#fff;border-radius:7px;padding:3px 12px;min-width:320px}
+      #ovChrome span{margin-left:14px;background:#1c1b22;border-radius:7px;padding:3px 12px;min-width:320px}
     \`;
     document.documentElement.append(css);
     const c = document.createElement("div");
@@ -51,14 +72,10 @@ const OVERLAY = `
     c.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M4 2 L4 19 L8.5 15 L11.5 22 L14.5 20.7 L11.5 14 L17.5 14 Z" fill="#fff" stroke="#1f1e1c" stroke-width="1.6" stroke-linejoin="round"/></svg>';
     const r = document.createElement("div");
     r.id = "ovRipple";
-    const cap = document.createElement("div");
-    cap.id = "ovCap";
-    document.documentElement.append(c, r, cap);
+    document.documentElement.append(c, r);
     window.__ov = {
       cursor(x, y, show = true) { c.style.display = show ? "block" : "none"; c.style.transform = "translate(" + (x - 4) + "px," + (y - 2) + "px)"; },
       ripple(x, y, on) { r.style.display = on ? "block" : "none"; r.style.left = x + "px"; r.style.top = y + "px"; },
-      caption(t) { cap.style.display = t ? "block" : "none"; cap.textContent = t || ""; },
-      camera(s, tx, ty) { const b = document.body; b.style.transformOrigin = "0 0"; b.style.transform = s === 1 && !tx && !ty ? "" : "translate(" + tx + "px," + ty + "px) scale(" + s + ")"; },
       chrome(text) {
         const ch = document.createElement("div");
         ch.id = "ovChrome";
@@ -66,81 +83,91 @@ const OVERLAY = `
         ch.querySelector("span").textContent = text;
         document.documentElement.append(ch);
         const fix = document.createElement("style");
-        fix.textContent = "body{padding-top:40px}.bar{top:40px!important}";
+        fix.textContent = "body{padding-top:40px}.bar{top:40px!important}main{padding-bottom:320px}";
         document.documentElement.append(fix);
       },
     };
   }`;
 
 let cur = {x: W / 2, y: H / 2, shown: false};
-let cam = {s: 1, tx: 0, ty: 0};
+let cam = {s: 1, cx: W / 2, cy: H / 2};
+let caption = null;
 
+function shoot(src, delay) {
+  const s = cam.s, w = (W * SCALE) / s, h = (H * SCALE) / s;
+  const x = Math.min(Math.max(0, cam.cx * SCALE - w / 2), W * SCALE - w), y = Math.min(Math.max(0, cam.cy * SCALE - h / 2), H * SCALE - h);
+  const out = view(src, {x, y, w, h}, W, H);
+  const cap = caption && captions.get(caption);
+  if (cap) overlay(out, cap, Math.round((W - cap.width) / 2), H - cap.height - 10);
+  if (process.env.DEMO_FRAMES) fs.writeFileSync(path.join(process.env.DEMO_FRAMES, `${String(frames.length).padStart(3, "0")}.png`), encodePng(out));
+  frames.push({...out, delay});
+  return out;
+}
+let lastSrc = null;
 async function snap(delay) {
-  const png = await page.png();
-  if (process.env.DEMO_FRAMES) fs.writeFileSync(path.join(process.env.DEMO_FRAMES, `${String(frames.length).padStart(3, "0")}.png`), png);
-  frames.push({...decodePng(png), delay});
+  lastSrc = decodePng(await page.png());
+  shoot(lastSrc, delay);
 }
 const ov = (js) => page.eval(`${OVERLAY}; ${js}`);
-const caption = (t) => ov(`__ov.caption(${JSON.stringify(t)})`);
-const rect = (sel) => page.eval(`const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect(); return r && {x: r.left, y: r.top, w: r.width, h: r.height};`);
+// text: measure the text itself rather than the (often full-width) block around it.
+const rect = (sel, text = false) => page.eval(`
+  const el = document.querySelector(${JSON.stringify(sel)});
+  if (!el) return null;
+  let r = el.getBoundingClientRect();
+  if (${text}) { const range = document.createRange(); range.selectNodeContents(el); r = range.getBoundingClientRect(); }
+  return {x: r.left, y: r.top, w: r.width, h: r.height};`);
 
 async function goto(u, wait = 1800) {
   await page.goto(u, wait);
-  cam = {s: 1, tx: 0, ty: 0};
   await ov(`__ov.cursor(${cur.x}, ${cur.y}, ${cur.shown})`);
 }
 
-async function moveTo(sel, {steps = 9, dx = 0.5, dy = 0.5} = {}) {
+async function moveTo(sel, {steps = 11, dx = 0.5, dy = 0.5} = {}) {
   const r = await rect(sel);
   if (!r) throw new Error(`not found: ${sel}`);
-  const to = {x: r.x + r.w * dx, y: r.y + r.h * dy};
-  const from = {...cur};
+  const to = {x: r.x + r.w * dx, y: r.y + r.h * dy}, from = {...cur};
   cur.shown = true;
   for (let i = 1; i <= steps; i++) {
     const k = ease(i / steps);
     cur.x = from.x + (to.x - from.x) * k;
     cur.y = from.y + (to.y - from.y) * k;
     await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
-    await snap(45);
+    await snap(40);
   }
 }
 
-async function click(sel, {hold = 300} = {}) {
+async function click(sel, {hold = 600} = {}) {
   await ov(`__ov.ripple(${cur.x}, ${cur.y}, true)`);
-  await snap(110);
+  await snap(140);
   await page.eval(`document.querySelector(${JSON.stringify(sel)}).click();`);
-  await sleep(350);
+  await sleep(400);
   await ov(`__ov.ripple(0, 0, false)`);
   await snap(hold);
 }
 
-// Pans and zooms so the element's centre lands in the middle of the screen at scale s.
-// The camera transforms <body>, so work in document coordinates: screen = s * doc + t - scroll.
-async function zoomTo(sel, s, {steps = 8, hold = 1200} = {}) {
-  const r = await rect(sel);
-  const {sx, sy} = await page.eval(`return {sx: scrollX, sy: scrollY};`);
-  const cx = (r.x + r.w / 2 + sx - cam.tx) / cam.s, cy = (r.y + r.h / 2 + sy - cam.ty) / cam.s;
-  await camera({...cam}, {s, tx: W / 2 + sx - s * cx, ty: H / 2 + sy - s * cy}, steps);
-  await snap(hold);
-}
-async function zoomOut(steps = 7) {
-  await camera({...cam}, {s: 1, tx: 0, ty: 0}, steps);
-}
-async function camera(from, to, steps) {
+// The camera only changes how the capture is cropped; the page stays as it is.
+async function camera(to, steps = 10) {
+  const from = {...cam};
   for (let i = 1; i <= steps; i++) {
     const k = ease(i / steps);
-    cam = {s: from.s + (to.s - from.s) * k, tx: from.tx + (to.tx - from.tx) * k, ty: from.ty + (to.ty - from.ty) * k};
-    await ov(`__ov.camera(${cam.s}, ${cam.tx}, ${cam.ty})`);
-    await snap(55);
+    cam = {s: from.s + (to.s - from.s) * k, cx: from.cx + (to.cx - from.cx) * k, cy: from.cy + (to.cy - from.cy) * k};
+    shoot(lastSrc, 40);
   }
 }
+async function zoomTo(sel, s, hold = 2200, text = false) {
+  const r = await rect(sel, text);
+  await snap(80);
+  await camera({s, cx: r.x + r.w / 2, cy: r.y + r.h / 2});
+  frames.at(-1).delay = hold;
+}
+const zoomOut = () => camera({s: 1, cx: W / 2, cy: H / 2}, 9);
 
-async function scrollTo(sel, offset = 70, steps = 7) {
+async function scrollTo(sel, offset = 70, steps = 9) {
   const target = await page.eval(`return Math.max(0, document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect().top + scrollY - ${offset});`);
   const from = await page.eval(`return scrollY;`);
   for (let i = 1; i <= steps; i++) {
     await page.eval(`scrollTo(0, ${from + (target - from) * ease(i / steps)});`);
-    await snap(50);
+    await snap(45);
   }
 }
 
@@ -149,24 +176,28 @@ async function typeInto(sel, text, per = 3) {
   const g = graphemes(text);
   for (let i = 0; i < g.length; i += per) {
     await page.send("Input.insertText", {text: g.slice(i, i + per).join("")});
-    await snap(70);
+    await snap(90);
   }
 }
 
-// Fades from the last frame into the next scene.
-async function crossfade(load, steps = 3) {
+async function crossfade(load, steps = 6) {
   const last = frames.at(-1);
   await load();
-  const next = decodePng(await page.png());
+  lastSrc = decodePng(await page.png());
+  const saved = cam;
+  cam = {s: 1, cx: W / 2, cy: H / 2};
+  const next = view(lastSrc, {x: 0, y: 0, w: W * SCALE, h: H * SCALE}, W, H);
+  const cap = caption && captions.get(caption);
+  if (cap) overlay(next, cap, Math.round((W - cap.width) / 2), H - cap.height - 10);
   for (let i = 1; i < steps; i++) {
-    const t = i / steps, rgb = new Uint32Array(next.rgb.length);
+    const t = ease(i / steps), rgb = new Uint32Array(W * H);
     for (let j = 0; j < rgb.length; j++) {
       const a = last.rgb[j], b = next.rgb[j];
-      const r = ((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t, g = ((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t, bl = (a & 255) * (1 - t) + (b & 255) * t;
-      rgb[j] = (r << 16) | (g << 8) | bl;
+      rgb[j] = (Math.round(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t) << 16) | (Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t) << 8) | Math.round((a & 255) * (1 - t) + (b & 255) * t);
     }
-    frames.push({width: W, height: H, rgb, delay: 70});
+    frames.push({width: W, height: H, rgb, delay: 60});
   }
+  void saved;
 }
 
 const TERMINAL_LINES = [
@@ -177,63 +208,79 @@ const TERMINAL_LINES = [
   [`● เปิดหน้าแผน  <span class="link" id="planlink">http://${shortUrl}</span>`, ""],
   ['<span class="muted">  รอฟังจากหน้าแผน…</span>', ""],
 ];
-const PROMPT = "/planview:planview วางแผน deploy CronJob นำเข้าลูกค้าขึ้น staging";
+const CAPTIONS = [
+  "พิมพ์ /planview แล้วบอกงานที่อยากทำ",
+  "agent ถามสองข้อ เขียนแผน แล้วเปิดเป็นหน้าเว็บ",
+  "ขั้นตอนอยู่ข้างบน ภาพของงานอยู่ข้างล่าง",
+  "เลือกขั้น แล้วหน้าพาไปส่วนที่เกี่ยวข้อง",
+  "คลิกกล่อง: รับอะไร ได้อะไร ทำไม",
+  "สงสัยตรงไหน ถามบนกล่องนั้นเลย",
+  "คลิกของคุณปลุก agent ให้มาตอบ",
+  "คำตอบขึ้นตรงที่ถาม",
+  "agent อัปเดตแผน: ขั้นนี้ถึงตาคุณทวน",
+  "ทวนถูก agent ยืนยัน ✓ แล้วไปขั้นถัดไป",
+];
 
 try {
+  await renderCaptions(CAPTIONS);
+
   // Scene 1: the request, typed in Claude Code.
-  await goto(terminalUrl, 600);
-  await snap(700);
-  await zoomTo(".win", 1.1, {steps: 6, hold: 150});
+  await goto(terminalUrl, 700);
+  caption = CAPTIONS[0];
+  await snap(800);
+  await camera({s: 1.1, cx: W / 2, cy: 210});
   const g = graphemes(PROMPT);
   for (let i = 0; i < g.length; i += 4) {
     await page.eval(`typeTo(${JSON.stringify(g.slice(0, i + 4).join(""))});`);
-    await snap(60);
+    await snap(70);
   }
-  await snap(500);
-  await zoomOut(6);
+  await snap(600);
+  await zoomOut();
+  caption = CAPTIONS[1];
   for (const [html, cls] of TERMINAL_LINES) {
     await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
-    await snap(380);
+    await snap(420);
   }
-  await caption("1 · สั่งใน Claude Code แล้ว agent วาดแผนให้เป็นหน้าเว็บ");
   await snap(1000);
-  await moveTo("#planlink", {steps: 10, dx: 0.3});
+  await moveTo("#planlink", {dx: 0.3});
   await ov(`__ov.ripple(${cur.x}, ${cur.y}, true)`);
-  await snap(160);
+  await snap(260);
 
   // Scene 2: the plan page.
   listen();
+  caption = CAPTIONS[2];
   await crossfade(async () => {
-    await goto(`${url}&theme=light&step=manifests`, 2000);
+    await goto(`${url}&theme=dark&step=manifests`, 2000);
     await ov(`__ov.chrome(${JSON.stringify(shortUrl)})`);
-    await caption("2 · ขั้นตอนอยู่ข้างบน ภาพอยู่ข้างล่าง");
-    cur = {x: 520, y: 300, shown: true};
+    cur = {x: 600, y: 320, shown: true};
     await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
   });
-  await snap(1100);
+  await snap(1800);
 
-  await caption("3 · เลือกขั้น ภาพพาไปส่วนที่เกี่ยวข้องเอง");
+  caption = CAPTIONS[3];
   await moveTo('.chip[data-step="secrets"]');
-  await click('.chip[data-step="secrets"]', {hold: 200});
+  await click('.chip[data-step="secrets"]', {hold: 400});
   await scrollTo("#tabs", 50);
-  await snap(500);
-  await zoomTo('#view [data-id="warehouse"]', 1.6, {hold: 1300});
+  await snap(700);
+  await zoomTo('#view [data-id="warehouse"]', 1.7, 2000);
   await zoomOut();
 
-  await caption("4 · คลิกกล่อง: รับอะไร ได้อะไร ทำไม");
+  caption = CAPTIONS[4];
   await moveTo('#view [data-id="cronjob"]');
-  await click('#view [data-id="cronjob"]', {hold: 200});
+  await click('#view [data-id="cronjob"]', {hold: 500});
   await scrollTo("#panel", 50);
-  await snap(900);
+  await snap(1800);
 
-  await caption("5 · ถามได้บนกล่องนั้นเลย");
+  caption = CAPTIONS[5];
   await moveTo("#panel textarea", {dx: 0.2});
-  await click("#panel textarea", {hold: 120});
+  await click("#panel textarea", {hold: 200});
   await typeInto("#panel textarea", "ทำไมต้อง suspend ไว้ก่อน");
+  await snap(400);
   await moveTo("#panel .send button");
-  await click("#panel .send button", {hold: 500});
+  await click("#panel .send button", {hold: 700});
 
   // Scene 3: the agent wakes in Claude Code and answers.
+  caption = CAPTIONS[6];
   await crossfade(async () => {
     await goto(terminalUrl, 500);
     cur.shown = false;
@@ -241,49 +288,52 @@ try {
     await page.eval(`typeTo(${JSON.stringify(PROMPT)});`);
     for (const [html, cls] of TERMINAL_LINES.slice(0, 5)) await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
     await page.eval(`addLine('<span class="ask">◆ คำถามจากหน้าแผน · CronJob import</span>'); addLine('  “ทำไมต้อง suspend ไว้ก่อน”'); addLine('<span class="ok">● ตอบบนหน้าแผนแล้ว</span>');`);
-    await caption("6 · คลิกของคุณปลุก agent แล้ว agent ตอบกลับ");
   });
-  await snap(1700);
-  await api("/api/reply", {node: "cronjob", from: "agent", text: "เพราะ Secret กับทางออกไป warehouse ยังไม่พร้อม เปิดตอนนี้ Job จะล้มทุกคืน จะเลิก suspend ในขั้นสุดท้าย"});
+  await snap(2200);
+  await api("/api/reply", {node: "cronjob", from: "agent", text: "เพราะ Secret และทางไป warehouse ยังไม่พร้อม เปิดตอนนี้ Job จะล้มทุกคืน"});
   listen();
 
+  caption = CAPTIONS[7];
   await crossfade(async () => {
-    await goto(`${url}&theme=light&step=secrets&view=k8s&node=cronjob`, 2000);
+    await goto(`${url}&theme=dark&step=secrets&view=k8s&node=cronjob`, 2000);
     await ov(`__ov.chrome(${JSON.stringify(shortUrl)})`);
     await page.eval(`document.querySelector("#panel .msg.agent").scrollIntoView({block: "center"});`);
-    cur = {x: 700, y: 420, shown: true};
+    cur = {x: 760, y: 470, shown: true};
     await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
-    await caption("7 · คำตอบขึ้นตรงที่ถาม");
   });
-  await zoomTo("#panel .msg.agent", 1.4, {hold: 1700});
+  await snap(400);
+  await zoomTo("#panel .msg.agent", 1.4, 2400);
   await zoomOut();
 
   // Scene 4: the agent moves the plan on; the user restates the step.
   pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:netpol", "status=done", "node:cm", "status=done");
   await sleep(1300);
-  await scrollTo("main", 0, 6);
-  await caption("8 · agent อัปเดตแผน: ขั้นนี้ถึงตาคุณทวน");
-  await snap(700);
+  caption = CAPTIONS[8];
+  await scrollTo("main", 0);
+  await snap(1200);
   await moveTo('.chip[data-step="manifests"]');
-  await click('.chip[data-step="manifests"]', {hold: 600});
+  await click('.chip[data-step="manifests"]', {hold: 1300});
   await moveTo("#stepcard textarea", {dx: 0.2});
-  await click("#stepcard textarea", {hold: 100});
+  await click("#stepcard textarea", {hold: 200});
   await typeInto("#stepcard textarea", "เขียน manifest ให้ CronJob พักไว้ก่อน รอ key", 4);
+  await snap(300);
   await moveTo("#stepcard .send button");
-  await click("#stepcard .send button", {hold: 300});
+  await click("#stepcard .send button", {hold: 500});
   await api("/api/reply", {step: "manifests", from: "agent", text: "ถูกครับ ✓"});
   listen();
   pv("set", dir, "step:manifests", "confirmed=true", "status=done");
   await sleep(1300);
-  await caption("9 · agent ยืนยัน ✓ แล้วไปขั้นถัดไป");
-  await zoomTo("#stepcard h3", 1.5, {hold: 1700});
+  caption = CAPTIONS[9];
+  await snap(400);
+  await zoomTo("#stepcard h3", 1.6, 2200, true);
   await zoomOut();
 
+  caption = null;
   await crossfade(async () => {
-    await goto(endUrl, 700);
+    await goto(endUrl, 800);
     await ov(`__ov.cursor(0, 0, false)`);
-  }, 5);
-  await snap(2600);
+  }, 7);
+  await snap(2800);
 } finally {
   page.close();
   pv("stop", dir);

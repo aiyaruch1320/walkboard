@@ -91,11 +91,17 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     for (const s of streams) s.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
   const agentState = () => broadcast("agent", {waiting: waiters.length});
+  // Settings switched on the page never wake the agent; they ride along with the next real message.
+  let changedSettings = null;
   const flush = () => {
     while (pending.length && waiters.length) {
       const items = pending.splice(0);
       delivered += items.length;
       fs.writeFileSync(p.delivered, String(delivered));
+      if (changedSettings) {
+        items.unshift({kind: "settings", settings: changedSettings, id: crypto.randomUUID(), at: new Date().toISOString()});
+        changedSettings = null;
+      }
       waiters.shift()(items);
       broadcast("delivered", {ids: items.map((i) => i.id)});
       agentState();
@@ -168,7 +174,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(item));
       });
     } else if (route === "POST /api/settings") {
-      // Switches on the page change plan.json directly, and the agent hears about it in its next poll.
+      // Switches on the page change plan.json directly; the agent reads them there or with its next message.
       readBody(req, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         const s = {};
@@ -184,13 +190,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         plan.settings = {...(plan.settings && typeof plan.settings === "object" && !Array.isArray(plan.settings) ? plan.settings : {}), ...s};
         fs.writeFileSync(p.plan + ".tmp", JSON.stringify(plan, null, 1) + "\n");
         fs.renameSync(p.plan + ".tmp", p.plan);
-        const text = typeof v.text === "string" && v.text.trim() ? v.text.trim().slice(0, 200) : Object.entries(s).map(([k, x]) => `${k}=${x}`).join(" ");
-        const item = {kind: "settings", settings: s, text, id: crypto.randomUUID(), at: new Date().toISOString()};
-        fs.appendFileSync(p.feedback, JSON.stringify(item) + "\n");
-        pending.push(item);
-        broadcast("feedback", item);
-        flush();
-        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(item));
+        changedSettings = plan.settings;
+        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({settings: plan.settings}));
       });
     } else if (route === "GET /api/poll") {
       let timer;

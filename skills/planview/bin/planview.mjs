@@ -174,8 +174,12 @@ async function reply() {
 
 async function status() {
   const s = await running();
-  if (!s) return console.log(`not running for ${dir}`);
-  console.log(JSON.stringify({url: urlOf(s), pid: s.pid, ...s.status}, null, 2));
+  let settings;
+  try {
+    settings = JSON.parse(fs.readFileSync(p.plan, "utf8")).settings;
+  } catch {}
+  if (!s) return console.log(JSON.stringify({running: false, settings}));
+  console.log(JSON.stringify({url: urlOf(s), pid: s.pid, ...s.status, settings}, null, 2));
 }
 
 async function stop() {

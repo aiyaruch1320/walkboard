@@ -188,6 +188,21 @@
           "text": "revoke the old one, issue a new one",
           "step": "refresh",
           "group": "If the access token has expired"
+        },
+        {
+          "from": "service",
+          "to": "web",
+          "text": "new access + refresh token",
+          "reply": true,
+          "step": "refresh",
+          "group": "If the access token has expired"
+        },
+        {
+          "from": "web",
+          "to": "guard",
+          "text": "GET /orders again",
+          "step": "refresh",
+          "group": "If the access token has expired"
         }
       ]
     },

@@ -416,7 +416,7 @@
     "warehouse": {
       "name": "BigQuery",
       "what": "source",
-      "status": "todo",
+      "status": "ext",
       "in": "Query for new customers",
       "out": "Customer rows",
       "why": "Waiting for infra to open egress on :443"

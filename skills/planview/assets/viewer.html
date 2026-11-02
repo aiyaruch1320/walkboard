@@ -138,7 +138,31 @@ button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px
 button:hover{border-color:var(--muted)}
 button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:12px;color:var(--muted)}
-.badges span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
+.badges{align-items:center}
+.badges>span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
+.badges>.mode{border:0;padding:0 4px 0 0;font-size:13px;color:var(--text);font-weight:500}
+.settings{display:inline-flex;align-items:center;gap:6px 14px;flex-wrap:wrap;border:1.5px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 60%,var(--card));color:var(--you-tx);border-radius:10px;padding:4px 12px;font-size:12.5px}
+.settings .slabel{font-weight:600}
+.switch{display:inline-flex;align-items:center;gap:7px;border:0;background:none;padding:2px 0;font-size:12.5px;color:inherit;border-radius:6px}
+.switch .track{width:30px;height:17px;border-radius:999px;background:var(--todo-bd);position:relative;transition:background .2s;flex:none}
+.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch.on .track{background:var(--done-bd)}
+.switch.on .track::after{transform:translateX(13px)}
+.switch .state{font-weight:600;min-width:2.2em}
+.seg{display:inline-flex;align-items:center;gap:7px}
+.seg .opts{display:inline-flex;border:1px solid var(--you-bd);border-radius:7px;overflow:hidden}
+.seg .opts button{border:0;border-radius:0;padding:1px 10px;font-size:12px;background:transparent;color:inherit}
+.seg .opts button+button{border-left:1px solid var(--you-bd)}
+.seg .opts button[aria-pressed="true"]{background:var(--you-bd);color:var(--card);font-weight:600}
+.conn.work{color:var(--you-tx);background:var(--you-bg);border-color:var(--you-bd)}
+.msg.typing{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.msg.typing .who{display:inline}
+.dots{display:inline-flex;gap:4px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--you-bd);opacity:.35}
+@media (prefers-reduced-motion:no-preference){.dots i{animation:dot 1.2s infinite ease-in-out}.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}}
+@keyframes dot{0%,80%,100%{opacity:.35;transform:none}40%{opacity:1;transform:translateY(-3px)}}
+.msg.typing.stuck .dots{display:none}
+.msg.typing.stuck{color:var(--warn-tx);border-color:var(--warn-bd)}
 .badges .ok{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
 .badges .wait{border-color:var(--new-bd);color:var(--new-tx);background:var(--new-bg)}
 .stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
@@ -271,7 +295,7 @@ const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, viewsOf, langOf} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, viewsOf: () => [], langOf: () => "en"};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
 
 // Page labels follow the plan's language (see langOf); anything else falls back to English.
@@ -289,8 +313,10 @@ const STRINGS = {
     lg_done: "Done", lg_new: "In progress / just done", lg_todo: "To do", lg_ext: "External system", lg_code: "Existing code", lg_focus: "Focus of this question",
     step: "step", stage: "stage", Step: "Step", Stage: "Stage", prev: (u) => `◀ Previous ${u}`, next: (u) => `Next ${u} ▶`, play: (u) => `▶ Play ${u}s`, pause: "❚❚ Pause",
     terms: (n) => `📖 Terms in this plan (${n})`, typeChange: "Type what to change first", typeFirst: "Type a message first", sent: "Sent", sendFail: "Could not send: ",
-    modeExplain: "Explaining existing code", modeBuild: "Plan first, then build", restate: (u) => `You restate each ${u}`, noRestate: "No restating",
-    commitBy: "Agent commits for you", commitSuggest: "Agent suggests commit messages",
+    modeExplain: "Explaining existing code", modeBuild: "Plan first, then build", restate: (u) => `Restate each ${u}`, on: "on", off: "off",
+    agentSettings: "⚙ Agent settings", commits: "Commits", commitAuto: "Agent commits", commitOnly: "Suggest messages", settingTip: "Saved to the plan; the agent follows it from its next step", settingFail: "Could not save the setting: ",
+    settings: "Setting", working: (m) => (m ? `Agent is working on it · ${m} min` : "Agent is working on it"), noReply: (m) => `No reply after ${m} min. Check Claude Code`, connWorking: "✎ Agent is answering you",
+    connWorkingTip: "The agent took your message and has not answered yet",
     turnApprove: "Your turn: review the plan below, ask on any box or step, then approve it", approveSent: "Approval sent", quickLabel: "Tell the agent:", quickTip: "Sends this to the agent right away",
     change_explain: "Correct the picture", send_change_explain: "Send correction", ph_change_explain: "Say what is wrong or missing in this picture…", askStage: "Ask about this stage…",
     backUp: "↑ Picture", viaLegend: "← :port on a box: what the link uses", talkLegend: "💬 a conversation on the box", termsPage: (n) => `📖 Terms on this page (${n})`, approved: "✓ Plan approved", awaiting: "Waiting for approval",
@@ -319,8 +345,10 @@ const STRINGS = {
     lg_done: "ทำแล้ว", lg_new: "ทำอยู่ / เพิ่งทำ", lg_todo: "ยังไม่ทำ", lg_ext: "ระบบภายนอก", lg_code: "โค้ดที่มีอยู่", lg_focus: "จุดสำคัญของคำถามนี้",
     step: "ขั้น", stage: "ช่วง", Step: "ขั้น", Stage: "ช่วงที่", prev: (u) => `◀ ${u}ก่อน`, next: (u) => `${u}ถัดไป ▶`, play: (u) => `▶ เล่นทีละ${u}`, pause: "❚❚ หยุด",
     terms: (n) => `📖 คำศัพท์ในแผนนี้ (${n})`, typeChange: "พิมพ์สิ่งที่อยากให้แก้ก่อน", typeFirst: "พิมพ์ข้อความก่อน", sent: "ส่งแล้ว", sendFail: "ส่งไม่สำเร็จ: ",
-    modeExplain: "อธิบายโค้ดที่มีอยู่", modeBuild: "วางแผนก่อน แล้วลงมือ", restate: (u) => `คุณทวนทีละ${u}`, noRestate: "ไม่ทวน",
-    commitBy: "agent commit ให้", commitSuggest: "agent แนะนำข้อความ commit",
+    modeExplain: "อธิบายโค้ดที่มีอยู่", modeBuild: "วางแผนก่อน แล้วลงมือ", restate: (u) => `ทวนทีละ${u}`, on: "เปิด", off: "ปิด",
+    agentSettings: "⚙ ตั้งค่า agent", commits: "commit", commitAuto: "agent commit ให้", commitOnly: "แนะนำข้อความ", settingTip: "บันทึกลงแผน agent ทำตามตั้งแต่ขั้นถัดไป", settingFail: "บันทึกการตั้งค่าไม่ได้: ",
+    settings: "ตั้งค่า", working: (m) => (m ? `agent กำลังตอบ · ${m} นาที` : "agent กำลังตอบ"), noReply: (m) => `ผ่านไป ${m} นาทียังไม่มีคำตอบ ลองดูที่ Claude Code`, connWorking: "✎ agent กำลังตอบคุณ",
+    connWorkingTip: "agent รับข้อความแล้ว และยังไม่ได้ตอบ",
     turnApprove: "ถึงตาคุณ: ตรวจแผนด้านล่าง ถามได้ทุกกล่องหรือทุกขั้น แล้วกดอนุมัติ", approveSent: "ส่งการอนุมัติแล้ว", quickLabel: "บอก agent:", quickTip: "ส่งถึง agent ทันที",
     change_explain: "ขอแก้ภาพ", send_change_explain: "ส่งคำขอแก้", ph_change_explain: "บอกว่าภาพนี้ผิดหรือขาดอะไร…", askStage: "ถามเกี่ยวกับช่วงนี้…",
     backUp: "↑ ภาพ", viaLegend: "← :port บนกล่อง: สิ่งที่เส้นนั้นใช้", talkLegend: "💬 มีการคุยบนกล่องนี้", termsPage: (n) => `📖 คำศัพท์ในหน้านี้ (${n})`, approved: "✓ อนุมัติแผนแล้ว", awaiting: "รออนุมัติแผน",
@@ -471,6 +499,8 @@ function refreshThreads() {
     const msgs = thread.filter((m) => inCtx(m, c));
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     t.replaceChildren(...msgs.map(msgEl));
+    const busy = working().find((m) => inCtx(m, c));
+    if (busy) t.append(typingEl(busy));
   });
   const fresh = freshReply && document.querySelector(`.msg[data-id="${CSS.escape(freshReply)}"]`);
   if (fresh) {
@@ -593,20 +623,73 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   return box;
 }
 
+async function saveSetting(change, text) {
+  document.querySelectorAll(".settings button").forEach((b) => (b.disabled = true));
+  try {
+    const r = await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({...change, text})});
+    if (!r.ok) throw new Error(await r.text());
+  } catch (e) {
+    const box = document.getElementById("toast");
+    box.replaceChildren(t("settingFail") + e.message);
+    box.hidden = false;
+    renderBadges();
+  }
+}
+
+// Messages the agent has taken but not answered in the same place, while it is not listening: it is working on them.
+function working() {
+  if (!connected || waiting) return [];
+  return thread.filter((m, i) => m.from !== "agent" && m.delivered && m.kind !== "settings" && !(m.kind === "approve" && plan?.approved) &&
+    !thread.slice(i + 1).some((r) => r.from === "agent" && inCtx(r, m.node ? {node: m.node} : m.step ? {step: m.step} : {})));
+}
+
+function typingEl(m) {
+  const min = Math.floor((Date.now() - Date.parse(m.at)) / 60000);
+  const stuck = min >= 10;
+  const d = el("div", "msg agent typing" + (stuck ? " stuck" : ""));
+  const dots = el("span", "dots");
+  dots.append(el("i"), el("i"), el("i"));
+  d.append(dots, el("span", null, stuck ? t("noReply", min) : t("working", min)));
+  return d;
+}
+
 function renderBadges() {
   const conn = document.getElementById("conn");
-  conn.className = "conn " + (!connected ? "off" : waiting ? "on" : "idle");
-  conn.textContent = !connected ? t(served && rendered ? "connLost" : "connOff") : waiting ? t("connOn") : t("connIdle");
-  conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : t("connIdleTip");
+  const busy = working().length > 0;
+  conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy ? "work" : "idle");
+  conn.textContent = !connected ? t(served && rendered ? "connLost" : "connOff") : waiting ? t("connOn") : busy ? t("connWorking") : t("connIdle");
+  conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
   if (!plan) return;
   const s = plan.settings || {};
   const explain = plan.mode === "explain";
-  const items = [el("span", null, explain ? t("modeExplain") : t("modeBuild"))];
-  items.push(el("span", null, s.teachBack ? t("restate", unit()) : t("noRestate")));
+  const items = [el("span", "mode", explain ? t("modeExplain") : t("modeBuild"))];
+  const box = el("div", "settings");
+  box.append(el("span", "slabel", t("agentSettings")));
+  const on = teachBackOn(plan);
+  const sw = el("button", "switch" + (on ? " on" : ""));
+  sw.setAttribute("role", "switch");
+  sw.setAttribute("aria-checked", String(on));
+  sw.append(el("span", "track"), el("span", null, t("restate", unit())), el("span", "state", on ? t("on") : t("off")));
+  sw.onclick = () => saveSetting({teachBack: !on}, `${t("restate", unit())}: ${!on ? t("on") : t("off")}`);
+  box.append(sw);
   if (!explain) {
-    items.push(el("span", null, s.commit === "auto" ? t("commitBy") : t("commitSuggest")));
-    items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
+    const seg = el("span", "seg");
+    const opts = el("span", "opts");
+    for (const [v, label] of [["auto", t("commitAuto")], ["suggest", t("commitOnly")]]) {
+      const b = el("button", null, label);
+      b.setAttribute("aria-pressed", String(s.commit === v));
+      b.onclick = () => s.commit !== v && saveSetting({commit: v}, `${t("commits")}: ${label}`);
+      opts.append(b);
+    }
+    seg.append(el("span", null, t("commits")), opts);
+    box.append(seg);
   }
+  for (const b of box.querySelectorAll("button")) {
+    b.disabled = !connected;
+    b.title = t("settingTip");
+  }
+  items.push(box);
+  if (!explain) items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
   document.getElementById("badges").replaceChildren(...items);
   renderBar();
 }
@@ -658,13 +741,13 @@ function renderStepCard() {
   } else {
     const explain = plan.mode === "explain";
     const c = el("div", "stepcard " + (step.status === "review" && !step.confirmed ? "review" : ""));
-    if (step.status === "review" && !step.confirmed) c.append(el("span", "turn", plan.settings?.teachBack ? t("turnRestate") : t("turnCheck")));
+    if (step.status === "review" && !step.confirmed) c.append(el("span", "turn", teachBackOn(plan) ? t("turnRestate") : t("turnCheck")));
     const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
     if (step.confirmed) h.append(el("span", "passed", t("restated")));
     c.append(h);
     if (step.detail) c.append(richEl("p", "detail", step.detail));
     if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
-    const teach = plan.settings?.teachBack && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
+    const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: t(explain ? "askStage" : "askStep"),
       quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
@@ -1364,6 +1447,7 @@ async function load() {
 }
 window.__planview = {get plan() { return plan; }, selectStep, selectNode, render};
 setLang(lang);
+setInterval(() => working().length && refreshThreads(), 30000);
 document.querySelector("#panel h3").textContent = t("pickBox");
 renderBadges();
 load();

@@ -60,7 +60,7 @@ The agent plans and answers in the language you write in, and the page's labels 
     <td width="50%"><img src="docs/images/explain-code.png" alt="Explain mode: a box with its code excerpt and an editor link"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Ask on any box; the answer appears under it</sub></td>
+    <td align="center"><sub>Ask on any box; the answer appears in the side panel</sub></td>
     <td align="center"><sub>Explain mode shows the real code behind each box</sub></td>
   </tr>
 </table>

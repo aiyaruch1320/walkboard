@@ -20,7 +20,8 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 | Top bar (always visible) | ● agent listening now · ✎ agent is answering you · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also "💬 new from the agent" for unread replies and "✎ Plan changed" for what the agent changed (outlined until you press **Mark as seen**). |
 | Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages; each card says what the current choice means. Saved to the plan at once without waking the agent, which reads it before its next step. Defaults for every plan: `~/.planview/config.json`, e.g. `{"teachBack": true, "commit": "suggest"}`. |
 | Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ▶ plays the steps once. |
-| Step card | What the step does, how we know it is done, and a chat box. |
+| Step card | What the step does, its status and how we know it is done. When it is your turn, a purple bar opens the side panel. |
+| Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; a sheet from the bottom on narrow screens. |
 | Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
 | Dotted words | Glossary: tap for a plain explanation; 📖 lists every term the plan uses. |
 
@@ -36,7 +37,7 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 
 ## Talking on the page
 
-| Ask on a box; the answer appears under it | Restate a step; the agent confirms it |
+| Ask on a box; the answer appears in the side panel | Restate a step; the agent confirms it |
 |---|---|
 | ![A question and the agent's answer](images/chat.png) | ![A step marked as your turn and confirmed](images/teachback.png) |
 

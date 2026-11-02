@@ -85,6 +85,11 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .talk .quick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.talk .modes{display:inline-flex;margin-bottom:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.talk .modes button{border:0;border-radius:0;padding:3px 12px}
+.talk .modes button+button{border-left:1px solid var(--line)}
+.talk .modes button[aria-pressed="true"]{background:var(--text);color:var(--bg)}
+button:disabled{opacity:.5;cursor:wait}
 .talk textarea{width:100%;min-height:56px;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
 .talk .send{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}
 .thread{display:flex;flex-direction:column;gap:6px;margin-top:10px}
@@ -181,7 +186,16 @@ const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
 const drafts = {};
-const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", change: "ขอแก้", question: "ถาม", teachback: "ทวน"};
+const KIND = {ok: "เข้าใจแล้ว", confused: "ยังงง", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน"};
+const MODE = {
+  question: {label: "ถาม", send: "ส่งคำถาม"},
+  change: {label: "ขอแก้", send: "ส่งคำขอแก้", placeholder: "บอกว่าอยากให้แก้อะไร เช่น แยกขั้นนี้เป็นสองขั้น…"},
+  teachback: {label: "ทวน", send: "ส่งคำทวน", placeholder: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…"},
+};
+const QUICK = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", approve: "อนุมัติแผนนี้ เริ่มทำได้"};
+const touch = matchMedia("(pointer: coarse)").matches;
+const modeOf = {};
+const hintText = () => (connected ? (touch ? "" : "⌘/Ctrl + Enter เพื่อส่ง") : "ยังไม่ได้ต่อกับ agent");
 
 const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : "plan");
 const inCtx = (m, c) => (c.node ? m.node === c.node : c.step ? m.step === c.step && !m.node : !m.node && !m.step);
@@ -210,53 +224,84 @@ async function send(c, kind, text) {
   const body = {kind, text};
   if (c.node) body.node = c.node;
   if (c.step) body.step = c.step;
-  if (viewId) body.view = viewId;
+  if (viewId || plan.views[0]) body.view = viewId || plan.views[0].id;
+  if (stepId && !c.step) body.viewingStep = stepId;
   const r = await fetch("/api/feedback?token=" + encodeURIComponent(token), {
     method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
 }
 
-function talkBox(c, {placeholder, kinds}) {
+// quick: buttons that send at once; modes: what the typed text is sent as.
+function talkBox(c, {placeholder, quick = [], modes = ["question"], mode}) {
   const key = ctxKey(c);
+  if (!modes.includes(modeOf[key])) modeOf[key] = mode && modes.includes(mode) ? mode : modes[0];
   const box = el("div", "talk");
   const ta = el("textarea");
   ta.dataset.key = key;
-  ta.placeholder = placeholder;
   ta.value = drafts[key] || "";
   ta.oninput = () => (drafts[key] = ta.value);
-  const note = el("span", "hint", connected ? "⌘/Ctrl + Enter เพื่อส่ง" : "ยังไม่ได้ต่อกับ agent");
+  const note = el("span", "note", hintText());
+  const sendBtn = el("button", "primary");
+  let busy = false;
+  const buttons = [];
   const go = async (kind, fallback) => {
+    if (busy) return;
     const text = ta.value.trim() || fallback;
     if (!text) {
-      note.textContent = "พิมพ์สิ่งที่อยากให้แก้ก่อน";
-      note.className = "err";
+      note.textContent = kind === "change" ? "พิมพ์สิ่งที่อยากให้แก้ก่อน" : "พิมพ์ข้อความก่อน";
+      note.className = "note err";
       return ta.focus();
     }
+    busy = true;
+    buttons.forEach((b) => (b.disabled = true));
     try {
       await send(c, kind, text);
-      ta.value = drafts[key] = "";
+      if (ta.value.trim()) ta.value = drafts[key] = "";
       note.textContent = "ส่งแล้ว";
-      note.className = "";
+      note.className = "note";
     } catch (e) {
       note.textContent = "ส่งไม่สำเร็จ: " + e.message;
-      note.className = "err";
+      note.className = "note err";
+    } finally {
+      busy = false;
+      buttons.forEach((b) => (b.disabled = false));
     }
   };
-  if (kinds.length > 1) {
-    const quick = el("div", "quick");
-    const fallbacks = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", change: ""};
-    for (const k of kinds.filter((k) => k in fallbacks)) {
-      const b = el("button", null, KIND[k]);
-      b.onclick = () => go(k, fallbacks[k]);
-      quick.append(b);
+  if (quick.length) {
+    const row = el("div", "quick");
+    for (const k of quick) {
+      const b = el("button", k === "approve" ? "primary" : null, KIND[k]);
+      b.onclick = () => go(k, QUICK[k]);
+      buttons.push(b);
+      row.append(b);
     }
-    box.append(quick);
+    box.append(row);
   }
-  const mainKind = kinds.includes("teachback") ? "teachback" : "question";
-  const sendBtn = el("button", "primary", "ส่ง");
-  sendBtn.onclick = () => go(mainKind, "");
-  ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(mainKind, ""); };
+  const setMode = (m) => {
+    modeOf[key] = m;
+    ta.placeholder = MODE[m].placeholder || placeholder;
+    sendBtn.textContent = MODE[m].send;
+    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+  };
+  const seg = el("div", "modes");
+  if (modes.length > 1) {
+    seg.setAttribute("role", "group");
+    for (const m of modes) {
+      const b = el("button", null, MODE[m].label);
+      b.dataset.mode = m;
+      b.onclick = () => {
+        setMode(m);
+        ta.focus();
+      };
+      seg.append(b);
+    }
+    box.append(seg);
+  }
+  setMode(modeOf[key]);
+  sendBtn.onclick = () => go(modeOf[key], "");
+  buttons.push(sendBtn);
+  ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(modeOf[key], ""); };
   const row = el("div", "send");
   row.append(note, sendBtn);
   const t = el("div", "thread");
@@ -281,15 +326,19 @@ function renderStepCard() {
   const step = curStep();
   if (!step) {
     const c = el("div", "stepcard");
-    c.append(el("h3", null, "คุยเรื่องทั้งแผน"), talkBox({}, {placeholder: "ถามหรือสั่งเกี่ยวกับแผนทั้งหมด…", kinds: ["question"]}));
+    const approve = (plan.mode ?? "build") === "build" && !plan.approved ? ["approve"] : [];
+    c.append(el("h3", null, "คุยเรื่องทั้งแผน"), talkBox({}, {placeholder: "ถามเกี่ยวกับแผนทั้งหมด…", quick: approve, modes: ["question", "change"]}));
     card.replaceChildren(c);
   } else {
     const c = el("div", "stepcard " + (STEP_STATUS[step.status] || "todo"));
     c.append(el("h3", null, `ขั้น ${steps().indexOf(step) + 1}: ${step.title}`));
-    const teach = plan.settings?.teachBack;
-    c.append(talkBox({step: step.id}, teach
-      ? {placeholder: "ทวนความเข้าใจขั้นนี้ด้วยคำพูดของคุณ…", kinds: ["teachback"]}
-      : {placeholder: "ถามหรือสั่งเกี่ยวกับขั้นนี้…", kinds: ["question"]}));
+    const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
+    c.append(talkBox({step: step.id}, {
+      placeholder: "ถามเกี่ยวกับขั้นนี้…",
+      quick: ["confused"],
+      modes: teach ? ["teachback", "question", "change"] : ["question", "change"],
+      mode: teach && step.status === "review" ? "teachback" : "question",
+    }));
     card.replaceChildren(c);
   }
   refreshThreads();
@@ -612,7 +661,7 @@ function selectNode(id) {
   if (n.why) parts.push(el("p", "why", n.why));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: `ถามหรือสั่งเกี่ยวกับ "${n.name}"…`, kinds: ["ok", "confused", "change", "question"]}));
+  parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused"], modes: ["question", "change"]}));
   p.replaceChildren(...parts);
   refreshThreads();
 }
@@ -685,7 +734,10 @@ let rendered = false;
 
 function setConn(on) {
   connected = on;
-  document.querySelectorAll(".talk .hint").forEach((n) => (n.textContent = on ? "⌘/Ctrl + Enter เพื่อส่ง" : "ยังไม่ได้ต่อกับ agent"));
+  document.querySelectorAll(".talk .note").forEach((n) => {
+    n.textContent = hintText();
+    n.className = "note";
+  });
   renderBadges();
   const conn = document.getElementById("conn");
   conn.className = "conn " + (on ? "on" : "off");

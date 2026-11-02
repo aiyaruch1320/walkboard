@@ -14,7 +14,7 @@ const USAGE = `planview <command> [options]
   set    [dir] [target] key=value ...   change plan.json in place, e.g.
                                 step:build status=review confirmed=true node:job status=done approved=true
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
-  poll   [dir]                  wait for feedback from the page, print it as JSON, exit
+  poll   [dir] [--full]         wait for feedback from the page, print one JSON line per item, exit
   reply  [dir] [--node n] [--step s] <text>   show an agent reply on the page (or --dir d)
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
@@ -28,6 +28,7 @@ function parse(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--no-browser") flags.noBrowser = true;
+    else if (a === "--full") flags.full = true;
     else if (["--dir", "--node", "--step"].includes(a)) flags[a.slice(2)] = argv[++i];
     else rest.push(a);
   }
@@ -88,7 +89,9 @@ async function check() {
     console.error(problems.map((t) => `- ${t}`).join("\n"));
     process.exit(1);
   }
-  for (const w of lint(plan)) console.log(`warning: ${w}`);
+  const warnings = lint(plan);
+  for (const w of warnings.slice(0, 8)) console.log(`warning: ${w}`);
+  if (warnings.length > 8) console.log(`warning: … ${warnings.length - 8} more`);
   console.log(`ok: ${plan.steps?.length || 0} steps, ${plan.views.length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
 }
 
@@ -143,7 +146,8 @@ async function poll() {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const items = await r.json();
       gone = 0;
-      if (items.length) return console.log(JSON.stringify(items, null, 2));
+      // One short line per item keeps what the agent reads small; --full adds ids and times.
+      if (items.length) return console.log(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, ...rest}) => rest)(i))).join("\n"));
     } catch (e) {
       // Ride out a restart; give up if the server stays away.
       if (++gone > 15) fail(`server not reachable for ${dir} (${e.message}); run: planview open ${dir}`);

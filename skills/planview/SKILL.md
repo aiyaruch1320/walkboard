@@ -1,6 +1,6 @@
 ---
 name: planview
-description: Show work as an interactive diagram (flow, Kubernetes, sequence, data transform) that the user can click to ask, correct or confirm. Two modes - plan a feature as small steps and build it step by step, or explain how existing code works (e.g. "explain the login flow in project A"). Use when the user wants a visual plan or explanation, wants to follow along or understand before you build, mentions planview, or runs /planview.
+description: Show work as an interactive picture (flow, Kubernetes, sequence, map, state, timeline…) that the user clicks to ask, correct or confirm. Three modes - plan a feature as small steps and build it step by step, explain how existing code works ("explain the login flow in project A"), or compare designs for something new and pick one. Use when the user wants a visual plan, explanation or comparison, wants to follow along before you build, mentions planview, or runs /planview.
 ---
 
 # planview
@@ -9,46 +9,46 @@ Long text loses people. You write `plan.json`; planview draws it as a local page
 
 `PV` = `node <this skill's base directory>/bin/planview.mjs` (Node 18.18+, no install).
 
-## 0. Language, mode and settings
+## 0. Language, mode, questions, settings
 
-Use the language the user writes in for everything: questions, the plan, replies, commit messages you suggest. Set `"lang"` to its code (`"en"`, `"th"`, …); the page's labels follow. Code, ids and paths stay as they are.
+Use the user's language for everything (questions, plan, replies, suggested commit messages) and set `"lang"` (`"en"`, `"th"`, …). Code, ids and paths stay as they are.
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 - **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [references/design.md](references/design.md), then section 3.
 
-Before writing anything, if the request leaves open something that changes the picture (scope, which repository or service, environment, what "done" means), ask up to three short questions in one go, together with any settings question below. Do not guess what you can ask; whatever you still assume, show on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`), so the user can confirm or correct it there.
+If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, together with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`) for the user to confirm.
 
-`settings`, first match wins: what the request says ("no restating", "commit for me") · existing `settings` · `~/.planview/config.json` (same fields). Still missing: ask one question (AskUserQuestion when available): build → commit for them or only suggest messages (`"commit": "auto"|"suggest"`); explain → overview or detail (`"depth"`). Then offer to save it to `~/.planview/config.json`. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
+`settings`, first match wins: the request ("no restating", "commit for me") · existing `settings` · `~/.planview/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
 
 ## 1. Write the plan (build)
 
 Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read [references/schema.md](references/schema.md) the first time.
 
-- 3-8 **steps**, each reviewable in minutes: `title`, `detail` (what it does), `done` (how we know), `nodes`.
-- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when the guess is wrong (`aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, …).
-- **views**: leave out for a plain flow. When a picture explains better, pick one or two from the "Which picture" table in [references/views.md](references/views.md): `k8s`, `map`, `sequence`, `transform`, `journey`, `state`, `decision`, `timeline`, `datamodel`, `impact`, `diff`.
-- **glossary**: only project-specific terms. No secrets, tokens or real customer data.
+- 3-8 **steps**, each reviewable in minutes: `title`, `detail`, `done` (how we know), `nodes`.
+- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong (`PV icons` lists them).
+- **views**: leave out for a plain flow. When a picture explains better, pick one or two from the "Which picture" table in [references/views.md](references/views.md).
+- **glossary**: only project terms. No secrets, tokens or real customer data.
 - `PV check <dir>` until ok.
 
 ## 2E. Write the explanation (explain)
 
 1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
-2. `"mode": "explain"`, `"root": "<repo>"` (`"roots": {"deploy": "<path>"}` for more), `"start"`. Steps are 3-10 stages in order; `done` = what the reader understands there.
-3. Every code box has `file` = `path:line` or `path:from-to`; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. Code is `"done"` (default), external systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
+2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there.
+3. Every code box has `file` = `path:line` or `path:from-to`; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
 4. `PV check <dir>` until ok (it fails when a file or line does not exist).
 
 ## 3. Show and listen
 
-1. `PV open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line in the user's language: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "?" shows a tour.
-2. Keep exactly one `PV poll <dir>` running **in the background**. It exits when the page sends something, which wakes you, with one JSON line per message (`kind`, `text`, `node` or `step`). Handle each:
-   - `question` / `confused`: `PV reply <dir> --node <id> "<answer>"` (or `--step <id>`, or neither). Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
-   - `deeper`: add boxes, a stage or a view (with `file` evidence), reply with what you added.
+1. `PV open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "?" shows a tour.
+2. Keep exactly one `PV poll <dir>` running **in the background**. It exits when the page sends something, waking you with one JSON line per message (`kind`, `text`, `node` or `step`):
+   - `question` / `confused`: `PV reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
+   - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `PV set <dir> step:<id> confirmed=true`.
    - `approve`: `PV set <dir> approved=true`, reply in one line.
-   - `propose`, `change`, `withdraw`, `plan`, `apply`, `commit`, `committed`: read [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
-   - `confirm` (`constraint` or `node`): mark it confirmed (`confirmed: true`, or the box's real `basis`); if the user corrects it, update it and what depended on it, and say what changed.
-   - `settings`: switches already saved in plan.json; arrives only with another message; no reply.
+   - `confirm` (`constraint` or `node`): set `confirmed: true` or the box's real `basis`; if corrected, update what depended on it and say what changed.
+   - `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
+   - `settings`: already saved in plan.json; arrives with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
 3. Refer to steps by title. Start `PV poll` again. The user may also answer in chat.
 
@@ -64,13 +64,13 @@ Not before `approved` is true. For each step:
 
 ## 4E. Walk through (explain)
 
-Answer from the code, reading more when needed; prefer new boxes or stages over long replies. The picture must match the code: a request that contradicts it is answered with what the code does and its `file:line`, not drawn. Explain mode never edits the project.
+Answer from the code, reading more when needed; prefer new boxes or stages over long replies. A request that contradicts the code is answered with what the code does and its `file:line`, not drawn. Explain mode never edits the project.
 
 ## Keep it cheap
 
-- Write `plan.json` once, compact (no indentation: about a third fewer tokens); then `PV set` or a small Edit. Never rewrite or re-read the whole file to change a status.
+- Write `plan.json` once, compact (no indentation); then `PV set` or a small Edit. Never rewrite or re-read the whole file to change a status.
 - Leave out defaults (`views` for a plain flow, `status`, empty fields, common terms).
-- Point at code with `file:line`; replies stay short; do not repeat in chat what the page shows.
+- Point at code with `file:line`; keep replies short; do not repeat in chat what the page shows.
 
 ## Finish
 
@@ -81,6 +81,6 @@ Summarize in chat with the URL. `PV stop <dir>` unless the user wants the page k
 | `PV check <dir>` | Validate; problems exit 1, warnings are advice |
 | `PV set <dir> [step:<id> \| node:<id> \| plan] key=value …` | Change fields in place (`key=` removes one; JSON values allowed) |
 | `PV open <dir> [--no-browser]` | Start or reuse the server, print the URL |
-| `PV poll <dir>` | Wait for the page; one JSON line per message |
-| `PV reply <dir> [--node id \| --step id] <text>` | Answer on the page |
+| `PV poll <dir>` / `PV reply <dir> [--node id \| --step id] <text>` | Wait for the page / answer on it |
 | `PV status <dir>` / `PV stop <dir>` | URL, queue, settings / stop the server |
+| `PV icons` | Icon names for `icon` |

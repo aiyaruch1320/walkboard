@@ -1,84 +1,40 @@
 # plan.json
 
-One JSON object. `PV check <dir>` validates it with the same rules the page uses and prints advice as warnings.
+One JSON object, written compact. `PV check <dir>` validates it with the page's own rules; warnings are advice.
 
 ```json
-{
-  "title": "Nightly import to staging",
-  "goal": "One sentence: what is true when this is done.",
-  "mode": "build",
-  "lang": "en",
-  "settings": {"commit": "suggest"},
-  "approved": false,
-  "glossary": {"CronJob": "A Kubernetes job that starts by itself on a schedule"},
-  "steps": [
-    {"id": "manifests", "title": "CronJob + config + policy", "status": "doing", "nodes": ["cronjob", "cm", "netpol"],
-      "detail": "Write the manifests ArgoCD will create in staging", "done": "ArgoCD synced; the CronJob exists, suspended", "confirmed": false}
-  ],
-  "views": [
-    {"id": "flow", "kind": "flow", "title": "Overview", "lanes": [{"title": "GitOps", "nodes": ["git", "argo", "cronjob"]}]}
-  ],
-  "nodes": {
-    "cronjob": {
-      "name": "CronJob import",
-      "what": "nightly 02:00 · suspended",
-      "status": "new",
-      "file": "base/cronjob.yaml",
-      "in": "image, config, secret",
-      "out": "one Job per night",
-      "why": "Forbid overlap; stays suspended until secrets exist"
-    }
-  }
-}
+{"title":"Nightly import to staging","goal":"One sentence: what is true when done.","mode":"build","lang":"en",
+ "settings":{"commit":"suggest"},"approved":false,
+ "steps":[{"id":"manifests","title":"CronJob + config","status":"doing","nodes":["cronjob","cm"],
+   "detail":"Write the manifests ArgoCD creates in staging","done":"ArgoCD synced; CronJob exists, suspended"}],
+ "nodes":{"cronjob":{"name":"CronJob import","what":"nightly 02:00","status":"new","file":"base/cronjob.yaml",
+   "in":"image, config, secret","out":"one Job per night","why":"Stays suspended until secrets exist"}}}
 ```
 
-Complete examples: `examples/nightly-import` (build, all four views) and `examples/explain-login` (explain mode) in the planview repository.
+Full examples: `examples/nightly-import` (build) and `examples/explain-login` (explain) in the planview repository.
 
 ## Top level
 
-| Field | Required | Meaning |
-|---|---|---|
-| `title` | yes | Page heading |
-| `goal` | no | One sentence under the heading |
-| `mode` | no | `"build"` (default), `"explain"` or `"design"` (options, criteria, scores, sources, constraints, decision: see [design.md](design.md)) |
-| `lang` | no | Language of the plan and of the page's labels: `"en"` or `"th"` (others get English labels). Default: Thai if the title or goal is Thai, else English |
-| `settings` | yes | The answers to the up-front questions |
-| `approved` | no | build: `true` once the user approved the plan; do not build before |
-| `root` | explain: expected | Repository the `file` paths are relative to; absolute, or relative to the plan folder |
-| `roots` | no | More repositories by name, e.g. `{"deploy": "/path/to/deploy-repo"}`; refer to them as `deploy:path:line` |
-| `start` | no | Step id the page opens on (default: first step in `review`, else `doing`) |
-| `links` | no | Plans started from this page: `[{"title": "…", "url": "http://127.0.0.1:…"}]`, shown next to the proposals |
-| `constraints` | no | Any mode: what the plan assumes or must respect, `[{"id": "…", "text": "…", "confirmed": false}]`; unconfirmed ones are shown dashed with a confirm button |
-| `glossary` | no | `{"term": "plain one-line explanation"}` for terms specific to this project; about 70 common terms (Kubernetes, CI, HTTP, JWT, …) ship with planview in English and Thai (`assets/glossary.json`). Terms are underlined wherever they appear and explain themselves on click |
-| `steps` | no (expected) | Ordered steps (build) or stages of the flow (explain) |
-| `views` | no | Pictures, shown as tabs. Leave out for a plain flow: each step becomes a lane of its boxes |
-| `nodes` | yes | Every box, keyed by a short id that views and steps refer to |
-
-## settings
-
-| Field | Mode | Values |
-|---|---|---|
-| `teachBack` | both | Default `true`: the user restates each step. The user switches it on the page; do not ask |
-| | | Defaults for every plan can live in `~/.planview/config.json` (same fields) |
-| `commit` | build | `"auto"` = you commit after each step; `"suggest"` = only suggest messages |
-| `depth` | explain | `"overview"` or `"detail"` (down to functions and files) |
-| `editor` | both | Where file links open: `"vscode"` (default), `"cursor"`, `"idea"`, `"none"` |
+| Field | Meaning |
+|---|---|
+| `title` | Required. Page heading |
+| `goal` | One sentence under it |
+| `mode` | `"build"` (default; "plan mode" on the page), `"explain"`, `"design"` (fields in [design.md](design.md)) |
+| `lang` | `"en"` or `"th"` page labels (others get English). Default: Thai if the title or goal is Thai |
+| `settings` | build: required. `commit` `"auto"`/`"suggest"`; `teachBack` (default on; the user switches it); explain: `depth` `"overview"`/`"detail"`; `editor` `"vscode"` (default) / `"cursor"` / `"idea"` / `"none"`. Defaults: `~/.planview/config.json` |
+| `approved` | build: `true` once the user approved; build nothing before |
+| `root` / `roots` | explain: repository of the `file` paths (absolute or relative to the plan folder); more as `{"deploy": "/path"}`, used as `deploy:path:line` |
+| `start` | Step id to open on (default: first in `review`, else `doing`) |
+| `constraints` | `[{"id","text","confirmed":false}]`: assumptions the user should confirm; shown dashed until confirmed |
+| `links` | Plans started from this page: `[{"title","url"}]` |
+| `glossary` | `{"term": "one-line explanation"}`, only project terms; ~70 common ones ship with planview |
+| `steps` | Ordered steps (build) or stages (explain) |
+| `views` | Pictures as tabs ([views.md](views.md)); leave out for a plain flow built from the steps |
+| `nodes` | Required. Every box, keyed by a short id |
 
 ## steps[]
 
-| Field | Meaning |
-|---|---|
-| `id` | Unique, short; used by `reply --step` and sequence messages |
-| `title` | ≤ 8 words |
-| `detail` | One sentence: what this step does (shown when the step is selected) |
-| `done` | How we know it is finished; in explain mode, what the reader understands at that point (shown as "Understood when:") |
-| `status` | `todo`, `doing`, `review` (waiting for the user; shown as "Your turn"), `done`; omit in explain mode |
-| `commitMessage` | The commit message you suggest when `settings.commit` is `"suggest"`; the page shows it, editable, with a commit button |
-| `commits` | Several suggested commits instead: `[{"message": "…", "files": ["…"]}]`, made in order. Usually one per step; more than 3 means the step should be split |
-| `confirmed` | `true` once the user's restatement matched; shown as ✓ |
-| `nodes` | Boxes this step touches; others fade when it is selected, and the page switches to a picture that shows them |
-
-The page opens on the first step in `review`, else `doing`.
+`id`, `title` (≤ 8 words), `detail` (what it does), `done` (how we know; explain: what the reader understands), `nodes` (boxes it touches; the rest fade), `status` (`todo` `doing` `review` `done`; omit in explain), `confirmed` (restatement matched). Suggested commits: `commitMessage`, or `commits: [{"message","files":[…]}]` ([messages.md](messages.md)).
 
 ## nodes{}
 
@@ -86,19 +42,12 @@ The page opens on the first step in `review`, else `doing`.
 |---|---|
 | `name` | Required, ≤ 4 words |
 | `what` | Subtitle, ≤ 6 words |
-| `status` | `done` (exists; "code" in explain mode), `new` (being built; "focus" in explain mode), `todo`, `ext` (outside this work). Default: `todo`, or `done` in explain mode |
-| `file` | Main file: `path`, `path:line`, `path:from-to`, or `name:path:line` with a named root. In explain mode it is required, must exist (checked), and the page shows the excerpt with an editor link |
-| `icon` | Optional; guessed from `name` when left out. `"provider:service"` for cloud parts, drawn in the provider's colours: `aws:` s3, lambda, ec2, rds, dynamodb, sqs, sns, eventbridge, kinesis, apigateway, cloudfront, route53, elb, iam, cognito, cloudwatch, eks, ecs, ecr, secretsmanager, kms, ses, stepfunctions, redshift, athena, bedrock, elasticache · `gcp:` gcs, bigquery, pubsub, cloudrun, functions, gke, cloudsql, firestore, spanner, secretmanager, dataflow, vertexai · `azure:` blob, functions, aks, sql, cosmosdb, servicebus, eventhubs, eventgrid, keyvault, entra, appservice · `k8s:` pod, deployment, statefulset, cronjob, job, service, ingress, configmap, secret, namespace, networkpolicy, pvc. Plain: user, users, browser, mobile, server, vm, api, database, cache, queue, topic, stream, bucket, file, folder, function, container, clock, job, secret, key, identity, login, config, network, gateway, loadbalancer, dns, cdn, email, chat, cloud, monitor, log, git, ci, registry, terminal, code, shield, search, payment, warehouse, table, plug, workflow, ai. `"none"` for no icon |
-| `highlight` | Lines to highlight in the code excerpt, e.g. `"146-152"` or `"12, 15-16"`, or lines with a short note shown under them: `{"146": "waits here", "152": "prints, then exits: this wakes the agent"}`. Without it, a single `path:line` is highlighted and a `path:from-to` range is shown as plain context |
-| `proposal` | Something the user proposed on the page and you drew: `{"type": "add" \| "change" \| "remove", "note": "…"}`. Shown with its own colour until it becomes a plan (`plan` / `apply` messages) or is withdrawn |
-| `basis` / `source` / `checked` | Where a box's facts come from: `"iac"`, `"cli"`, `"doc"` or `"assumed"` (shown as a mark; assumed boxes are dashed and can be confirmed on the page), the `sources` id, and the date seen |
-| `in` / `out` | What goes in and comes out; a concrete example beats a description. Newlines allowed |
-| `why` | One or two lines: the reason, not a restatement of `name` |
+| `status` | `done`, `new` (being built; explain: the focus), `todo` (explain: missing), `ext` (outside). Default: `todo`; explain `done`; design neutral |
+| `file` | `path`, `path:line`, `path:from-to` or `root:path:line`. Explain mode: required and checked; the page shows the code |
+| `highlight` | Lines that make the point: `"146-152"`, or with notes `{"152": "returns: this wakes the agent"}`. Without it a single line is highlighted, a range is context |
+| `icon` | Guessed from `name`; set when wrong: `aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, … (`PV icons` lists all), `"none"` |
+| `in` / `out` / `why` | One line each; a concrete example beats a description |
+| `basis` / `source` / `checked` | Where its facts come from: `iac`, `cli`, `doc`, `assumed` (dashed, confirmable), a `sources` id, the date seen |
+| `proposal` | `{"type":"add"\|"change"\|"remove","note"}`: drawn on the picture until planned or withdrawn |
 
-## What the checker enforces
-
-Problems (exit 1): `settings` present and valid for the mode; ids used by steps and views exist in `nodes`; unique step and view ids; known statuses and view kinds; correct types; view-specific rules in [views.md](views.md).
-
-Explain mode with a `root`: every `file` must exist inside its root and its lines must exist.
-
-Warnings: unknown `icon` names, boxes that appear in no picture, names over 40 or `what` over 60 characters, steps without `detail`, more than 10 steps, explain-mode code boxes without `file` or without a line, explain mode without `root`.
+Explain mode with a `root`: every `file` must exist and its lines too.

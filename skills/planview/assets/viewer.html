@@ -192,10 +192,13 @@ pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12.5px/1.5 ui-monos
 .fileline button{font-size:12px;padding:1px 8px}
 details.code{margin:10px 0 0}
 details.code summary{cursor:pointer;font-size:13px;color:var(--muted)}
-.code ol{margin:6px 0 0;padding:6px 0;background:var(--code);border-radius:6px;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-x:auto;list-style:none}
+.code .cscroll{margin:6px 0 0;background:var(--code);border-radius:6px;overflow-x:auto}
+/* The list is as wide as its longest line, so a highlight reaches the end when scrolled sideways. */
+.code ol{margin:0;padding:6px 0;font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;list-style:none;width:max-content;min-width:100%}
 .code li{white-space:pre;padding:0 10px}
-.code li::before{content:attr(data-n);display:inline-block;min-width:3.5ch;margin-right:10px;color:var(--muted);text-align:right}
-.code li.focus{background:color-mix(in srgb,var(--new-bd) 25%,transparent)}
+.code li::before{content:attr(data-n);display:inline-block;min-width:3.5ch;padding-right:10px;color:var(--muted);text-align:right;position:sticky;left:0;background:var(--code)}
+.code li.focus::before{background:linear-gradient(color-mix(in srgb,var(--new-bd) 25%,transparent),color-mix(in srgb,var(--new-bd) 25%,transparent)),var(--code)}
+.code li.focus{background:color-mix(in srgb,var(--new-bd) 25%,transparent);box-shadow:inset 3px 0 var(--new-bd)}
 .insteps{margin:10px 0 0;font-size:12px;color:var(--muted)}
 .controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .controls button{font-size:12px;padding:3px 10px}
@@ -379,7 +382,7 @@ const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, parseLines, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, parseLines: () => null, viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
 
 // Page labels follow the plan's language (see langOf); anything else falls back to English.
@@ -1530,14 +1533,19 @@ function codeBox(id) {
     .then((r) => r.json())
     .then((r) => {
       if (r.error) return box.lastChild.replaceWith(el("div", "meta err", `${t("codeFail")}: ${r.error}`));
+      // Only the lines that make the point: "highlight", else a single referenced line; a range alone is just context.
+      const node = plan.nodes[id] || {};
+      const marked = parseLines(node.highlight) || (r.focus && r.focus === r.end ? new Set([r.focus]) : new Set());
       const ol = el("ol");
       r.lines.forEach((t, i) => {
         const n = r.from + i;
-        const li = el("li", r.focus && n >= r.focus && n <= r.end ? "focus" : null, t);
+        const li = el("li", marked.has(n) ? "focus" : null, t);
         li.dataset.n = n;
         ol.append(li);
       });
-      box.lastChild.replaceWith(ol);
+      const scroll = el("div", "cscroll");
+      scroll.append(ol);
+      box.lastChild.replaceWith(scroll);
       if (nodeId === id && plan.nodes[id]?.file) document.querySelector("#panel .fileline")?.replaceWith(fileLine(plan.nodes[id].file, r.path));
     })
     .catch(() => box.lastChild.replaceWith(el("div", "meta err", t("codeFail"))));

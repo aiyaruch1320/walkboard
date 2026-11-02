@@ -167,6 +167,14 @@ svg.links text{font-size:11px;fill:var(--muted)}
 .stage th,.stage td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top;white-space:nowrap}
 .stage th{background:var(--code);font-weight:500}
 .stage .snote{font-size:12px;color:var(--muted);margin:8px 0 0;padding-left:16px}
+.term{border-bottom:1.5px dotted currentColor;cursor:help}
+.tip{position:absolute;z-index:30;max-width:300px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5;box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.tip b{display:block}
+details.glossary{margin:-6px 0 14px;font-size:13px}
+details.glossary summary{cursor:pointer;color:var(--muted)}
+details.glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:8px 0 0;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+details.glossary dt{font-weight:500}
+details.glossary dd{margin:0;color:var(--muted)}
 .linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
 </style>
 </head>
@@ -180,12 +188,14 @@ svg.links text{font-size:11px;fill:var(--muted)}
   <div id="banner" class="banner" hidden>หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน <code>planview open</code> แทน</div>
   <div id="problems" class="problems" hidden></div>
   <div id="toast" class="toast" hidden></div>
+  <div id="tip" class="tip" hidden></div>
   <div class="legend">
     <span><i class="sw done"></i>ทำแล้ว</span>
     <span><i class="sw new"></i>ทำอยู่ / เพิ่งทำ</span>
     <span><i class="sw todo"></i>ยังไม่ทำ</span>
     <span><i class="sw ext"></i>ระบบภายนอก</span>
   </div>
+  <details class="glossary" id="glossary" hidden></details>
   <div class="stepbar" id="stepbar"></div>
   <div class="controls">
     <button id="prev">◀ ขั้นก่อน</button>
@@ -229,6 +239,67 @@ function msgEl(m) {
   d.append(el("span", "who", who), document.createTextNode(m.text));
   return d;
 }
+
+let termRe = null;
+
+function setGlossary(g) {
+  const terms = Object.keys(g && typeof g === "object" ? g : {}).filter(Boolean).sort((a, b) => b.length - a.length);
+  const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const edge = (t) => (/^\w/.test(t) ? "(?<!\\w)" : "") + esc(t) + (/\w$/.test(t) ? "(?!\\w)" : "");
+  termRe = terms.length ? new RegExp(terms.map(edge).join("|"), "g") : null;
+  const box = document.getElementById("glossary");
+  box.hidden = !terms.length;
+  if (!terms.length) return;
+  const dl = el("dl");
+  for (const t of [...terms].sort((a, b) => a.localeCompare(b))) dl.append(el("dt", null, t), el("dd", null, g[t]));
+  box.replaceChildren(el("summary", null, `📖 คำศัพท์ในแผนนี้ (${terms.length})`), dl);
+}
+
+// Text with glossary terms that explain themselves on click or tap.
+function rich(text) {
+  const f = document.createDocumentFragment();
+  const str = String(text ?? "");
+  if (!termRe) {
+    f.append(str);
+    return f;
+  }
+  let last = 0;
+  for (const m of str.matchAll(termRe)) {
+    f.append(str.slice(last, m.index));
+    const t = el("span", "term", m[0]);
+    t.tabIndex = 0;
+    t.setAttribute("role", "button");
+    t.title = plan.glossary[m[0]];
+    const open = (e) => {
+      e.stopPropagation();
+      showTip(t, m[0]);
+    };
+    t.onclick = open;
+    t.onkeydown = (e) => { if (e.key === "Enter") open(e); };
+    f.append(t);
+    last = m.index + m[0].length;
+  }
+  f.append(str.slice(last));
+  return f;
+}
+
+function richEl(tag, cls, text) {
+  const e = el(tag, cls);
+  e.append(rich(text));
+  return e;
+}
+
+function showTip(anchor, term) {
+  const tip = document.getElementById("tip");
+  tip.replaceChildren(el("b", null, term), document.createTextNode(plan.glossary[term]));
+  tip.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(r.left + scrollX, scrollX + document.documentElement.clientWidth - tip.offsetWidth - 8);
+  tip.style.left = Math.max(8, left) + "px";
+  tip.style.top = r.bottom + scrollY + 6 + "px";
+}
+document.addEventListener("click", () => (document.getElementById("tip").hidden = true));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.getElementById("tip").hidden = true; });
 
 const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
 
@@ -394,8 +465,8 @@ function renderStepCard() {
     const h = el("h3", null, `${explain ? "ช่วงที่" : "ขั้น"} ${steps().indexOf(step) + 1}: ${step.title}`);
     if (step.confirmed) h.append(el("span", "passed", "✓ ทวนผ่านแล้ว"));
     c.append(h);
-    if (step.detail) c.append(el("p", "detail", step.detail));
-    if (step.done) c.append(el("p", "donewhen", "เสร็จเมื่อ: " + step.done));
+    if (step.detail) c.append(richEl("p", "detail", step.detail));
+    if (step.done) c.append(richEl("p", "donewhen", "เสร็จเมื่อ: " + step.done));
     const teach = plan.settings?.teachBack && (step.status !== "todo" || plan.mode === "explain");
     c.append(talkBox({step: step.id}, {
       placeholder: "ถามเกี่ยวกับขั้นนี้…",
@@ -429,7 +500,7 @@ function nodeBox(id) {
   d.dataset.id = id;
   d.tabIndex = 0;
   d.append(el("span", "tag", NODE_STATUS[status]), el("div", "name", n.name));
-  if (n.what) d.append(el("div", "what", n.what));
+  if (n.what) d.append(richEl("div", "what", n.what));
   d.onclick = () => selectNode(id, true);
   d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id, true); };
   return d;
@@ -439,7 +510,7 @@ function renderFlow(v) {
   const wrap = el("div");
   for (const lane of v.lanes || []) {
     const box = el("div", "lane");
-    if (lane.title) box.append(el("div", "lane-title", lane.title));
+    if (lane.title) box.append(richEl("div", "lane-title", lane.title));
     const row = el("div", "row");
     (lane.nodes || []).forEach((id, i) => {
       if (i > 0 && lane.arrows !== false) row.append(arrow());
@@ -590,7 +661,7 @@ function renderSequence(v) {
     const msg = el("div", "seq-msg");
     if (m.step) msg.dataset.step = m.step;
     const lbl = el("div", "lbl");
-    lbl.append(el("span", "num", String(i + 1)), document.createTextNode(m.text || ""));
+    lbl.append(el("span", "num", String(i + 1)), richEl("span", "t", m.text || ""));
     if (a === b) {
       msg.classList.add("self");
       msg.style.gridColumn = String(a + 1);
@@ -642,7 +713,7 @@ function renderTransform(v) {
     if (st.text) card.append(el("pre", null, st.text));
     if (st.notes?.length) {
       const ul = el("ul", "snote");
-      st.notes.forEach((t) => ul.append(el("li", null, t)));
+      st.notes.forEach((t) => ul.append(richEl("li", null, t)));
       card.append(ul);
     }
     wrap.append(card);
@@ -725,19 +796,19 @@ function selectNode(id, reveal = false) {
   const n = plan.nodes[id];
   const p = document.getElementById("panel");
   if (!n) return p.replaceChildren(el("h3", null, `ไม่มี node "${id}"`));
-  const parts = [el("h3", null, `${n.name} · ${NODE_STATUS[n.status] || NODE_STATUS.todo}`)];
+  const parts = [richEl("h3", null, `${n.name} · ${NODE_STATUS[n.status] || NODE_STATUS.todo}`)];
   if (n.file) parts.push(el("div", "meta", n.file));
   if (n.in || n.out) {
     const io = el("div", "io");
     for (const [lbl, txt] of [["รับเข้า", n.in], ["ได้ออกมา", n.out]]) {
       const b = el("div", "box");
-      b.append(el("div", "lbl", lbl), el("pre", null, txt || "—"));
+      b.append(el("div", "lbl", lbl), richEl("pre", null, txt || "—"));
       io.append(b);
       if (lbl === "รับเข้า") io.append(el("div", "mid", "→"));
     }
     parts.push(io);
   }
-  if (n.why) parts.push(el("p", "why", n.why));
+  if (n.why) parts.push(richEl("p", "why", n.why));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", "อยู่ในขั้น: " + where.join(", ")));
   parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused"], modes: ["question", "change"]}));
@@ -814,7 +885,8 @@ function draw(p) {
   plan.views ||= [];
   document.title = plan.title ? `${plan.title} · planview` : "planview";
   document.getElementById("title").textContent = plan.title || "planview";
-  document.getElementById("goal").textContent = plan.goal || "";
+  setGlossary(plan.glossary);
+  document.getElementById("goal").replaceChildren(rich(plan.goal || ""));
   const problems = validate(plan);
   const box = document.getElementById("problems");
   box.hidden = !problems.length;

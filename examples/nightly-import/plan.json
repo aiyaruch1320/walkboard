@@ -1,6 +1,7 @@
 {
-  "title": "นำเข้าลูกค้ารายวันขึ้น staging",
-  "goal": "CronJob อ่านลูกค้าใหม่จาก warehouse ทุกคืน แล้วส่งเข้า Customer API ทีละชุด",
+  "title": "Nightly customer import to staging",
+  "goal": "A CronJob reads new customers from BigQuery every night and sends them to the Customer API in batches",
+  "lang": "en",
   "mode": "build",
   "settings": {
     "teachBack": true,
@@ -8,38 +9,38 @@
   },
   "approved": true,
   "glossary": {
-    "init": "init container: โปรแกรมที่รันให้จบก่อน container หลักเริ่ม",
-    "Forbid": "ถ้ารอบก่อนยังไม่จบ ไม่เริ่มรอบใหม่ซ้อน"
+    "init": "init container: runs to completion before the main container starts",
+    "Forbid": "If last night's run is still going, do not start another on top of it"
   },
   "steps": [
     {
       "id": "image",
-      "title": "build image + scan",
+      "title": "Build image + scan",
       "status": "done",
       "nodes": [
         "commit",
         "build"
       ],
-      "detail": "build image จากโค้ดบน main แล้วสแกนช่องโหว่",
-      "done": "มี image ใน registry และสแกนผ่าน",
+      "detail": "Build the image from main and scan it for vulnerabilities",
+      "done": "The image is in the registry and the scan passed",
       "confirmed": true
     },
     {
       "id": "trigger",
-      "title": "CI แก้ tag ใน deploy repo",
+      "title": "CI updates the tag in the deploy repo",
       "status": "done",
       "nodes": [
         "build",
         "tagjob",
         "git"
       ],
-      "detail": "CI แก้ tag ของ image ใน deploy repo เอง ไม่มีใครแก้มือ",
-      "done": "มี commit อัตโนมัติใน deploy repo",
+      "detail": "CI changes the image tag in the deploy repo itself; nobody edits it by hand",
+      "done": "An automatic commit appears in the deploy repo",
       "confirmed": true
     },
     {
       "id": "manifests",
-      "title": "manifest: CronJob + config + policy",
+      "title": "Manifests: CronJob + config + policy",
       "status": "doing",
       "nodes": [
         "git",
@@ -49,12 +50,12 @@
         "cronjob",
         "netpol"
       ],
-      "detail": "เขียน manifest ของ CronJob, ConfigMap และ NetworkPolicy ให้ ArgoCD สร้างใน staging",
-      "done": "ArgoCD sync แล้ว CronJob ขึ้นแบบ suspend"
+      "detail": "Write the CronJob, ConfigMap and NetworkPolicy manifests for ArgoCD to create in staging",
+      "done": "ArgoCD synced; the CronJob exists, suspended"
     },
     {
       "id": "secrets",
-      "title": "ใส่ key ของ warehouse และ API",
+      "title": "Add the BigQuery and API keys",
       "status": "todo",
       "nodes": [
         "secret",
@@ -62,12 +63,12 @@
         "warehouse",
         "api"
       ],
-      "detail": "ใส่รหัสผ่าน API key และ key ของ warehouse และขอ infra เปิดทางออก :443",
-      "done": "CronJob อ่านค่าได้ครบ และต่อ warehouse ได้"
+      "detail": "Add the database password, API key and BigQuery key, and ask infra to open egress on :443",
+      "done": "The CronJob reads every value and reaches BigQuery"
     },
     {
       "id": "run",
-      "title": "รันจริงหนึ่งรอบแล้วดูผล",
+      "title": "Run once and check the result",
       "status": "todo",
       "nodes": [
         "cronjob",
@@ -75,15 +76,15 @@
         "db",
         "api"
       ],
-      "detail": "เลิก suspend รันหนึ่งรอบ แล้วดูว่าส่งเข้า API ครบ",
-      "done": "ส่งครบ จุดที่ส่งถึงถูกบันทึก รอบซ้ำไม่ส่งซ้ำ"
+      "detail": "Unsuspend, run once, and check every batch reached the API",
+      "done": "Everything sent, the checkpoint saved, and a rerun sends nothing twice"
     }
   ],
   "views": [
     {
       "id": "flow",
       "kind": "flow",
-      "title": "เส้นทาง deploy",
+      "title": "Deploy path",
       "lanes": [
         {
           "title": "CI",
@@ -163,7 +164,7 @@
           "from": "cronjob",
           "to": "warehouse",
           "state": "todo",
-          "label": ":443 รอ infra"
+          "label": ":443 waiting on infra"
         },
         {
           "from": "cronjob",
@@ -175,7 +176,7 @@
     {
       "id": "run",
       "kind": "sequence",
-      "title": "หนึ่งรอบการทำงาน",
+      "title": "One nightly run",
       "actors": [
         "cronjob",
         "db",
@@ -192,26 +193,26 @@
         {
           "from": "cronjob",
           "to": "db",
-          "text": "อ่านจุดที่ทำค้างไว้",
+          "text": "read the last checkpoint",
           "step": "run"
         },
         {
           "from": "cronjob",
           "to": "warehouse",
-          "text": "query ลูกค้าใหม่หลังจุดนั้น",
+          "text": "query customers after it",
           "step": "run"
         },
         {
           "from": "warehouse",
           "to": "cronjob",
-          "text": "แถวลูกค้า",
+          "text": "customer rows",
           "reply": true,
           "step": "run"
         },
         {
           "from": "cronjob",
           "to": "cronjob",
-          "text": "แบ่งเป็นชุดละ 200",
+          "text": "split into batches of 200",
           "step": "run"
         },
         {
@@ -223,14 +224,14 @@
         {
           "from": "api",
           "to": "cronjob",
-          "text": "ผลต่อรายการ",
+          "text": "result per item",
           "reply": true,
           "step": "run"
         },
         {
           "from": "cronjob",
           "to": "db",
-          "text": "บันทึกจุดที่ส่งถึง",
+          "text": "save the checkpoint",
           "node": "db",
           "step": "run"
         }
@@ -239,11 +240,11 @@
     {
       "id": "data",
       "kind": "transform",
-      "title": "ข้อมูลเปลี่ยนรูปอย่างไร",
+      "title": "How the data changes",
       "stages": [
         {
           "node": "warehouse",
-          "label": "แถวจาก query",
+          "label": "Rows from the query",
           "columns": [
             "CUSTOMER_NO",
             "JOINED",
@@ -262,42 +263,42 @@
             ]
           ],
           "notes": [
-            "ค่าเป็นข้อความทั้งหมด",
-            "CUSTOMER_NO มีช่องว่างท้าย"
+            "Every value is text",
+            "CUSTOMER_NO has trailing spaces"
           ]
         },
         {
           "node": "cronjob",
-          "label": "หลังตรวจและแปลง",
+          "label": "After checks and mapping",
           "columns": [
             "id",
             "joined_at",
             "segment",
-            "ผล"
+            "result"
           ],
           "rows": [
             [
               "0001042",
               "2023-05-01",
               "gold",
-              "ส่ง"
+              "send"
             ],
             [
               "0001043",
               "∅",
               "∅",
-              "กักไว้: missing_joined"
+              "held: missing_joined"
             ]
           ],
           "notes": [
-            "ตัดช่องว่างท้าย เก็บเลข 0 หน้า",
-            "YYYYMM → วันแรกของเดือน",
-            "แถวที่ขาดวันที่ไม่ส่ง แต่บันทึกปัญหา"
+            "Trim trailing spaces, keep leading zeros",
+            "YYYYMM → first day of the month",
+            "Rows without a date are not sent; the problem is logged"
           ]
         },
         {
           "node": "api",
-          "label": "body ที่ส่ง (ชุดละ ≤ 200)",
+          "label": "Body sent (≤ 200 per batch)",
           "text": "{\n  \"items\": [\n    {\"id\": \"0001042\", \"joined_at\": \"2023-05-01\", \"segment\": \"gold\"}\n  ]\n}"
         }
       ]
@@ -305,125 +306,126 @@
   ],
   "nodes": {
     "commit": {
-      "name": "commit บน main",
+      "name": "Commit on main",
       "status": "done",
-      "in": "โค้ดที่ review แล้ว",
-      "out": "pipeline เริ่มทำงาน",
-      "why": "main = staging เสมอ"
+      "in": "Reviewed code",
+      "out": "The pipeline starts",
+      "why": "main is always what staging runs"
     },
     "build": {
-      "name": "build + scan",
-      "what": "image เดียว",
+      "name": "Build + scan",
+      "what": "one image",
       "status": "done",
       "file": ".gitlab-ci.yml",
-      "in": "โค้ด",
+      "in": "Code",
       "out": "registry/nightly-import:<sha>",
-      "why": "scan ไม่ผ่านไม่ deploy"
+      "why": "No deploy unless the scan passes"
     },
     "tagjob": {
-      "name": "update tag",
-      "what": "job ใน deploy repo",
+      "name": "Update tag",
+      "what": "job in the deploy repo",
       "status": "done",
       "in": "IMAGE=…:<sha>",
-      "out": "แก้ image-patch.yaml แล้ว push",
-      "why": "ไม่มีใครแก้ tag ด้วยมือ"
+      "out": "Edits image-patch.yaml and pushes",
+      "why": "Nobody changes the tag by hand",
+      "icon": "job"
     },
     "git": {
-      "name": "deploy repo",
-      "what": "ของทีมเรา (Git)",
+      "name": "Deploy repo",
+      "what": "our team's Git",
       "status": "done",
       "file": "apps/nightly-import/overlays/staging",
-      "in": "commit จาก CI",
-      "out": "manifest ที่ ArgoCD อ่าน",
-      "why": "ทุกอย่างใน cluster มาจาก Git"
+      "in": "Commits from CI",
+      "out": "Manifests ArgoCD reads",
+      "why": "Everything in the cluster comes from Git"
     },
     "argo": {
       "name": "ArgoCD",
-      "what": "sync มือ",
+      "what": "manual sync",
       "status": "ext",
       "in": "overlays/staging",
-      "out": "สร้าง/อัปเดต resource",
-      "why": "sync มือช่วงแรก จะได้ตรวจก่อนเปิด"
+      "out": "Creates and updates resources",
+      "why": "Manual sync at first, so we can check before turning it on"
     },
     "cm": {
       "name": "ConfigMap",
-      "what": "ค่าที่ไม่ลับ",
+      "what": "non-secret settings",
       "status": "new",
       "file": "base/configmap.yaml",
       "in": "DB_HOST, API_URL, BATCH_SIZE",
-      "out": "env ของ container",
-      "why": "แก้ค่าได้โดยไม่ build image ใหม่"
+      "out": "Container environment",
+      "why": "Change settings without rebuilding the image"
     },
     "secret": {
       "name": "Secret",
-      "what": "รหัสผ่าน + API key",
+      "what": "password + API key",
       "status": "todo",
       "file": "overlays/staging/secrets.yaml",
-      "in": "เจ้าของระบบ",
+      "in": "The system owners",
       "out": "DB_PASSWORD, API_KEY",
-      "why": "ไม่เก็บค่าจริงใน repo"
+      "why": "Real values never go into the repository"
     },
     "wkey": {
-      "name": "warehouse key",
-      "what": "key.json (mount)",
+      "name": "BigQuery key",
+      "what": "key.json (mounted)",
       "status": "todo",
-      "in": "ทีม data",
-      "out": "ไฟล์ที่ /etc/import/key.json",
-      "why": "ใช้เฉพาะ container import"
+      "in": "The data team",
+      "out": "File at /etc/import/key.json",
+      "why": "Only the import container uses it"
     },
     "cronjob": {
       "name": "CronJob import",
-      "what": "ทุกคืน 02:00 · suspend",
+      "what": "nightly 02:00 · suspended",
       "status": "new",
       "file": "base/cronjob.yaml",
-      "in": "image, config, secret",
-      "out": "Job รายคืน: migrate แล้ว import",
-      "why": "Forbid ไม่ให้ซ้อนกัน, ยัง suspend จนกว่า secret ครบ"
+      "in": "Image, config, secret",
+      "out": "A Job each night: migrate, then import",
+      "why": "Forbid overlapping runs; stays suspended until the secrets exist"
     },
     "netpol": {
       "name": "NetworkPolicy",
-      "what": "ขาออกเฉพาะที่จำเป็น",
+      "what": "only the egress it needs",
       "status": "new",
       "file": "base/network-policy.yaml",
-      "in": "pod ที่มี label app=nightly-import",
-      "out": "อนุญาต DNS, DB, API · รอ warehouse · ที่เหลือบล็อก",
-      "why": "ข้อมูลลูกค้าไปได้เฉพาะปลายทางที่ตั้งใจ"
+      "in": "Pods labelled app=nightly-import",
+      "out": "Allows DNS, DB, API · BigQuery pending · blocks the rest",
+      "why": "Customer data can only go where we intend"
     },
     "dns": {
       "name": "DNS",
       "status": "ext",
-      "in": "ชื่อ host",
-      "out": "IP"
+      "in": "Host name",
+      "out": "IP address"
     },
     "db": {
       "name": "PostgreSQL",
-      "what": "สถานะงาน",
+      "what": "job state",
       "status": "ext",
-      "in": "batch ที่ส่งแล้ว",
-      "out": "จุดที่ทำต่อได้ถ้าล้ม",
-      "why": "รอบถัดไปทำต่อจากที่ค้าง"
+      "in": "Batches already sent",
+      "out": "Where to resume after a failure",
+      "why": "The next run continues where the last one stopped"
     },
     "api": {
       "name": "Customer API",
-      "what": "ปลายทาง",
+      "what": "destination",
       "status": "ext",
       "in": "POST /customers:bulk",
-      "out": "ผลต่อรายการ",
-      "why": "ส่งทีละ 200 รายการ"
+      "out": "Result per item",
+      "why": "Sends 200 items at a time"
     },
     "warehouse": {
-      "name": "Warehouse",
-      "what": "ต้นทาง",
+      "name": "BigQuery",
+      "what": "source",
       "status": "todo",
-      "in": "query ลูกค้าใหม่",
-      "out": "แถวลูกค้า",
-      "why": "ยังรอ infra เปิดทางออก :443"
+      "in": "Query for new customers",
+      "out": "Customer rows",
+      "why": "Waiting for infra to open egress on :443"
     },
     "internet": {
-      "name": "ที่อื่นทั้งหมด",
-      "what": "internet ทั่วไป · ถูกบล็อก",
+      "name": "Everything else",
+      "what": "the internet · blocked",
       "status": "ext",
-      "why": "ถูก NetworkPolicy บล็อก"
+      "why": "Blocked by the NetworkPolicy"
     }
   }
 }

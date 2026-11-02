@@ -304,6 +304,7 @@ svg.links path{fill:none;stroke-width:1.8}
 .seq-msg .line::after{content:"";position:absolute;top:-6px;border:5px solid transparent}
 .seq-msg.right .line::after{right:-3px;border-left-color:var(--muted)}
 .seq-msg.left .line::after{left:-3px;border-right-color:var(--muted)}
+.seq-msg.self.last{margin-left:0;margin-right:calc(50% + 8px);justify-self:end}
 .seq-msg.self{margin-left:calc(50% + 8px);font-size:13px;border:1px dashed var(--muted);padding:2px 8px;justify-self:start;width:max-content;max-width:calc(100% - 16px);background:var(--bg)}
 .tf{display:flex;flex-wrap:wrap;align-items:stretch;row-gap:12px;margin-bottom:14px}
 .stage{flex:1 1 230px;min-width:230px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:10px 12px;cursor:pointer;transition:opacity .25s}
@@ -1315,6 +1316,8 @@ function renderSequence(v) {
     lbl.append(el("span", "num", String(i + 1)), richEl("span", "t", m.text || ""));
     if (a === b) {
       msg.classList.add("self");
+      // On the last lifeline the note opens to the left, where there is room.
+      if (a === actors.length - 1 && actors.length > 1) msg.classList.add("last");
       msg.style.gridColumn = String(a + 1);
       msg.append(lbl);
     } else {

@@ -1,0 +1,411 @@
+{
+  "title": "นำเข้าลูกค้ารายวันขึ้น staging",
+  "goal": "CronJob อ่านลูกค้าใหม่จาก warehouse ทุกคืน แล้วส่งเข้า Customer API ทีละชุด",
+  "settings": {
+    "teachBack": true,
+    "commit": "suggest"
+  },
+  "steps": [
+    {
+      "id": "image",
+      "title": "build image + scan",
+      "status": "done",
+      "nodes": [
+        "commit",
+        "build"
+      ]
+    },
+    {
+      "id": "trigger",
+      "title": "CI แก้ tag ใน deploy repo",
+      "status": "done",
+      "nodes": [
+        "build",
+        "tagjob",
+        "git"
+      ]
+    },
+    {
+      "id": "manifests",
+      "title": "manifest: CronJob + config + policy",
+      "status": "doing",
+      "nodes": [
+        "git",
+        "argo",
+        "cm",
+        "secret",
+        "cronjob",
+        "netpol"
+      ]
+    },
+    {
+      "id": "secrets",
+      "title": "ใส่ key ของ warehouse และ API",
+      "status": "todo",
+      "nodes": [
+        "secret",
+        "wkey",
+        "warehouse",
+        "api"
+      ]
+    },
+    {
+      "id": "run",
+      "title": "รันจริงหนึ่งรอบแล้วดูผล",
+      "status": "todo",
+      "nodes": [
+        "cronjob",
+        "warehouse",
+        "db",
+        "api"
+      ]
+    }
+  ],
+  "views": [
+    {
+      "id": "flow",
+      "kind": "flow",
+      "title": "เส้นทาง deploy",
+      "lanes": [
+        {
+          "title": "CI",
+          "nodes": [
+            "commit",
+            "build",
+            "tagjob"
+          ]
+        },
+        {
+          "title": "GitOps",
+          "nodes": [
+            "git",
+            "argo",
+            "cronjob"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "k8s",
+      "kind": "k8s",
+      "title": "Kubernetes",
+      "cluster": "staging",
+      "namespace": "imports",
+      "outside": [
+        "git",
+        "argo"
+      ],
+      "configs": [
+        "cm",
+        "secret",
+        "wkey"
+      ],
+      "policy": "netpol",
+      "workloads": [
+        {
+          "node": "cronjob",
+          "containers": [
+            "migrate (init)",
+            "import"
+          ],
+          "uses": [
+            "cm",
+            "secret",
+            "wkey"
+          ]
+        }
+      ],
+      "targets": [
+        "dns",
+        "db",
+        "api",
+        "warehouse",
+        "internet"
+      ],
+      "links": [
+        {
+          "from": "cronjob",
+          "to": "dns",
+          "state": "ok",
+          "label": ":53"
+        },
+        {
+          "from": "cronjob",
+          "to": "db",
+          "state": "ok",
+          "label": ":5432"
+        },
+        {
+          "from": "cronjob",
+          "to": "api",
+          "state": "ok",
+          "label": ":8080"
+        },
+        {
+          "from": "cronjob",
+          "to": "warehouse",
+          "state": "todo",
+          "label": ":443 รอ infra"
+        },
+        {
+          "from": "cronjob",
+          "to": "internet",
+          "state": "blocked"
+        }
+      ]
+    },
+    {
+      "id": "run",
+      "kind": "sequence",
+      "title": "หนึ่งรอบการทำงาน",
+      "actors": [
+        "cronjob",
+        "db",
+        "warehouse",
+        "api"
+      ],
+      "messages": [
+        {
+          "from": "cronjob",
+          "to": "db",
+          "text": "migrate schema (init container)",
+          "step": "manifests"
+        },
+        {
+          "from": "cronjob",
+          "to": "db",
+          "text": "อ่านจุดที่ทำค้างไว้",
+          "step": "run"
+        },
+        {
+          "from": "cronjob",
+          "to": "warehouse",
+          "text": "query ลูกค้าใหม่หลังจุดนั้น",
+          "step": "run"
+        },
+        {
+          "from": "warehouse",
+          "to": "cronjob",
+          "text": "แถวลูกค้า",
+          "reply": true,
+          "step": "run"
+        },
+        {
+          "from": "cronjob",
+          "to": "cronjob",
+          "text": "แบ่งเป็นชุดละ 200",
+          "step": "run"
+        },
+        {
+          "from": "cronjob",
+          "to": "api",
+          "text": "POST /customers:bulk",
+          "step": "run"
+        },
+        {
+          "from": "api",
+          "to": "cronjob",
+          "text": "ผลต่อรายการ",
+          "reply": true,
+          "step": "run"
+        },
+        {
+          "from": "cronjob",
+          "to": "db",
+          "text": "บันทึกจุดที่ส่งถึง",
+          "node": "db",
+          "step": "run"
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "kind": "transform",
+      "title": "ข้อมูลเปลี่ยนรูปอย่างไร",
+      "stages": [
+        {
+          "node": "warehouse",
+          "label": "แถวจาก query",
+          "columns": [
+            "CUSTOMER_NO",
+            "JOINED",
+            "SEGMENT"
+          ],
+          "rows": [
+            [
+              "0001042  ",
+              "202305",
+              "GOLD"
+            ],
+            [
+              "0001043",
+              "",
+              null
+            ]
+          ],
+          "notes": [
+            "ค่าเป็นข้อความทั้งหมด",
+            "CUSTOMER_NO มีช่องว่างท้าย"
+          ]
+        },
+        {
+          "node": "cronjob",
+          "label": "หลังตรวจและแปลง",
+          "columns": [
+            "id",
+            "joined_at",
+            "segment",
+            "ผล"
+          ],
+          "rows": [
+            [
+              "0001042",
+              "2023-05-01",
+              "gold",
+              "ส่ง"
+            ],
+            [
+              "0001043",
+              "∅",
+              "∅",
+              "กักไว้: missing_joined"
+            ]
+          ],
+          "notes": [
+            "ตัดช่องว่างท้าย เก็บเลข 0 หน้า",
+            "YYYYMM → วันแรกของเดือน",
+            "แถวที่ขาดวันที่ไม่ส่ง แต่บันทึกปัญหา"
+          ]
+        },
+        {
+          "node": "api",
+          "label": "body ที่ส่ง (ชุดละ ≤ 200)",
+          "text": "{\n  \"items\": [\n    {\"id\": \"0001042\", \"joined_at\": \"2023-05-01\", \"segment\": \"gold\"}\n  ]\n}"
+        }
+      ]
+    }
+  ],
+  "nodes": {
+    "commit": {
+      "name": "commit บน main",
+      "status": "done",
+      "in": "โค้ดที่ review แล้ว",
+      "out": "pipeline เริ่มทำงาน",
+      "why": "main = staging เสมอ"
+    },
+    "build": {
+      "name": "build + scan",
+      "what": "image เดียว",
+      "status": "done",
+      "file": ".gitlab-ci.yml",
+      "in": "โค้ด",
+      "out": "registry/nightly-import:<sha>",
+      "why": "scan ไม่ผ่านไม่ deploy"
+    },
+    "tagjob": {
+      "name": "update tag",
+      "what": "job ใน deploy repo",
+      "status": "done",
+      "in": "IMAGE=…:<sha>",
+      "out": "แก้ image-patch.yaml แล้ว push",
+      "why": "ไม่มีใครแก้ tag ด้วยมือ"
+    },
+    "git": {
+      "name": "deploy repo",
+      "what": "Git",
+      "status": "ext",
+      "file": "apps/nightly-import/overlays/staging",
+      "in": "commit จาก CI",
+      "out": "manifest ที่ ArgoCD อ่าน",
+      "why": "ทุกอย่างใน cluster มาจาก Git"
+    },
+    "argo": {
+      "name": "ArgoCD",
+      "what": "sync มือ",
+      "status": "ext",
+      "in": "overlays/staging",
+      "out": "สร้าง/อัปเดต resource",
+      "why": "sync มือช่วงแรก จะได้ตรวจก่อนเปิด"
+    },
+    "cm": {
+      "name": "ConfigMap",
+      "what": "ค่าที่ไม่ลับ",
+      "status": "new",
+      "file": "base/configmap.yaml",
+      "in": "DB_HOST, API_URL, BATCH_SIZE",
+      "out": "env ของ container",
+      "why": "แก้ค่าได้โดยไม่ build image ใหม่"
+    },
+    "secret": {
+      "name": "Secret",
+      "what": "รหัสผ่าน + API key",
+      "status": "todo",
+      "file": "overlays/staging/secrets.yaml",
+      "in": "เจ้าของระบบ",
+      "out": "DB_PASSWORD, API_KEY",
+      "why": "ไม่เก็บค่าจริงใน repo"
+    },
+    "wkey": {
+      "name": "warehouse key",
+      "what": "key.json (mount)",
+      "status": "todo",
+      "in": "ทีม data",
+      "out": "ไฟล์ที่ /etc/import/key.json",
+      "why": "ใช้เฉพาะ container import"
+    },
+    "cronjob": {
+      "name": "CronJob import",
+      "what": "ทุกคืน 02:00 · suspend",
+      "status": "new",
+      "file": "base/cronjob.yaml",
+      "in": "image, config, secret",
+      "out": "Job รายคืน: migrate แล้ว import",
+      "why": "Forbid ไม่ให้ซ้อนกัน, ยัง suspend จนกว่า secret ครบ"
+    },
+    "netpol": {
+      "name": "NetworkPolicy",
+      "what": "ขาออกเฉพาะที่จำเป็น",
+      "status": "new",
+      "file": "base/network-policy.yaml",
+      "in": "pod ที่มี label app=nightly-import",
+      "out": "อนุญาต DNS, DB, API · รอ warehouse · ที่เหลือบล็อก",
+      "why": "ข้อมูลลูกค้าไปได้เฉพาะปลายทางที่ตั้งใจ"
+    },
+    "dns": {
+      "name": "DNS",
+      "status": "ext",
+      "in": "ชื่อ host",
+      "out": "IP"
+    },
+    "db": {
+      "name": "PostgreSQL",
+      "what": "สถานะงาน",
+      "status": "ext",
+      "in": "batch ที่ส่งแล้ว",
+      "out": "จุดที่ทำต่อได้ถ้าล้ม",
+      "why": "รอบถัดไปทำต่อจากที่ค้าง"
+    },
+    "api": {
+      "name": "Customer API",
+      "what": "ปลายทาง",
+      "status": "ext",
+      "in": "POST /customers:bulk",
+      "out": "ผลต่อรายการ",
+      "why": "ส่งทีละ 200 รายการ"
+    },
+    "warehouse": {
+      "name": "Warehouse",
+      "what": "ต้นทาง",
+      "status": "todo",
+      "in": "query ลูกค้าใหม่",
+      "out": "แถวลูกค้า",
+      "why": "ยังรอ infra เปิดทางออก :443"
+    },
+    "internet": {
+      "name": "ที่อื่นทั้งหมด",
+      "what": "internet ทั่วไป",
+      "status": "todo",
+      "why": "ถูก NetworkPolicy บล็อก"
+    }
+  }
+}

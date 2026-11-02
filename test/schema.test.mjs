@@ -103,3 +103,13 @@ test("root, roots, start, editor and depth are checked", () => {
   for (const want of [/root ต้องเป็น/, /roots ต้องเป็น/, /start "nope"/, /settings.editor/, /settings.depth/]) assert.match(out, want);
   assert.deepEqual(validate({...base(), root: "/repo", start: "s1"}), []);
 });
+
+test("a plan without views gets a flow from its steps", async () => {
+  const {viewsOf} = await import("../skills/planview/lib/schema.mjs");
+  const p = base();
+  delete p.views;
+  assert.deepEqual(validate(p), []);
+  assert.deepEqual(viewsOf(p)[0].lanes, [{title: "one", nodes: ["a"]}]);
+  p.steps[0].nodes = [];
+  assert.match(validate(p).join("\n"), /ไม่มี views/);
+});

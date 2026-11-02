@@ -55,6 +55,13 @@ export const KINDS = {
 
 const dupes = (ids) => ids.filter((id, i) => id && ids.indexOf(id) !== i);
 
+// A plan may leave out views: each step becomes a lane of the boxes it touches.
+export function viewsOf(p) {
+  if (list(p?.views).length) return p.views;
+  const lanes = list(p?.steps).filter((s) => list(s?.nodes).length).map((s) => ({title: s.title, nodes: s.nodes}));
+  return lanes.length ? [{id: "flow", kind: "flow", title: "ภาพรวม", lanes}] : [];
+}
+
 export function validate(p) {
   const out = [];
   if (!isObj(p)) return ["plan.json ไม่ใช่ object"];
@@ -103,8 +110,8 @@ export function validate(p) {
   }
 
   if (p.views != null && !Array.isArray(p.views)) out.push("views ต้องเป็น array");
-  const views = list(p.views);
-  if (!views.length) out.push("ไม่มี views");
+  const views = viewsOf(p);
+  if (!views.length) out.push("ไม่มี views และไม่มี step ที่บอก nodes ให้สร้างภาพได้");
   for (const id of dupes(views.map((v) => v?.id))) out.push(`view id "${id}" ซ้ำ`);
   for (const v of views) {
     if (!isObj(v)) {
@@ -126,7 +133,7 @@ export function validate(p) {
 export function lint(p) {
   if (!isObj(p) || !isObj(p.nodes)) return [];
   const out = [];
-  const shown = new Set(list(p.views).flatMap((v) => (isObj(v) && has(KINDS, v.kind) ? KINDS[v.kind].refs(v) : [])));
+  const shown = new Set(viewsOf(p).flatMap((v) => (isObj(v) && has(KINDS, v.kind) ? KINDS[v.kind].refs(v) : [])));
   for (const [id, n] of Object.entries(p.nodes)) {
     if (!isObj(n)) continue;
     if (!shown.has(id)) out.push(`node "${id}" ไม่อยู่ในภาพไหนเลย`);

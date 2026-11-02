@@ -246,7 +246,7 @@ const params = new URLSearchParams(location.search);
 const token = params.get("token");
 if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, LINK_STATE, KINDS, validate, parseFile} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, KINDS: {}, validate: () => [], parseFile: () => null};
+const {NODE_STATUS, STEP_STATUS, LINK_STATE, KINDS, validate, parseFile, viewsOf} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, LINK_STATE: {}, KINDS: {}, validate: () => [], parseFile: () => null, viewsOf: () => []};
 let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
@@ -574,7 +574,7 @@ function arrow() {
 function nodeBox(id) {
   const n = plan.nodes[id];
   if (!n) return el("div", "node todo", `? ${id}`);
-  const status = NODE_STATUS[n.status] ? n.status : "todo";
+  const status = NODE_STATUS[n.status] ? n.status : plan.mode === "explain" ? "done" : "todo";
   const d = el("div", "node " + status);
   d.dataset.id = id;
   d.tabIndex = 0;
@@ -1093,7 +1093,7 @@ function draw(p) {
   const prev = plan;
   plan = p;
   plan.nodes ||= {};
-  plan.views ||= [];
+  plan.views = viewsOf(plan);
   document.title = plan.title ? `${plan.title} · planview` : "planview";
   document.getElementById("title").textContent = plan.title || "planview";
   setGlossary(plan.glossary);

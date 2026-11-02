@@ -4,7 +4,7 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths} from "../lib/server.mjs";
-import {validate, lint} from "../lib/schema.mjs";
+import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
 import {parseSet, applySet} from "../lib/edit.mjs";
 
@@ -92,7 +92,7 @@ async function check() {
   const warnings = lint(plan);
   for (const w of warnings.slice(0, 8)) console.log(`warning: ${w}`);
   if (warnings.length > 8) console.log(`warning: … ${warnings.length - 8} more`);
-  console.log(`ok: ${plan.steps?.length || 0} steps, ${plan.views.length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
+  console.log(`ok: ${plan.steps?.length || 0} steps, ${viewsOf(plan).length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
 }
 
 async function set() {

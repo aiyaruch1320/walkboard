@@ -47,7 +47,7 @@ Folder: `~/.planview/<project>/<task>/plan.json` unless the user names one. Read
 
 1. `PV open <dir>` starts or reuses the server and prints the URL (`--no-browser` when you open it yourself, e.g. in a browser pane). Add `&step=<id>`, `&node=<id>` or `&view=<id>` to point at something. Give the user the URL in one line.
 2. While you wait, keep exactly one `PV poll <dir>` running **in the background** (`PV status` shows `waiting: 1` if one is). It exits when the page sends something, which wakes you, and prints one JSON line per message: `kind`, `text`, and `node` or `step` (`viewingStep` = the step the user had open). Handle every line:
-   - `question` / `confused`: `PV reply <dir> --node <id> "<answer>"` (or `--step <id>`; neither for the whole plan). Two or three sentences. If the picture was unclear, fix the box instead and say so.
+   - `question` / `confused`: `PV reply <dir> --node <id> "<answer>"` (or `--step <id>`; neither for the whole plan). Two or three sentences. If the picture was unclear, fix the box instead and say so. Code goes in ``` fences or `ticks`.
    - `deeper`: add boxes, a stage or a view (with `file` evidence), then reply with what you added.
    - `change`: change the plan, `PV check`, reply with what changed (the page highlights it).
    - `teachback`: say what is right, correct what is not; when it matches, `PV set <dir> step:<id> confirmed=true`.

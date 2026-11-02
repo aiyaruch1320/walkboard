@@ -108,6 +108,12 @@ button:disabled{opacity:.5;cursor:wait}
 .msg.agent{align-self:flex-start;background:var(--ext-bg);color:var(--ext-tx)}
 .msg .who{display:block;font-size:11px;opacity:.75}
 .count{position:absolute;bottom:-9px;right:8px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
+.plabel .count,.stage .count{position:static;margin-left:6px}
+.count.unread,.badges button.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
+.badges button.unread{font-size:12px;padding:1px 10px;border-radius:999px}
+.chip.unread::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn-bd);margin-left:6px;vertical-align:middle}
+@media (prefers-reduced-motion:no-preference){.msg.flash{animation:flash 1.6s ease-out}}
+@keyframes flash{0%{box-shadow:0 0 0 4px var(--ext-bd)}100%{box-shadow:0 0 0 0 transparent}}
 .err{color:var(--warn-tx)}
 .diagram{position:relative}
 .scroll{overflow-x:auto;margin-bottom:14px}
@@ -205,6 +211,8 @@ const MODE = {
 const QUICK = {ok: "เข้าใจแล้ว", confused: "ยังงงตรงนี้ อธิบายใหม่ได้ไหม", approve: "อนุมัติแผนนี้ เริ่มทำได้"};
 const touch = matchMedia("(pointer: coarse)").matches;
 const picked = {};
+const seen = new Set();
+let freshReply = null;
 const hintText = () => (connected ? (touch ? "" : "⌘/Ctrl + Enter เพื่อส่ง") : "ยังไม่ได้ต่อกับ agent");
 
 const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : "plan");
@@ -212,22 +220,45 @@ const inCtx = (m, c) => (c.node ? m.node === c.node : c.step ? m.step === c.step
 
 function msgEl(m) {
   const d = el("div", "msg " + (m.from === "agent" ? "agent" : "user"));
+  d.dataset.id = m.id;
   const who = m.from === "agent" ? "agent" : `คุณ · ${KIND[m.kind] || "ถาม"} · ${m.delivered ? "agent รับแล้ว" : "รอ agent"}`;
   d.append(el("span", "who", who), document.createTextNode(m.text));
   return d;
 }
 
+const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
+
 function refreshThreads() {
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
-    t.replaceChildren(...thread.filter((m) => inCtx(m, c)).map(msgEl));
+    const msgs = thread.filter((m) => inCtx(m, c));
+    msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
+    t.replaceChildren(...msgs.map(msgEl));
   });
-  document.querySelectorAll(".node[data-id]").forEach((d) => {
-    d.querySelector(".count")?.remove();
+  const fresh = freshReply && document.querySelector(`.msg[data-id="${CSS.escape(freshReply)}"]`);
+  if (fresh) {
+    fresh.classList.add("flash");
+    fresh.scrollIntoView({block: "nearest", behavior: "smooth"});
+  }
+  freshReply = null;
+  const waitingFor = unread();
+  document.querySelectorAll("#view [data-id]").forEach((d) => {
+    d.querySelector(":scope > .count")?.remove();
     const n = thread.filter((m) => m.node === d.dataset.id).length;
-    if (n) d.append(el("span", "count", `💬 ${n}`));
+    if (n) d.append(el("span", "count" + (waitingFor.some((m) => m.node === d.dataset.id) ? " unread" : ""), `💬 ${n}`));
+  });
+  document.querySelectorAll(".chip[data-step]").forEach((c) => {
+    const id = c.dataset.step;
+    c.classList.toggle("unread", waitingFor.some((m) => !m.node && (id ? m.step === id : !m.step)));
   });
   renderBadges();
+}
+
+function openUnread() {
+  const m = unread()[0];
+  if (!m) return;
+  if (m.node) selectNode(m.node, true);
+  else selectStep(m.step || null);
 }
 
 async function send(c, kind, text) {
@@ -335,6 +366,12 @@ function renderBadges() {
     items.push(el("span", null, `commit: ${s.commit === "auto" ? "agent ทำให้" : "แนะนำข้อความ"}`));
     items.push(plan.approved ? el("span", "ok", "✓ อนุมัติแผนแล้ว") : el("span", "wait", "รออนุมัติแผน"));
   }
+  const news = unread().length;
+  if (news) {
+    const b = el("button", "unread", `💬 ข้อความใหม่จาก agent ${news}`);
+    b.onclick = openUnread;
+    items.push(b);
+  }
   document.getElementById("badges").replaceChildren(...items);
 }
 
@@ -389,8 +426,8 @@ function nodeBox(id) {
   d.tabIndex = 0;
   d.append(el("span", "tag", NODE_STATUS[status]), el("div", "name", n.name));
   if (n.what) d.append(el("div", "what", n.what));
-  d.onclick = () => selectNode(id);
-  d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id); };
+  d.onclick = () => selectNode(id, true);
+  d.onkeydown = (e) => { if (e.key === "Enter") selectNode(id, true); };
   return d;
 }
 
@@ -500,7 +537,7 @@ function renderK8s(v) {
     const pl = el("span", "plabel", "🛡 " + (plan.nodes[v.policy]?.name || v.policy));
     pl.dataset.id = v.policy;
     pl.tabIndex = 0;
-    pl.onclick = () => selectNode(v.policy);
+    pl.onclick = () => selectNode(v.policy, true);
     policy.append(pl);
   }
   for (const w of v.workloads || []) {
@@ -564,7 +601,7 @@ function renderSequence(v) {
     }
     const target = m.node || m.to;
     msg.title = "คลิกเพื่อดู " + (plan.nodes[target]?.name || target);
-    msg.onclick = () => selectNode(target);
+    msg.onclick = () => selectNode(target, true);
     row.append(msg);
     seq.append(row);
   });
@@ -580,7 +617,7 @@ function renderTransform(v) {
     const card = el("div", "stage");
     card.dataset.id = st.node;
     card.tabIndex = 0;
-    card.onclick = () => selectNode(st.node);
+    card.onclick = () => selectNode(st.node, true);
     const head = el("div", "shead");
     head.append(el("span", "sname " + (NODE_STATUS[n.status] ? n.status : "todo"), n.name));
     if (st.label) head.append(el("span", "slabel", st.label));
@@ -639,12 +676,14 @@ function renderView() {
 function renderSteps() {
   const bar = document.getElementById("stepbar");
   const all = el("span", "chip all" + (stepId ? "" : " sel"), "ทั้งหมด");
+  all.dataset.step = "";
   all.onclick = () => { stop(); selectStep(null); };
   bar.replaceChildren(all, ...steps().map((s, i) => {
     const cls = plan.mode === "explain" && !s.status ? "plain" : STEP_STATUS[s.status] || "todo";
     const mark = s.confirmed ? "✓ " : s.status === "review" ? "👉 " : "";
     const c = el("span", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
     c.title = s.confirmed ? "ทวนผ่านแล้ว" : s.status === "review" ? "ถึงตาคุณตรวจหรือทวนขั้นนี้" : "";
+    c.dataset.step = s.id;
     c.onclick = () => { stop(); selectStep(s.id); };
     return c;
   }));
@@ -676,7 +715,7 @@ function clearPanel(text = "กดกล่องในภาพเพื่อ�
   document.getElementById("panel").replaceChildren(el("h3", null, text));
 }
 
-function selectNode(id) {
+function selectNode(id, reveal = false) {
   nodeId = id;
   highlight();
   const n = plan.nodes[id];
@@ -700,6 +739,7 @@ function selectNode(id) {
   parts.push(talkBox({node: id}, {placeholder: `ถามเกี่ยวกับ "${n.name}"…`, quick: ["ok", "confused"], modes: ["question", "change"]}));
   p.replaceChildren(...parts);
   refreshThreads();
+  if (reveal) p.scrollIntoView({block: "nearest", behavior: "smooth"});
 }
 
 function stop() {
@@ -768,7 +808,7 @@ function draw(p) {
     clearPanel("กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว");
   }
 }
-let rendered = false;
+let rendered = false, loadedThread = false;
 
 function setConn(on) {
   connected = on;
@@ -807,6 +847,8 @@ async function load() {
     await fetchPlan();
     const r = await fetch("/api/thread?token=" + encodeURIComponent(token));
     if (r.ok) ({items: thread, waiting} = await r.json());
+    if (!loadedThread) thread.forEach((m) => m.from === "agent" && seen.add(m.id));
+    loadedThread = true;
     thread.sort((a, b) => a.at.localeCompare(b.at));
     setConn(true);
     refreshThreads();
@@ -815,7 +857,10 @@ async function load() {
   events.addEventListener("plan", fetchPlan);
   const on = (name, fn) => events.addEventListener(name, (e) => { fn(JSON.parse(e.data)); refreshThreads(); });
   on("feedback", (m) => thread.push({...m, from: "user", delivered: false}));
-  on("reply", (m) => thread.push(m));
+  on("reply", (m) => {
+    thread.push(m);
+    freshReply = m.id;
+  });
   on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
   on("agent", (a) => (waiting = a.waiting));
 }

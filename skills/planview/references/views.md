@@ -1,6 +1,8 @@
 # Views
 
-Every box in a view is a node id, so clicking it opens the same details and chat. A complete example using all four kinds is `examples/nightly-import/plan.json` in the planview repository.
+Every box in a view is a node id, so clicking it opens the same details and chat. Complete examples: `examples/nightly-import/plan.json` (all four kinds) and `examples/explain-login/plan.json` (explaining existing code) in the planview repository.
+
+Pictures wider than the screen scroll sideways and say so. Glossary terms are underlined in `what`, `in`, `out`, `why`, step text, lane titles, sequence messages and transform notes.
 
 ## flow: what feeds what
 
@@ -62,6 +64,7 @@ Use when the order of calls or a round trip matters.
 - `reply: true` draws a dashed return arrow; `from == to` draws a note on that lifeline.
 - `step` fades the message when another step is selected; `node` is what a click opens (default: the receiver).
 - Messages are numbered automatically. Keep `text` under ~8 words.
+- In explain mode a sequence of the real calls (route → service → store) is usually the clearest picture; give every message a `step` so each stage lights up its own calls.
 
 ## transform: how data changes shape
 

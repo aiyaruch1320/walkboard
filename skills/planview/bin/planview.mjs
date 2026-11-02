@@ -6,10 +6,13 @@ import {fileURLToPath} from "node:url";
 import {startServer, paths} from "../lib/server.mjs";
 import {validate, lint} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
+import {parseSet, applySet} from "../lib/edit.mjs";
 
 const USAGE = `planview <command> [options]
 
   check  [dir]                  validate dir/plan.json, print problems, exit 1 if any
+  set    [dir] [target] key=value ...   change plan.json in place, e.g.
+                                step:build status=review confirmed=true node:job status=done approved=true
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
   poll   [dir]                  wait for feedback from the page, print it as JSON, exit
   reply  [dir] [--node n] [--step s] <text>   show an agent reply on the page (or --dir d)
@@ -34,7 +37,7 @@ function parse(argv) {
 const [cmd, ...args] = process.argv.slice(2);
 const {flags, rest} = parse(args);
 // reply takes free text, so its first word is a dir only when that dir holds a plan.
-const dirFirst = rest[0] && (cmd !== "reply" || fs.existsSync(path.join(rest[0], "plan.json")));
+const dirFirst = rest[0] && (!["reply", "set"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")));
 const dir = path.resolve(flags.dir ?? (dirFirst ? rest[0] : "."));
 const words = !flags.dir && dirFirst ? rest.slice(1) : rest;
 const p = paths(dir);
@@ -87,6 +90,21 @@ async function check() {
   }
   for (const w of lint(plan)) console.log(`warning: ${w}`);
   console.log(`ok: ${plan.steps?.length || 0} steps, ${plan.views.length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
+}
+
+async function set() {
+  const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  try {
+    applySet(plan, parseSet(words));
+  } catch (e) {
+    fail(e.message);
+  }
+  const problems = validate(plan);
+  if (problems.length) fail("not saved:\n" + problems.map((t) => `- ${t}`).join("\n"));
+  const tmp = p.plan + ".tmp";
+  fs.writeFileSync(tmp, JSON.stringify(plan, null, 1) + "\n");
+  fs.renameSync(tmp, p.plan);
+  console.log("ok");
 }
 
 async function open() {
@@ -187,7 +205,7 @@ function fail(msg) {
   process.exit(1);
 }
 
-const commands = {check, open, poll, reply, status, stop, serve};
+const commands = {check, set, open, poll, reply, status, stop, serve};
 if (!commands[cmd]) {
   console.error(USAGE);
   process.exit(cmd ? 2 : 0);

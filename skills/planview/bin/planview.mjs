@@ -148,8 +148,8 @@ async function poll() {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const items = await r.json();
       gone = 0;
-      // One short line per item keeps what the agent reads small; --full adds ids and times.
-      if (items.length) return console.log(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, ...rest}) => rest)(i))).join("\n"));
+      // One short line per item keeps what the agent reads small; --full adds ids, times and the view.
+      if (items.length) return console.log(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, ...rest}) => rest)(i))).join("\n"));
     } catch (e) {
       // Ride out a restart; give up if the server stays away.
       if (++gone > 15) fail(`server not reachable for ${dir} (${e.message}); run: planview open ${dir}`);
@@ -179,7 +179,7 @@ async function status() {
     settings = JSON.parse(fs.readFileSync(p.plan, "utf8")).settings;
   } catch {}
   if (!s) return console.log(JSON.stringify({running: false, settings}));
-  console.log(JSON.stringify({url: urlOf(s), pid: s.pid, ...s.status, settings}, null, 2));
+  console.log(JSON.stringify({url: urlOf(s), pid: s.pid, ...s.status, settings}));
 }
 
 async function stop() {

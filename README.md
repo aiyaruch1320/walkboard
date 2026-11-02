@@ -38,12 +38,14 @@ Needs Node.js 18.18 or newer. Nothing else.
 
 ## Use
 
-Ask in your own words, or start with the command:
+Type `/planview` and say what you want, or just ask in your own words:
 
 ```
-/planview:planview plan the deploy of this CronJob to staging
-/planview:planview อธิบายการเข้าใช้ระบบใน project A
+/planview plan the deploy of this CronJob to staging
+/planview อธิบายการเข้าใช้ระบบใน project A
 ```
+
+<sub>If another command is already called `/planview`, use the full name `/planview:planview`.</sub>
 
 1. The agent asks two quick questions (restate each step? commit for you?).
 2. It writes the plan and gives you a link to a page on your machine.

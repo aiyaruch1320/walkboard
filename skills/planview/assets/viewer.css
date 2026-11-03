@@ -365,7 +365,7 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 .tabs button.on{border-color:var(--text);font-weight:500}
 .lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 14px 16px;margin-bottom:14px}
 .lane-title{font-size:13px;color:var(--muted);margin-bottom:10px}
-.row{display:flex;align-items:stretch;padding:10px 2px 12px}
+.row{display:flex;align-items:stretch;padding:10px 6px 12px}
 .lane .scroll{margin:0}
 .row .node{flex:0 1 230px;min-width:150px}
 .node{flex:1 1 140px;min-width:140px;border:1.5px solid;border-radius:10px;padding:10px 12px;cursor:pointer;position:relative;transition:transform .25s,opacity .25s;display:flex;flex-direction:column}

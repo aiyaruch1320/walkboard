@@ -67,3 +67,12 @@ test("files inside .walkboard are never shown as code", () => {
   assert.ok(r.error);
   assert.ok(!JSON.stringify(r).includes('"t"'));
 });
+
+test("a range that slid off its anchor, or a highlight outside it, fails check", () => {
+  const root = repo();
+  const plan = (n) => ({mode: "explain", root: ".", nodes: {a: n}});
+  assert.deepEqual(checkEvidence(plan({file: "src/a.go:5-12", anchor: "line 5"}), root), []);
+  assert.match(checkEvidence(plan({file: "src/a.go:5-12", anchor: "line 11"}), root)[0], /not at the start/);
+  assert.match(checkEvidence(plan({file: "src/a.go:5-12", anchor: "line 5", highlight: "6, 20"}), root)[0], /highlight 20 is outside/);
+  assert.deepEqual(checkEvidence(plan({file: "src/a.go:5", anchor: "line 5", highlight: "9"}), root), []);
+});

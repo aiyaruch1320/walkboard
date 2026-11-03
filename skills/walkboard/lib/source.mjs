@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import {parseFile} from "./schema.mjs";
+import {parseFile, highlightOf} from "./schema.mjs";
 
 // Resolve a node's file inside its declared root; never outside it.
 // A relative root is relative to the plan folder (base).
@@ -34,9 +34,10 @@ export function excerpt(plan, file, {around = 6, max = 60, base, anchor} = {}) {
   const out = {path: abs, from, focus: ref.line, end: ref.end, lines: lines.slice(from - 1, to)};
   // The anchor is a bit of the code the box is about; when it is no longer in the cited lines, the code has moved since it was explained.
   if (typeof anchor === "string" && anchor && ref.line) {
-    // A range must hold the anchor; a single line may be a couple of lines off (the line under a comment).
+    // The anchor starts what is cited: in the first lines of a range, or a couple of lines around a single line (the line under a comment).
+    // Anywhere further down a range means the range has slid off the code it was about.
     const range = ref.end > ref.line;
-    const a = range ? ref.line : Math.max(1, ref.line - 2), b = range ? ref.end : Math.min(lines.length, ref.line + 2);
+    const a = range ? ref.line : Math.max(1, ref.line - 2), b = range ? Math.min(ref.end, ref.line + 2) : Math.min(lines.length, ref.line + 2);
     if (!lines.slice(a - 1, b).some((l) => l.includes(anchor))) {
       const at = lines.findIndex((l) => l.includes(anchor));
       out.moved = at >= 0 ? at + 1 : 0;
@@ -53,7 +54,12 @@ export function checkEvidence(plan, base) {
     if (!n?.file) continue;
     const r = excerpt(plan, n.file, {around: 0, max: 1, base, anchor: n.anchor});
     if (r.error) out.push(`node "${id}" file "${n.file}": ${r.error}`);
-    else if (r.moved != null) out.push(`node "${id}" file "${n.file}": anchor ${JSON.stringify(n.anchor)} is not there${r.moved ? `; it is at line ${r.moved}` : "; it is not in the file"} (the code moved: fix file and highlight)`);
+    else if (r.moved != null) out.push(`node "${id}" file "${n.file}": anchor ${JSON.stringify(n.anchor)} is not at the start of those lines${r.moved ? `; it is at line ${r.moved}` : "; it is not in the file"} (the code moved: fix file and highlight)`);
+    const h = n.highlight != null && highlightOf(n.highlight);
+    // The lines the page shows: the range, or a single line with a little around it.
+    const range = r.end > r.focus, lo = range ? r.focus : r.focus - 2, hi = range ? r.end : r.focus + 6;
+    const off = h && r.focus ? [...h.lines].filter((l) => l < lo || l > hi) : [];
+    if (off.length) out.push(`node "${id}" highlight ${off.join(", ")} is outside the lines ${n.file} shows`);
   }
   return out;
 }

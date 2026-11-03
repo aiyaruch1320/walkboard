@@ -48,3 +48,16 @@ test("code can be left out and the chat put in", async (t) => {
   assert.equal(data.thread.length, 1);
   assert.equal(data.thread[0].text, "why?");
 });
+
+test("the page's Export button downloads the same file", async (t) => {
+  const {dir} = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const r = await fetch(`http://127.0.0.1:${s.port}/api/export?code=0&token=${s.token}`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("content-disposition"), /^attachment; filename=/);
+  const html = await r.text();
+  assert.ok(!html.includes(s.token));
+  assert.deepEqual(embedded(html).sources, {});
+  assert.equal((await fetch(`http://127.0.0.1:${s.port}/api/export?token=nope`)).status, 403);
+});

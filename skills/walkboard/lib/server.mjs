@@ -152,6 +152,12 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       const node = plan.nodes && Object.hasOwn(plan.nodes, url.searchParams.get("node") || "") ? plan.nodes[url.searchParams.get("node")] : null;
       const r = node?.file ? excerpt(plan, node.file, {base: dir, anchor: node.anchor}) : {error: "no file"};
       res.writeHead(r.error ? 404 : 200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify(r));
+    } else if (route === "GET /api/export") {
+      // The page's Export button: the same read-only file as `walkboard export`.
+      const plan = readJSON(p.plan);
+      const {html} = snapshot(dir, plan, {code: url.searchParams.get("code") !== "0", chat: url.searchParams.get("chat") === "1"});
+      const name = `${path.basename(dir)}.html`;
+      res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-disposition": `attachment; filename="${name.replace(/[^\w.-]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`}).end(html);
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
       const replies = readLines(p.replies);

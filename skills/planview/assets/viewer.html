@@ -273,6 +273,20 @@ document.addEventListener("keydown", (e) => {
 const LINK_STATE_KEYS = ["ok", "todo", "blocked"];
 const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
 
+// 💬 on every box that has a conversation, in whatever picture is drawn: a conversation belongs to the box, not to one picture.
+function drawCounts() {
+  const waitingFor = unread();
+  document.querySelectorAll("#view [data-id]").forEach((d) => {
+    d.querySelector(":scope > .count")?.remove();
+    const n = thread.filter((m) => m.node === d.dataset.id).length;
+    if (n) d.append(el("span", "count" + (waitingFor.some((m) => m.node === d.dataset.id) ? " unread" : ""), `💬 ${n}`));
+  });
+  document.querySelectorAll(".chip[data-step]").forEach((c) => {
+    const id = c.dataset.step;
+    c.classList.toggle("unread", waitingFor.some((m) => !m.node && (id ? m.step === id : !m.step)));
+  });
+}
+
 function refreshThreads() {
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
@@ -293,16 +307,7 @@ function refreshThreads() {
     fresh.scrollIntoView({block: "nearest", behavior: "smooth"});
   }
   freshReply = null;
-  const waitingFor = unread();
-  document.querySelectorAll("#view [data-id]").forEach((d) => {
-    d.querySelector(":scope > .count")?.remove();
-    const n = thread.filter((m) => m.node === d.dataset.id).length;
-    if (n) d.append(el("span", "count" + (waitingFor.some((m) => m.node === d.dataset.id) ? " unread" : ""), `💬 ${n}`));
-  });
-  document.querySelectorAll(".chip[data-step]").forEach((c) => {
-    const id = c.dataset.step;
-    c.classList.toggle("unread", waitingFor.some((m) => !m.node && (id ? m.step === id : !m.step)));
-  });
+  drawCounts();
   const planTalk = document.getElementById("planTalk");
   planTalk.textContent = t("talkPlan", thread.filter((m) => inCtx(m, {}) && m.kind !== "settings").length);
   planTalk.onclick = () => openSide({kind: "plan"});
@@ -2256,6 +2261,7 @@ function renderView() {
     kind?.after?.();
   } catch {}
   if (side?.kind === "node" && nodeId && !document.querySelector(`#view [data-id="${CSS.escape(nodeId)}"]`)) closeSide();
+  drawCounts();
   highlight();
   requestAnimationFrame(() => {
     // An arrow left at the end of a wrapped row points at nothing.
@@ -2298,6 +2304,7 @@ function renderSteps() {
   all.style.marginRight = "10px";
   bar.replaceChildren(...row);
   requestAnimationFrame(stepFades);
+  drawCounts();
 }
 
 function highlight() {

@@ -58,6 +58,7 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
 .foot a:hover{color:var(--text);text-decoration:underline}
 .bar button{font-size:12px;padding:2px 10px;border-radius:999px}
+.bar .helpbtn{padding:0;border-radius:50%;font-size:13px}
 .bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
 .toast{position:fixed;right:16px;top:52px;max-width:min(420px,calc(100vw - 32px));z-index:21;background:var(--card);color:var(--text);border:1.5px solid var(--you-bd);border-radius:10px;padding:10px 12px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.15)}
 .toast ul{margin:6px 0 8px;padding-left:18px}
@@ -142,7 +143,8 @@ body.side-open .side-inner{opacity:1;transform:none}
 .pchoose{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
 .pchoose button{font-size:12px;padding:2px 10px;border-radius:999px}
 .pchoose button[aria-pressed="true"]{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-weight:600}
-.helpbtn{width:26px;height:26px;padding:0;border-radius:50%;font-weight:600;font-size:13px}
+.helpbtn{width:26px;height:26px;padding:0;border-radius:50%;font-weight:600;font-size:13px;display:inline-grid;place-items:center;line-height:1}
+.helpbtn svg{display:block}
 .legendbox{margin:0 0 10px;font-size:13px}
 .legendbox summary{cursor:pointer;color:var(--muted);width:max-content}
 .legendbox .legend{margin:8px 0 4px}
@@ -471,8 +473,21 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .talk .thread{margin:0 0 10px}
-/* In the side panel the box you type in stays at the bottom, as in a chat. */
-.side .composer{position:sticky;bottom:0;z-index:1;background:var(--card);padding:10px 0 4px;margin-bottom:-4px;box-shadow:0 -10px 12px -10px rgba(0,0,0,.18)}
+/* Side panel: the explanation on top, the chat filling the rest, each scrolling on its own; the box you type in at the bottom. */
+.side-inner{display:flex;flex-direction:column}
+.side .panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:12px}
+.side .panel:has(>.talk){overflow:hidden}
+.side .panel>.pinfo{flex:0 1 auto;min-height:0;max-height:55%;overflow:auto;margin:0 -16px;padding:0 16px}
+.side .panel>.talk{flex:1 1 auto;min-height:180px;display:flex;flex-direction:column}
+.side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -6px 8px;padding:0 6px}
+.side .composer{flex:none;padding-top:8px;border-top:1px solid var(--line)}
+@media (max-width:819px){
+  .side-inner{display:block}
+  .side .panel,.side .panel:has(>.talk){display:block;overflow:visible}
+  .side .panel>.pinfo{max-height:none;overflow:visible;margin:0;padding:0}
+  .side .talk .thread{overflow:visible}
+  .side .composer{position:sticky;bottom:0;background:var(--card)}
+}
 .talk .quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .talk .quick .qlabel{font-size:12px;color:var(--muted);margin-right:2px}
 .talk .modes{display:inline-flex;margin-bottom:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}

@@ -276,11 +276,14 @@ const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id))
 function refreshThreads() {
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
+    const end = t.scrollHeight - t.scrollTop - t.clientHeight < 40;
     const msgs = thread.filter((m, i) => inThread(m, c, i) && m.kind !== "settings");
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     t.replaceChildren(...msgs.map(msgEl));
     const busy = working().find((m) => inCtx(m, c));
     if (busy) t.append(typingEl(busy));
+    // Follow the conversation while you are at its end, as a chat does.
+    if (end) t.scrollTop = t.scrollHeight;
   });
   const fresh = freshReply && document.querySelector(`.msg[data-id="${CSS.escape(freshReply)}"]`);
   if (fresh) {
@@ -1091,7 +1094,7 @@ function renderDesignPanel() {
     title.textContent = opt.title;
     parts.push(talkBox({option: opt.id}, {placeholder: t("askOption", opt.title), modes: ["question", "propose"]}));
   }
-  p.replaceChildren(...parts);
+  fillPanel(p, parts);
   refreshThreads();
 }
 
@@ -1124,7 +1127,7 @@ function openSide(ctx) {
   renderSide();
   highlight();
   // Open on the latest message, as a chat does.
-  requestAnimationFrame(() => document.querySelector("#side .thread > .msg:last-child")?.scrollIntoView({block: "nearest"}));
+  requestAnimationFrame(() => document.querySelectorAll("#side .thread").forEach((x) => (x.scrollTop = x.scrollHeight)));
   // Once the page column has narrowed, keep the box you clicked in sight.
   setTimeout(() => {
     scrollHints();
@@ -1139,6 +1142,16 @@ function closeSide() {
   document.body.classList.remove("side-open");
   highlight();
   setTimeout(scrollHints, 320);
+}
+
+// A panel with a conversation keeps the box's explanation at the top and the chat under it, each scrolling on its own,
+// so a long conversation never pushes the explanation away.
+function fillPanel(p, parts) {
+  const i = parts.findIndex((x) => x?.classList?.contains("talk"));
+  if (i <= 0) return p.replaceChildren(...parts);
+  const info = el("div", "pinfo");
+  info.append(...parts.slice(0, i));
+  p.replaceChildren(info, ...parts.slice(i));
 }
 
 function renderSide() {
@@ -1170,13 +1183,13 @@ function renderSide() {
       mode: turn === "turnRestate" ? "teachback" : "question",
       phase: step.status + (step.confirmed ? "+" : ""),
     }));
-    p.replaceChildren(...parts);
+    fillPanel(p, parts);
   } else {
     title.textContent = t("wholePlan");
     const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() && steps().length ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
     parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
-    p.replaceChildren(...parts);
+    fillPanel(p, parts);
   }
   refreshThreads();
 }
@@ -2454,7 +2467,7 @@ function renderNodePanel(id) {
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", (plan.mode === "explain" ? t("inStages") : t("inSteps")) + where.join(", ")));
   parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "propose"]}));
-  p.replaceChildren(...parts);
+  fillPanel(p, parts);
   refreshThreads();
 }
 
@@ -2815,12 +2828,17 @@ document.getElementById("talks").onclick = (e) => {
 
 // Light, dark, or follow the system; remembered in this browser.
 const THEMES = ["auto", "light", "dark"];
+const THEME_ICON = {
+  auto: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg>',
+  light: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></g></svg>',
+  dark: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.5 10.2A6 6 0 0 1 5.8 2.5a6 6 0 1 0 7.7 7.7z" fill="currentColor"/></svg>',
+};
 let theme = ["light", "dark"].includes(params.get("theme")) ? params.get("theme") : store.get("planview.theme") || "auto";
 function applyTheme() {
   if (theme === "auto") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme;
   const b = document.getElementById("theme");
-  b.textContent = {auto: "◐", light: "☀", dark: "☾"}[theme];
+  b.innerHTML = THEME_ICON[theme];
   b.title = t("themeTip", t("theme_" + theme));
   b.setAttribute("aria-label", b.title);
 }

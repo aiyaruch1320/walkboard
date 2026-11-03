@@ -2145,6 +2145,15 @@ function renderTimeline(v) {
 // ---------- data model: tables, keys and relations between columns
 function renderDataModel(v) {
   const tables = (v.tables || []).filter((x) => x?.node);
+  // A column that points at another table is a foreign key, whatever "key" says: a shared primary key (1:1) is both PK and FK.
+  const pointing = new Set([...tables.flatMap((tb) => (tb.columns || []).filter((c) => c?.ref).map((c) => `${tb.node}.${c.name}`)), ...(v.relations || []).map((r) => r?.from)]);
+  const keyEl = (tb, c) => {
+    if (c.copy) return el("span", "erkey copy", "⧉");
+    const keys = [...new Set([...String(c.key || "").toUpperCase().split(/[\s,]+/).filter(Boolean), ...(pointing.has(`${tb.node}.${c.name}`) ? ["FK"] : [])])];
+    const k = el("span", "erkey " + (keys.length > 1 ? "both" : (keys[0] || "").toLowerCase()));
+    keys.forEach((x) => k.append(el("span", x.toLowerCase(), x)));
+    return k;
+  };
   const grid = el("div", "er diagram");
   // A table sits right of the tables it points to; tables pointing to the same one stack.
   const level = {};
@@ -2171,7 +2180,7 @@ function renderDataModel(v) {
     for (const c of tb.columns || []) {
       const li = el("li");
       li.dataset.col = `${tb.node}.${c.name}`;
-      li.append(el("span", "erkey " + (c.copy ? "copy" : c.key || ""), c.copy ? "⧉" : c.key ? c.key.toUpperCase() : ""), el("span", "ername", c.name), el("span", "ertype", c.type || ""));
+      li.append(keyEl(tb, c), el("span", "ername", c.name), el("span", "ertype", c.type || ""));
       if (c.copy) li.classList.add("ercopy", ...(c.keep ? ["keep"] : []));
       if (c.note || c.copy) li.title = [c.copy && t("erCopyOf", c.copy), c.note].filter(Boolean).join("\n");
       ul.append(li);

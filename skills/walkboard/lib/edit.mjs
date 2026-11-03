@@ -24,6 +24,8 @@ function coerce(v) {
     try {
       return JSON.parse(v);
     } catch {
+      // "[skip ci] bump" or '"fast" path' is text that starts with a bracket or a quote, not broken JSON.
+      if (/^(\[[^\]]*\]|"[^"]*")\s*\S/.test(v)) return v;
       throw new Error(`not valid JSON: ${v.slice(0, 60)}`);
     }
   }

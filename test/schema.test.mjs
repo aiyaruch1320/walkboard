@@ -242,3 +242,12 @@ test("a copied column must name a real column", () => {
   p.views[0].tables[1].columns[0].copy = "a.email";
   assert.deepEqual(validate(p), []);
 });
+
+test("blank titles, empty list items and non-text column keys are reported, not crashed on", () => {
+  assert.ok(validate({...base(), title: "  "}).includes("no title"));
+  const p = {...base(), views: [{id: "j", kind: "journey", stops: [null, null]}, {id: "d", kind: "datamodel", tables: [{node: "a", columns: [{name: "id", key: 5}, null]}], relations: [null]}]};
+  const out = validate(p).join("\n");
+  assert.match(out, /view "j": stops has an empty item/);
+  assert.match(out, /column a\.id: key must be text/);
+  assert.doesNotMatch(out, /undefined/);
+});

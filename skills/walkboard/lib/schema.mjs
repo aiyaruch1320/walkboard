@@ -151,8 +151,10 @@ export const KINDS = {
     refs: (v) => list(v.tables).map((tb) => tb?.node),
     check: (v) => {
       const cols = new Set(list(v.tables).flatMap((tb) => list(tb?.columns).map((c) => `${tb?.node}.${c?.name}`)));
-      return [...list(v.tables).flatMap((tb) => list(tb?.columns).filter((c) => c?.ref || c?.copy).flatMap((c) => [...(c.ref ? [[`${tb.node}.${c.name}`, c.ref]] : []), ...(c.copy ? [[`${tb.node}.${c.name}`, c.copy]] : [])])), ...list(v.relations).map((r) => [r?.from, r?.to])]
-        .flatMap(([a, b]) => [a, b]).filter((k) => !cols.has(k)).map((k) => `no column "${k}" (use table.column)`);
+      const columns = list(v.tables).flatMap((tb) => list(tb?.columns).filter(isObj).map((c) => [tb.node, c]));
+      return [...columns.filter(([, c]) => c.ref || c.copy).flatMap(([t, c]) => [...(c.ref ? [[`${t}.${c.name}`, c.ref]] : []), ...(c.copy ? [[`${t}.${c.name}`, c.copy]] : [])]), ...list(v.relations).filter(isObj).map((r) => [r.from, r.to])]
+        .flatMap(([a, b]) => [a, b]).filter((k) => !cols.has(k)).map((k) => `no column "${k}" (use table.column)`)
+        .concat(columns.filter(([, c]) => c.key != null && typeof c.key !== "string").map(([t, c]) => `column ${t}.${c.name}: key must be text such as "pk" or "fk"`));
     },
   },
   diff: {
@@ -196,7 +198,7 @@ export function viewsOf(p) {
 export function validate(p) {
   const out = [];
   if (!isObj(p)) return ["plan.json is not an object"];
-  if (!p.title) out.push("no title");
+  if (!p.title || (typeof p.title === "string" && !p.title.trim())) out.push("no title");
   for (const k of ["title", "goal"]) if (!TEXT(p[k])) out.push(`${k} must be text`);
   if (p.lang != null && typeof p.lang !== "string") out.push('lang must be a language code such as "en" or "th"');
   const mode = p.mode ?? "build";
@@ -255,7 +257,7 @@ export function validate(p) {
     if (st.commitMessage != null && typeof st.commitMessage !== "string") out.push(`step "${st.id}" commitMessage must be a string`);
     if (st.commits != null && (!Array.isArray(st.commits) || st.commits.some((c) => !isObj(c) || typeof c.message !== "string" || (c.files != null && !(Array.isArray(c.files) && c.files.every((f) => typeof f === "string"))))))
       out.push(`step "${st.id}" commits must be [{"message": "…", "files": ["…"]}]`);
-    for (const k of list(st.nodes)) if (!known(k)) out.push(`step "${st.id}": no node "${k}"`);
+    for (const k of list(st.nodes)) if (!known(k)) out.push(k == null ? `step "${st.id}": nodes has an empty item (null)` : `step "${st.id}": no node "${k}"`);
   }
 
   if (p.views != null && !Array.isArray(p.views)) out.push("views must be an array");
@@ -275,7 +277,8 @@ export function validate(p) {
     const shape = shapeProblems(v);
     for (const t of shape) out.push(`view "${v.id}": ${t}`);
     if (shape.length) continue;
-    for (const k of new Set(kind.refs(v))) if (!known(k)) out.push(`view "${v.id}": no node "${k}"`);
+    for (const [field, xs] of Object.entries(v)) if (Array.isArray(xs) && xs.some((x) => x == null)) out.push(`view "${v.id}": ${field} has an empty item (null)`);
+    for (const k of new Set(kind.refs(v))) if (k != null && !known(k)) out.push(`view "${v.id}": no node "${k}"`);
     for (const t of kind.check?.(v, p) || []) out.push(`view "${v.id}": ${t}`);
   }
   return out;

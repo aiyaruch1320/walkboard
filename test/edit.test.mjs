@@ -41,3 +41,10 @@ test("dotted keys, quoted text and a mistyped folder", () => {
   assert.throws(() => parseSet(["~/typo/dir", "step:a", "status=done"]), /neither a target/);
   assert.throws(() => applySet(p, parseSet(["settings.__proto__.x=1"])), /bad key/);
 });
+
+test("text that only starts like JSON stays text", () => {
+  const p = applySet(plan(), parseSet(["step:a", "commitMessage=[skip ci] bump", "detail=\"quoted\" word"]));
+  assert.equal(p.steps[0].commitMessage, "[skip ci] bump");
+  assert.equal(p.steps[0].detail, '"quoted" word');
+  assert.throws(() => applySet(plan(), parseSet(["plan", "settings={commit: auto}"])), /not valid JSON/);
+});

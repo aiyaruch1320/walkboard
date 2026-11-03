@@ -25,7 +25,7 @@ Please report security issues privately through [GitHub's private vulnerability 
 
 ## Exported files
 
-`walkboard export` and the page's **⋯ → Export** write one HTML file: the page, the plan, the glossary, the code excerpts the boxes point at (unless left out) and the chat (only when asked for). It contains no token, server address or path on your machine, opens without a server, and its Content-Security-Policy blocks every network request. Whoever you give it to can read everything in it, so check it before sending it on.
+`walkboard export` and the page's **⋮ → Export** write one HTML file: the page, the plan, the glossary, the code excerpts the boxes point at (unless left out) and the chat (only when asked for). It contains no token, server address or path on your machine, opens without a server, and its Content-Security-Policy blocks every network request. Whoever you give it to can read everything in it, so check it before sending it on.
 
 ## Limits
 

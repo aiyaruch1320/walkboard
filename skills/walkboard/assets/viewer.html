@@ -2960,30 +2960,39 @@ document.getElementById("talks").onclick = (e) => {
 let printState = null;
 addEventListener("beforeprint", () => {
   if (!plan || printState) return;
-  printState = {stepId, theme: document.documentElement.dataset.theme};
+  // Colours for paper come from the print stylesheet, so the screen never flips to light behind the print window.
+  printState = {stepId};
   stepId = null;
-  document.documentElement.dataset.theme = "light";
   document.body.classList.add("printing");
   linkDrawer = null;
   pictureHook = null;
   linkObserver?.disconnect();
   linkObserver = null;
-  const parts = [];
+  const date = new Date().toLocaleDateString(lang, {dateStyle: "medium"});
+  const parts = [el("p", "pcover", [t("pill_" + (MODES_SHOWN.includes(plan.mode) ? plan.mode : "build")), date, steps().length && `${steps().length} ${t(plan.mode === "explain" ? "printStages" : "printSteps")}`, `${plan.views.length} ${t("printPictures")}`].filter(Boolean).join(" · "))];
   if (steps().length) {
     const ol = el("ol", "psteps");
-    for (const st of steps()) {
-      const li = el("li");
-      li.append(el("b", null, st.title), st.status ? el("span", "pst", " · " + t("sb_" + st.status)) : "");
-      if (st.detail) li.append(richEl("p", null, st.detail));
-      if (st.done) li.append(richEl("p", "meta", t("doneWhen") + st.done));
+    steps().forEach((st, i) => {
+      const li = el("li", "pstep ps-" + (st.status || "todo"));
+      const body = el("div");
+      const h = el("h3", null, st.title);
+      if (st.status) h.append(el("span", "pchip", t("sb_" + st.status)));
+      body.append(h);
+      if (st.detail) body.append(richEl("p", null, st.detail));
+      if (st.done) body.append(richEl("p", "pmeta", t("doneWhen") + st.done));
+      li.append(el("span", "pnum", String(i + 1)), body);
       ol.append(li);
-    }
+    });
     parts.push(el("h2", "ph", t(plan.mode === "explain" ? "printStages" : "printSteps")), ol);
   }
   const pics = [];
+  if (plan.views.length) parts.push(el("h2", "ph", t("printPictures")));
   for (const v of plan.views) {
     const box = el("section", "pview");
-    box.append(el("h2", "ph", v.title || v.id));
+    // In design mode a picture belongs to an option: its name, whether it is recommended, and its summary.
+    const opt = options().find((o) => o.view === v.id);
+    box.append(el("div", "pcap", opt ? (opt.recommended ? "★ " : "") + opt.title : v.title || v.id));
+    if (opt?.summary) box.append(richEl("p", "pmeta", opt.summary));
     let pic;
     try {
       pic = VIEWS[v.kind] ? VIEWS[v.kind].render(v) : el("p", null, t("cannotDraw", v.kind));
@@ -2994,17 +3003,21 @@ addEventListener("beforeprint", () => {
     parts.push(box);
     pics.push(box);
   }
-  const dl = el("dl", "pnodes");
+  const grid = el("div", "pnodes");
   for (const [id, n] of Object.entries(plan.nodes)) {
     if (!n) continue;
-    dl.append(el("dt", null, `${n.name || id}${n.what ? " — " + n.what : ""}`));
-    const dd = el("dd");
-    for (const k of ["in", "out"]) if (n[k]) dd.append(richEl("p", null, `${t(k)}: ${n[k]}`));
-    if (n.why) dd.append(richEl("p", null, n.why));
-    if (n.file) dd.append(el("p", "meta", n.file));
-    dl.append(dd);
+    const card = el("div", "pnode");
+    const h = el("div", "pnh");
+    h.append(el("b", null, n.name || id));
+    if (!isDesign()) h.append(el("span", "pchip", statusLabel(n.status)));
+    card.append(h);
+    if (n.what) card.append(richEl("div", "pwhat", n.what));
+    for (const k of ["in", "out"]) if (n[k]) card.append(richEl("p", null, `${t(k)}: ${n[k]}`));
+    if (n.why) card.append(richEl("p", null, n.why));
+    if (n.file) card.append(el("code", null, n.file));
+    grid.append(card);
   }
-  parts.push(el("h2", "ph", t("printBoxes")), dl);
+  parts.push(el("h2", "ph", t("printBoxes")), grid);
   // Lay out at the width of an A4 page, so what fits flows and only what is wider gets scaled.
   const view = document.getElementById("view");
   view.style.width = "700px";
@@ -3014,14 +3027,12 @@ addEventListener("beforeprint", () => {
   linkObserver = null;
   for (const box of pics) {
     const pic = box.lastElementChild, w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
-    if (w > 702) pic.style.zoom = String(700 / w);
+    if (w > 676) pic.style.zoom = String(676 / w);
   }
 });
 addEventListener("afterprint", () => {
   if (!printState) return;
   stepId = printState.stepId;
-  if (printState.theme) document.documentElement.dataset.theme = printState.theme;
-  else delete document.documentElement.dataset.theme;
   document.body.classList.remove("printing");
   document.getElementById("view").style.width = "";
   printState = null;
@@ -3030,7 +3041,7 @@ addEventListener("afterprint", () => {
 
 // Export: a one-file copy to send (with or without the code and the chat), or a PDF through the browser's print window.
 function openExport() {
-  const parts = [el("b", null, t("exportTitle"))];
+  const parts = [el("b", null, t("exportTitle"))], row = el("div", "xrow");
   if (served) {
     const opt = (key, on) => {
       const l = el("label", "xopt"), c = el("input");
@@ -3048,14 +3059,16 @@ function openExport() {
       a.click();
       document.getElementById("toast").hidden = true;
     };
-    parts.push(codeL, chatL, html);
+    parts.push(codeL, chatL);
+    row.append(html);
   }
   const pdf = el("button", served ? null : "primary", t("exportPdf"));
   pdf.onclick = () => {
     document.getElementById("toast").hidden = true;
     setTimeout(() => print(), 50);
   };
-  parts.push(pdf);
+  row.append(pdf);
+  parts.push(row);
   showCard(document.getElementById("more"), "exportcard", ...parts);
 }
 
@@ -3073,9 +3086,9 @@ function applyTheme() {
 }
 applyTheme();
 
-// ⋯ holds what is used now and then: export, theme, shortcuts and the tour.
+// ⋮ holds what is used now and then: export, theme, shortcuts and the tour.
 const moreBtn = document.getElementById("more");
-moreBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>';
+moreBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>';
 moreBtn.title = t("moreTip");
 moreBtn.setAttribute("aria-label", t("moreTip"));
 moreBtn.onclick = (e) => {

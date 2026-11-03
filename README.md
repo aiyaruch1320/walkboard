@@ -69,7 +69,7 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 
 1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
 2. It writes the plan and gives you a link to a page on your machine.
-3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **?** shows a short tour.
+3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **⋯** holds export, the theme and a short tour.
 4. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
 
 Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours. Built and tested on macOS.

@@ -50,7 +50,6 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .modepill{order:-1;margin-right:auto;margin-left:-4px;font-size:12.5px;font-weight:600;border:1.5px solid;border-radius:999px;padding:2px 11px;cursor:pointer}
 .bar .brand{margin-right:10px}
 .toast.exportcard{display:grid;gap:6px;width:min(320px,calc(100vw - 32px))}
-.toast.exportcard .meta{margin:4px 0 0}
 .toast.exportcard button{justify-self:start}
 .xopt{display:flex;align-items:center;gap:6px;font-size:13px}
 .toast.tipcard{max-width:300px;font-size:13px;padding:8px 12px}
@@ -489,7 +488,7 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .side .pa .pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
 .side .pb .talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}
 .side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
-.side .talk .thread:empty{flex:0 0 auto;background:transparent;border-style:dashed}
+.side .talk .thread:empty,.thread:empty{display:none}
 .side .composer{flex:none;padding-top:8px;border-top:1px solid var(--line)}
 /* Folding: open and folded look alike; the arrow turns, the part slides shut (see morph), and a quiet "folded" stays beside the name. */
 .fold{display:flex;align-items:center;gap:6px;width:100%;border:0;border-radius:6px;background:transparent;padding:4px 2px;font-size:12px;font-weight:600;color:var(--muted);flex:none}
@@ -640,7 +639,7 @@ body.snapshot .wbtn{pointer-events:none}
 @page{size:A4;margin:12mm}
 @media print{
   body{background:#fff}
-  .bar,.stepnav,#stepcard,.tabs,.legendbox,.side,.foot,.badges,.settings,#banner,#problems,#toast,#tip,.tour,.scrollhint,#proposals button,#constraints button,.cmpnote button,.wbtn,.count,#exportBtn{display:none!important}
+  .bar,.stepnav,#stepcard,.tabs,.legendbox,.side,.foot,.badges,.settings,#banner,#problems,#toast,#tip,.tour,.scrollhint,#proposals button,#constraints button,.cmpnote button,.wbtn,.count,#more,#talks{display:none!important}
   .layout{display:block}
   main{max-width:none;padding:0}
   .scroll{overflow:visible!important}
@@ -655,3 +654,16 @@ body.snapshot .wbtn{pointer-events:none}
   .pnodes p{margin:1px 0;font-size:12.5px}
   .node,.ertable,.stage{break-inside:avoid}
 }
+/* ⋯ menu */
+.toast.menucard{display:grid;gap:2px;padding:6px;width:220px}
+.mitem{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:7px 10px;border-radius:8px}
+.mitem:hover{background:var(--you-bg)}
+.mthemes{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;font-size:13px}
+.mthemes .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mthemes .seg button{border:0;border-radius:0;padding:4px 9px;display:inline-grid;place-items:center;background:transparent}
+.mthemes .seg button+button{border-left:1px solid var(--line)}
+.mthemes .seg button.on{background:var(--text);color:var(--bg)}
+/* A wide picture fades where there is more to scroll to. */
+.scroll.more-r{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
+.scroll.more-l{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px);mask-image:linear-gradient(to right,transparent,#000 36px)}
+.scroll.more-l.more-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent)}

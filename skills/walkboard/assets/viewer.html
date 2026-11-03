@@ -15,9 +15,7 @@
     <button id="modePill" class="modepill" hidden></button>
     <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>Walkboard</b></span>
     <button id="talks" class="talksbtn" hidden></button>
-    <button id="exportBtn" class="helpbtn"></button>
-    <button id="theme" class="helpbtn"></button>
-    <button id="help" class="helpbtn" aria-label="Help">?</button>
+    <button id="more" class="helpbtn"></button>
     <span class="conn off" id="conn"></span>
     <span id="barExtra"></span>
   </div>
@@ -119,7 +117,7 @@ const touch = matchMedia("(pointer: coarse)").matches;
 const picked = {};
 const seen = new Set();
 let freshReply = null;
-const hintText = () => (connected ? (touch ? "" : t("sendHint")) : t("noAgent"));
+const hintText = () => (connected ? "" : t("noAgent"));
 
 // Where a message belongs: a box, a step, a design option or one of its cells, or the whole plan.
 const ctxKey = (c) => (c.node ? "node:" + c.node : c.step ? "step:" + c.step : c.option ? `option:${c.option}:${c.criterion || ""}` : "plan");
@@ -393,7 +391,6 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   };
   if (quick.length) {
     const row = el("div", "quick");
-    row.append(el("span", "qlabel", t("quickLabel")));
     for (const k of quick) {
       const b = el("button", k === "approve" ? "primary" : null, t(k));
       b.title = t("quickTip");
@@ -454,7 +451,6 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   row.append(note, sendBtn);
   const thr = el("div", "thread");
   thr.dataset.ctx = JSON.stringify(c);
-  thr.dataset.empty = c.step && !c.node ? t("emptyStep", unit()) : t(c.node ? "emptyBox" : "emptyPlan");
   // Like a chat: the conversation first, what you type under it.
   comp.append(ta, row);
   box.append(thr, comp);
@@ -2269,10 +2265,15 @@ const VIEWS = {
 };
 
 // "Wider than the screen" hints, checked again whenever the side panel changes the width.
+// A picture wider than the screen fades at the edge that has more, instead of saying so.
 function scrollHints() {
   for (const sc of document.querySelectorAll("#view .scroll")) {
-    sc.querySelector(":scope > .scrollhint")?.remove();
-    if (sc.scrollWidth > sc.clientWidth + 4) sc.prepend(el("div", "scrollhint", t("wider")));
+    const fade = () => {
+      sc.classList.toggle("more-r", sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 4);
+      sc.classList.toggle("more-l", sc.scrollLeft > 4);
+    };
+    sc.onscroll = fade;
+    fade();
   }
 }
 
@@ -2873,8 +2874,7 @@ function startTour() {
   show();
 }
 
-document.getElementById("help").onclick = (e) => {
-  e.stopPropagation();
+function openHelp() {
   const ul = el("ul");
   for (const [k, what] of t("helpKeys")) {
     const li = el("li");
@@ -2886,8 +2886,8 @@ document.getElementById("help").onclick = (e) => {
     document.getElementById("toast").hidden = true;
     startTour();
   };
-  showCard(document.getElementById("help"), "helpcard", el("b", null, t("helpTitle")), ul, el("p", "meta", t("helpSettings")), again);
-};
+  showCard(document.getElementById("more"), "helpcard", el("b", null, t("helpTitle")), ul, again);
+}
 
 // A small card under the button that opened it; a click elsewhere, or on that button again, closes it.
 let cardFor = null;
@@ -3028,13 +3028,8 @@ addEventListener("afterprint", () => {
   renderView();
 });
 
-// ⤓ Export: a one-file copy to send (with or without the code and the chat), or a PDF through the browser's print window.
-const exportBtn = document.getElementById("exportBtn");
-exportBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"/></svg>';
-exportBtn.title = t("exportTip");
-exportBtn.setAttribute("aria-label", t("exportTip"));
-exportBtn.onclick = (e) => {
-  e.stopPropagation();
+// Export: a one-file copy to send (with or without the code and the chat), or a PDF through the browser's print window.
+function openExport() {
   const parts = [el("b", null, t("exportTitle"))];
   if (served) {
     const opt = (key, on) => {
@@ -3053,16 +3048,16 @@ exportBtn.onclick = (e) => {
       a.click();
       document.getElementById("toast").hidden = true;
     };
-    parts.push(el("p", "meta", t("exportHtmlHint")), codeL, chatL, html);
+    parts.push(codeL, chatL, html);
   }
-  const pdf = el("button", null, t("exportPdf"));
+  const pdf = el("button", served ? null : "primary", t("exportPdf"));
   pdf.onclick = () => {
     document.getElementById("toast").hidden = true;
     setTimeout(() => print(), 50);
   };
-  parts.push(el("p", "meta", t("exportPdfHint")), pdf);
-  showCard(exportBtn, "exportcard", ...parts);
-};
+  parts.push(pdf);
+  showCard(document.getElementById("more"), "exportcard", ...parts);
+}
 
 // Light, dark, or follow the system; remembered in this browser.
 const THEMES = ["auto", "light", "dark"];
@@ -3075,19 +3070,49 @@ let theme = ["light", "dark"].includes(params.get("theme")) ? params.get("theme"
 function applyTheme() {
   if (theme === "auto") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme;
-  const b = document.getElementById("theme");
-  b.innerHTML = THEME_ICON[theme];
-  b.title = t("themeTip", t("theme_" + theme));
-  b.setAttribute("aria-label", b.title);
 }
-document.getElementById("theme").onclick = (e) => {
-  e.stopPropagation();
-  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
-  store.set("walkboard.theme", theme);
-  applyTheme();
-  requestAnimationFrame(() => linkDrawer?.());
-};
 applyTheme();
+
+// ⋯ holds what is used now and then: export, theme, shortcuts and the tour.
+const moreBtn = document.getElementById("more");
+moreBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/></svg>';
+moreBtn.title = t("moreTip");
+moreBtn.setAttribute("aria-label", t("moreTip"));
+moreBtn.onclick = (e) => {
+  e.stopPropagation();
+  const item = (icon, label, fn) => {
+    const b = el("button", "mitem");
+    b.insertAdjacentHTML("afterbegin", icon);
+    b.append(el("span", null, label));
+    b.onclick = (ev) => {
+      ev.stopPropagation();
+      fn();
+    };
+    return b;
+  };
+  const themes = el("div", "mthemes");
+  themes.append(el("span", null, t("themeLabel")));
+  const seg = el("div", "seg");
+  for (const k of THEMES) {
+    const b = el("button", k === theme ? "on" : null);
+    b.innerHTML = THEME_ICON[k];
+    b.title = t("theme_" + k);
+    b.setAttribute("aria-label", b.title);
+    b.onclick = (ev) => {
+      ev.stopPropagation();
+      theme = k;
+      store.set("walkboard.theme", theme);
+      applyTheme();
+      seg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      requestAnimationFrame(() => linkDrawer?.());
+    };
+    seg.append(b);
+  }
+  themes.append(seg);
+  const exportIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"/></svg>';
+  const helpIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1V9.6"/><circle cx="8" cy="11.6" r=".4" fill="currentColor"/></svg>';
+  showCard(moreBtn, "menucard", item(exportIcon, t("exportTitle"), openExport), themes, item(helpIcon, t("helpTitle"), openHelp));
+};
 
 // The mode pill says which mode this page is in; clicking it says, in one line, what this mode does.
 document.getElementById("modePill").onclick = (e) => {

@@ -40,7 +40,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
 
 ## 3. Show and listen
 
-1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "?" shows a tour.
+1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "⋯" holds export, theme and the tour.
 2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, waking you with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen). `[]` means the server stopped: `WB open` again.
    - `question` / `confused`: `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
@@ -84,5 +84,5 @@ Summarize in chat with the URL. `WB stop <dir>` unless the user wants the page k
 | `WB open <dir> [--no-browser]` | Start or reuse the server, print the URL |
 | `WB poll <dir>` / `WB reply <dir> [--node id \| --step id] <text>` | Wait for the page / answer on it |
 | `WB status <dir>` / `WB stop <dir>` | URL, queue, settings / stop the server |
-| `WB export <dir> [--html file] [--no-code] [--with-chat]` | A read-only copy as one HTML file, when the user asks to share or send the plan (PDF: the page's ⤓ → print) |
+| `WB export <dir> [--html file] [--no-code] [--with-chat]` | A read-only copy as one HTML file, when the user asks to share or send the plan (PDF: the page's ⋯ → Export → PDF) |
 | `WB icons` | Icon names for `icon` |

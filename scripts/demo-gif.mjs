@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Records docs/images/demo.gif: from typing /walkboard in Claude Code to a confirmed step.
+// Records docs/images/demo.gif (typing /walkboard in Claude Code to an answer on the page), restate.gif (restating a step)
+// and design.gif (comparing options by your own weights).
 // The terminal is a plain mock-up; the walkboard page is real (a copy of examples/nightly-import).
 // Pages are captured at 2x and a camera crops and scales the captures, so zooming never touches the page layout.
 // Needs Google Chrome and Node 22: node scripts/demo-gif.mjs   (DEMO_FRAMES=<dir> also writes every output frame as PNG)
@@ -25,6 +26,10 @@ for (const s of plan.steps) {
 }
 fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
 const url = pv("open", dir, "--no-browser");
+const designDir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-design-"));
+fs.copyFileSync(path.join(repo, "examples/connect-vpcs/plan.json"), path.join(designDir, "plan.json"));
+const designUrl = pv("open", designDir, "--no-browser");
+const designShort = `127.0.0.1:${new URL(designUrl).port}/?token=…`;
 const {origin, searchParams} = new URL(url);
 const api = (route, body) => fetch(`${origin}${route}?token=${searchParams.get("token")}`, body && {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
 // Like the agent's poll: take the batch and acknowledge it, so the page shows it as received.
@@ -35,6 +40,16 @@ const shortUrl = `127.0.0.1:${new URL(url).port}/?token=…`;
 const PROMPT = "/walkboard plan deploying the nightly customer import CronJob to staging";
 
 const page = await launch({width: W, height: H, scale: SCALE});
+let recording = "demo";
+// Each GIF is written when its scenes end; the next one starts from an empty frame list.
+function save(name) {
+  const gif = encodeGif(frames);
+  fs.writeFileSync(path.join(repo, "docs/images", `${name}.gif`), gif);
+  const seconds = frames.reduce((n, f) => n + f.delay, 0) / 1000;
+  console.log(`${name}.gif ${W}x${H}, ${frames.length} frames, ${seconds.toFixed(1)} s, ${(gif.length / 1024).toFixed(0)} KB`);
+  frames.length = 0;
+  cam = {s: 1, cx: W / 2, cy: H / 2};
+}
 // The first-visit tour would cover the page in every scene.
 await page.send("Page.enable");
 await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.tour", "done"); } catch {}`});
@@ -106,7 +121,7 @@ function shoot(src, delay) {
   const out = view(src, {x, y, w, h}, W, H);
   const cap = caption && captions.get(caption);
   if (cap) overlay(out, cap, Math.round((W - cap.width) / 2), H - cap.height - 10);
-  if (process.env.DEMO_FRAMES) fs.writeFileSync(path.join(process.env.DEMO_FRAMES, `${String(frames.length).padStart(3, "0")}.png`), encodePng(out));
+  if (process.env.DEMO_FRAMES) fs.writeFileSync(path.join(process.env.DEMO_FRAMES, `${recording}-${String(frames.length).padStart(3, "0")}.png`), encodePng(out));
   frames.push({...out, delay});
   return out;
 }
@@ -220,175 +235,156 @@ const TERMINAL_LINES = [
 ];
 const CAPTIONS = [
   "Type /walkboard and describe the task",
-  "The agent asks one question, writes the plan and opens it as a page",
-  "Review the plan first: steps on top, the picture of the work below",
-  "When it looks right, approve the plan. Only then does the agent start",
-  "Pick any step: the page shows the picture it belongs to",
-  "Click a box: what goes in, what comes out, and why",
-  "Ask about a box right where it is",
+  "The agent writes the plan and opens it as a page",
+  "Review the plan, then approve it. Only then does the agent start",
+  "Click a box and ask about it right where it is",
   "Your message wakes the agent in Claude Code",
   "The answer appears where you asked",
-  "Step finished: your turn to restate it in your own words",
-  "Restated correctly: the agent confirms ✓ and moves on",
-  "Restating and commits are switches on the page",
-  "Dots show the agent is working on your message",
-  "Share it: one HTML file that opens anywhere, or a PDF",
+  "Step finished: restate it in your own words",
+  "The agent checks it: ✓, or what you missed",
+  "Each option is drawn and scored, with sources",
+  "Change what matters to you: the totals follow",
+  "Open any option to see how it would look",
+  "Confirmed ✓, on to the next step",
 ];
 // Clears the fake browser bar and the sticky status bar when scrolling to something.
 const TOP = 100;
+const pageAt = async (u, short, x = 520, y = 330) => {
+  await goto(u, 2000);
+  await ov(`__ov.chrome(${JSON.stringify(short)})`);
+  cur = {x, y, shown: true};
+  await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
+};
 
 try {
   await renderCaptions(CAPTIONS);
 
-  // Scene 1: the request, typed in Claude Code.
+  // demo.gif: the request in Claude Code, the plan page, a question on a box and its answer.
   await goto(terminalUrl, 700);
   caption = CAPTIONS[0];
-  await snap(900);
-  await camera({s: 1.1, cx: W / 2, cy: 210});
-  const g = graphemes(PROMPT);
-  for (let i = 0; i < g.length; i += 6) {
-    await page.eval(`typeTo(${JSON.stringify(g.slice(0, i + 6).join(""))});`);
-    await snap(70);
-  }
   await snap(700);
-  await zoomOut();
+  const g = graphemes(PROMPT);
+  for (let i = 0; i < g.length; i += 8) {
+    await page.eval(`typeTo(${JSON.stringify(g.slice(0, i + 8).join(""))});`);
+    await snap(60);
+  }
+  await snap(500);
   caption = CAPTIONS[1];
   for (const [html, cls] of TERMINAL_LINES) {
     await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
-    await snap(560);
+    await snap(380);
   }
-  await snap(1800);
+  await snap(900);
   await moveTo("#planlink", {dx: 0.3});
   await ov(`__ov.ripple(${cur.x}, ${cur.y}, true)`);
-  await snap(300);
+  await snap(250);
 
-  // Scene 2: review the plan, then approve it.
   listen();
   caption = CAPTIONS[2];
-  await crossfade(async () => {
-    await goto(`${url}&theme=dark&step=all`, 2000);
-    await ov(`__ov.chrome(${JSON.stringify(shortUrl)})`);
-    cur = {x: 520, y: 330, shown: true};
-    await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
-  });
-  await snap(2300);
-  caption = CAPTIONS[11];
-  await moveTo(".settings .switch");
-  await zoomTo(".settings", 1.5, 2600);
-  await zoomOut();
-  caption = CAPTIONS[3];
-  await snap(600);
+  await crossfade(() => pageAt(`${url}&theme=dark&step=all`, shortUrl));
+  await snap(1800);
   await moveTo("#barExtra button.primary");
-  await zoomTo("#barExtra button.primary", 1.6, 1200);
-  await zoomOut();
-  await click("#barExtra button.primary", {hold: 500});
+  await click("#barExtra button.primary", {hold: 400});
   listen();
   pv("set", dir, "approved=true", "step:image", "status=done", "step:trigger", "status=done", "step:manifests", "status=doing");
   await sleep(1300);
-  await snap(2100);
+  await snap(1200);
 
-  // Scene 3: look ahead at another step, open a box and ask about it in the side panel.
-  caption = CAPTIONS[4];
+  caption = CAPTIONS[3];
   await moveTo('.chip[data-step="secrets"]');
-  await click('.chip[data-step="secrets"]', {hold: 400});
+  await click('.chip[data-step="secrets"]', {hold: 300});
   await scrollTo("#tabs", TOP - 40);
-  await snap(900);
-  await zoomTo(['#view [data-id="secret"]', '#view [data-id="wkey"]', '#view [data-id="cronjob"]'], 1.45, 2000);
-  await zoomOut();
-
-  caption = CAPTIONS[5];
   await moveTo('#view [data-id="cronjob"]');
-  await click('#view [data-id="cronjob"]', {hold: 700});
-  await snap(2500);
-
-  caption = CAPTIONS[6];
+  await click('#view [data-id="cronjob"]', {hold: 900});
   await moveTo("#panel textarea", {dx: 0.2});
-  await click("#panel textarea", {hold: 200});
-  await typeInto("#panel textarea", "Why keep it suspended for now?");
-  await snap(500);
+  await click("#panel textarea", {hold: 150});
+  await typeInto("#panel textarea", "Why keep it suspended for now?", 8);
   await moveTo("#panel .send button.primary");
-  await click("#panel .send button.primary", {hold: 200});
-  caption = CAPTIONS[12];
-  await sleep(500);
-  await snap(2400);
+  await click("#panel .send button.primary", {hold: 900});
 
-  // Scene 4: the agent wakes in Claude Code and answers on the page.
-  caption = CAPTIONS[7];
+  caption = CAPTIONS[4];
   await crossfade(async () => {
     await goto(terminalUrl, 500);
     cur.shown = false;
     await ov(`__ov.cursor(0, 0, false)`);
     await page.eval(`typeTo(${JSON.stringify(PROMPT)});`);
-    for (const [html, cls] of TERMINAL_LINES.slice(0, 5)) await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
+    for (const [html, cls] of TERMINAL_LINES) await page.eval(`addLine(${JSON.stringify(html)}, ${JSON.stringify(cls)});`);
     await page.eval(`addLine('<span class="ask">◆ Question from the plan page · CronJob import</span>'); addLine('  “Why keep it suspended for now?”'); addLine('<span class="ok">● Answered on the plan page</span>');`);
   });
-  await snap(2500);
+  await snap(1800);
   await api("/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night."});
   listen();
-
-  caption = CAPTIONS[8];
+  caption = CAPTIONS[5];
   await crossfade(async () => {
-    await goto(`${url}&theme=dark&step=secrets&view=k8s&node=cronjob`, 2000);
-    await ov(`__ov.chrome(${JSON.stringify(shortUrl)})`);
+    await pageAt(`${url}&theme=dark&step=secrets&view=k8s&node=cronjob`, shortUrl, 760, 470);
     await scrollTo("#tabs", TOP - 40, 1);
-    cur = {x: 760, y: 470, shown: true};
-    await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
   });
-  await moveTo('#panel .fold[data-fold="info"]', {dx: 0.2});
-  await click('#panel .fold[data-fold="info"]', {hold: 500});
   await moveTo("#panel .msg.agent", {dx: 0.15, dy: 0.7});
   await zoomTo("#panel .msg.agent", 1.5, 2600);
   await zoomOut();
-
-  // Scene 5: the step is ready; the user restates it and the agent confirms.
-  pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:netpol", "status=done", "node:cm", "status=done");
-  await sleep(1300);
-  caption = CAPTIONS[9];
-  await scrollTo("main", 40);
-  await snap(900);
-  await moveTo('.chip[data-step="manifests"]');
-  await click('.chip[data-step="manifests"]', {hold: 400});
-  await moveTo("#stepcard .turnbtn");
-  await click("#stepcard .turnbtn", {hold: 900});
-  await moveTo("#panel textarea", {dx: 0.2});
-  await click("#panel textarea", {hold: 200});
-  await typeInto("#panel textarea", "Manifests create the CronJob suspended until the keys exist", 7);
-  await snap(400);
-  await moveTo("#panel .send button.primary");
-  await click("#panel .send button.primary", {hold: 300});
-  await sleep(500);
-  await snap(1500);
-  await api("/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ Next step: add the BigQuery and API keys"});
-  listen();
-  pv("set", dir, "step:manifests", "confirmed=true", "status=done", "step:secrets", "status=doing");
-  await sleep(1300);
-  caption = CAPTIONS[10];
-  await snap(2600);
-
-  // Scene 6: the ⋮ menu exports the plan to send to someone else.
-  caption = CAPTIONS[13];
-  await page.eval(`document.getElementById("sideClose").click();`);
-  await sleep(400);
-  await scrollTo("main", 40, 4);
-  await moveTo("#more");
-  await click("#more", {hold: 500});
-  await moveTo(".menucard .mitem");
-  await click(".menucard .mitem", {hold: 400});
-  await zoomTo(".toast", 1.5, 2800);
-  await zoomOut();
-
   caption = null;
   await crossfade(async () => {
     await goto(endUrl, 800);
     await ov(`__ov.cursor(0, 0, false)`);
   }, 5);
-  await snap(3300);
+  await snap(2600);
+  save("demo");
+
+  // restate.gif: a finished step waits for the user, who says it back; the agent confirms.
+  recording = "restate";
+  pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:netpol", "status=done", "node:cm", "status=done");
+  caption = CAPTIONS[6];
+  await pageAt(`${url}&theme=dark&step=manifests`, shortUrl);
+  await snap(1400);
+  await moveTo("#stepcard .turnbtn");
+  await click("#stepcard .turnbtn", {hold: 700});
+  await moveTo("#panel textarea", {dx: 0.2});
+  await click("#panel textarea", {hold: 150});
+  await typeInto("#panel textarea", "Manifests create the CronJob suspended until the keys exist", 8);
+  await moveTo("#panel .send button.primary");
+  await click("#panel .send button.primary", {hold: 1100});
+  await api("/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ Next step: add the BigQuery and API keys"});
+  listen();
+  await sleep(600);
+  caption = CAPTIONS[7];
+  await zoomTo("#panel .msg.agent", 1.5, 2400);
+  await zoomOut();
+  // Confirmed: the step turns ✓ and the panel follows the agent to the next one.
+  pv("set", dir, "step:manifests", "confirmed=true", "status=done", "step:secrets", "status=doing");
+  await sleep(1300);
+  caption = CAPTIONS[11];
+  await snap(2000);
+  save("restate");
+
+  // design.gif: options drawn and scored; the user's weights change the totals; another option's picture.
+  recording = "design";
+  // A poll is waiting, as in a real session: the page says the agent is listening.
+  const d = new URL(designUrl);
+  fetch(`${d.origin}/api/poll?token=${d.searchParams.get("token")}`).catch(() => {});
+  caption = CAPTIONS[8];
+  await pageAt(`${designUrl}&theme=dark`, designShort);
+  await snap(1800);
+  await scrollTo("#compare", TOP - 30);
+  await snap(1600);
+  caption = CAPTIONS[9];
+  for (const [id, times] of [["scale", 1], ["cost", 2]]) {
+    const row = await page.eval(`return [...document.querySelectorAll("#compare tbody tr")].findIndex((tr) => tr.querySelector("th")?.textContent.startsWith(${JSON.stringify(id === "scale" ? "Grows" : "Cost")}))`);
+    const btn = `#compare tbody tr:nth-child(${row + 1}) .wbtn`;
+    await moveTo(btn);
+    for (let i = 0; i < times; i++) await click(btn, {hold: 500});
+  }
+  await sleep(800);
+  await snap(1800);
+  if (await page.eval(`return !!document.querySelector("#compare .cmpnote")`)) await zoomTo("#compare .cmpnote", 1.4, 2400), await zoomOut();
+  caption = CAPTIONS[10];
+  await scrollTo("main", 40);
+  await moveTo("#tabs button:nth-child(2)");
+  await click("#tabs button:nth-child(2)", {hold: 400});
+  await scrollTo("#tabs", TOP - 40);
+  await snap(2600);
+  save("design");
 } finally {
   page.close();
   pv("stop", dir);
+  pv("stop", designDir);
 }
-
-const gif = encodeGif(frames);
-fs.writeFileSync(path.join(repo, "docs/images/demo.gif"), gif);
-const seconds = frames.reduce((n, f) => n + f.delay, 0) / 1000;
-console.log(`demo.gif ${W}x${H}, ${frames.length} frames, ${seconds.toFixed(1)} s, ${(gif.length / 1024).toFixed(0)} KB`);

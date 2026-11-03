@@ -683,7 +683,27 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
   .pnode p{margin:3px 0}
   .pnode code{display:block;margin-top:4px;font-size:10px;color:var(--muted);word-break:break-all}
   .node,.ertable,.stage{break-inside:avoid}
+  .impbar,.jbar,.jpacket{display:none!important}
+  body.printing #compare{display:none}
+  .pview{break-inside:auto}
+  .pcap{break-after:avoid}
+  .psum{border:1px solid var(--line);border-left:4px solid var(--done-bd);border-radius:8px;padding:10px 12px;margin:14px 0 4px;break-inside:avoid}
+  .psum p{margin:4px 0;line-height:1.45}
+  .pnot{color:var(--muted)}
+  .popen{margin:2px 0 0;padding-left:4px;list-style:none}
+  .pjourney{margin:0;padding-left:20px;display:grid;gap:6px}
+  .pjourney pre,.pcode{font:10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);border-radius:6px;padding:6px 8px;margin:4px 0 0;white-space:pre-wrap;word-break:break-all}
+  .pnode.wide{grid-column:1/-1}
+  .pcode span{display:block}
+  .pcode span.hl{background:var(--new-bg)}
+  .pcode i{display:inline-block;width:3.5ch;color:var(--muted);font-style:normal;user-select:none}
+  .pchat{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+  .pchat li{border:1px solid var(--line);border-radius:8px;padding:6px 10px;break-inside:avoid}
+  .pchat li.agent{background:var(--code)}
+  .pchat b{display:block;font-size:10.5px;color:var(--muted);font-weight:600}
+  .cmp .wtext{display:inline!important;color:var(--muted);font-weight:400}
 }
+.cmp .wtext{display:none}
 /* ⋯ menu */
 .toast.menucard{display:grid;gap:1px;padding:4px;width:auto;min-width:0}
 .mitem{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:6px 10px;border-radius:7px;font-size:13px}

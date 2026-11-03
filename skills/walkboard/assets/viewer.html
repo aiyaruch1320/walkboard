@@ -970,6 +970,7 @@ function renderCompare() {
     const w = c.weight ?? 1;
     const wb = el("button", "wbtn", "●".repeat(w) + "○".repeat(3 - w));
     wb.title = t("weightTip");
+    th.append(el("span", "wtext", ` ×${w}`));
     wb.onclick = async () => {
       const next = (w + 1) % 4;
       c.weight = next;
@@ -1568,7 +1569,9 @@ function renderK8s(v) {
 
 function renderSequence(v) {
   const actors = v.actors || [];
-  const cols = `repeat(${actors.length}, minmax(130px, 1fr))`;
+  // Wide enough for the longest word of a name, so names never break in the middle of a word.
+  const word = Math.max(0, ...actors.flatMap((id) => String(plan.nodes[id]?.name || id).match(/[\w./-]+/g) || []).map((w) => w.length));
+  const cols = `repeat(${actors.length}, minmax(${Math.min(260, Math.max(130, word * 8 + 64))}px, 1fr))`;
   const scroll = el("div", "scroll");
   const seq = el("div", "seq");
   seq.style.minWidth = actors.length * 150 + "px";
@@ -2735,6 +2738,7 @@ function draw(p) {
   }
   markChanges();
   renderBar();
+  prefetchCode();
 }
 let rendered = false, loadedThread = false;
 
@@ -2992,6 +2996,43 @@ document.getElementById("talks").onclick = (e) => {
 // Printing (PDF) lays out the whole plan, not just what is on screen: every step, every picture one after another, then the boxes.
 // Pictures are drawn at full size, their lines drawn, and only then scaled down to the page width, so lines and boxes stay together.
 let printState = null;
+function journeyList(v) {
+  const ol = el("ol", "pjourney");
+  for (const s of v.stops || []) {
+    const li = el("li");
+    li.append(el("b", null, plan.nodes[s.node]?.name || s.node));
+    if (s.note) li.append(" ", richEl("span", null, s.note));
+    if (s.data) li.append(el("pre", null, s.data));
+    ol.append(li);
+  }
+  return ol;
+}
+
+// The cited lines on paper: the highlighted ones (else the line cited), with a few around them.
+function printCode(n, r) {
+  const hl = highlightOf(n.highlight)?.lines || new Set(r.focus ? [r.focus] : []);
+  const at = [...hl].filter((x) => x >= r.from && x < r.from + r.lines.length);
+  const lo = at.length ? Math.max(r.from, Math.min(...at) - 2) : r.from, hi = at.length ? Math.min(r.from + r.lines.length - 1, Math.max(...at) + 2) : Math.min(r.from + 11, r.from + r.lines.length - 1);
+  const pre = el("pre", "pcode");
+  for (let i = lo; i <= Math.min(hi, lo + 24); i++) {
+    const line = el("span", hl.has(i) ? "hl" : null);
+    line.append(el("i", null, String(i)), r.lines[i - r.from] ?? "");
+    pre.append(line);
+  }
+  return pre;
+}
+
+// Code for printing an explanation: fetched once, so the print window (which cannot wait) has it.
+const codeCache = {};
+function prefetchCode() {
+  if (!served || plan.mode !== "explain") return;
+  for (const [id, n] of Object.entries(plan.nodes)) {
+    if (!n?.file || codeCache[id]?.file === n.file) continue;
+    fetch(`/api/source?node=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`).then((r) => r.json())
+      .then((r) => { if (!r.error) codeCache[id] = {...r, file: n.file}; }, () => {});
+  }
+}
+
 addEventListener("beforeprint", () => {
   if (!plan || printState) return;
   // Colours for paper come from the print stylesheet, so the screen never flips to light behind the print window.
@@ -3019,6 +3060,34 @@ addEventListener("beforeprint", () => {
     });
     parts.push(el("h2", "ph", t(plan.mode === "explain" ? "printStages" : "printSteps")), ol);
   }
+  // A design on paper opens with the answer: what was chosen (or is recommended) and why, why not the others, which boxes are still a guess.
+  if (isDesign() && options().length) {
+    const sum = el("div", "psum"), d = plan.decision, rec = options().find((o) => o.recommended);
+    const chosen = options().find((o) => o.id === d?.option);
+    if (chosen) {
+      sum.append(el("b", null, t("decided", chosen.title)));
+      const who = [d.by, d.at && new Date(d.at).toLocaleDateString(lang, {dateStyle: "medium"})].filter(Boolean).join(" · ");
+      if (who) sum.append(el("div", "pmeta", who));
+      if (d.why) sum.append(richEl("p", null, d.why));
+      for (const [id, why] of Object.entries(d.not || {})) {
+        const o = options().find((x) => x.id === id);
+        if (o && typeof why === "string") sum.append(el("p", "pnot", `✗ ${o.title}: ${why}`));
+      }
+    } else if (rec) {
+      sum.append(el("b", null, `${t("recommended")}: ${rec.title}`));
+      if (rec.why) sum.append(richEl("p", null, rec.why));
+    }
+    // Unconfirmed constraints are already above, as on screen; the boxes drawn on a guess are not.
+    const open = Object.values(plan.nodes).filter((n) => n?.basis === "assumed").map((n) => n.name);
+    if (open.length) {
+      const ul = el("ul", "popen");
+      open.forEach((x) => ul.append(el("li", null, "❓ " + x)));
+      sum.append(el("div", "pmeta", t("printOpen")), ul);
+    }
+    if (sum.childNodes.length) parts.push(sum);
+    const cmp = document.querySelector("#compare .cmp");
+    if (cmp) parts.push(cmp.cloneNode(true));
+  }
   const pics = [];
   if (plan.views.length) parts.push(el("h2", "ph", t("printPictures")));
   for (const v of plan.views) {
@@ -3029,7 +3098,8 @@ addEventListener("beforeprint", () => {
     if (opt?.summary) box.append(richEl("p", "pmeta", opt.summary));
     let pic;
     try {
-      pic = VIEWS[v.kind] ? VIEWS[v.kind].render(v) : el("p", null, t("cannotDraw", v.kind));
+      // A journey plays on screen; on paper it is its stops, one under the other.
+      pic = v.kind === "journey" ? journeyList(v) : VIEWS[v.kind] ? VIEWS[v.kind].render(v) : el("p", null, t("cannotDraw", v.kind));
     } catch (e) {
       pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
     }
@@ -3043,15 +3113,32 @@ addEventListener("beforeprint", () => {
     const card = el("div", "pnode");
     const h = el("div", "pnh");
     h.append(el("b", null, n.name || id));
-    if (!isDesign()) h.append(el("span", "pchip", statusLabel(n.status)));
+    if (!isDesign() && (plan.mode !== "explain" || n.file)) h.append(el("span", "pchip", statusLabel(n.status)));
     card.append(h);
     if (n.what) card.append(richEl("div", "pwhat", n.what));
     for (const k of ["in", "out"]) if (n[k]) card.append(richEl("p", null, `${t(k)}: ${n[k]}`));
     if (n.why) card.append(richEl("p", null, n.why));
     if (n.file) card.append(el("code", null, n.file));
+    const src = plan.mode === "explain" && n.file && (snapshot ? snapshot.sources?.[id] : codeCache[id]);
+    if (src?.lines) {
+      card.classList.add("wide");
+      card.append(printCode(n, src));
+    }
     grid.append(card);
   }
   parts.push(el("h2", "ph", t("printBoxes")), grid);
+  if (snapshot?.thread?.length) {
+    const ul = el("ul", "pchat");
+    for (const m of snapshot.thread) {
+      const li = el("li", m.from === "agent" ? "agent" : "user");
+      li.append(el("b", null, `${t(m.from === "agent" ? "agent" : "you")} · ${sideTitle(sideOf(m))}`), richEl("div", null, m.text));
+      ul.append(li);
+    }
+    parts.push(el("h2", "ph", t("printChat")), ul);
+  }
+  const sources = document.getElementById("sources");
+  printState.sourcesOpen = sources.open;
+  sources.open = true;
   // Lay out at the width of an A4 page, so what fits flows and only what is wider gets scaled.
   const view = document.getElementById("view");
   view.style.width = "700px";
@@ -3067,6 +3154,7 @@ addEventListener("beforeprint", () => {
 addEventListener("afterprint", () => {
   if (!printState) return;
   stepId = printState.stepId;
+  document.getElementById("sources").open = printState.sourcesOpen;
   document.body.classList.remove("printing");
   document.getElementById("view").style.width = "";
   printState = null;

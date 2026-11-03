@@ -49,7 +49,7 @@
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
 <aside class="side" id="side" inert>
   <div class="side-inner">
-    <div class="side-head"><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
+    <div class="side-head"><b id="sideTitle"></b><button id="sideWide">⤢</button><button id="sideClose" aria-label="Close">✕</button></div>
     <div class="panel" id="panel"></div>
   </div>
 </aside>
@@ -284,6 +284,8 @@ function refreshThreads() {
     if (busy) t.append(typingEl(busy));
     // Follow the conversation while you are at its end, as a chat does.
     if (end) t.scrollTop = t.scrollHeight;
+    const lbl = t.closest(".pb")?.querySelector(".fold .lbl");
+    if (lbl) lbl.dataset.n = msgs.length || "";
   });
   const fresh = freshReply && document.querySelector(`.msg[data-id="${CSS.escape(freshReply)}"]`);
   if (fresh) {
@@ -1146,12 +1148,35 @@ function closeSide() {
 
 // A panel with a conversation keeps the box's explanation at the top and the chat under it, each scrolling on its own,
 // so a long conversation never pushes the explanation away.
+// Narrow, either part folds away under its heading so the other gets the whole panel (one at a time; remembered).
+// Wide (⤢), the two sit side by side and nothing folds.
+let fold = ["info", "chat"].includes(store.get("planview.fold")) ? store.get("planview.fold") : "";
 function fillPanel(p, parts) {
+  p.classList.remove("fold-info", "fold-chat", "split");
   const i = parts.findIndex((x) => x?.classList?.contains("talk"));
-  if (i <= 0) return p.replaceChildren(...parts);
+  // Only a "your turn" line above the chat is no explanation to fold away.
+  if (i <= 0 || parts.slice(0, i).every((x) => x?.classList?.contains("turn"))) return p.replaceChildren(...parts);
   const info = el("div", "pinfo");
   info.append(...parts.slice(0, i));
-  p.replaceChildren(info, ...parts.slice(i));
+  const head = (which, label) => {
+    const b = el("button", "fold");
+    b.dataset.fold = which;
+    b.append(el("span", "chev", "▾"), el("span", "lbl", label));
+    b.onclick = () => {
+      fold = fold === which ? "" : which;
+      store.set("planview.fold", fold);
+      p.classList.toggle("fold-info", fold === "info");
+      p.classList.toggle("fold-chat", fold === "chat");
+    };
+    return b;
+  };
+  const a = el("div", "pcol pa"), b = el("div", "pcol pb");
+  a.append(head("info", t("foldInfo")), info);
+  b.append(head("chat", t("foldChat")), ...parts.slice(i));
+  p.classList.add("split");
+  p.classList.toggle("fold-info", fold === "info");
+  p.classList.toggle("fold-chat", fold === "chat");
+  p.replaceChildren(a, b);
   // Fade the bottom edge while there is more explanation to scroll to.
   const more = () => info.classList.toggle("more", info.scrollTop + info.clientHeight < info.scrollHeight - 4);
   info.onscroll = more;
@@ -2704,6 +2729,24 @@ window.__planview = {get plan() { return plan; }, selectStep, selectNode, render
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
+// ⤢ widens the panel (the picture stays in sight on the left) and puts the details beside the chat; again to go back.
+const wideBtn = document.getElementById("sideWide");
+const setWide = (on) => {
+  document.body.classList.toggle("side-wide", on);
+  wideBtn.textContent = on ? "⤡" : "⤢";
+  wideBtn.title = t(on ? "narrowPanel" : "widePanel");
+  wideBtn.setAttribute("aria-label", wideBtn.title);
+  setTimeout(() => {
+    scrollHints();
+    linkDrawer?.();
+  }, 320);
+};
+wideBtn.onclick = () => {
+  const on = !document.body.classList.contains("side-wide");
+  store.set("planview.wide", on ? "on" : "off");
+  setWide(on);
+};
+setWide(store.get("planview.wide") === "on");
 
 
 // A three-stop tour the first time someone opens planview in this browser; "?" shows it again.

@@ -473,22 +473,47 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .talk .thread{margin:0 0 10px}
-/* Side panel: the explanation on top, the chat filling the rest, each scrolling on its own; the box you type in at the bottom. */
+/* Side panel: details on top, the chat under them, each with a heading that folds it; the box you type in at the bottom. */
 .side-inner{display:flex;flex-direction:column}
 .side .panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:12px}
-.side .panel:has(>.talk){overflow:hidden}
-.side .panel>.pinfo{flex:0 1 auto;min-height:0;max-height:45%;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none}
-.side .panel>.pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
-.side .panel>.talk{flex:1 1 auto;min-height:180px;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:10px}
+.side .panel.split{overflow:hidden;gap:6px}
+.side .pcol{display:flex;flex-direction:column;min-height:0}
+.side .pa{flex:0 1 auto;max-height:45%}
+.side .pb{flex:1 1 auto}
+.side .pa .pinfo{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none}
+.side .pa .pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
+.side .pb .talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}
 .side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .side .talk .thread:empty{flex:0 0 auto;background:transparent;border-style:dashed}
 .side .composer{flex:none;padding-top:8px;border-top:1px solid var(--line)}
+.fold{display:flex;align-items:center;gap:6px;width:100%;border:0;border-radius:6px;background:transparent;padding:4px 2px;font-size:12px;font-weight:600;color:var(--muted);flex:none}
+.fold:hover{color:var(--text)}
+.fold .chev{display:inline-block;transition:transform .2s}
+.fold .lbl[data-n]:not([data-n=""])::after{content:" (" attr(data-n) ")";font-weight:400}
+.side .panel.fold-info .pa{flex:none;max-height:none}
+.side .panel.fold-info .pinfo,.side .panel.fold-chat .thread{display:none}
+.side .panel.fold-info .pa .chev,.side .panel.fold-chat .pb .chev{transform:rotate(-90deg)}
+.side .panel.fold-chat .pa{flex:1 1 auto;max-height:none}
+.side .panel.fold-chat .pb{flex:none}
+/* ⤢ wide: the picture keeps the left side; details and chat side by side, full height, nothing folded. */
+body.side-wide{--side-w:clamp(520px,62vw,1200px)}
+@media (min-width:820px){
+  body.side-wide .side .panel.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:20px}
+  body.side-wide .side .panel.split .pa{max-height:none;flex:none}
+  body.side-wide .side .panel.split .pinfo{display:block}
+  body.side-wide .side .panel.split .thread{display:flex}
+  body.side-wide .side .fold{pointer-events:none}
+  body.side-wide .side .fold .chev{display:none}
+}
+#sideWide{font-size:14px;line-height:1}
 @media (max-width:819px){
   .side-inner{display:block}
-  .side .panel,.side .panel:has(>.talk){display:block;overflow:visible}
-  .side .panel>.pinfo{max-height:none;overflow:visible;margin:0;padding:0}
+  .side .panel,.side .panel.split{display:block;overflow:visible}
+  .side .pa{max-height:none}
+  .side .pa .pinfo{overflow:visible;margin:0;padding:0}
   .side .talk .thread{overflow:visible}
   .side .composer{position:sticky;bottom:0;background:var(--card)}
+  body.side-wide .side-inner{max-height:100vh;height:100vh}
 }
 .talk .quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .talk .quick .qlabel{font-size:12px;color:var(--muted);margin-right:2px}

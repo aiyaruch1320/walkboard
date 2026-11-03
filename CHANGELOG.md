@@ -2,6 +2,7 @@
 
 ## 0.6.0
 
+- Safer under load and mistakes: writes to plan.json (`walkboard set`, switches on the page) take a lock, so two at once both land; a batch of messages counts as read only after `poll` has printed it, so a killed poll loses nothing (`--timeout s` for agents whose commands are cut off); a broken plan.json no longer stops the server; a deleted `.walkboard/` is put back so a second server never starts; exports drop the plan's `root`, links to local pages and anything in `.walkboard/`, and never write over plan.json.
 - **Export**: **⋮ → Export** in the top bar, or `walkboard export <dir> [--html file] [--no-code] [--with-chat]`, writes a read-only copy as one HTML file that opens anywhere offline (the code boxes point at included unless left out, the chat only when asked for, no token or server address, network blocked by its Content-Security-Policy); PDF goes through the browser's print window with a layout for paper: every step, every picture scaled to the page, then the boxes.
 - **Renamed from planview to Walkboard.** The skill and command are `/walkboard`, the CLI is `walkboard`, plans live in `~/.walkboard/`, defaults in `~/.walkboard/config.json`, and each plan keeps its server state in `.walkboard/` beside `plan.json`. To keep a plan's conversation from before, rename its `.planview/` folder to `.walkboard/`.
 - While the agent works on a message, the page shows typing dots where you asked and "Agent is answering you" in the top bar, with the minutes elapsed; after 10 minutes without a reply it says to check Claude Code.

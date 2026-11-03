@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
-import {savePlan} from "./edit.mjs";
+import {updatePlan} from "./edit.mjs";
 import {pageHtml, snapshot} from "./export.mjs";
 
 export const paths = (dir) => {
@@ -25,6 +25,9 @@ const iconsFile = new URL("./icons.mjs", import.meta.url);
 const glossaryFile = new URL("../assets/glossary.json", import.meta.url);
 
 const MAX_BODY = 64 * 1024;
+
+// The exported file is named after the plan's title (letters of any script, digits, dashes), else its folder.
+export const exportName = (plan, dir) => (String(plan?.title || "").normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60) || path.basename(dir)) + ".html";
 const sameKey = (v) => JSON.stringify(["kind", "text", "node", "step", "option", "criterion", "constraint"].map((k) => v[k] ?? null));
 
 // A torn or hand-edited line must not keep the server from starting.
@@ -49,6 +52,20 @@ function readJSON(file) {
     return {};
   }
 }
+
+// The plan as an object, or why it cannot be used (missing, unreadable, not JSON, not an object).
+function readPlan(file) {
+  try {
+    const plan = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (!plan || typeof plan !== "object" || Array.isArray(plan)) return {error: "plan.json is not a JSON object"};
+    return {plan};
+  } catch (e) {
+    return {error: `plan.json cannot be read: ${e.message}`};
+  }
+}
+
+// Text that is only spaces or invisible characters is no message.
+const blank = (t) => !String(t).replace(/[\u200B-\u200D\u2060\uFEFF]/g, "").trim();
 
 const alive = (pid) => {
   try {
@@ -97,19 +114,36 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   const agentState = () => broadcast("agent", {waiting: waiters.length});
   // Settings switched on the page never wake the agent; they ride along with the next real message.
   let changedSettings = null;
+  // Messages count as delivered only when the poll that took them says so (POST /api/ack). If it never does
+  // (killed by a timeout right after the server answered), they go back to the front of the queue for the next poll.
+  let inflight = null;
+  const requeue = () => {
+    if (!inflight) return;
+    clearTimeout(inflight.timer);
+    pending.unshift(...inflight.items);
+    changedSettings ||= inflight.settings;
+    inflight = null;
+  };
+  const ack = (ids) => {
+    if (!inflight || !inflight.items.every((i) => ids.includes(i.id))) return false;
+    clearTimeout(inflight.timer);
+    delivered += inflight.items.length;
+    fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
+    fs.writeFileSync(p.delivered, String(delivered));
+    broadcast("delivered", {ids: inflight.items.map((i) => i.id)});
+    inflight = null;
+    flush();
+    return true;
+  };
   const flush = () => {
-    while (pending.length && waiters.length) {
-      const items = pending.splice(0);
-      delivered += items.length;
-      fs.writeFileSync(p.delivered, String(delivered));
-      if (changedSettings) {
-        items.unshift({kind: "settings", ...changedSettings, id: crypto.randomUUID(), at: new Date().toISOString()});
-        changedSettings = null;
-      }
-      waiters.shift()(items);
-      broadcast("delivered", {ids: items.map((i) => i.id)});
-      agentState();
-    }
+    if (inflight || !pending.length || !waiters.length) return;
+    const items = pending.splice(0);
+    const settings = changedSettings;
+    changedSettings = null;
+    inflight = {items, settings, timer: setTimeout(requeue, 20_000)};
+    const out = settings ? [{kind: "settings", ...settings, id: crypto.randomUUID(), at: new Date().toISOString()}, ...items] : items;
+    waiters.shift()(out);
+    agentState();
   };
 
   const readBody = (req, cb) => {
@@ -121,17 +155,28 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     });
     req.on("end", () => {
       if (size > MAX_BODY) return cb(Object.assign(new Error("too large"), {status: 413}));
+      let v;
       try {
-        const v = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        v = JSON.parse(Buffer.concat(chunks).toString("utf8"));
         if (!v || typeof v !== "object" || Array.isArray(v)) throw new Error("not an object");
-        cb(null, v);
       } catch (e) {
-        cb(e);
+        return cb(e);
       }
+      cb(null, v);
     });
   };
 
-  const server = http.createServer((req, res) => {
+  // One bad request (a broken plan, an unreadable file) gets an error answer; it never takes the server down.
+  const safe = (res, fn) => (...args) => {
+    try {
+      fn(...args);
+    } catch (e) {
+      console.error(`walkboard: ${e.message}`);
+      if (!res.headersSent) res.writeHead(500, {"content-type": "text/plain; charset=utf-8"}).end(`walkboard: ${e.message}`);
+    }
+  };
+  const server = http.createServer((req, res) => safe(res, handle)(req, res));
+  function handle(req, res) {
     const url = new URL(req.url, "http://127.0.0.1");
     if (url.searchParams.get("token") !== token) return res.writeHead(403).end();
     const route = `${req.method} ${url.pathname}`;
@@ -146,17 +191,25 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(fs.readFileSync(glossaryFile));
     } else if (route === "GET /api/plan") {
       if (!fs.existsSync(p.plan)) return res.writeHead(404, {"content-type": "text/plain; charset=utf-8"}).end(`no plan.json in ${dir}`);
-      res.writeHead(200, {"content-type": "application/json; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(p.plan));
+      let body;
+      try {
+        body = fs.readFileSync(p.plan);
+      } catch (e) {
+        return res.writeHead(409, {"content-type": "text/plain; charset=utf-8"}).end(`plan.json cannot be read: ${e.code || e.message}`);
+      }
+      res.writeHead(200, {"content-type": "application/json; charset=utf-8", "cache-control": "no-store"}).end(body);
     } else if (route === "GET /api/source") {
-      const plan = readJSON(p.plan);
+      const {plan, error} = readPlan(p.plan);
+      if (error) return res.writeHead(409, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify({error}));
       const node = plan.nodes && Object.hasOwn(plan.nodes, url.searchParams.get("node") || "") ? plan.nodes[url.searchParams.get("node")] : null;
       const r = node?.file ? excerpt(plan, node.file, {base: dir, anchor: node.anchor}) : {error: "no file"};
       res.writeHead(r.error ? 404 : 200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify(r));
     } else if (route === "GET /api/export") {
       // The page's Export button: the same read-only file as `walkboard export`.
-      const plan = readJSON(p.plan);
+      const {plan, error} = readPlan(p.plan);
+      if (error) return res.writeHead(409, {"content-type": "text/plain; charset=utf-8"}).end(error);
       const {html} = snapshot(dir, plan, {code: url.searchParams.get("code") !== "0", chat: url.searchParams.get("chat") === "1"});
-      const name = `${path.basename(dir)}.html`;
+      const name = exportName(plan, dir);
       res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-disposition": `attachment; filename="${name.replace(/[^\w.-]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`}).end(html);
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
@@ -168,9 +221,12 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       streams.add(res);
       res.on("close", () => streams.delete(res));
     } else if (route === "POST /api/feedback" || route === "POST /api/reply") {
-      readBody(req, (err, v) => {
+      readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
-        if (err || typeof v.text !== "string" || !v.text.trim()) return res.writeHead(400).end("need a JSON object with text");
+        if (err || typeof v.text !== "string" || blank(v.text)) return res.writeHead(400).end("need a JSON object with text");
+        // "settings" is how the server itself reports switched settings; the page cannot send one.
+        if (route === "POST /api/feedback" && v.kind === "settings") return res.writeHead(400).end("kind settings is reserved");
+        ensureState();
         // A double click sends the same message twice; keep the first.
         const same = route === "POST /api/feedback" && recent.find((r) => Date.now() - r.t < 5000 && r.key === sameKey(v));
         if (same) return res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(same.item));
@@ -186,10 +242,15 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
           flush();
         }
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(item));
-      });
+      }));
+    } else if (route === "POST /api/ack") {
+      readBody(req, safe(res, (err, v) => {
+        if (err || !Array.isArray(v.ids)) return res.writeHead(400).end("need {ids: [...]}");
+        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({ok: ack(v.ids)}));
+      }));
     } else if (route === "POST /api/settings") {
       // Switches on the page change plan.json directly; the agent reads them there or with its next message.
-      readBody(req, (err, v) => {
+      readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         const s = {};
         if (typeof v?.teachBack === "boolean") s.teachBack = v.teachBack;
@@ -197,22 +258,23 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         // Design criteria weights: {criterion id: 0-3}.
         const w = v?.weights && typeof v.weights === "object" && !Array.isArray(v.weights) ? Object.entries(v.weights) : [];
         if (err || (!Object.keys(s).length && !w.length)) return res.writeHead(400).end('need teachBack (true|false), commit ("auto"|"suggest") or weights ({criterion: 0-3})');
-        let plan, before;
+        let plan;
         try {
-          before = fs.readFileSync(p.plan, "utf8");
-          plan = JSON.parse(before);
-        } catch {
-          return res.writeHead(409).end("plan.json cannot be read");
+          plan = updatePlan(p.plan, (plan) => {
+            if (!plan || typeof plan !== "object" || Array.isArray(plan)) throw Object.assign(new Error("plan.json is not a JSON object"), {status: 409});
+            const known = new Set((Array.isArray(plan.criteria) ? plan.criteria : []).map((c) => c?.id));
+            if (w.some(([id, n]) => !known.has(id) || !(Number.isInteger(n) && n >= 0 && n <= 3))) throw Object.assign(new Error("weights must be {criterion id: 0-3} for criteria in the plan"), {status: 400});
+            plan.settings = {...(plan.settings && typeof plan.settings === "object" && !Array.isArray(plan.settings) ? plan.settings : {}), ...s};
+            for (const [id, n] of w) for (const c of Array.isArray(plan.criteria) ? plan.criteria : []) if (c?.id === id) c.weight = n;
+            return plan;
+          });
+        } catch (e) {
+          return res.writeHead(e.status || 409, {"content-type": "text/plain; charset=utf-8"}).end(e.status ? e.message : `plan.json cannot be read: ${e.message}`);
         }
-        const known = new Set((Array.isArray(plan.criteria) ? plan.criteria : []).map((c) => c?.id));
-        if (w.some(([id, n]) => !known.has(id) || !(Number.isInteger(n) && n >= 0 && n <= 3))) return res.writeHead(400).end("weights must be {criterion id: 0-3} for criteria in the plan");
-        plan.settings = {...(plan.settings && typeof plan.settings === "object" && !Array.isArray(plan.settings) ? plan.settings : {}), ...s};
-        for (const [id, n] of w) for (const c of Array.isArray(plan.criteria) ? plan.criteria : []) if (c?.id === id) c.weight = n;
-        savePlan(p.plan, plan, before);
         changedSettings = {settings: plan.settings};
         if (Array.isArray(plan.criteria)) changedSettings.weights = Object.fromEntries(plan.criteria.filter((c) => c?.id).map((c) => [c.id, c.weight ?? 1]));
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({settings: plan.settings}));
-      });
+      }));
     } else if (route === "GET /api/poll") {
       let timer;
       const send = (items) => {
@@ -235,6 +297,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       res.on("close", drop);
       polls.add(res);
       res.on("close", () => polls.delete(res));
+      // A new poll while the last batch was never acknowledged: that poll died, so the batch goes out again.
+      requeue();
       waiters.push(send);
       agentState();
       flush();
@@ -243,11 +307,27 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } else {
       res.writeHead(404).end();
     }
-  });
+  }
 
   const heartbeat = setInterval(() => {
     for (const s of streams) s.write(": keep-alive\n\n");
   }, 25_000);
+
+  // If .walkboard/ is deleted under a running server (git clean, rm -rf), put it back, so `open` and `poll`
+  // keep finding this server instead of starting a second one that the open page would never talk to.
+  let info = null;
+  function ensureState() {
+    if (!info || fs.existsSync(p.server)) return;
+    fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
+    fs.writeFileSync(p.server, JSON.stringify(info), {mode: 0o600});
+    fs.writeFileSync(p.session, JSON.stringify({port: info.port, token}), {mode: 0o600});
+    if (!fs.existsSync(p.lock)) fs.writeFileSync(p.lock, String(process.pid), {mode: 0o600});
+  }
+  const stateCheck = setInterval(() => {
+    try {
+      ensureState();
+    } catch {}
+  }, 1000);
 
   let last = fs.existsSync(p.plan) ? fs.statSync(p.plan).mtimeMs : 0;
   fs.watchFile(p.plan, {interval: 300}, (cur) => {
@@ -262,6 +342,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     server.once("error", (e) => {
       if (e.code !== "EADDRINUSE" || !preferred) {
         clearInterval(heartbeat);
+        clearInterval(stateCheck);
         fs.unwatchFile(p.plan);
         fs.rmSync(p.lock, {force: true});
         return reject(e);
@@ -270,7 +351,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     });
     server.listen(preferred, "127.0.0.1");
     server.once("listening", () => {
-      const info = {port: server.address().port, token, pid: process.pid, dir};
+      info = {port: server.address().port, token, pid: process.pid, dir};
       fs.writeFileSync(p.server, JSON.stringify(info), {mode: 0o600});
       fs.writeFileSync(p.session, JSON.stringify({port: info.port, token}), {mode: 0o600});
       for (const f of [p.server, p.session]) fs.chmodSync(f, 0o600);
@@ -280,6 +361,9 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         close: () =>
           new Promise((done) => {
             clearInterval(heartbeat);
+            clearInterval(stateCheck);
+            if (inflight) clearTimeout(inflight.timer);
+            info = null;
             fs.unwatchFile(p.plan);
             // Tell waiting polls the server is going away on purpose, so they exit instead of retrying.
             for (const r of polls) if (!r.headersSent) r.writeHead(410, {"content-type": "text/plain"}).end("stopped");

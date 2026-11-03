@@ -92,7 +92,9 @@ test("pending feedback survives a restart, delivered feedback is not repeated", 
   const dir = planDir();
   const first = await startServer(dir);
   await post(first, "/api/feedback", {text: "one"});
-  assert.equal((await (await call(first, "/api/poll")).json()).length, 1);
+  const got = await (await call(first, "/api/poll")).json();
+  assert.equal(got.length, 1);
+  await post(first, "/api/ack", {ids: got.map((i) => i.id)});
   await post(first, "/api/feedback", {text: "two"});
   await first.close();
 
@@ -129,7 +131,12 @@ test("the page learns when the agent picks feedback up", async (t) => {
   let thread = await (await call(s, "/api/thread")).json();
   assert.equal(thread.items[0].delivered, false);
   assert.equal(thread.waiting, 0);
-  const ev = await nextEvent(s, "delivered", () => call(s, "/api/poll"));
+  // Picked up means acknowledged: a poll that dies before the agent reads it does not count.
+  const ev = await nextEvent(s, "delivered", async () => {
+    const got = await (await call(s, "/api/poll")).json();
+    assert.equal((await (await call(s, "/api/thread")).json()).items[0].delivered, false);
+    await post(s, "/api/ack", {ids: got.map((i) => i.id)});
+  });
   assert.deepEqual(ev.ids, [item.id]);
   thread = await (await call(s, "/api/thread")).json();
   assert.equal(thread.items[0].delivered, true);
@@ -257,4 +264,35 @@ test("design weights are saved from the page and reach the agent with its next m
   await post(s, "/api/feedback", {kind: "question", text: "?"});
   const [first] = await polled;
   assert.deepEqual(first.weights, {cost: 3});
+});
+
+test("a batch whose poll died before the ack goes out again", async (t) => {
+  const s = await startServer(planDir());
+  t.after(s.close);
+  await post(s, "/api/feedback", {text: "lost?"});
+  const first = await (await call(s, "/api/poll")).json();
+  const again = await (await call(s, "/api/poll")).json();
+  assert.deepEqual(again.map((i) => i.id), first.map((i) => i.id));
+  assert.equal((await post(s, "/api/ack", {ids: again.map((i) => i.id)})).status, 200);
+  assert.equal((await (await call(s, "/api/thread")).json()).items[0].delivered, true);
+});
+
+test("a plan.json that is not a plan answers 409 instead of stopping the server", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  for (const body of ["null", "{", "[]"]) {
+    fs.writeFileSync(path.join(dir, "plan.json"), body);
+    for (const route of ["/api/export", "/api/source?node=a"]) assert.equal((await call(s, route)).status, 409, `${body} ${route}`);
+  }
+  assert.equal((await call(s, "/api/status")).status, 200);
+});
+
+test("a deleted .walkboard folder is put back so no second server starts", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  fs.rmSync(path.join(dir, ".walkboard"), {recursive: true, force: true});
+  await new Promise((r) => setTimeout(r, 1300));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, ".walkboard", "server.json"), "utf8")).port, s.port);
 });

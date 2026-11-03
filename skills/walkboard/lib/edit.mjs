@@ -56,9 +56,40 @@ export function applySet(plan, ops) {
   return plan;
 }
 
-// Write plan.json the way it was written (compact stays compact), through a temporary file so a reader never sees half of it.
+// Write plan.json the way it was written (compact stays compact), through a temporary file of its own so a reader never sees half of it.
 export function savePlan(file, plan, before = "") {
   const indent = before.includes("\n ") || before.includes("\n\t") ? before.match(/\n([ \t]+)"/)?.[1] ?? 1 : before.trim() ? 0 : 1;
-  fs.writeFileSync(file + ".tmp", JSON.stringify(plan, null, indent) + "\n");
-  fs.renameSync(file + ".tmp", file);
+  const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(plan, null, indent) + "\n");
+  fs.renameSync(tmp, file);
+}
+
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// Read, change and write plan.json while holding a lock, so the page's switches and `walkboard set` never overwrite each other.
+// change(plan, before) returns the plan to save, or throws to leave the file as it was.
+export function updatePlan(file, change) {
+  const lock = file + ".lock";
+  for (let i = 0; ; i++) {
+    try {
+      fs.closeSync(fs.openSync(lock, "wx"));
+      break;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+      // A lock left by a writer that died is stale after a few seconds.
+      try {
+        if (Date.now() - fs.statSync(lock).mtimeMs > 5000) fs.rmSync(lock, {force: true});
+      } catch {}
+      if (i > 300) throw new Error(`plan.json is locked by another writer (${lock})`);
+      pause(10);
+    }
+  }
+  try {
+    const before = fs.readFileSync(file, "utf8");
+    const plan = change(JSON.parse(before), before);
+    savePlan(file, plan, before);
+    return plan;
+  } finally {
+    fs.rmSync(lock, {force: true});
+  }
 }

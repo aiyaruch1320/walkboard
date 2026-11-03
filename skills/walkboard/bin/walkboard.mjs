@@ -3,11 +3,11 @@ import fs from "node:fs";
 import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
-import {startServer, paths} from "../lib/server.mjs";
+import {startServer, paths, exportName} from "../lib/server.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
 import {knownIcon, iconNames} from "../lib/icons.mjs";
-import {parseSet, applySet, savePlan} from "../lib/edit.mjs";
+import {parseSet, applySet, updatePlan} from "../lib/edit.mjs";
 import {snapshot} from "../lib/export.mjs";
 
 const USAGE = `walkboard <command> [options]
@@ -17,7 +17,7 @@ const USAGE = `walkboard <command> [options]
                                 step:build status=review confirmed=true node:job status=done approved=true
                                 (targets: plan, step:, node:, constraint:, option:, criterion:, source:<id>)
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
-  poll   [dir] [--full]         wait for feedback from the page, print one JSON line per item, exit
+  poll   [dir] [--full] [--timeout s]   wait for feedback from the page, print one JSON line per item, exit ([] after s seconds)
   reply  [dir] [--node n] [--step s] [--option o [--criterion c]] <text>   show an agent reply on the page (or --dir d)
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
@@ -36,7 +36,8 @@ function parse(argv) {
     else if (a === "--full") flags.full = true;
     else if (a === "--no-code") flags.noCode = true;
     else if (a === "--with-chat") flags.withChat = true;
-    else if (a === "--html") flags.html = argv[++i];
+    else if (a === "--html") flags.html = argv[++i] ?? "";
+    else if (a === "--timeout") flags.timeout = argv[++i];
     else if (["--dir", "--node", "--step", "--option", "--criterion"].includes(a)) flags[a.slice(2)] = argv[++i];
     else rest.push(a);
   }
@@ -47,7 +48,7 @@ const [cmd, ...args] = process.argv.slice(2);
 const {flags, rest} = parse(args);
 // reply takes free text, so its first word is a dir only when that dir holds a plan.
 // set and reply take words after the folder, so the first word is the folder only when it holds a plan or looks like a path.
-const dirFirst = rest[0] && (!["reply", "set"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")) || (/^[./~]|\//.test(rest[0]) && !rest[0].includes("=")));
+const dirFirst = rest[0] && (!["reply", "set"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")) || (/^[./~]|\//.test(rest[0]) && !/[=\s]/.test(rest[0])));
 const dir = path.resolve(flags.dir ?? (dirFirst ? rest[0] : "."));
 const words = !flags.dir && dirFirst ? rest.slice(1) : rest;
 const p = paths(dir);
@@ -108,16 +109,23 @@ async function check() {
 
 async function set() {
   if (!fs.existsSync(p.plan)) fail(`no plan.json in ${dir}`);
-  const before = fs.readFileSync(p.plan, "utf8");
-  const plan = JSON.parse(before);
+  const ops = (() => {
+    try {
+      return parseSet(words);
+    } catch (e) {
+      fail(e.message);
+    }
+  })();
   try {
-    applySet(plan, parseSet(words));
+    updatePlan(p.plan, (plan) => {
+      applySet(plan, ops);
+      const problems = validate(plan);
+      if (problems.length) throw new Error("not saved:\n" + problems.map((t) => `- ${t}`).join("\n"));
+      return plan;
+    });
   } catch (e) {
     fail(e.message);
   }
-  const problems = validate(plan);
-  if (problems.length) fail("not saved:\n" + problems.map((t) => `- ${t}`).join("\n"));
-  savePlan(p.plan, plan, before);
   console.log("ok");
 }
 
@@ -144,6 +152,12 @@ async function open() {
 
 async function poll() {
   let gone = 0;
+  // --timeout N: give up after N seconds with [] (for agents whose commands are killed after a while).
+  const deadline = flags.timeout ? AbortSignal.timeout(Number(flags.timeout) * 1000) : null;
+  deadline?.addEventListener("abort", () => {
+    console.log("[]");
+    process.exit(0);
+  });
   const stopped = () => {
     console.error(`walkboard: the server for ${dir} was stopped`);
     console.log("[]");
@@ -156,13 +170,18 @@ async function poll() {
         if (!fs.existsSync(p.lock)) stopped();
         throw new Error("not running");
       }
-      const r = await fetch(`http://127.0.0.1:${s.port}/api/poll?token=${s.token}`);
+      const r = await fetch(`http://127.0.0.1:${s.port}/api/poll?token=${s.token}`, {signal: deadline?.signal});
       if (r.status === 410) stopped();
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const items = await r.json();
       gone = 0;
-      // One short line per item keeps what the agent reads small; --full adds ids, times and the view.
-      if (items.length) return console.log(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, ...rest}) => rest)(i))).join("\n"));
+      if (items.length) {
+        // One short line per item keeps what the agent reads small; --full adds ids, times and the view.
+        await new Promise((done) => process.stdout.write(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, ...rest}) => rest)(i))).join("\n") + "\n", done));
+        // Only now are they delivered: if this process is killed before here, the server hands them out again.
+        await fetch(`http://127.0.0.1:${s.port}/api/ack?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ids: items.map((i) => i.id)})}).catch(() => {});
+        return;
+      }
     } catch (e) {
       // Ride out a restart; give up if the server stays away.
       if (++gone > 15) fail(`server not reachable for ${dir} (${e.message}); run: walkboard open ${dir}`);
@@ -240,11 +259,17 @@ function exportPlan() {
   const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
   const problems = validate(plan);
   if (problems.length) fail("fix the plan first:\n" + problems.map((t) => `- ${t}`).join("\n"));
+  if (flags.html === "") fail("--html needs a file name, e.g. --html plan.html");
+  const out = path.resolve(flags.html || path.join(dir, exportName(plan, dir)));
+  // Never write over the plan, Walkboard's state or anything that is not an .html file.
+  if (!/\.html?$/i.test(out)) fail(`${out}: the file name must end in .html`);
+  if (out === path.resolve(p.plan) || out.split(path.sep).includes(".walkboard")) fail(`${out}: choose a file outside .walkboard and other than plan.json`);
   const {html, summary} = snapshot(dir, plan, {code: !flags.noCode, chat: !!flags.withChat});
-  const out = path.resolve(flags.html || path.join(dir, `${path.basename(dir)}.html`));
+  const missing = flags.noCode ? [] : checkEvidence(plan, dir);
   fs.writeFileSync(out, html);
   console.log(out);
   console.log(`${summary.steps} steps, ${summary.nodes} boxes; code from ${summary.files.length} files${summary.files.length ? ` (${summary.files.join(", ")})` : ""}; ${summary.chat ? `${summary.chat} chat messages` : "no chat"}`);
+  for (const m of missing) console.log(`left out: ${m}`);
 }
 
 const commands = {check, set, open, poll, reply, status, stop, serve, icons, export: exportPlan};

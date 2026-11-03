@@ -17,11 +17,11 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 
 | Part | What it does |
 |---|---|
-| Top bar (always visible) | ● agent listening now · ✎ agent is answering you · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also "💬 new from the agent" for unread replies and "✎ Plan changed" for what the agent changed (outlined until you press **Mark as seen**). |
+| Top bar (always visible) | ● agent listening now · ✎ agent is answering you · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also **💬** lists every conversation on the page, newest first (it turns orange with "new" when the agent has replied; click one to carry on), **◐ / ☀ / ☾** switches the theme (follow the system, light, dark; remembered in this browser), and "✎ Plan changed" shows what the agent changed (outlined until you press **Mark as seen**). |
 | Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages; each card says what the current choice means. Saved to the plan at once without waking the agent, which reads it before its next step. Defaults for every plan: `~/.planview/config.json`, e.g. `{"teachBack": true, "commit": "suggest"}`. |
 | Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ⏵ Play walks through the steps once. The address keeps the step, picture and box, so a reload or a shared link opens the same place. |
 | Step card | What the step does, its status and how we know it is done. When it is your turn, a purple bar opens the side panel. |
-| Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; a sheet from the bottom on narrow screens. **← name** at its top takes you back to the conversation you were in before, even one you closed; "Talk about the whole plan" lists the other conversations, newest first. |
+| Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; a sheet from the bottom on narrow screens. |
 | Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
 | Dotted words | Glossary: tap for a plain explanation (inside a box, hover; a tap opens the box). |
 | Mode pill | Next to the logo: plan, explain or design. Click it for one line on what this mode does; click again to close. |
@@ -44,7 +44,7 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 
 - **Still unclear · Go deeper** send at once.
 - **Ask** or **Propose** (add after a box, change it, remove it) choose what the text you type is sent as. The agent decides whether a proposal just corrects the picture, changes a plan not yet approved, or is drawn as a proposal. **Restate** appears when it is your turn (and on every stage in explain mode).
-- The first visit shows a three-stop tour; **?** lists the shortcuts (← → steps, Esc closes the panel, ⌘/Ctrl+Enter sends) and shows the tour again.
+- The first visit shows a three-stop tour; **?** lists the shortcuts (← → steps, Esc closes the panel, Enter sends, Shift+Enter starts a new line) and shows the tour again. In the side panel the conversation comes first and the box you type in stays at the bottom, as in a chat.
 - **Approve plan** lets the agent start building. Nothing is built before.
 - **Agent commits these, then goes on** / **I committed, go on** appear under the suggested commit message of a finished step when commits are only suggested; you can edit the message first. The agent waits for one of them before the next step.
 

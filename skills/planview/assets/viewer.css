@@ -89,9 +89,12 @@ body.side-open .side-inner{opacity:1;transform:none}
 .side-head b{flex:1;font-weight:500;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .side-head button{padding:2px 9px}
 #sideBack{max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--muted)}
-.recent{display:grid;gap:4px;margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
-.recent>b{font-size:13px;font-weight:500;color:var(--muted);margin-bottom:2px}
-.rtalk{display:grid;gap:1px;text-align:left;padding:6px 10px;border-radius:8px}
+.talksbtn{font-size:12.5px;padding:2px 10px;border-radius:999px}
+.talksbtn.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
+.toast.talkscard{padding:6px;max-height:60vh;overflow:auto;width:min(380px,calc(100vw - 32px))}
+.talklist{display:grid;gap:2px}
+.rtalk{display:grid;gap:1px;text-align:left;padding:6px 10px;border-radius:8px;border-color:transparent;background:transparent}
+.rtalk:hover{background:var(--you-bg)}
 .rtalk .rt{font-weight:500;font-size:13px}
 .rtalk .rm{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtalk.unread{border-color:var(--you-bd)}
@@ -467,6 +470,9 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.talk .thread{margin:0 0 10px}
+/* In the side panel the box you type in stays at the bottom, as in a chat. */
+.side .composer{position:sticky;bottom:0;z-index:1;background:var(--card);padding:10px 0 4px;margin-bottom:-4px;box-shadow:0 -10px 12px -10px rgba(0,0,0,.18)}
 .talk .quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .talk .quick .qlabel{font-size:12px;color:var(--muted);margin-right:2px}
 .talk .modes{display:inline-flex;margin-bottom:6px;border:1px solid var(--line);border-radius:8px;overflow:hidden}

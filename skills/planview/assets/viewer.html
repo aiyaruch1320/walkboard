@@ -13,6 +13,8 @@
   <div class="bar" id="bar">
     <button id="modePill" class="modepill" hidden></button>
     <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>planview</b></span>
+    <button id="talks" class="talksbtn" hidden></button>
+    <button id="theme" class="helpbtn"></button>
     <button id="help" class="helpbtn" aria-label="Help">?</button>
     <span class="conn off" id="conn"></span>
     <span id="barExtra"></span>
@@ -47,7 +49,7 @@
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
 <aside class="side" id="side" inert>
   <div class="side-inner">
-    <div class="side-head"><button id="sideBack" hidden>←</button><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
+    <div class="side-head"><b id="sideTitle"></b><button id="sideClose" aria-label="Close">✕</button></div>
     <div class="panel" id="panel"></div>
   </div>
 </aside>
@@ -55,8 +57,11 @@
 <script src="strings.js"></script>
 <script type="module">
 const params = new URLSearchParams(location.search);
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
 const token = params.get("token");
-if (["light", "dark"].includes(params.get("theme"))) document.documentElement.dataset.theme = params.get("theme");
 const served = location.protocol !== "file:" && token;
 const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
@@ -299,14 +304,6 @@ function refreshThreads() {
   renderBadges();
 }
 
-function openUnread() {
-  const m = unread()[0];
-  if (!m) return;
-  if (m.node) return selectNode(m.node, false);
-  selectStep(m.step || null);
-  openSide(m.step ? {kind: "step", id: m.step} : {kind: "plan"});
-}
-
 async function send(c, kind, text, extra = {}) {
   const body = {...extra, kind, text};
   if (c.node) body.node = c.node;
@@ -327,6 +324,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
   const pickKey = key + "|" + phase;
   let current = modes.includes(picked[pickKey]) ? picked[pickKey] : mode && modes.includes(mode) ? mode : modes[0];
   const box = el("div", "talk");
+  const comp = el("div", "composer");
   const ta = el("textarea");
   ta.dataset.key = key;
   ta.value = drafts[key] || "";
@@ -374,7 +372,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
       buttons.push(b);
       row.append(b);
     }
-    box.append(row);
+    comp.append(row);
   }
   // Proposing on a box: add something after it, change it, or remove it.
   const choose = el("div", "pchoose");
@@ -411,19 +409,26 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
       };
       seg.append(b);
     }
-    box.append(seg);
+    comp.append(seg);
   }
-  box.append(choose);
+  comp.append(choose);
   setMode(current);
   sendBtn.onclick = () => go(current, "");
   buttons.push(sendBtn);
-  ta.onkeydown = (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go(current, ""); };
+  // Enter sends, as in any chat; Shift+Enter starts a new line.
+  ta.onkeydown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
+    e.preventDefault();
+    go(current, "");
+  };
   const row = el("div", "send");
   row.append(note, sendBtn);
   const thr = el("div", "thread");
   thr.dataset.ctx = JSON.stringify(c);
   thr.dataset.empty = c.step && !c.node ? t("emptyStep", unit()) : t(c.node ? "emptyBox" : "emptyPlan");
-  box.append(ta, row, thr);
+  // Like a chat: the conversation first, what you type under it.
+  comp.append(ta, row);
+  box.append(thr, comp);
   return box;
 }
 
@@ -539,12 +544,7 @@ function renderBar() {
       extra.push(b);
     }
   }
-  const news = unread().length;
-  if (news) {
-    const b = el("button", "unread", t("newReplies", news));
-    b.onclick = openUnread;
-    extra.push(b);
-  }
+  renderTalksBtn();
   if ((plan.mode ?? "build") === "build" && !plan.approved && connected && steps().length) {
     const sent = approvePending();
     const b = el("button", "primary", sent ? t("approveSent") : "✓ " + t("approve"));
@@ -1097,9 +1097,7 @@ function renderDesignPanel() {
 
 let side = null;
 
-// Where you talked before, newest last, so ← in the panel (or the list in "the whole plan") takes you back.
 const sideKey = (c) => JSON.stringify([c.kind, c.id ?? null, c.option ?? null, c.criterion ?? null]);
-let sideBack = [], lastSide = null;
 
 function sideTitle(c) {
   const opt = options().find((o) => o.id === (c.option || c.id));
@@ -1116,12 +1114,7 @@ function sideTitle(c) {
 // The panel that holds a message's conversation.
 const sideOf = (m) => (m.node ? {kind: "node", id: m.node} : m.step ? {kind: "step", id: m.step} : m.option ? (m.criterion ? {kind: "cell", option: m.option, criterion: m.criterion} : {kind: "option", id: m.option}) : {kind: "plan"});
 
-function openSide(ctx, {back = false} = {}) {
-  const prev = side || lastSide;
-  if (!back && prev && sideKey(prev) !== sideKey(ctx)) {
-    sideBack = [...sideBack.filter((c) => sideKey(c) !== sideKey(prev) && sideKey(c) !== sideKey(ctx)), prev].slice(-10);
-  }
-  lastSide = null;
+function openSide(ctx) {
   side = ctx;
   if (ctx.kind !== "node") nodeId = null;
   else nodeId = ctx.id;
@@ -1130,6 +1123,8 @@ function openSide(ctx, {back = false} = {}) {
   document.body.classList.add("side-open");
   renderSide();
   highlight();
+  // Open on the latest message, as a chat does.
+  requestAnimationFrame(() => document.querySelector("#side .thread > .msg:last-child")?.scrollIntoView({block: "nearest"}));
   // Once the page column has narrowed, keep the box you clicked in sight.
   setTimeout(() => {
     scrollHints();
@@ -1138,7 +1133,6 @@ function openSide(ctx, {back = false} = {}) {
 }
 
 function closeSide() {
-  lastSide = side;
   side = null;
   nodeId = null;
   document.getElementById("side").inert = true;
@@ -1149,13 +1143,6 @@ function closeSide() {
 
 function renderSide() {
   if (!side) return;
-  const backBtn = document.getElementById("sideBack");
-  const to = sideBack.at(-1);
-  backBtn.hidden = !to;
-  if (to) {
-    backBtn.textContent = "← " + sideTitle(to);
-    backBtn.title = t("backTo", sideTitle(to));
-  }
   const title = document.getElementById("sideTitle");
   const p = document.getElementById("panel");
   if (side.kind === "node") return renderNodePanel(side.id);
@@ -1189,24 +1176,6 @@ function renderSide() {
     const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() && steps().length ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
     parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
-    // Every other conversation on the page, newest first, one click away.
-    const latest = new Map();
-    for (const m of thread) if (m.kind !== "settings") {
-      const c = sideOf(m);
-      if (c.kind !== "plan") latest.set(sideKey(c), {c, m});
-    }
-    const recent = [...latest.values()].reverse().slice(0, 8);
-    if (recent.length) {
-      const list = el("div", "recent");
-      list.append(el("b", null, t("recentTalks")));
-      for (const {c, m} of recent) {
-        const row = el("button", "rtalk" + (unread().some((u) => sideKey(sideOf(u)) === sideKey(c)) ? " unread" : ""));
-        row.append(el("span", "rt", sideTitle(c)), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 70)));
-        row.onclick = () => openSide(c);
-        list.append(row);
-      }
-      parts.push(list);
-    }
     p.replaceChildren(...parts);
   }
   refreshThreads();
@@ -2718,16 +2687,9 @@ window.__planview = {get plan() { return plan; }, selectStep, selectNode, render
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
-document.getElementById("sideBack").onclick = () => {
-  const to = sideBack.pop();
-  if (to) openSide(to, {back: true});
-};
+
 
 // A three-stop tour the first time someone opens planview in this browser; "?" shows it again.
-const store = {
-  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
-};
 function startTour() {
   const x = plan?.mode === "explain" ? "x" : "";
   const stops = (isDesign() ? [["#view", "tour1d"], ["#tabs", "tour2d"], ["#compare .cmp", "tour3d"]] : [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]])
@@ -2804,6 +2766,72 @@ function showCard(anchor, cls, ...parts) {
   box.onclick = (ev) => ev.stopPropagation();
   box.hidden = false;
 }
+
+// Every conversation on the page in one list under 💬, newest first; new replies first in line and marked.
+function conversations() {
+  const latest = new Map();
+  thread.forEach((m) => m.kind !== "settings" && latest.set(sideKey(sideOf(m)), {c: sideOf(m), m}));
+  return [...latest.values()].reverse();
+}
+
+function renderTalksBtn() {
+  const b = document.getElementById("talks");
+  const all = conversations(), news = unread().length;
+  b.hidden = !all.length;
+  b.className = "talksbtn" + (news ? " unread" : "");
+  b.textContent = news ? t("talksNew", news) : t("talksN", all.length);
+  b.title = t("talksTip");
+}
+
+function goTalk(c) {
+  document.getElementById("toast").hidden = true;
+  if (c.kind === "node") {
+    if (!document.querySelector(`#view [data-id="${CSS.escape(c.id)}"]`)) {
+      const v = plan.views.find((x) => KINDS[x.kind]?.refs(x).includes(c.id));
+      if (v) {
+        viewId = v.id;
+        renderView();
+      }
+    }
+    return selectNode(c.id, false);
+  }
+  if (c.kind === "step") selectStep(c.id);
+  openSide(c);
+}
+
+document.getElementById("talks").onclick = (e) => {
+  e.stopPropagation();
+  const isNew = (c) => unread().some((u) => sideKey(sideOf(u)) === sideKey(c));
+  const list = conversations().sort((a, b) => isNew(b.c) - isNew(a.c));
+  const ul = el("div", "talklist");
+  for (const {c, m} of list) {
+    const row = el("button", "rtalk" + (isNew(c) ? " unread" : ""));
+    row.append(el("span", "rt", sideTitle(c)), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 80)));
+    row.onclick = () => goTalk(c);
+    ul.append(row);
+  }
+  showCard(e.currentTarget, "talkscard", ul);
+};
+
+// Light, dark, or follow the system; remembered in this browser.
+const THEMES = ["auto", "light", "dark"];
+let theme = ["light", "dark"].includes(params.get("theme")) ? params.get("theme") : store.get("planview.theme") || "auto";
+function applyTheme() {
+  if (theme === "auto") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  const b = document.getElementById("theme");
+  b.textContent = {auto: "◐", light: "☀", dark: "☾"}[theme];
+  b.title = t("themeTip", t("theme_" + theme));
+  b.setAttribute("aria-label", b.title);
+}
+document.getElementById("theme").onclick = (e) => {
+  e.stopPropagation();
+  theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+  store.set("planview.theme", theme);
+  applyTheme();
+  requestAnimationFrame(() => linkDrawer?.());
+};
+applyTheme();
 
 // The mode pill says which mode this page is in; clicking it says, in one line, what this mode does.
 document.getElementById("modePill").onclick = (e) => {

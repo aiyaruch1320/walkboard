@@ -277,6 +277,17 @@ body.side-open .side-inner{opacity:1;transform:none}
 /* data model */
 .er{position:relative;display:grid;grid-auto-columns:max-content;gap:30px 110px;align-items:start;padding:10px 6px 14px;min-width:max-content}
 .ertable{background:var(--card);border:1.5px solid var(--line);border-radius:10px;min-width:220px;cursor:pointer;overflow:hidden}
+/* Tables placed by hand: each at its own x, y. Groups are dashed frames behind their tables, moved by their label. */
+.er{z-index:0}
+.er.free{display:block}
+.er.free>.ertable{position:absolute;margin:0}
+.er>.ertable{position:relative;z-index:1}
+.er.grouped{row-gap:64px;padding-top:44px;padding-left:24px}
+.erframe{position:absolute;z-index:0;border:1.5px dashed var(--line);border-radius:14px;background:color-mix(in srgb,var(--code) 45%,transparent)}
+.erframe-label{position:absolute;left:12px;top:7px;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+@media (pointer:fine) and (min-width:820px){body:not(.snapshot) .erhead,body:not(.snapshot) .erframe-label{cursor:grab}}
+.er.dragging,.er.dragging .erhead,.er.dragging .erframe-label{cursor:grabbing;user-select:none}
+.erreset{display:block;margin:0 0 6px auto}
 .ertable.active{outline:2px solid var(--text);outline-offset:2px}
 .g-q.active{border-color:var(--text);background:var(--you-bg)}
 .erhead{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:7px 10px;background:var(--code);border-bottom:1px solid var(--line)}

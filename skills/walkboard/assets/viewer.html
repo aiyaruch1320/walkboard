@@ -2172,13 +2172,128 @@ function renderDataModel(v) {
     return (level[tb.node] = refs.length ? 1 + Math.max(...refs.map((x) => lv(x, seen))) : 0);
   };
   tables.forEach((tb) => lv(tb));
+  // Groups frame tables that belong together; in the automatic layout a group's tables stack in one column.
+  const frameDefs = (v.groups || []).filter((g) => g?.label && Array.isArray(g.tables));
+  const groupOf = {};
+  frameDefs.forEach((g, i) => g.tables.forEach((id) => level[id] != null && groupOf[id] == null && (groupOf[id] = i)));
+  frameDefs.forEach((g, i) => {
+    const ids = g.tables.filter((id) => groupOf[id] === i);
+    const m = Math.min(...ids.map((id) => level[id]));
+    ids.forEach((id) => (level[id] = m));
+  });
+  const ordered = [];
+  for (const tb of tables) if (!ordered.includes(tb)) ordered.push(...(groupOf[tb.node] == null ? [tb] : tables.filter((x) => groupOf[x.node] === groupOf[tb.node])));
+  if (frameDefs.length) grid.classList.add("grouped");
+
+  // Moving tables: the automatic layout until the first drag, then every table at its own x, y, saved in plan.json.
+  const cards = () => [...grid.querySelectorAll(":scope > .ertable")];
+  const canMove = () => !snapshot && served && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
+  let free = false, dragged = false, keySave = null;
+  const fit = () => {
+    grid.style.width = Math.max(...cards().map((c) => c.offsetLeft + c.offsetWidth)) + 40 + "px";
+    grid.style.height = Math.max(...cards().map((c) => c.offsetTop + c.offsetHeight)) + 30 + "px";
+  };
+  const freeze = () => {
+    if (free) return;
+    const at = cards().map((c) => [c, v.layout?.[c.dataset.id] || {x: c.offsetLeft, y: c.offsetTop}]);
+    free = true;
+    grid.classList.add("free");
+    for (const [c, q] of at) {
+      c.style.left = q.x + "px";
+      c.style.top = q.y + "px";
+    }
+    fit();
+  };
+  const save = () => {
+    // The picture starts at its top left corner: no empty band left where tables used to be.
+    const at = cards().map((c) => [c, c.offsetLeft, c.offsetTop]);
+    const dx = Math.min(...at.map((p) => p[1])) - (frameDefs.length ? 24 : 6), dy = Math.min(...at.map((p) => p[2])) - (frameDefs.length ? 44 : 10);
+    if (dx || dy) shift(at.map(([c, x, y]) => [c, x - dx, y - dy]), 0, 0);
+    const positions = Object.fromEntries(cards().map((c) => [c.dataset.id, {x: c.offsetLeft, y: c.offsetTop}]));
+    v.layout = positions;
+    reset.hidden = false;
+    fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
+  };
+  const shift = (list, dx, dy) => {
+    for (const [c, x, y] of list) {
+      c.style.left = Math.max(0, x + dx) + "px";
+      c.style.top = Math.max(0, y + dy) + "px";
+    }
+    fit();
+    draw();
+  };
+  function movable(card, handle, members) {
+    handle.addEventListener("pointerdown", (e) => {
+      if (!canMove() || e.button !== 0) return;
+      const sx = e.clientX, sy = e.clientY;
+      let start = null;
+      handle.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        if (!start) {
+          if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
+          freeze();
+          start = members().map((c) => [c, c.offsetLeft, c.offsetTop]);
+          grid.classList.add("dragging");
+        }
+        shift(start, ev.clientX - sx, ev.clientY - sy);
+      };
+      const up = () => {
+        for (const [n, fn] of [["pointermove", move], ["pointerup", up], ["pointercancel", up]]) handle.removeEventListener(n, fn);
+        grid.classList.remove("dragging");
+        if (!start) return;
+        // The click that ends a drag does not open the table.
+        dragged = true;
+        setTimeout(() => (dragged = false));
+        save();
+      };
+      for (const [n, fn] of [["pointermove", move], ["pointerup", up], ["pointercancel", up]]) handle.addEventListener(n, fn);
+    });
+    if (!card) return;
+    // Arrow keys move a focused table (Shift: further); Enter still opens it.
+    card.addEventListener("keydown", (e) => {
+      const d = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[e.key];
+      if (!d || !canMove() || e.altKey || e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      freeze();
+      const k = e.shiftKey ? 40 : 10;
+      shift([[card, card.offsetLeft, card.offsetTop]], d[0] * k, d[1] * k);
+      clearTimeout(keySave);
+      keySave = setTimeout(save, 500);
+    });
+    if (canMove()) handle.title = t("dragTip");
+  }
+  const reset = el("button", "talklink erreset", "↺ " + t("autoLayout"));
+  reset.hidden = !v.layout || !canMove();
+  reset.onclick = () => {
+    delete v.layout;
+    fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions: null})}).catch(() => {});
+    renderView();
+  };
+  const frames = frameDefs.map((g, i) => {
+    const f = el("div", "erframe"), label = el("span", "erframe-label", g.label);
+    f.append(label);
+    movable(null, label, () => cards().filter((c) => groupOf[c.dataset.id] === i));
+    grid.append(f);
+    return [f, i];
+  });
+  const placeFrames = () => {
+    for (const [f, i] of frames) {
+      const members = cards().filter((c) => groupOf[c.dataset.id] === i);
+      f.hidden = !members.length;
+      if (!members.length) continue;
+      const l = Math.min(...members.map((c) => c.offsetLeft)), tp = Math.min(...members.map((c) => c.offsetTop));
+      const r = Math.max(...members.map((c) => c.offsetLeft + c.offsetWidth)), b = Math.max(...members.map((c) => c.offsetTop + c.offsetHeight));
+      Object.assign(f.style, {left: l - 14 + "px", top: tp - 32 + "px", width: r - l + 28 + "px", height: b - tp + 46 + "px"});
+    }
+  };
   const rows = {};
-  for (const tb of tables) {
+  for (const tb of ordered) {
     const card = anchored(tb.node, el("div", "ertable"));
     card.dataset.id = tb.node;
     card.tabIndex = 0;
     card.setAttribute("role", "button");
-    card.onclick = () => selectNode(tb.node);
+    card.onclick = () => !dragged && selectNode(tb.node);
     const head = el("div", "erhead");
     const ic = iconEl(plan.nodes[tb.node] || {}, tb.node);
     if (ic) head.append(ic);
@@ -2193,6 +2308,7 @@ function renderDataModel(v) {
       ul.append(li);
     }
     card.append(head, ul);
+    movable(card, head, () => [card]);
     card.style.gridColumn = String(level[tb.node] + 1);
     card.style.gridRow = String((rows[level[tb.node]] = (rows[level[tb.node]] || 0) + 1));
     grid.append(card);
@@ -2220,6 +2336,8 @@ function renderDataModel(v) {
   const svg = linkLayer(grid);
   const row = (key) => grid.querySelector(`[data-col="${CSS.escape(key)}"]`)?.getBoundingClientRect();
   const draw = () => {
+    if (v.layout && !free) freeze();
+    placeFrames();
     const base = svg.clear();
     for (const r of rels) {
       const a = row(r.from), b = row(r.to);
@@ -2252,7 +2370,11 @@ function renderDataModel(v) {
   const scroll = el("div", "scroll");
   scroll.append(grid);
   const n = Object.values(groups).reduce((a, x) => a + x.length, 0);
-  if (!n) return scroll;
+  if (!n) {
+    const wrap = el("div");
+    wrap.append(reset, scroll);
+    return wrap;
+  }
   const kept = tables.flatMap((tb) => (tb.columns || []).filter((c) => c?.copy && c.keep)).length;
   const sum = el("div", "ersum");
   sum.append(el("span", null, t("erCopies", n, kept)));
@@ -2264,7 +2386,7 @@ function renderDataModel(v) {
     sum.append(chip);
   }
   const wrap = el("div");
-  wrap.append(sum, scroll);
+  wrap.append(sum, reset, scroll);
   return wrap;
 }
 

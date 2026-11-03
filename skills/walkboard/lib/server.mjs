@@ -275,6 +275,29 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         if (Array.isArray(plan.criteria)) changedSettings.weights = Object.fromEntries(plan.criteria.filter((c) => c?.id).map((c) => [c.id, c.weight ?? 1]));
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({settings: plan.settings}));
       }));
+    } else if (route === "POST /api/layout") {
+      // Tables dragged on a data model picture: {view, positions: {table: {x, y}}}, or positions null to lay it out again.
+      // Saved in plan.json so exports and other browsers keep it; the agent is not told, it is only arrangement.
+      readBody(req, safe(res, (err, v) => {
+        if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
+        const pos = v?.positions;
+        const ok = (q) => q && typeof q === "object" && [q.x, q.y].every((n) => Number.isFinite(n) && n >= 0 && n <= 20000);
+        if (err || typeof v?.view !== "string" || !(pos === null || (pos && typeof pos === "object" && !Array.isArray(pos) && Object.values(pos).every(ok))))
+          return res.writeHead(400).end('need {"view": id, "positions": {table: {"x", "y"}} or null}');
+        try {
+          updatePlan(p.plan, (plan) => {
+            const view = Array.isArray(plan?.views) ? plan.views.find((x) => x?.id === v.view) : null;
+            if (!view || view.kind !== "datamodel") throw Object.assign(new Error(`no data model view "${v.view}"`), {status: 400});
+            const tables = new Set((Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
+            if (pos === null) delete view.layout;
+            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => tables.has(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y)}]));
+            return plan;
+          });
+        } catch (e) {
+          return res.writeHead(e.status || 409, {"content-type": "text/plain; charset=utf-8"}).end(e.status ? e.message : `plan.json cannot be read: ${e.message}`);
+        }
+        res.writeHead(200, {"content-type": "application/json"}).end("{}");
+      }));
     } else if (route === "GET /api/poll") {
       let timer;
       const send = (items) => {

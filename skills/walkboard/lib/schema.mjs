@@ -70,10 +70,27 @@ const SHAPES = {
   decision: ["nodes", "edges"],
   impact: ["nodes", "edges"],
   timeline: ["lanes", "lanes.*.events", "marks"],
-  datamodel: ["tables", "tables.*.columns", "relations"],
+  datamodel: ["tables", "tables.*.columns", "relations", "groups", "groups.*.tables"],
   transform: ["stages", "stages.*.columns", "stages.*.rows", "stages.*.rows.*", "stages.*.notes"],
   diff: [],
 };
+
+// Groups frame tables that belong together; layout is where the user dragged them (written by the page, not by the agent).
+function groupProblems(v) {
+  const tables = new Set(list(v.tables).map((tb) => tb?.node));
+  const seen = new Map(), out = [];
+  list(v.groups).forEach((g, i) => {
+    if (!isObj(g) || !TEXT(g.label) || !g.label) return out.push(`groups[${i}] needs a label and tables: {"label": "…", "tables": ["…"]}`);
+    for (const id of list(g.tables)) {
+      if (!tables.has(id)) out.push(`groups[${i}] "${g.label}": no table "${id}" in this view`);
+      else if (seen.has(id)) out.push(`table "${id}" is in two groups ("${seen.get(id)}" and "${g.label}")`);
+      else seen.set(id, g.label);
+    }
+  });
+  if (v.layout != null && (!isObj(v.layout) || !Object.values(v.layout).every((q) => isObj(q) && Number.isFinite(q.x) && Number.isFinite(q.y))))
+    out.push('layout is written by the page: {table: {"x": n, "y": n}}');
+  return out;
+}
 
 function shapeProblems(v) {
   const out = [];
@@ -154,7 +171,8 @@ export const KINDS = {
       const columns = list(v.tables).flatMap((tb) => list(tb?.columns).filter(isObj).map((c) => [tb.node, c]));
       return [...columns.filter(([, c]) => c.ref || c.copy).flatMap(([t, c]) => [...(c.ref ? [[`${t}.${c.name}`, c.ref]] : []), ...(c.copy ? [[`${t}.${c.name}`, c.copy]] : [])]), ...list(v.relations).filter(isObj).map((r) => [r.from, r.to])]
         .flatMap(([a, b]) => [a, b]).filter((k) => !cols.has(k)).map((k) => `no column "${k}" (use table.column)`)
-        .concat(columns.filter(([, c]) => c.key != null && typeof c.key !== "string").map(([t, c]) => `column ${t}.${c.name}: key must be text such as "pk" or "fk"`));
+        .concat(columns.filter(([, c]) => c.key != null && typeof c.key !== "string").map(([t, c]) => `column ${t}.${c.name}: key must be text such as "pk" or "fk"`))
+        .concat(groupProblems(v));
     },
   },
   diff: {

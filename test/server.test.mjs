@@ -296,3 +296,18 @@ test("a deleted .walkboard folder is put back so no second server starts", async
   await new Promise((r) => setTimeout(r, 1300));
   assert.equal(JSON.parse(fs.readFileSync(path.join(dir, ".walkboard", "server.json"), "utf8")).port, s.port);
 });
+
+test("dragged tables are saved in the view, and cleared again", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", views: [{id: "d", kind: "datamodel", tables: [{node: "a", columns: [{name: "id"}]}]}, {id: "f", kind: "flow", lanes: []}], nodes: {a: {name: "A"}}};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const read = () => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[0].layout;
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: 10.4, y: 20}, ghost: {x: 1, y: 1}}})).status, 200);
+  assert.deepEqual(read(), {a: {x: 10, y: 20}});
+  assert.equal((await post(s, "/api/layout", {view: "f", positions: {}})).status, 400);
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: -5, y: 0}}})).status, 400);
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: null})).status, 200);
+  assert.equal(read(), undefined);
+});

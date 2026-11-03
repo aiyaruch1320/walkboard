@@ -251,3 +251,13 @@ test("blank titles, empty list items and non-text column keys are reported, not 
   assert.match(out, /column a\.id: key must be text/);
   assert.doesNotMatch(out, /undefined/);
 });
+
+test("data model groups name tables of the view, each in one group", () => {
+  const p = {...base(), views: [{id: "d", kind: "datamodel", tables: [{node: "a", columns: []}, {node: "b", columns: []}],
+    groups: [{label: "One", tables: ["a"]}, {label: "Two", tables: ["a", "zz"]}, {tables: ["b"]}], layout: {a: {x: 1}}}]};
+  const out = validate(p).join("\n");
+  assert.match(out, /table "a" is in two groups/);
+  assert.match(out, /no table "zz"/);
+  assert.match(out, /groups\[2\] needs a label/);
+  assert.match(out, /layout is written by the page/);
+});

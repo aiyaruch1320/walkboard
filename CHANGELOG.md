@@ -2,6 +2,8 @@
 
 ## 0.6.0
 
+- Data model pictures: drag a table by its title, or a group by its label, and the place is saved in plan.json (exports and other browsers keep it; the agent is not woken); arrow keys move a selected table; **Lay out automatically** puts everything back. `groups` frame tables that belong together; ask the agent to group them. Columns that point at another table show FK, beside PK for a shared key; a line between stacked tables loops beside them.
+- Chat opens on the newest message and stays there when unfolded, widened or resized, until you scroll up.
 - Design pages: every guess has **Confirm** and **Not true**; a constraint can name the criteria it decides (`affects`), which show ❓ until it is confirmed; a cell can show the figure behind its rating (`value`, e.g. a monthly price); options that fail a must show ✗ on their tab; a table's panel lists the columns it stores again and which are kept on purpose.
 - PDF: a design opens with the choice (or recommendation) and why, why not the others and which boxes are guesses, then the comparison with weights as numbers; journeys print as numbered stops; explanations print the cited lines; an exported file with chat prints the conversation.
 - Side panel: approving is sent once from either button; your turn and the suggested commits sit with the chat; the panel follows the agent to its next step; ⤢ keeps your place in the chat and is gone on phones, where the panel is a sheet with a grabber and a dimmed page behind it.

@@ -2955,6 +2955,79 @@ document.getElementById("talks").onclick = (e) => {
   showCard(e.currentTarget, "talkscard", ul);
 };
 
+// Printing (PDF) lays out the whole plan, not just what is on screen: every step, every picture one after another, then the boxes.
+// Pictures are drawn at full size, their lines drawn, and only then scaled down to the page width, so lines and boxes stay together.
+let printState = null;
+addEventListener("beforeprint", () => {
+  if (!plan || printState) return;
+  printState = {stepId, theme: document.documentElement.dataset.theme};
+  stepId = null;
+  document.documentElement.dataset.theme = "light";
+  document.body.classList.add("printing");
+  linkDrawer = null;
+  pictureHook = null;
+  linkObserver?.disconnect();
+  linkObserver = null;
+  const parts = [];
+  if (steps().length) {
+    const ol = el("ol", "psteps");
+    for (const st of steps()) {
+      const li = el("li");
+      li.append(el("b", null, st.title), st.status ? el("span", "pst", " · " + t("sb_" + st.status)) : "");
+      if (st.detail) li.append(richEl("p", null, st.detail));
+      if (st.done) li.append(richEl("p", "meta", t("doneWhen") + st.done));
+      ol.append(li);
+    }
+    parts.push(el("h2", "ph", t(plan.mode === "explain" ? "printStages" : "printSteps")), ol);
+  }
+  const pics = [];
+  for (const v of plan.views) {
+    const box = el("section", "pview");
+    box.append(el("h2", "ph", v.title || v.id));
+    let pic;
+    try {
+      pic = VIEWS[v.kind] ? VIEWS[v.kind].render(v) : el("p", null, t("cannotDraw", v.kind));
+    } catch (e) {
+      pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
+    }
+    box.append(pic);
+    parts.push(box);
+    pics.push(box);
+  }
+  const dl = el("dl", "pnodes");
+  for (const [id, n] of Object.entries(plan.nodes)) {
+    if (!n) continue;
+    dl.append(el("dt", null, `${n.name || id}${n.what ? " — " + n.what : ""}`));
+    const dd = el("dd");
+    for (const k of ["in", "out"]) if (n[k]) dd.append(richEl("p", null, `${t(k)}: ${n[k]}`));
+    if (n.why) dd.append(richEl("p", null, n.why));
+    if (n.file) dd.append(el("p", "meta", n.file));
+    dl.append(dd);
+  }
+  parts.push(el("h2", "ph", t("printBoxes")), dl);
+  // Lay out at the width of an A4 page, so what fits flows and only what is wider gets scaled.
+  const view = document.getElementById("view");
+  view.style.width = "700px";
+  view.replaceChildren(...parts);
+  linkDrawer?.();
+  linkObserver?.disconnect();
+  linkObserver = null;
+  for (const box of pics) {
+    const pic = box.lastElementChild, w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
+    if (w > 702) pic.style.zoom = String(700 / w);
+  }
+});
+addEventListener("afterprint", () => {
+  if (!printState) return;
+  stepId = printState.stepId;
+  if (printState.theme) document.documentElement.dataset.theme = printState.theme;
+  else delete document.documentElement.dataset.theme;
+  document.body.classList.remove("printing");
+  document.getElementById("view").style.width = "";
+  printState = null;
+  renderView();
+});
+
 // ⤓ Export: a one-file copy to send (with or without the code and the chat), or a PDF through the browser's print window.
 const exportBtn = document.getElementById("exportBtn");
 exportBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"/></svg>';

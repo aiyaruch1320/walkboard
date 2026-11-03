@@ -636,3 +636,22 @@ body.snapshot:not(.with-chat) .talklink,body.snapshot:not(.with-chat) #planTalk,
 body.snapshot:not(.with-chat) .side .pa{max-height:none;flex:1 1 auto}
 body.snapshot .wbtn{pointer-events:none}
 .conn.snap{border-color:var(--line);color:var(--muted)}
+/* Printing (PDF): the whole plan on paper, none of the controls. */
+@page{size:A4;margin:12mm}
+@media print{
+  body{background:#fff}
+  .bar,.stepnav,#stepcard,.tabs,.legendbox,.side,.foot,.badges,.settings,#banner,#problems,#toast,#tip,.tour,.scrollhint,#proposals button,#constraints button,.cmpnote button,.wbtn,.count,#exportBtn{display:none!important}
+  .layout{display:block}
+  main{max-width:none;padding:0}
+  .scroll{overflow:visible!important}
+  details#sources>*{display:block}
+  .ph{font-size:15px;font-weight:600;margin:18px 0 8px;break-after:avoid}
+  .pview{break-inside:avoid;margin:0 0 14px}
+  .psteps{padding-left:20px;margin:0}
+  .psteps li{margin:0 0 8px;break-inside:avoid}
+  .psteps p{margin:2px 0}
+  .pnodes dt{font-weight:600;margin-top:8px;break-after:avoid}
+  .pnodes dd{margin:0 0 0 14px}
+  .pnodes p{margin:1px 0;font-size:12.5px}
+  .node,.ertable,.stage{break-inside:avoid}
+}

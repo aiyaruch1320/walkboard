@@ -1,0 +1,72 @@
+{
+ "title": "Connect two AWS accounts' VPCs",
+ "goal": "Let an app in account A call an app in account B over a private network (made-up example)",
+ "mode": "design",
+ "settings": {"commit": "suggest"},
+ "constraints": [
+  {"id": "region", "text": "Both VPCs are in the same region", "confirmed": true},
+  {"id": "twoway", "text": "Each side must be able to call the other", "confirmed": false, "affects": ["twoway"]},
+  {"id": "count", "text": "No more than 3 VPCs within a year", "confirmed": false, "affects": ["scale"]}
+ ],
+ "options": [
+  {"id": "peering", "title": "VPC Peering", "summary": "A direct 1:1 link between the two VPCs", "view": "v-peering", "recommended": true, "why": "Cheapest and simplest for two VPCs that both call each other; move to Transit Gateway past 3-4 VPCs"},
+  {"id": "tgw", "title": "Transit Gateway", "summary": "A hub every VPC attaches to, shared across accounts with AWS RAM", "view": "v-tgw"},
+  {"id": "privatelink", "title": "PrivateLink", "summary": "Account B publishes one service behind an NLB; account A calls it one way", "view": "v-pl"}
+ ],
+ "criteria": [
+  {"id": "cost", "label": "Cost", "weight": 3},
+  {"id": "twoway", "label": "Both sides can call", "weight": 2, "must": true},
+  {"id": "scale", "label": "Grows to more VPCs", "weight": 2},
+  {"id": "ease", "label": "Easy to set up and run", "weight": 2}
+ ],
+ "scores": {
+  "peering": {
+   "cost": {"rating": 5, "note": "No hourly fee; only data transfer", "value": "data transfer only", "sources": ["peer-price"]},
+   "twoway": {"rating": "yes", "note": "Add routes and security group rules on both sides", "sources": ["peer-basics"]},
+   "scale": {"rating": 1, "note": "Links are 1:1 and not transitive: every new VPC needs a link to each other one", "sources": ["peer-basics"]},
+   "ease": {"rating": 4, "note": "One request, one accept, two route tables", "sources": ["peer-basics"]}
+  },
+  "tgw": {
+   "cost": {"rating": 2, "note": "Billed per attachment per hour, plus per GB processed", "value": "per attachment-hour + per GB", "sources": ["tgw-price"]},
+   "twoway": {"rating": "yes", "note": "Routes through the hub in both directions", "sources": ["tgw-how"]},
+   "scale": {"rating": 5, "note": "Every new VPC is one more attachment", "sources": ["tgw-how"]},
+   "ease": {"rating": 3, "note": "A hub, a RAM share and route tables to keep in step", "sources": ["tgw-how"]}
+  },
+  "privatelink": {
+   "cost": {"rating": 3, "note": "Billed per endpoint per hour, plus per GB", "value": "per endpoint-hour + per GB", "sources": ["pl-price"]},
+   "twoway": {"rating": "no", "note": "Only the consumer calls the service; the other way needs a second endpoint service", "sources": ["pl-concepts"]},
+   "scale": {"rating": 4, "note": "Many consumers can use one endpoint service", "sources": ["pl-concepts"]},
+   "ease": {"rating": 3, "note": "An NLB, an endpoint service and an interface endpoint", "sources": ["pl-concepts"]}
+  }
+ },
+ "sources": [
+  {"id": "peer-basics", "title": "How VPC peering connections work", "url": "https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-basics.html", "checked": "2026-11-03"},
+  {"id": "peer-price", "title": "VPC peering pricing", "url": "https://docs.aws.amazon.com/vpc/latest/peering/vpc-peering-pricing.html", "checked": "2026-11-03"},
+  {"id": "tgw-how", "title": "How transit gateways work", "url": "https://docs.aws.amazon.com/vpc/latest/tgw/how-transit-gateways-work.html", "checked": "2026-11-03"},
+  {"id": "tgw-price", "title": "AWS Transit Gateway pricing", "url": "https://aws.amazon.com/transit-gateway/pricing/", "checked": "2026-11-03"},
+  {"id": "pl-concepts", "title": "AWS PrivateLink concepts", "url": "https://docs.aws.amazon.com/vpc/latest/privatelink/concepts.html", "checked": "2026-11-03"},
+  {"id": "pl-price", "title": "AWS PrivateLink pricing", "url": "https://aws.amazon.com/privatelink/pricing/", "checked": "2026-11-03"}
+ ],
+ "views": [
+  {"id": "v-peering", "kind": "map", "title": "VPC Peering", "zones": [
+   {"label": "Account A", "icon": "identity", "zones": [{"label": "VPC A", "icon": "aws:vpc", "note": "10.0.0.0/16", "nodes": ["appa"]}]},
+   {"label": "Link", "icon": "plug", "nodes": ["pcx"]},
+   {"label": "Account B", "icon": "identity", "zones": [{"label": "VPC B", "icon": "aws:vpc", "note": "10.1.0.0/16", "nodes": ["appb"]}]}],
+   "links": [{"from": "appa", "to": "pcx", "state": "ok", "label": "route 10.1.0.0/16"}, {"from": "pcx", "to": "appb", "state": "ok", "label": "SG allows A"}]},
+  {"id": "v-tgw", "kind": "map", "title": "Transit Gateway", "zones": [
+   {"label": "Account A", "icon": "identity", "zones": [{"label": "VPC A", "icon": "aws:vpc", "nodes": ["appa"]}]},
+   {"label": "Network account", "icon": "identity", "nodes": ["tgw", "ram"]},
+   {"label": "Account B", "icon": "identity", "zones": [{"label": "VPC B", "icon": "aws:vpc", "nodes": ["appb"]}]}],
+   "links": [{"from": "appa", "to": "tgw", "state": "ok", "label": "attachment"}, {"from": "tgw", "to": "appb", "state": "ok", "label": "attachment"}]},
+  {"id": "v-pl", "kind": "flow", "title": "PrivateLink", "lanes": [{"title": "One way: A calls B", "nodes": ["appa", "vpce", "nlb", "appb"]}]}
+ ],
+ "nodes": {
+  "appa": {"name": "App A", "what": "EC2 in account A", "icon": "aws:ec2", "basis": "assumed"},
+  "appb": {"name": "App B", "what": "EC2 in account B", "icon": "aws:ec2", "basis": "assumed"},
+  "pcx": {"name": "Peering link", "what": "requested by A, accepted by B", "icon": "aws:peering", "basis": "doc", "source": "peer-basics"},
+  "tgw": {"name": "Transit Gateway", "what": "the hub", "icon": "aws:tgw", "basis": "doc", "source": "tgw-how"},
+  "ram": {"name": "RAM share", "what": "shares the hub with A and B", "icon": "aws:ram", "basis": "doc", "source": "tgw-how"},
+  "vpce": {"name": "Interface endpoint", "what": "in VPC A", "icon": "aws:endpoint", "basis": "doc", "source": "pl-concepts"},
+  "nlb": {"name": "NLB", "what": "in front of App B", "icon": "aws:nlb", "basis": "doc", "source": "pl-concepts"}
+ }
+}

@@ -78,7 +78,7 @@ Each stage has `columns` + `rows` (rows as long as `columns`) or `text`. Empty a
  "links":[{"from":"ec2a","to":"pcx","state":"ok","label":"route 10.1.0.0/16"},{"from":"pcx","to":"ec2b"}]}
 ```
 
-Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to four levels. `links` as in `k8s`.
+Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `links` as in `k8s`.
 
 ## journey
 

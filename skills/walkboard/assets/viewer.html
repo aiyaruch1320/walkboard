@@ -321,7 +321,14 @@ function drawCounts() {
 function refreshThreads() {
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
-    const end = t.scrollHeight - t.scrollTop - t.clientHeight < 40;
+    // Like a chat: open on the newest message and stay there, also when the chat is unfolded, the panel widened
+    // or the window resized, until you scroll up to read older ones. A hidden chat cannot be measured, so it remembers.
+    if (!t.dataset.follow) {
+      t.dataset.follow = "1";
+      t.addEventListener("scroll", () => (t.dataset.follow = t.scrollHeight - t.scrollTop - t.clientHeight < 40 ? "1" : "0"));
+      new ResizeObserver(() => t.dataset.follow === "1" && (t.scrollTop = t.scrollHeight)).observe(t);
+    }
+    const end = t.dataset.follow === "1";
     const msgs = thread.filter((m, i) => inThread(m, c, i) && m.kind !== "settings");
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     t.replaceChildren(...msgs.map(msgEl));
@@ -2910,10 +2917,10 @@ document.getElementById("scrim").onclick = closeSide;
 // ⤢ widens the panel (the picture stays in sight on the left) and puts the details beside the chat; again to go back.
 const wideBtn = document.getElementById("sideWide");
 const setWide = (on) => {
-  // The conversation stays where it was read: at the end if it was there, else at the same message.
+  // A chat at its newest message stays there by itself; one scrolled up to an older message keeps that message in view.
   const th = document.querySelector("#panel .thread");
-  const end = th && th.scrollTop + th.clientHeight >= th.scrollHeight - 4, top = th?.scrollTop;
-  const keep = () => th && (th.scrollTop = end ? th.scrollHeight : top);
+  const top = th?.dataset.follow === "0" ? th.scrollTop : null;
+  const keep = () => th && top != null && th.dataset.follow === "0" && (th.scrollTop = top);
   document.body.classList.toggle("side-wide", on);
   keep();
   setTimeout(keep, 320);

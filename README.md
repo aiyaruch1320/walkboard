@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking on a box in the side panel, the agent answering in place, restating a step, and exporting the plan" width="100%">
+  <img src="docs/images/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking about a box in the side panel, and the agent answering in place" width="100%">
 </p>
 
 ## Why
@@ -45,6 +45,17 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 | **Design** | choose how to build something new | 2-4 options drawn side by side, scored against your criteria with sources, and a recommendation |
 
 The agent picks the mode from your request and asks up to three short questions first if something would change the picture.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/restate.gif" alt="A finished step waits for the user, who restates it in the side panel; the agent replies Correct and moves on to the next step"></td>
+    <td width="50%"><img src="docs/images/design.gif" alt="Design mode: three ways to connect two VPCs scored with sources; changing two weights puts another option ahead, then that option's picture opens"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Plan: restate each step; the agent checks it</sub></td>
+    <td align="center"><sub>Design: compare options by your own weights</sub></td>
+  </tr>
+</table>
 
 ## Install
 
@@ -75,17 +86,6 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 4. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
 
 Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours.
-
-<table>
-  <tr>
-    <td width="50%"><img src="docs/images/chat.png" alt="A question on a box and the agent's answer"></td>
-    <td width="50%"><img src="docs/images/explain-code.png" alt="Explain mode: a box with its code excerpt and an editor link"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Ask on any box; the answer appears in the side panel</sub></td>
-    <td align="center"><sub>Explain mode shows the real code behind each box</sub></td>
-  </tr>
-</table>
 
 More screens, FAQ and reference: **[docs/GUIDE.md](docs/GUIDE.md)**.
 

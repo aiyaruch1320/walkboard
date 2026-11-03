@@ -43,7 +43,13 @@ export function snapshot(dir, plan, {code = true, chat = false} = {}) {
         .map(({id, from, kind, text, node, step, option, criterion, at, delivered}) => ({id, from, kind, text, node, step, option, criterion, at, delivered}))
         .sort((a, b) => String(a.at).localeCompare(String(b.at)))
     : [];
-  const data = {plan, glossary: JSON.parse(read(assets, "glossary.json")), sources, thread, exportedAt: new Date().toISOString()};
+  // Nothing about this machine leaves in the file: not the repository's path, not links to local pages (they carry a token).
+  const local = (u) => /^https?:\/\/(127\.|localhost|\[::1\]|0\.0\.0\.0)/i.test(String(u)) || /[?&]token=/.test(String(u));
+  const shared = {...plan};
+  delete shared.root;
+  delete shared.roots;
+  if (Array.isArray(plan.links)) shared.links = plan.links.filter((l) => l && !local(l.url));
+  const data = {plan: shared, glossary: JSON.parse(read(assets, "glossary.json")), sources, thread, exportedAt: new Date().toISOString()};
   const module = (name) => "data:text/javascript;base64," + Buffer.from(read(lib, name)).toString("base64");
   // "<" escaped so nothing in the plan can close the script tag.
   const json = (x) => JSON.stringify(x).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");

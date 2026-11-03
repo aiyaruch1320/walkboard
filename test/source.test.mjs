@@ -58,3 +58,12 @@ test("ranges must make sense and anchors must still be in them", () => {
   assert.match(out, /node "moved".*at line 25/);
   assert.match(out, /node "gone".*not in the file/);
 });
+
+test("files inside .walkboard are never shown as code", () => {
+  const root = repo();
+  fs.mkdirSync(path.join(root, ".walkboard"));
+  fs.writeFileSync(path.join(root, ".walkboard", "session.json"), '{"token":"t"}');
+  const r = excerpt({root: "."}, ".walkboard/session.json:1", {base: root});
+  assert.ok(r.error);
+  assert.ok(!JSON.stringify(r).includes('"t"'));
+});

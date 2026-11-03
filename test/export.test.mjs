@@ -61,3 +61,12 @@ test("the page's Export button downloads the same file", async (t) => {
   assert.deepEqual(embedded(html).sources, {});
   assert.equal((await fetch(`http://127.0.0.1:${s.port}/api/export?token=nope`)).status, 403);
 });
+
+test("the file carries no path of this machine and no link to a local page", () => {
+  const {dir, plan} = planDir();
+  const shared = {...plan, roots: {api: "/Users/me/api"}, links: [{title: "page", url: "http://127.0.0.1:4100/?token=abc"}, {title: "pr", url: "https://github.com/o/r/pull/1"}, {title: "dev", url: "http://localhost:3000"}]};
+  const data = embedded(snapshot(dir, shared).html);
+  assert.equal(data.plan.root, undefined);
+  assert.equal(data.plan.roots, undefined);
+  assert.deepEqual(data.plan.links.map((l) => l.title), ["pr"]);
+});

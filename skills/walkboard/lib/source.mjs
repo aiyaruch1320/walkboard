@@ -11,6 +11,8 @@ export function locate(plan, file, base = process.cwd()) {
   const root = fs.existsSync(rootPath) ? fs.realpathSync(rootPath) : null;
   if (!root) return {ref, error: `root not found: ${ref.root}`};
   const abs = path.resolve(root, ref.rel);
+  // Walkboard's own state (the server token, the conversation) is never shown as code.
+  if (path.relative(root, abs).split(path.sep).includes(".walkboard")) return {ref, error: "inside .walkboard"};
   if (!fs.existsSync(abs)) return {ref, error: `file not found: ${ref.rel}`};
   const real = fs.realpathSync(abs);
   if (real !== root && !real.startsWith(root + path.sep)) return {ref, error: "outside root"};

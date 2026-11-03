@@ -96,6 +96,10 @@ agent ──writes──► plan.json ──► page (pictures + chat)
 
 The agent writes `plan.json`; a fixed page draws it, so every plan looks familiar and the agent never writes HTML. What you click or type is queued on disk and handed to a background `walkboard poll`, which wakes the agent; `walkboard reply` puts its answer back on the page.
 
+## Security and privacy
+
+Everything stays on your machine: one zero-dependency Node server per plan, bound to 127.0.0.1 behind a random token, no network requests, no telemetry. What it reads, writes and runs, and how to report a problem: [SECURITY.md](SECURITY.md).
+
 ## For AI agents
 
 - **Using Walkboard for a user**: read [skills/walkboard/SKILL.md](skills/walkboard/SKILL.md) and follow it. It covers the three modes, the questions to ask first, the plan format and every command. From a clone, the CLI also works without installing: `node skills/walkboard/bin/walkboard.mjs <command>`.

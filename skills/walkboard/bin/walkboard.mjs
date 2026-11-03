@@ -75,8 +75,9 @@ async function running() {
 
 const urlOf = (s) => `http://127.0.0.1:${s.port}/?token=${s.token}`;
 
+// The link carries the token, so it never goes through a shell that could read "&" or "^" as commands.
 function openBrowser(url) {
-  const opener = {darwin: ["open", [url]], win32: ["cmd", ["/c", "start", "", url]]}[process.platform] ?? ["xdg-open", [url]];
+  const opener = {darwin: ["open", [url]], win32: ["rundll32", ["url.dll,FileProtocolHandler", url]]}[process.platform] ?? ["xdg-open", [url]];
   spawn(opener[0], opener[1], {stdio: "ignore", detached: true}).on("error", () => {}).unref();
 }
 

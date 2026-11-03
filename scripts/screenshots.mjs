@@ -30,8 +30,12 @@ async function post(url, route, body) {
   await fetch(`${u.origin}${route}?token=${u.searchParams.get("token")}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
 }
 
-async function shot(page, url, file, {select, pad = 12, prepare = ""}) {
+// side: the shot is the side panel only (its own left and right edges), not the page's full width.
+async function shot(page, url, file, {select, pad = 12, prepare = "", side = false}) {
+  // A side panel fills the window's height: a shorter window keeps its shot compact.
+  await page.send("Emulation.setDeviceMetricsOverride", {width: 1200, height: side ? 640 : 900, deviceScaleFactor: 1, mobile: false});
   await page.goto(url);
+  await sleep(500);
   if (prepare) {
     await page.eval(prepare);
     await sleep(600);
@@ -40,7 +44,8 @@ async function shot(page, url, file, {select, pad = 12, prepare = ""}) {
     const els = ${JSON.stringify(select)}.map((s) => document.querySelector(s)).filter(Boolean);
     const r = els.map((e) => e.getBoundingClientRect());
     const top = Math.min(...r.map((x) => x.top)) + scrollY, bottom = Math.max(...r.map((x) => x.bottom)) + scrollY;
-    return {x: 0, y: Math.max(0, top - ${pad}), width: document.documentElement.clientWidth, height: bottom - top + ${pad * 2}};`);
+    const left = ${side} ? Math.min(...r.map((x) => x.left)) : 0, right = ${side} ? Math.max(...r.map((x) => x.right)) : document.documentElement.clientWidth;
+    return {x: left, y: Math.max(0, top - ${pad}), width: right - left, height: bottom - top + ${pad * 2}};`);
   fs.writeFileSync(path.join(out, file), await page.png(box));
   console.log(`${file} ${box.width}x${Math.round(box.height)}`);
 }
@@ -57,7 +62,15 @@ await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The 
 await post(urls.demo, "/api/feedback", {step: "manifests", kind: "teachback", text: "This step writes manifests so ArgoCD creates the CronJob suspended, with its ConfigMap and NetworkPolicy."});
 await post(urls.demo, "/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ One more thing: the NetworkPolicy does not open the route to BigQuery yet; that comes in step 4."});
 
+// The agent has read them: messages show as received, not waiting.
+const u = new URL(urls.demo), q = `?token=${u.searchParams.get("token")}`;
+const got = await (await fetch(`${u.origin}/api/poll${q}`)).json();
+await post(urls.demo, "/api/ack", {ids: got.map((i) => i.id)});
+
 const page = await launch();
+// No first-visit tour over the shots.
+await page.send("Page.enable");
+await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.tour", "done"); } catch {}`});
 try {
   const at = (u, q) => `${u}&theme=dark&${q}`;
   await shot(page, at(urls.build, "step=manifests"), "build-overview.png", {select: ["#bar", "main > .top", "#stepcard", "#view"]});
@@ -65,17 +78,23 @@ try {
   await shot(page, at(urls.explain, "view=seq&step=all"), "sequence.png", {select: ["#view"]});
   await shot(page, at(urls.build, "view=data&step=all"), "transform.png", {select: ["#view"]});
   await shot(page, at(urls.explain, "node=service"), "explain-code.png", {
-    select: ["#panel"],
-    prepare: `document.querySelector('#panel .talk')?.remove();`,
+    select: ["#side .side-head", "#panel"],
+    side: true,
+    pad: 0,
+    prepare: `document.querySelector('#panel .pb')?.remove(); document.querySelector('#panel .pa .fold')?.remove(); document.querySelector('#panel .pa').style.maxHeight = 'none';`,
   });
   await shot(page, at(urls.explain, "step=verify"), "explain-overview.png", {select: ["#bar", "main > .top", "#badges", "#stepcard", "#view .lane"]});
   await shot(page, at(urls.demo, "step=manifests&node=cronjob"), "chat.png", {
-    select: ["#panel"],
-    prepare: `document.querySelector('#panel').scrollIntoView(); const t = document.querySelector('#panel .term'); t?.click();`,
+    select: ["#side .side-head", "#panel"],
+    side: true,
+    pad: 0,
+    prepare: `document.querySelector('#panel .fold[data-fold="info"]').click(); setTimeout(() => (document.querySelector('#panel .thread').scrollTop = 0), 400);`,
   });
   await shot(page, at(urls.demo, "step=manifests"), "teachback.png", {
-    select: ["#stepbar", "#stepcard"],
-    prepare: `document.querySelector('#stepcard textarea').value = '';`,
+    select: ["#side .side-head", "#panel"],
+    side: true,
+    pad: 0,
+    prepare: `document.querySelector('#stepcard .turnbtn').click();`,
   });
 } finally {
   page.close();

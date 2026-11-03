@@ -478,8 +478,9 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .side .panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:12px}
 .side .panel.split{overflow:hidden;gap:6px}
 .side .pcol{display:flex;flex-direction:column;min-height:0}
-.side .pa{flex:0 1 auto;max-height:45%;display:flex;flex-direction:column}
-.side .pb{flex:1 1 auto}
+/* Sizes that do not depend on how tall the content happens to be at that moment: details up to 45%, the chat the rest. */
+.side .pa{flex:0 0 auto;max-height:45%;display:flex;flex-direction:column}
+.side .pb{flex:1 1 0}
 .side .pa .pinfo{flex:0 1 auto;min-height:0;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none}
 .side .pa .pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
 .side .pb .talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}

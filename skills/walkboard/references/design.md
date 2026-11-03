@@ -32,7 +32,7 @@ For something that does not exist yet: research options, draw each, compare, rec
 
 ## Messages
 
-- `question` / `propose` may carry `option` and `criterion`: answer with `PV reply <dir> --option <id> [--criterion <id>] "…"` so it lands in that cell's thread, or change that cell, option or constraint (a new option needs a view and scores).
+- `question` / `propose` may carry `option` and `criterion`: answer with `WB reply <dir> --option <id> [--criterion <id>] "…"` so it lands in that cell's thread, or change that cell, option or constraint (a new option needs a view and scores).
 - `settings` may carry `weights`: re-read them before recommending again. When the weights put another option ahead, the page offers the user a "re-check" question: keep or change the recommendation, saying why.
-- Small changes: `PV set <dir> constraint:<id> confirmed=true`, `criterion:<id> weight=2`, `option:<id> recommended=true`.
-- `decide` (`option`, `text` = the user's reason, `weights` used): set `"decision": {"option","why","not":{"other":"why not"},"by":"who decided, if known","at":"<ISO time>","weights":{…}}`; write a build plan in a new folder carrying the constraints, the option's view, nodes and sources; `PV open` it, add it to `links`, reply with the URL. Unconfirmed assumptions become its first step.
+- Small changes: `WB set <dir> constraint:<id> confirmed=true`, `criterion:<id> weight=2`, `option:<id> recommended=true`.
+- `decide` (`option`, `text` = the user's reason, `weights` used): set `"decision": {"option","why","not":{"other":"why not"},"by":"who decided, if known","at":"<ISO time>","weights":{…}}`; write a build plan in a new folder carrying the constraints, the option's view, nodes and sources; `WB open` it, add it to `links`, reply with the URL. Unconfirmed assumptions become its first step.

@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {parseSet, applySet} from "../skills/planview/lib/edit.mjs";
+import {parseSet, applySet} from "../skills/walkboard/lib/edit.mjs";
 
 const plan = () => ({title: "t", steps: [{id: "a", title: "A", status: "doing"}], nodes: {x: {name: "X", status: "new", why: "w"}}});
 

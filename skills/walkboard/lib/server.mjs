@@ -6,7 +6,7 @@ import {excerpt} from "./source.mjs";
 import {savePlan} from "./edit.mjs";
 
 export const paths = (dir) => {
-  const state = path.join(dir, ".planview");
+  const state = path.join(dir, ".walkboard");
   return {
     plan: path.join(dir, "plan.json"),
     state,
@@ -44,7 +44,7 @@ function readLines(file) {
     try {
       out.push(JSON.parse(line));
     } catch {
-      console.error(`planview: skipped an unreadable line in ${file}`);
+      console.error(`walkboard: skipped an unreadable line in ${file}`);
     }
   }
   return out;
@@ -75,7 +75,7 @@ function takeLock(file) {
     } catch (e) {
       if (e.code !== "EEXIST") throw e;
       const holder = Number(fs.readFileSync(file, "utf8"));
-      if (holder && alive(holder)) throw Object.assign(new Error(`already running (pid ${holder})`), {code: "PLANVIEW_RUNNING"});
+      if (holder && alive(holder)) throw Object.assign(new Error(`already running (pid ${holder})`), {code: "WALKBOARD_RUNNING"});
       fs.rmSync(file, {force: true});
     }
   }

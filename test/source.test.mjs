@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {excerpt, checkEvidence} from "../skills/planview/lib/source.mjs";
+import {excerpt, checkEvidence} from "../skills/walkboard/lib/source.mjs";
 
 function repo() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "planview-src-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-src-"));
   fs.mkdirSync(path.join(root, "src"));
   fs.writeFileSync(path.join(root, "src", "a.go"), Array.from({length: 30}, (_, i) => `line ${i + 1}`).join("\n"));
-  fs.writeFileSync(path.join(os.tmpdir(), "planview-outside.txt"), "secret");
+  fs.writeFileSync(path.join(os.tmpdir(), "walkboard-outside.txt"), "secret");
   return root;
 }
 
@@ -24,12 +24,12 @@ test("an excerpt shows the referenced lines", () => {
 
 test("files outside the root, missing files and lines past the end are refused", () => {
   const root = repo();
-  assert.match(excerpt({root}, "../planview-outside.txt:1").error, /outside root|not found/);
+  assert.match(excerpt({root}, "../walkboard-outside.txt:1").error, /outside root|not found/);
   assert.match(excerpt({root}, "src/nope.go:1").error, /not found/);
   assert.match(excerpt({root}, "src/a.go:99").error, /past the end/);
   assert.match(excerpt({}, "src/a.go:1").error, /no root/);
   assert.equal(excerpt({root: "."}, "src/a.go:2", {base: root}).lines[1], "line 2");
-  fs.symlinkSync(path.join(os.tmpdir(), "planview-outside.txt"), path.join(root, "src", "link.txt"));
+  fs.symlinkSync(path.join(os.tmpdir(), "walkboard-outside.txt"), path.join(root, "src", "link.txt"));
   assert.equal(excerpt({root}, "src/link.txt:1").error, "outside root");
 });
 

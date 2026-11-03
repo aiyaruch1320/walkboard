@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>planview</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22 width=%22128%22 height=%22128%22 role=%22img%22 aria-label=%22planview%22%3E %3Crect width=%22128%22 height=%22128%22 rx=%2228%22 fill=%22%2326215c%22/%3E %3Cpath d=%22M51 40 H71%22 stroke=%22%23e4e1fb%22 stroke-width=%223.5%22 stroke-linecap=%22round%22 stroke-dasharray=%221 7%22/%3E %3Cpath d=%22M84 52 C84 62 78 66 70 68%22 fill=%22none%22 stroke=%22%23e4e1fb%22 stroke-width=%223.5%22 stroke-linecap=%22round%22 stroke-dasharray=%221 7%22/%3E %3Crect x=%2218%22 y=%2228%22 width=%2233%22 height=%2224%22 rx=%228%22 fill=%22%235dcaa5%22/%3E %3Crect x=%2271%22 y=%2228%22 width=%2233%22 height=%2224%22 rx=%228%22 fill=%22%23ef9f27%22/%3E %3Cpath d=%22M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z%22 fill=%22%23afa9ec%22/%3E %3Ccircle cx=%2251%22 cy=%2283.5%22 r=%224%22 fill=%22%2326215c%22/%3E %3Ccircle cx=%2264%22 cy=%2283.5%22 r=%224%22 fill=%22%2326215c%22/%3E %3Ccircle cx=%2277%22 cy=%2283.5%22 r=%224%22 fill=%22%2326215c%22/%3E %3C/svg%3E">
+<title>Walkboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22 width=%22128%22 height=%22128%22 role=%22img%22 aria-label=%22Walkboard%22%3E %3Crect width=%22128%22 height=%22128%22 rx=%2228%22 fill=%22%2326215c%22/%3E %3Cpath d=%22M51 40 H71%22 stroke=%22%23e4e1fb%22 stroke-width=%223.5%22 stroke-linecap=%22round%22 stroke-dasharray=%221 7%22/%3E %3Cpath d=%22M84 52 C84 62 78 66 70 68%22 fill=%22none%22 stroke=%22%23e4e1fb%22 stroke-width=%223.5%22 stroke-linecap=%22round%22 stroke-dasharray=%221 7%22/%3E %3Crect x=%2218%22 y=%2228%22 width=%2233%22 height=%2224%22 rx=%228%22 fill=%22%235dcaa5%22/%3E %3Crect x=%2271%22 y=%2228%22 width=%2233%22 height=%2224%22 rx=%228%22 fill=%22%23ef9f27%22/%3E %3Cpath d=%22M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z%22 fill=%22%23afa9ec%22/%3E %3Ccircle cx=%2251%22 cy=%2283.5%22 r=%224%22 fill=%22%2326215c%22/%3E %3Ccircle cx=%2264%22 cy=%2283.5%22 r=%224%22 fill=%22%2326215c%22/%3E %3Ccircle cx=%2277%22 cy=%2283.5%22 r=%224%22 fill=%22%2326215c%22/%3E %3C/svg%3E">
 <link rel="stylesheet" href="viewer.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
 <main>
   <div class="bar" id="bar">
     <button id="modePill" class="modepill" hidden></button>
-    <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>planview</b></span>
+    <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>Walkboard</b></span>
     <button id="talks" class="talksbtn" hidden></button>
     <button id="theme" class="helpbtn"></button>
     <button id="help" class="helpbtn" aria-label="Help">?</button>
@@ -20,7 +20,7 @@
     <span id="barExtra"></span>
   </div>
   <div class="top">
-    <div><h1 id="title">planview</h1><p class="goal" id="goal"></p></div>
+    <div><h1 id="title">Walkboard</h1><p class="goal" id="goal"></p></div>
   </div>
   <div class="badges" id="badges"></div>
   <div id="banner" class="banner" hidden></div>
@@ -44,7 +44,7 @@
   <div id="view"></div>
   <div id="compare"></div>
   <details id="sources" class="sources" hidden></details>
-  <footer class="foot"><a href="https://github.com/aiyaruch1320/planview" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/planview</a></footer>
+  <footer class="foot"><a href="https://github.com/aiyaruch1320/walkboard" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/walkboard</a></footer>
 </main>
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
 <aside class="side" id="side" inert>
@@ -91,7 +91,7 @@ const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
 // Unsent text survives a reload of this tab.
-const draftKey = "planview.drafts." + token;
+const draftKey = "walkboard.drafts." + token;
 const drafts = (() => {
   try {
     return JSON.parse(sessionStorage.getItem(draftKey)) || {};
@@ -176,7 +176,7 @@ const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Not inside identifiers or paths such as usecase/extract/extract.go.
 const edge = (t) => (/^\w/.test(t) ? "(?<![\\w./-])" : "") + escRe(t) + (/\w$/.test(t) ? "(?![\\w-]|\\.\\w)" : "");
 
-// Shared terms ship with planview; the plan only adds its own. Only terms the plan uses are shown.
+// Shared terms ship with walkboard; the plan only adds its own. Only terms the plan uses are shown.
 function setGlossary(own) {
   // Only the words people read: not field names ("settings.commit") and not addresses ("token" in a URL).
   const NOT_PROSE = new Set(["glossary", "settings", "url", "file", "root", "roots", "links", "anchor", "highlight", "id", "icon", "kind", "status", "basis", "type", "key",
@@ -1155,7 +1155,7 @@ function closeSide() {
 // so a long conversation never pushes the explanation away.
 // Narrow, details and chat each fold away under their heading (either or both; remembered), and a folded part says so.
 // Wide (⤢), the two sit side by side and nothing folds.
-const folded = {info: store.get("planview.fold.info") === "1", chat: store.get("planview.fold.chat") === "1"};
+const folded = {info: store.get("walkboard.fold.info") === "1", chat: store.get("walkboard.fold.chat") === "1"};
 // Fold or unfold smoothly: measure every part before and after, then slide each from one height to the other.
 // What is closing stays drawn (and fades) until it is gone; what opens grows from nothing.
 function morph(p, change) {
@@ -1208,7 +1208,7 @@ function fillPanel(p, parts) {
     b.append(el("span", "fhint", t("foldedHint")));
     b.onclick = () => {
       folded[which] = !folded[which];
-      store.set("planview.fold." + which, folded[which] ? "1" : "");
+      store.set("walkboard.fold." + which, folded[which] ? "1" : "");
       b.setAttribute("aria-expanded", String(!folded[which]));
       morph(p, () => p.classList.toggle("fold-" + which, folded[which]));
     };
@@ -1281,7 +1281,7 @@ function arrow() {
   return a;
 }
 
-// Glyphs are planview's own constants; plan text never goes into innerHTML.
+// Glyphs are walkboard's own constants; plan text never goes into innerHTML.
 function iconEl(n, id, family) {
   const ic = iconOf(n, id, family);
   if (!ic || !GLYPHS[ic.glyph]) return null;
@@ -2425,7 +2425,7 @@ function fileLine(file, resolved) {
 }
 
 // Long lines wrap on narrow screens unless the reader chose otherwise.
-const codeWrap = () => (store.get("planview.wrap") ?? (innerWidth < 700 ? "on" : "off")) === "on";
+const codeWrap = () => (store.get("walkboard.wrap") ?? (innerWidth < 700 ? "on" : "off")) === "on";
 
 function codeBox(id) {
   const box = el("details", "code");
@@ -2457,7 +2457,7 @@ function codeBox(id) {
       wrapBtn.onclick = (e) => {
         e.preventDefault();
         const on = !scroll.classList.contains("wrap");
-        store.set("planview.wrap", on ? "on" : "off");
+        store.set("walkboard.wrap", on ? "on" : "off");
         scroll.classList.toggle("wrap", on);
         wrapBtn.setAttribute("aria-pressed", String(on));
         fade();
@@ -2637,7 +2637,7 @@ document.addEventListener("click", () => (document.getElementById("toast").hidde
 // The tab title says when it is your turn, and stops saying so once you have answered.
 function updateTitle() {
   const mine = ((plan.mode ?? "build") === "build" && !plan.approved && !approvePending()) || steps().some((s) => yourTurn(s) && !answered(s));
-  document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · planview` : "planview");
+  document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · Walkboard` : "Walkboard");
 }
 
 function draw(p) {
@@ -2647,7 +2647,7 @@ function draw(p) {
   plan.views = viewsOf(plan);
   setLang(langOf(plan));
   updateTitle();
-  document.getElementById("title").textContent = plan.title || "planview";
+  document.getElementById("title").textContent = plan.title || "Walkboard";
   setGlossary(plan.glossary);
   renderLegend();
   renderProposals();
@@ -2670,7 +2670,7 @@ function draw(p) {
   refreshThreads();
   if (!rendered) {
     rendered = true;
-    if (served && !store.get("planview.tour")) setTimeout(startTour, 700);
+    if (served && !store.get("walkboard.tour")) setTimeout(startTour, 700);
     // Links may open a given step, picture or box: ?step=…&view=…&node=…
     if (plan.views.some((v) => v.id === params.get("view"))) {
       viewId = params.get("view");
@@ -2772,7 +2772,7 @@ async function load() {
   on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
   on("agent", (a) => (waiting = a.waiting));
 }
-window.__planview = {get plan() { return plan; }, selectStep, selectNode, render};
+window.__walkboard = {get plan() { return plan; }, selectStep, selectNode, render};
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
@@ -2790,13 +2790,13 @@ const setWide = (on) => {
 };
 wideBtn.onclick = () => {
   const on = !document.body.classList.contains("side-wide");
-  store.set("planview.wide", on ? "on" : "off");
+  store.set("walkboard.wide", on ? "on" : "off");
   setWide(on);
 };
-setWide(store.get("planview.wide") === "on");
+setWide(store.get("walkboard.wide") === "on");
 
 
-// A three-stop tour the first time someone opens planview in this browser; "?" shows it again.
+// A three-stop tour the first time someone opens walkboard in this browser; "?" shows it again.
 function startTour() {
   const x = plan?.mode === "explain" ? "x" : "";
   const stops = (isDesign() ? [["#view", "tour1d"], ["#tabs", "tour2d"], ["#compare .cmp", "tour3d"]] : [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]])
@@ -2808,7 +2808,7 @@ function startTour() {
   const end = () => {
     tour.hidden = true;
     scrollTo({top: 0, behavior: "smooth"});
-    store.set("planview.tour", "seen");
+    store.set("walkboard.tour", "seen");
     removeEventListener("resize", place);
   };
   function place() {
@@ -2927,7 +2927,7 @@ const THEME_ICON = {
   light: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></g></svg>',
   dark: '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M13.5 10.2A6 6 0 0 1 5.8 2.5a6 6 0 1 0 7.7 7.7z" fill="currentColor"/></svg>',
 };
-let theme = ["light", "dark"].includes(params.get("theme")) ? params.get("theme") : store.get("planview.theme") || "auto";
+let theme = ["light", "dark"].includes(params.get("theme")) ? params.get("theme") : store.get("walkboard.theme") || "auto";
 function applyTheme() {
   if (theme === "auto") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = theme;
@@ -2939,7 +2939,7 @@ function applyTheme() {
 document.getElementById("theme").onclick = (e) => {
   e.stopPropagation();
   theme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
-  store.set("planview.theme", theme);
+  store.set("walkboard.theme", theme);
   applyTheme();
   requestAnimationFrame(() => linkDrawer?.());
 };
@@ -2961,8 +2961,8 @@ document.addEventListener("keydown", (e) => {
 });
 
 const legendBox = document.getElementById("legendbox");
-legendBox.open = store.get("planview.legend") === "open";
-legendBox.ontoggle = () => store.set("planview.legend", legendBox.open ? "open" : "closed");
+legendBox.open = store.get("walkboard.legend") === "open";
+legendBox.ontoggle = () => store.set("walkboard.legend", legendBox.open ? "open" : "closed");
 renderBadges();
 load();
 </script>

@@ -1,15 +1,17 @@
 {
-  "name": "planview",
+  "name": "walkboard",
   "version": "0.6.0",
-  "description": "Plan work as small steps, show the plan as an interactive diagram, and let clicks on it talk back to the agent.",
+  "description": "Show an agent's plan, an explanation of existing code, or a comparison of designs as clickable pictures; ask, correct or confirm right on the picture and the agent answers there.",
   "author": {
     "name": "Aiyaruch Phengthong"
   },
-  "homepage": "https://github.com/aiyaruch1320/planview",
-  "repository": "https://github.com/aiyaruch1320/planview",
+  "homepage": "https://github.com/aiyaruch1320/walkboard",
+  "repository": "https://github.com/aiyaruch1320/walkboard",
   "keywords": [
     "planning",
     "diagram",
+    "explain",
+    "design",
     "kubernetes",
     "teach-back"
   ],

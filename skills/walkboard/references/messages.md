@@ -1,16 +1,16 @@
 # Less frequent messages from the page
 
-Read this the first time one of these arrives. `PV` is the CLI from SKILL.md.
+Read this the first time one of these arrives. `WB` is the CLI from SKILL.md.
 
 ## propose (`change` = `add`, `change` or `remove`; any mode)
 
 Decide what it is first:
 
 - It corrects the picture (wrong, unclear or missing explanation of what exists): fix the picture and say so.
-- It changes what gets built and the plan is not approved yet: change the plan directly and `PV check`; the page outlines what changed.
+- It changes what gets built and the plan is not approved yet: change the plan directly and `WB check`; the page outlines what changed.
 - Otherwise draw it and build nothing:
   - `add`: a new node with `"proposal": {"type": "add", "note": "…"}`, placed in the views next to the box it came from.
-  - `change` / `remove`: `PV set <dir> node:<id> 'proposal={"type":"change","note":"…"}'`.
+  - `change` / `remove`: `WB set <dir> node:<id> 'proposal={"type":"change","note":"…"}'`.
 
 Reply in one line. In explain mode proposals are the only part of the picture that is not in the code. `change` from older pages means the same as `propose`.
 
@@ -22,15 +22,15 @@ Remove that node's `proposal`, and a proposed node with its places in the views.
 
 Both carry `proposals`, the ids of the proposed nodes.
 
-- `plan`: write a build plan in a new folder from those proposals, carrying their context (root, related boxes and their `file`). `PV open` it, add `{"title": "…", "url": "…"}` to this plan's `links` (`PV set <dir> 'links=[…]'`), and reply with the URL. Open questions become the first step.
-- `apply`: turn the proposals into real steps and nodes, drop their `proposal` field, `PV check`, and reply with what changed.
+- `plan`: write a build plan in a new folder from those proposals, carrying their context (root, related boxes and their `file`). `WB open` it, add `{"title": "…", "url": "…"}` to this plan's `links` (`WB set <dir> 'links=[…]'`), and reply with the URL. Open questions become the first step.
+- `apply`: turn the proposals into real steps and nodes, drop their `proposal` field, `WB check`, and reply with what changed.
 
 ## Suggested commits (`settings.commit` = `"suggest"`)
 
 When a step is done, put the message on the step and wait:
 
-- One commit: `PV set <dir> step:<id> commitMessage="<message>"`.
-- Separate concerns (refactor and feature, migration and the code using it, dependency bump and code): `PV set <dir> step:<id> 'commits=[{"message":"…","files":["…"]}]'`. More than 3 means the step is too big; split the step instead.
+- One commit: `WB set <dir> step:<id> commitMessage="<message>"`.
+- Separate concerns (refactor and feature, migration and the code using it, dependency bump and code): `WB set <dir> step:<id> 'commits=[{"message":"…","files":["…"]}]'`. More than 3 means the step is too big; split the step instead.
 
 The page shows them, editable, each with its files.
 

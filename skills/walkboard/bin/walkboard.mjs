@@ -9,7 +9,7 @@ import {checkEvidence} from "../lib/source.mjs";
 import {knownIcon, iconNames} from "../lib/icons.mjs";
 import {parseSet, applySet, savePlan} from "../lib/edit.mjs";
 
-const USAGE = `planview <command> [options]
+const USAGE = `walkboard <command> [options]
 
   check  [dir]                  validate dir/plan.json, print problems, exit 1 if any
   set    [dir] [target] key=value ...   change plan.json in place, e.g.
@@ -94,7 +94,7 @@ async function check() {
     process.exit(1);
   }
   const warnings = lint(plan);
-  for (const [id, n] of Object.entries(plan.nodes || {})) if (typeof n?.icon === "string" && !knownIcon(n.icon)) warnings.push(`node "${id}": unknown icon "${n.icon}" (planview icons lists them)`);
+  for (const [id, n] of Object.entries(plan.nodes || {})) if (typeof n?.icon === "string" && !knownIcon(n.icon)) warnings.push(`node "${id}": unknown icon "${n.icon}" (walkboard icons lists them)`);
   for (const w of warnings.slice(0, 8)) console.log(`warning: ${w}`);
   if (warnings.length > 8) console.log(`warning: … ${warnings.length - 8} more`);
   console.log(`ok: ${plan.steps?.length || 0} steps, ${viewsOf(plan).length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
@@ -129,7 +129,7 @@ async function open() {
     if (!s) {
       // A lock left by a crashed server whose pid now belongs to another program keeps every start waiting.
       const lock = fs.existsSync(p.lock) ? fs.readFileSync(p.lock, "utf8").trim() : "";
-      fail(lock ? `server did not start: ${p.lock} names pid ${lock}, which is not a planview server; if none is running for this folder, delete that file and open again` : "server did not start");
+      fail(lock ? `server did not start: ${p.lock} names pid ${lock}, which is not a walkboard server; if none is running for this folder, delete that file and open again` : "server did not start");
     }
   }
   console.log(urlOf(s));
@@ -139,7 +139,7 @@ async function open() {
 async function poll() {
   let gone = 0;
   const stopped = () => {
-    console.error(`planview: the server for ${dir} was stopped`);
+    console.error(`walkboard: the server for ${dir} was stopped`);
     console.log("[]");
     process.exit(0);
   };
@@ -159,7 +159,7 @@ async function poll() {
       if (items.length) return console.log(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, ...rest}) => rest)(i))).join("\n"));
     } catch (e) {
       // Ride out a restart; give up if the server stays away.
-      if (++gone > 15) fail(`server not reachable for ${dir} (${e.message}); run: planview open ${dir}`);
+      if (++gone > 15) fail(`server not reachable for ${dir} (${e.message}); run: walkboard open ${dir}`);
       await sleep(2000);
     }
   }
@@ -206,9 +206,9 @@ async function stop() {
 async function serve() {
   let s;
   try {
-    s = await startServer(dir, {pollMs: Number(process.env.PLANVIEW_POLL_MS) || undefined});
+    s = await startServer(dir, {pollMs: Number(process.env.WALKBOARD_POLL_MS) || undefined});
   } catch (e) {
-    fail(e.code === "PLANVIEW_RUNNING" ? `${e.message} for ${dir}` : e.message);
+    fail(e.code === "WALKBOARD_RUNNING" ? `${e.message} for ${dir}` : e.message);
   }
   console.log(s.url);
   const quit = async () => {
@@ -220,7 +220,7 @@ async function serve() {
 }
 
 function fail(msg) {
-  console.error(`planview: ${msg}`);
+  console.error(`walkboard: ${msg}`);
   process.exit(1);
 }
 

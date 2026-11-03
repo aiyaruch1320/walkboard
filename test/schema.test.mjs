@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {validate} from "../skills/planview/lib/schema.mjs";
+import {validate} from "../skills/walkboard/lib/schema.mjs";
 
 const base = () => ({
   title: "t",
@@ -23,7 +23,7 @@ test("a minimal plan is valid", () => {
 });
 
 test("build mode asks about commits up front; restating defaults to on", async () => {
-  const {teachBackOn} = await import("../skills/planview/lib/schema.mjs");
+  const {teachBackOn} = await import("../skills/walkboard/lib/schema.mjs");
   const p = base();
   delete p.settings;
   assert.match(validate(p)[0], /settings/);
@@ -74,7 +74,7 @@ test("prototype names are not mistaken for nodes or statuses", () => {
 });
 
 test("explain mode needs no commit setting, and lint asks for evidence", async () => {
-  const {lint} = await import("../skills/planview/lib/schema.mjs");
+  const {lint} = await import("../skills/walkboard/lib/schema.mjs");
   const p = {...base(), mode: "explain", settings: {teachBack: true}};
   assert.deepEqual(validate(p), []);
   const warn = lint(p).join("\n");
@@ -101,7 +101,7 @@ test("approval, teach-back records and the glossary are checked", () => {
 });
 
 test("file references parse with lines, ranges and named roots", async () => {
-  const {parseFile} = await import("../skills/planview/lib/schema.mjs");
+  const {parseFile} = await import("../skills/walkboard/lib/schema.mjs");
   const plan = {root: "/repo/app", roots: {deploy: "/repo/deploy/"}};
   assert.deepEqual(parseFile("src/a.go:12", plan), {rootName: null, root: "/repo/app", rel: "src/a.go", line: 12, end: 12, abs: "/repo/app/src/a.go"});
   assert.equal(parseFile("src/a.go:12-20", plan).end, 20);
@@ -118,7 +118,7 @@ test("root, roots, start, editor and depth are checked", () => {
 });
 
 test("a plan without views gets a flow from its steps", async () => {
-  const {viewsOf} = await import("../skills/planview/lib/schema.mjs");
+  const {viewsOf} = await import("../skills/walkboard/lib/schema.mjs");
   const p = base();
   delete p.views;
   assert.deepEqual(validate(p), []);
@@ -128,7 +128,7 @@ test("a plan without views gets a flow from its steps", async () => {
 });
 
 test("page language comes from lang, else from the title and goal", async () => {
-  const {langOf, viewsOf} = await import("../skills/planview/lib/schema.mjs");
+  const {langOf, viewsOf} = await import("../skills/walkboard/lib/schema.mjs");
   assert.equal(langOf({title: "Nightly import"}), "en");
   assert.equal(langOf({title: "นำเข้าลูกค้า"}), "th");
   assert.equal(langOf({title: "นำเข้า", lang: "en"}), "en");
@@ -142,7 +142,7 @@ test("page language comes from lang, else from the title and goal", async () => 
 });
 
 test("highlighted lines are parsed and checked", async () => {
-  const {parseLines} = await import("../skills/planview/lib/schema.mjs");
+  const {parseLines} = await import("../skills/walkboard/lib/schema.mjs");
   assert.deepEqual([...parseLines("12, 15-16")], [12, 15, 16]);
   assert.deepEqual([...parseLines("9-7")], [7, 8, 9]);
   assert.equal(parseLines("twelve"), null);
@@ -158,7 +158,7 @@ test("highlighted lines are parsed and checked", async () => {
 });
 
 test("proposals and links from a page are checked", async () => {
-  const {lint} = await import("../skills/planview/lib/schema.mjs");
+  const {lint} = await import("../skills/walkboard/lib/schema.mjs");
   const p = {...base(), mode: "explain", settings: {}, links: [{title: "plan", url: "http://127.0.0.1:5000/?token=x"}]};
   p.nodes.a.proposal = {type: "add", note: "a cache in front"};
   assert.deepEqual(validate(p), []);

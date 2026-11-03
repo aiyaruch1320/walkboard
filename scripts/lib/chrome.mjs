@@ -8,7 +8,7 @@ const chromePath = process.env.CHROME || "/Applications/Google Chrome.app/Conten
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export async function launch({width = 1200, height = 900, port = 9333, scale = 1} = {}) {
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "planview-chrome-"));
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-chrome-"));
   const proc = spawn(chromePath, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", `--user-data-dir=${profile}`, `--remote-debugging-port=${port}`, `--window-size=${width},${height}`, "about:blank"], {stdio: "ignore"});
   for (let i = 0; i < 50; i++) {
     try {

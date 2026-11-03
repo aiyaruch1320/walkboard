@@ -1,10 +1,10 @@
 {
-  "name": "planview",
+  "name": "walkboard",
   "version": "0.6.0",
-  "description": "Draw an agent's plan as an interactive diagram; clicks on it go back to the agent.",
+  "description": "Show an agent's plan, an explanation of existing code, or a comparison of designs as clickable pictures; ask, correct or confirm right on the picture and the agent answers there.",
   "type": "module",
   "bin": {
-    "planview": "skills/planview/bin/planview.mjs"
+    "walkboard": "skills/walkboard/bin/walkboard.mjs"
   },
   "files": [
     "skills"

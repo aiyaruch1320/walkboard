@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/logo/logo-dark.svg">
-    <img src="docs/logo/logo-light.svg" alt="planview" width="420">
+    <img src="docs/logo/logo-light.svg" alt="Walkboard" width="420">
   </picture>
 </p>
 
@@ -22,14 +22,14 @@
 
 ## Why
 
-Long AI-written plans are hard to follow, and it is easy to lose the feeling that the work is yours. planview has the agent show its work as pictures on a local page instead. Click a box, a step or a table cell to ask about it, and the agent answers right there.
+Long AI-written plans are hard to follow, and it is easy to lose the feeling that the work is yours. Walkboard has the agent show its work as pictures on a local page instead. Click a box, a step or a table cell to ask about it, and the agent answers right there.
 
 ### What you get
 
 - **See it, don't scroll it.** Twelve kinds of picture (flow, Kubernetes, network map, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
 - **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
 - **You stay in charge.** Nothing is built before you press **Approve plan**. After each step you restate it in your own words and the agent corrects what you missed. Commit messages are suggested for you to edit, and proposed changes are drawn on the picture before anything is built.
-- **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `planview check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it.
+- **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it.
 - **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Choosing an option turns it into a step-by-step plan.
 - **Lighter than a hand-written explainer.** The agent writes a small JSON file once and updates it with one-line commands, while the page does the drawing. A four-picture plan is about 7 KB of JSON instead of 26–43 KB of HTML rewritten on every change ([numbers](docs/GUIDE.md#light-on-tokens)).
 - **For the whole team.** A product owner can compare options without reading code; a new developer can follow a plan step by step; a senior can check claims against the code.
@@ -48,25 +48,25 @@ The agent picks the mode from your request and asks up to three short questions 
 ## Install
 
 ```
-/plugin marketplace add aiyaruch1320/planview
-/plugin install planview@planview
+/plugin marketplace add aiyaruch1320/walkboard
+/plugin install walkboard@walkboard
 ```
 
 Needs Node.js 18.18 or newer. Nothing else.
 
 ## Use
 
-Type `/planview` and say what you want, or just ask in your own words:
+Type `/walkboard` and say what you want, or just ask in your own words:
 
 ```
-/planview plan deploying this CronJob to staging
-/planview explain how login works in project A
-/planview compare ways to connect EC2 across two AWS accounts
+/walkboard plan deploying this CronJob to staging
+/walkboard explain how login works in project A
+/walkboard compare ways to connect EC2 across two AWS accounts
 ```
 
-<sub>If another command is already called `/planview`, use the full name `/planview:planview`.</sub>
+<sub>If another command is already called `/walkboard`, use the full name `/walkboard:walkboard`.</sub>
 
-1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.planview/config.json` and they are not asked again.
+1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
 2. It writes the plan and gives you a link to a page on your machine.
 3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **?** shows a short tour.
 4. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
@@ -94,15 +94,15 @@ agent ──writes──► plan.json ──► page (pictures + chat)
   └── wakes up ◄── local server ◄─────┘
 ```
 
-The agent writes `plan.json`; a fixed page draws it, so every plan looks familiar and the agent never writes HTML. What you click or type is queued on disk and handed to a background `planview poll`, which wakes the agent; `planview reply` puts its answer back on the page.
+The agent writes `plan.json`; a fixed page draws it, so every plan looks familiar and the agent never writes HTML. What you click or type is queued on disk and handed to a background `walkboard poll`, which wakes the agent; `walkboard reply` puts its answer back on the page.
 
 ## For AI agents
 
-- **Using planview for a user**: read [skills/planview/SKILL.md](skills/planview/SKILL.md) and follow it. It covers the three modes, the questions to ask first, the plan format and every command. From a clone, the CLI also works without installing: `node skills/planview/bin/planview.mjs <command>`.
+- **Using Walkboard for a user**: read [skills/walkboard/SKILL.md](skills/walkboard/SKILL.md) and follow it. It covers the three modes, the questions to ask first, the plan format and every command. From a clone, the CLI also works without installing: `node skills/walkboard/bin/walkboard.mjs <command>`.
 - **Installing it for a user**: ask first, because it changes their Claude Code setup.
   1. Check `node -v` is 18.18 or newer.
-  2. Prefer the plugin: `claude plugin marketplace add aiyaruch1320/planview`, then `claude plugin install planview@planview`. If plugins are not available, clone this repository and copy `skills/planview` to `~/.claude/skills/planview`.
-  3. Tell the user to start a new Claude Code session. It worked if `/planview` appears in the slash-command menu and `node <skill dir>/bin/planview.mjs` prints its usage.
+  2. Prefer the plugin: `claude plugin marketplace add aiyaruch1320/walkboard`, then `claude plugin install walkboard@walkboard`. If plugins are not available, clone this repository and copy `skills/walkboard` to `~/.claude/skills/walkboard`.
+  3. Tell the user to start a new Claude Code session. It worked if `/walkboard` appears in the slash-command menu and `node <skill dir>/bin/walkboard.mjs` prints its usage.
 - **Changing this repository**: read [AGENTS.md](AGENTS.md) for the map, rules and checks.
 
 ## License

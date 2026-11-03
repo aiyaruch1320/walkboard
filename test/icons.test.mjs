@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {iconOf, knownIcon, iconNames, GLYPHS} from "../skills/planview/lib/icons.mjs";
+import {iconOf, knownIcon, iconNames, GLYPHS} from "../skills/walkboard/lib/icons.mjs";
 
 test("an explicit icon wins, with its provider", () => {
   assert.deepEqual(iconOf({name: "Uploads", icon: "aws:s3"}), {glyph: "bucket", family: "aws"});

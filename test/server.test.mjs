@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {startServer} from "../skills/planview/lib/server.mjs";
+import {startServer} from "../skills/walkboard/lib/server.mjs";
 
 function planDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "planview-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-"));
   fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", views: [], nodes: {}}));
   return dir;
 }
@@ -162,9 +162,9 @@ test("editing plan.json tells the page to reload", async (t) => {
 
 test("a torn feedback line is skipped instead of stopping the server", async (t) => {
   const dir = planDir();
-  fs.mkdirSync(path.join(dir, ".planview"));
-  fs.writeFileSync(path.join(dir, ".planview", "feedback.jsonl"), '{"id":"1","text":"kept"}\n{"kind":"question","te\n');
-  fs.writeFileSync(path.join(dir, ".planview", "session.json"), "{oops");
+  fs.mkdirSync(path.join(dir, ".walkboard"));
+  fs.writeFileSync(path.join(dir, ".walkboard", "feedback.jsonl"), '{"id":"1","text":"kept"}\n{"kind":"question","te\n');
+  fs.writeFileSync(path.join(dir, ".walkboard", "session.json"), "{oops");
   const s = await startServer(dir);
   t.after(s.close);
   assert.deepEqual((await (await call(s, "/api/poll")).json()).map((i) => i.text), ["kept"]);
@@ -185,13 +185,13 @@ test("only one server runs per plan folder", async (t) => {
   t.after(s.close);
   assert.throws(() => startServer(dir), /already running/);
   assert.equal((await (await call(s, "/api/status")).json()).pid, process.pid);
-  assert.equal(fs.statSync(path.join(dir, ".planview", "session.json")).mode & 0o777, 0o600);
+  assert.equal(fs.statSync(path.join(dir, ".walkboard", "session.json")).mode & 0o777, 0o600);
 });
 
 test("a lock left by a dead process is taken over", async (t) => {
   const dir = planDir();
-  fs.mkdirSync(path.join(dir, ".planview"));
-  fs.writeFileSync(path.join(dir, ".planview", "server.lock"), "999999");
+  fs.mkdirSync(path.join(dir, ".walkboard"));
+  fs.writeFileSync(path.join(dir, ".walkboard", "server.lock"), "999999");
   const s = await startServer(dir);
   t.after(s.close);
   assert.equal((await call(s, "/")).status, 200);
@@ -208,7 +208,7 @@ test("a waiting poll is told when the server stops", async () => {
 
 test("the page can read a short excerpt of a box's code, only inside the root", async (t) => {
   const dir = planDir();
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "planview-root-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-root-"));
   fs.writeFileSync(path.join(root, "a.go"), "package a\n\nfunc A() {}\n");
   fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", root, nodes: {a: {name: "A", file: "a.go:3"}, x: {name: "X", file: "../../etc/hosts:1"}}}));
   const s = await startServer(dir);

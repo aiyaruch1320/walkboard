@@ -2,9 +2,10 @@
 
 ## 0.6.0
 
+- **Renamed from planview to Walkboard.** The skill and command are `/walkboard`, the CLI is `walkboard`, plans live in `~/.walkboard/`, defaults in `~/.walkboard/config.json`, and each plan keeps its server state in `.walkboard/` beside `plan.json`. To keep a plan's conversation from before, rename its `.planview/` folder to `.walkboard/`.
 - While the agent works on a message, the page shows typing dots where you asked and "Agent is answering you" in the top bar, with the minutes elapsed; after 10 minutes without a reply it says to check Claude Code.
 - Restating each step is on by default and switched on the page, under **Agent settings**, together with how commits are made; each setting is a card that says what its current value means. The page saves the change to plan.json without waking the agent: the agent reads it before its next step, and gets it alongside your next message. The skill no longer asks about restating up front.
-- Defaults for every plan in `~/.planview/config.json`; the skill asks its one question only when nothing says the answer, and offers to save it. `planview status` prints the current settings.
+- Defaults for every plan in `~/.walkboard/config.json`; the skill asks its one question only when nothing says the answer, and offers to save it. `walkboard status` prints the current settings.
 - The page explains and the side panel acts: step cards show only what a step does and its status, while a box's details, conversations, restating, suggested commits and approval open in a panel that slides in from the right (a sheet from the bottom on narrow screens). Clicking the same box again closes it.
 - Steps read as a timeline that fades where more steps are off to the side; ◀ ⏵ Play ▶ and "Talk about the whole plan" sit on the same row.
 - Code in replies: ``` fences become code blocks and `ticks` inline code. Ports used by several workloads show once with a count; tables without rows say so.
@@ -13,18 +14,18 @@
 - Design mode: for something not built yet, the agent researches options and draws each one; a comparison table scores them on weighted criteria with cited sources (click a cell for the reasons, click the weight dots to say what matters, no agent wake-up); constraints and assumed boxes are marked and can be confirmed; **Choose this → write a plan** records the decision and starts a plan. A mode pill next to the logo says which mode you are in, and the agent asks what is unclear before drawing.
 - Six more pictures: `state` (states and transitions, loops arced over), `decision` (questions as diamonds, outcomes), `timeline` (lanes on a time axis: spans, points and marks such as a timeout), `datamodel` (tables, keys and relations), `impact` (click a box: what breaks if it goes down, what it needs) and `diff` (before and after side by side, added, removed and changed boxes marked). Graphs lay out by longest path, route around boxes and spread edges. `references/views.md` starts with a "which picture" table.
 - Two new pictures: `map` (zones inside zones, for cloud accounts, VPCs and clusters, with links routed across them) and `journey` (one piece of data travelling stop by stop, showing what it looks like at each stop with the changes highlighted; play or step through).
-- Lighter on tokens: SKILL.md is about 7 KB (was 10.5 KB) with proposals and suggested commits moved to `references/messages.md`, read only when such a message arrives; the references are written compactly (22 KB in all, was 27 KB) and the icon list is `planview icons` instead; `poll` lines drop the view, `status` prints one line. A highlighted code line can carry a short note, and code wraps on phones (toggle "Wrap lines").
+- Lighter on tokens: SKILL.md is about 7 KB (was 10.5 KB) with proposals and suggested commits moved to `references/messages.md`, read only when such a message arrives; the references are written compactly (22 KB in all, was 27 KB) and the icon list is `walkboard icons` instead; `poll` lines drop the view, `status` prints one line. A highlighted code line can carry a short note, and code wraps on phones (toggle "Wrap lines").
 - Simpler to learn: the message box offers only **Ask** and **Propose** (Restate when it is your turn); a three-stop tour on the first visit and **?** for shortcuts and the tour; ← → move between steps; empty panels say what you can do there; the colour legend folds away; the agent adds one line on how to use the page with the first link.
 - From two first-time-user tests: approving with open proposals asks first; to-do boxes are readable; after you restate or commit the bar says "Sent · waiting for the agent"; your turn shows on the whole-plan view and in the tab title; explain mode offers "Restate this stage" on each card and says "stage" throughout; proposed boxes have a neutral fill, a dashed border and their note, so they never look like real code; code excerpts drop shared indentation and fade where they continue; the step bar stays in view; playing starts where you are and holds 6 s; progress no longer counts as "plan changed"; links in replies are readable.
 - The "Got it" button is gone: it woke the agent for nothing. The logo sits top left and a link to the repository bottom right.
 - The agent replies to every message, approvals included, so the dots always end.
 - With "suggest messages", the agent waits after each step: the step shows the suggested commit message (`commitMessage`), editable, with **Agent commits these, then goes on** (the agent commits exactly that text) and **I committed, go on**. The agent checks `git status` before the next step, so two steps never mix in one working tree. A step may suggest several commits (`commits`, each with its files) when it holds separate concerns.
 - From a review by four testers (junior and senior developers, a mid-level developer on explain mode, a product owner on design mode):
-  - `planview check` refuses plans that would stop the page drawing (a string where a list belongs, text fields that are objects, duplicate design ids, two recommended options); a picture that still fails says so in its own place instead of blanking the page, and a diff never compares itself.
+  - `walkboard check` refuses plans that would stop the page drawing (a string where a list belongs, text fields that are objects, duplicate design ids, two recommended options); a picture that still fails says so in its own place instead of blanking the page, and a diff never compares itself.
   - Explain mode: `anchor` (a short piece of the cited code) lets `check` notice code that moved since it was explained and say where it went; the page warns on the code itself. Ranges are checked end to end.
   - Approve, commit and "write a plan" are sent once: the buttons say "sent" until the agent answers, and the server drops a repeat within 5 seconds.
-  - Design mode: criteria can be `must`; an option that fails one is out of the running whatever its total. Missing scores count as 0. When your weights put another option ahead of the recommendation, the page says so and offers "Ask the agent to re-check". A cell's or option's conversation stays in its own thread (`planview reply --option --criterion`). The decide panel lists what is still unconfirmed, each with Confirm; the chosen option keeps why the others lost and the plan it became. A legend says what the dots mean.
-  - `planview set` reaches the design lists (`constraint:`, `option:`, `criterion:`, `source:`), inside objects (`settings.commit=auto`), keeps digits as text when quoted, keeps the file compact if it was, and refuses a word that is neither a target nor key=value (a mistyped folder). Bad weights are refused. A stale server lock says how to clear it; CLI errors print one line instead of a stack.
+  - Design mode: criteria can be `must`; an option that fails one is out of the running whatever its total. Missing scores count as 0. When your weights put another option ahead of the recommendation, the page says so and offers "Ask the agent to re-check". A cell's or option's conversation stays in its own thread (`walkboard reply --option --criterion`). The decide panel lists what is still unconfirmed, each with Confirm; the chosen option keeps why the others lost and the plan it became. A legend says what the dots mean.
+  - `walkboard set` reaches the design lists (`constraint:`, `option:`, `criterion:`, `source:`), inside objects (`settings.commit=auto`), keeps digits as text when quoted, keeps the file compact if it was, and refuses a word that is neither a target nor key=value (a mistyped folder). Bad weights are refused. A stale server lock says how to clear it; CLI errors print one line instead of a stack.
   - The connection pill says when the agent is building; a step in review no longer claims it is your turn when nothing waits for you; the agent replies with what it built before you check a step.
   - Esc closes the panel from an empty text box; Space opens a box; on phones a tap on an underlined word inside a box opens the box; the tab, step and box you are on stay in the address; picking "All" returns to the picture you chose; a panel for a box not in the picture closes; unsent text survives a reload; the commit box scrolls into view.
   - The glossary only reads prose (not field names or URLs) and ships cloud networking terms (VPC, CIDR, subnet, Transit Gateway, PrivateLink, security group, …); the journey marks only real changes; the impact picture fades what is unaffected; timeline lanes open their box; changed boxes in a diff are amber; the decision diamond shows when selected; long titles wrap; the side panel becomes a bottom sheet only below 820 px.
@@ -40,7 +41,7 @@
 ## 0.5.0
 
 - The agent plans and replies in the language the user writes in. `lang` sets the page's labels (English or Thai; others get English); without it, a Thai title or goal means Thai. Checker messages are in English.
-- Icons on boxes, guessed from names or set with `icon` (`aws:s3`, `gcp:bigquery`, `azure:keyvault`, `k8s:cronjob`, `database`, …). Cloud parts use their provider's colours; the icons are planview's own drawings, not vendor logos.
+- Icons on boxes, guessed from names or set with `icon` (`aws:s3`, `gcp:bigquery`, `azure:keyvault`, `k8s:cronjob`, `database`, …). Cloud parts use their provider's colours; the icons are Walkboard's own drawings, not vendor logos.
 - Status is a small mark inside each box (✓ ● ↗ ★) instead of a tag on its border; link labels such as ports sit on the box they reach instead of on the line.
 - Kubernetes links leave the namespace on a straight line and spread out at both ends, so none run along a border or end in one point; "blocked" links end in a bar.
 - Sequence pictures: notes no longer cross the next lifeline, groups no longer break the lifelines or cover the arrow above them.
@@ -51,13 +52,13 @@
 
 ## 0.4.0
 
-- `planview set` changes statuses and fields in place with one short command, so the agent never rewrites the plan to move a step.
-- A shared glossary of about 70 common terms ships with planview; plans only add their own, and the page lists only the terms a plan uses.
+- `walkboard set` changes statuses and fields in place with one short command, so the agent never rewrites the plan to move a step.
+- A shared glossary of about 70 common terms ships with Walkboard; plans only add their own, and the page lists only the terms a plan uses.
 - Plans may leave out `views`; each step becomes a lane of a flow picture.
 - `poll` prints one compact line per message; `check` caps its warnings.
 - Deep links: `&step=`, `&view=`, `&node=` (or `&step=all`) and `&theme=light|dark`.
 - Logo, plugin icon and page icon.
-- The skill is invoked as `/planview` (the full `/planview:planview` only when names collide).
+- The skill is invoked as `/walkboard` (the full `/walkboard:walkboard` only when names collide).
 - A short README with a demo GIF; details in `docs/GUIDE.md`; `AGENTS.md` for changing the repository.
 - Shorter SKILL.md with a "keep it cheap" section.
 

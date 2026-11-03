@@ -1,4 +1,4 @@
-# planview guide
+# Walkboard guide
 
 Everything beyond the [README](../README.md): a tour of the page, explain mode, what makes it light on tokens, FAQ, limits and reference.
 
@@ -18,7 +18,7 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 | Part | What it does |
 |---|---|
 | Top bar (always visible) | ● agent listening now · ✎ agent is answering you · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also **💬** lists every conversation on the page, newest first (it turns orange with "new" when the agent has replied; click one to carry on), **◐ / ☀ / ☾** switches the theme (follow the system, light, dark; remembered in this browser), and "✎ Plan changed" shows what the agent changed (outlined until you press **Mark as seen**). |
-| Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages; each card says what the current choice means. Saved to the plan at once without waking the agent, which reads it before its next step. Defaults for every plan: `~/.planview/config.json`, e.g. `{"teachBack": true, "commit": "suggest"}`. |
+| Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages; each card says what the current choice means. Saved to the plan at once without waking the agent, which reads it before its next step. Defaults for every plan: `~/.walkboard/config.json`, e.g. `{"teachBack": true, "commit": "suggest"}`. |
 | Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ⏵ Play walks through the steps once. The address keeps the step, picture and box, so a reload or a shared link opens the same place. |
 | Step card | What the step does, its status and how we know it is done. When it is your turn, a purple bar opens the side panel. |
 | Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; a sheet from the bottom on narrow screens. |
@@ -54,12 +54,12 @@ The page speaks the plan's language: the agent writes the plan in the language y
 
 ![Explain mode: the login flow in stages](images/explain-overview.png)
 
-Every box that is code points at `file:line` and carries an `anchor`, a short piece of that code. `planview check` fails when the file or lines do not exist or the anchor is no longer in them (and says where it went); the page warns on the code itself when it changed since it was explained. The page shows the code beside the explanation, and the path opens in VS Code, Cursor or IntelliJ (`settings.editor`).
+Every box that is code points at `file:line` and carries an `anchor`, a short piece of that code. `walkboard check` fails when the file or lines do not exist or the anchor is no longer in them (and says where it went); the page warns on the code itself when it changed since it was explained. The page shows the code beside the explanation, and the path opens in VS Code, Cursor or IntelliJ (`settings.editor`).
 
 ![A box showing its code excerpt and an editor link](images/explain-code.png)
 
 ```bash
-node skills/planview/bin/planview.mjs open examples/explain-login
+node skills/walkboard/bin/walkboard.mjs open examples/explain-login
 ```
 
 ## Compare designs
@@ -75,40 +75,40 @@ For something not built yet ("what should we use to connect EC2 across two accou
 
 The page does the explaining, so the agent spends tokens on content once and very little afterwards.
 
-| Where tokens go | Hand-written explainer | planview |
+| Where tokens go | Hand-written explainer | Walkboard |
 |---|---|---|
 | A rich plan with four pictures | 26–43 KB of HTML and SVG, rewritten on every change | ~7 KB `plan.json` (compact JSON) written once; a simple plan is ~0.5 KB |
-| Moving a step forward | rewrite or edit the page | `planview set … step:x status=review` ≈ 90 bytes |
+| Moving a step forward | rewrite or edit the page | `walkboard set … step:x status=review` ≈ 90 bytes |
 | Code in explain mode | paste it | `file:line` + `highlight`; the server reads the excerpt |
-| Common terms | explain each time | ~95 ship with planview, in English and Thai |
+| Common terms | explain each time | ~95 ship with Walkboard, in English and Thai |
 | Each message from the page | — | one compact line, ~100–150 bytes |
 | Switching restating or commits on the page | — | nothing: the agent is not woken; it reads the setting with its next message or step |
-| Instructions loaded with the skill | — | SKILL.md ~7.5 KB; schema, pictures, design and rarer messages in references (2–6 KB each) read only when needed; icon names from `planview icons` |
+| Instructions loaded with the skill | — | SKILL.md ~7.5 KB; schema, pictures, design and rarer messages in references (2–6 KB each) read only when needed; icon names from `walkboard icons` |
 
 Every message from the page wakes the agent once, which re-reads the conversation (mostly from cache). That is why "Got it" was removed and settings never wake it: only clicks that need an answer cost a turn.
 
 ## FAQ
 
 **I click and nothing happens, or the page says it was opened from a file.**
-Open the `http://127.0.0.1:…/?token=…` link the agent gave you, not the HTML file. `planview status <folder>` prints the link again.
+Open the `http://127.0.0.1:…/?token=…` link the agent gave you, not the HTML file. `walkboard status <folder>` prints the link again.
 
 **The badge says the agent isn't listening.**
 It is busy (writing code, running tests). Your message waits in a queue and reaches it when it listens again. Say "check the page" in chat to hurry it.
 
 **Claude Code asks for permission on every update.**
-Allow `node …/skills/planview/bin/planview.mjs` commands and edits under `~/.planview/` in your Claude Code permissions.
+Allow `node …/skills/walkboard/bin/walkboard.mjs` commands and edits under `~/.walkboard/` in your Claude Code permissions.
 
 **The server seems stuck or the port is taken.**
-`planview stop <folder>`, then `planview open <folder>`. The link stays the same.
+`walkboard stop <folder>`, then `walkboard open <folder>`. The link stays the same.
 
 **Can teammates open my page?**
-No, it runs on your machine. Share `plan.json` (anyone can `planview open` it) or screenshots.
+No, it runs on your machine. Share `plan.json` (anyone can `walkboard open` it) or screenshots.
 
 **Where are plans kept?**
-`~/.planview/<project>/<task>/` unless you choose a folder. Delete the folder to remove a plan and its conversation.
+`~/.walkboard/<project>/<task>/` unless you choose a folder. Delete the folder to remove a plan and its conversation.
 
 **Does my code leave the machine?**
-Not through planview. The agent itself works as Claude Code normally does.
+Not through Walkboard. The agent itself works as Claude Code normally does.
 
 ## Limitations
 
@@ -126,7 +126,7 @@ Run from the repository root (the skill runs them for you).
 
 | Command | Does |
 |---|---|
-| `node skills/planview/bin/planview.mjs check <dir>` | Validate `plan.json`; in explain mode, also that every `file:line` exists and still holds its `anchor` |
+| `node skills/walkboard/bin/walkboard.mjs check <dir>` | Validate `plan.json`; in explain mode, also that every `file:line` exists and still holds its `anchor` |
 | `… set <dir> [plan \| step: \| node: \| constraint: \| option: \| criterion: \| source:<id>] key=value …` | Change fields in place; `key=` removes one, `settings.commit=auto` reaches inside, `what='"0042"'` keeps digits as text |
 | `… open <dir> [--no-browser]` | Start or reuse the server and print the link |
 | `… poll <dir>` | Wait for the page; one JSON line per message |
@@ -140,13 +140,13 @@ Add `&step=<id>`, `&view=<id>`, `&node=<id>` (or `&step=all`) and `&theme=light|
 
 ### Plan format
 
-[schema.md](../skills/planview/references/schema.md) describes `plan.json`; [views.md](../skills/planview/references/views.md) the four pictures. Examples (all data made up): `examples/nightly-import` (build), `examples/explain-login` (explain, with sample code), `examples/planview` (the plan that built planview, in Thai).
+[schema.md](../skills/walkboard/references/schema.md) describes `plan.json`; [views.md](../skills/walkboard/references/views.md) the four pictures. Examples (all data made up): `examples/nightly-import` (build), `examples/explain-login` (explain, with sample code), `examples/walkboard` (the plan that built walkboard, in Thai).
 
 ### Update or uninstall
 
 ```
-/plugin marketplace update planview
-/plugin uninstall planview@planview
+/plugin marketplace update walkboard
+/plugin uninstall walkboard@walkboard
 ```
 
-Installed by hand: pull again, or delete `~/.claude/skills/planview`.
+Installed by hand: pull again, or delete `~/.claude/skills/walkboard`.

@@ -1,4 +1,4 @@
-// Box icons: simple line glyphs drawn for planview (no vendor logos), tinted by provider so AWS, Google Cloud,
+// Box icons: simple line glyphs drawn for walkboard (no vendor logos), tinted by provider so AWS, Google Cloud,
 // Azure and Kubernetes parts are recognisable at a glance. Runs in Node and the browser.
 
 export const GLYPHS = {

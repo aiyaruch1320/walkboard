@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Records docs/images/demo.gif: from typing /planview in Claude Code to a confirmed step.
-// The terminal is a plain mock-up; the planview page is real (a copy of examples/nightly-import).
+// Records docs/images/demo.gif: from typing /walkboard in Claude Code to a confirmed step.
+// The terminal is a plain mock-up; the walkboard page is real (a copy of examples/nightly-import).
 // Pages are captured at 2x and a camera crops and scales the captures, so zooming never touches the page layout.
 // Needs Google Chrome and Node 22: node scripts/demo-gif.mjs   (DEMO_FRAMES=<dir> also writes every output frame as PNG)
 import {execFileSync} from "node:child_process";
@@ -12,11 +12,11 @@ import {launch, sleep} from "./lib/chrome.mjs";
 import {decodePng, encodeGif, encodePng, overlay, view} from "./lib/gif.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const cli = path.join(repo, "skills/planview/bin/planview.mjs");
+const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
 const W = 960, H = 600, SCALE = 2;
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), "planview-gif-"));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-"));
 const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
 plan.approved = false;
 for (const s of plan.steps) {
@@ -31,7 +31,7 @@ const listen = () => api("/api/poll").catch(() => {});
 const terminalUrl = pathToFileURL(path.join(repo, "scripts/demo/terminal.html")).href;
 const endUrl = pathToFileURL(path.join(repo, "scripts/demo/end.html")).href;
 const shortUrl = `127.0.0.1:${new URL(url).port}/?token=…`;
-const PROMPT = "/planview plan deploying the nightly customer import CronJob to staging";
+const PROMPT = "/walkboard plan deploying the nightly customer import CronJob to staging";
 
 const page = await launch({width: W, height: H, scale: SCALE});
 const frames = [];
@@ -208,14 +208,14 @@ async function crossfade(load, steps = 6) {
 }
 
 const TERMINAL_LINES = [
-  ['● planview <span class="muted">· build mode</span>', ""],
+  ['● walkboard <span class="muted">· build mode</span>', ""],
   ['? Commit for you?  <span class="ok">› Suggest messages only</span>', "ask"],
-  ['● Read 14 files · wrote a plan: 5 steps, 4 pictures · <span class="ok">planview check ok</span>', ""],
+  ['● Read 14 files · wrote a plan: 5 steps, 4 pictures · <span class="ok">walkboard check ok</span>', ""],
   [`● Plan page  <span class="link" id="planlink">http://${shortUrl}</span>`, ""],
   ['<span class="muted">  Listening to the plan page…</span>', ""],
 ];
 const CAPTIONS = [
-  "Type /planview and describe the task",
+  "Type /walkboard and describe the task",
   "The agent asks one question, writes the plan and opens it as a page",
   "Review the plan first: steps on top, the picture of the work below",
   "When it looks right, approve the plan. Only then does the agent start",

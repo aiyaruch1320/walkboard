@@ -1,6 +1,6 @@
 # plan.json
 
-One JSON object, written compact. `PV check <dir>` validates it with the page's own rules; warnings are advice.
+One JSON object, written compact. `WB check <dir>` validates it with the page's own rules; warnings are advice.
 
 ```json
 {"title":"Nightly import to staging","goal":"One sentence: what is true when done.","mode":"build","lang":"en",
@@ -19,13 +19,13 @@ One JSON object, written compact. `PV check <dir>` validates it with the page's 
 | `goal` | One sentence under it |
 | `mode` | `"build"` (default; "plan mode" on the page), `"explain"`, `"design"` (fields in [design.md](design.md)) |
 | `lang` | `"en"` or `"th"` page labels (others get English). Default: Thai if the title or goal is Thai |
-| `settings` | build: required. `commit` `"auto"`/`"suggest"`; `teachBack` (default on; the user switches it); explain: `depth` `"overview"`/`"detail"`; `editor` `"vscode"` (default) / `"cursor"` / `"idea"` / `"none"`. Defaults: `~/.planview/config.json` |
+| `settings` | build: required. `commit` `"auto"`/`"suggest"`; `teachBack` (default on; the user switches it); explain: `depth` `"overview"`/`"detail"`; `editor` `"vscode"` (default) / `"cursor"` / `"idea"` / `"none"`. Defaults: `~/.walkboard/config.json` |
 | `approved` | build: `true` once the user approved; build nothing before |
 | `root` / `roots` | explain: repository of the `file` paths (absolute or relative to the plan folder); more as `{"deploy": "/path"}`, used as `deploy:path:line` |
 | `start` | Step id to open on (default: first in `review`, else `doing`) |
 | `constraints` | `[{"id","text","confirmed":false}]`: assumptions the user should confirm; shown dashed until confirmed |
 | `links` | Plans started from this page: `[{"title","url"}]` |
-| `glossary` | `{"term": "one-line explanation"}`, only project terms; ~95 common ones ship with planview |
+| `glossary` | `{"term": "one-line explanation"}`, only project terms; ~95 common ones ship with Walkboard |
 | `steps` | Ordered steps (build) or stages (explain) |
 | `views` | Pictures as tabs ([views.md](views.md)); leave out for a plain flow built from the steps |
 | `nodes` | Required. Every box, keyed by a short id |
@@ -44,7 +44,7 @@ One JSON object, written compact. `PV check <dir>` validates it with the page's 
 | `file` | `path`, `path:line`, `path:from-to` or `root:path:line`. Explain mode: required and checked; the page shows the code |
 | `anchor` | A short piece of the cited code, e.g. `"function send("`; `check` fails when it is no longer in those lines and says where it went |
 | `highlight` | Lines that make the point: `"146-152"`, or with notes `{"152": "returns: this wakes the agent"}`. Without it a single line is highlighted, a range is context |
-| `icon` | Guessed from `name`; set when wrong: `aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, … (`PV icons` lists all), `"none"` |
+| `icon` | Guessed from `name`; set when wrong: `aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, … (`WB icons` lists all), `"none"` |
 | `in` / `out` / `why` | One line each; a concrete example beats a description |
 | `basis` / `source` / `checked` | Where its facts come from: `iac`, `cli`, `doc`, `assumed` (dashed, confirmable), a `sources` id, the date seen |
 | `proposal` | `{"type":"add"\|"change"\|"remove","note"}`: drawn on the picture until planned or withdrawn |

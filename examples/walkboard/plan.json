@@ -1,5 +1,5 @@
 {
-  "title": "สร้าง planview",
+  "title": "สร้าง Walkboard",
   "goal": "skill ที่วาดแผนของ agent เป็นภาพ แล้วคลิก component เพื่อคุยกับ agent ได้",
   "mode": "build",
   "settings": {
@@ -151,8 +151,8 @@
       "name": "SKILL.md",
       "what": "วิธีทำงานของ agent",
       "status": "done",
-      "file": "skills/planview/SKILL.md + references/",
-      "in": "/planview หรือคำขอให้วางแผน",
+      "file": "skills/walkboard/SKILL.md + references/",
+      "in": "/walkboard หรือคำขอให้วางแผน",
       "out": "ถามก่อนเริ่ม: ทวนทีละขั้นไหม? commit ให้ไหม?\nวางแผน → เปิดภาพ → รอ/ตอบ → (ทวน) → ลงมือ → (commit หรือแนะนำข้อความ)",
       "why": "ผู้ใช้เลือกได้ว่าจะเข้มแค่ไหน: ไม่ทวนก็ข้าม, ไม่ให้ commit ก็ได้แค่ข้อความ commit ที่แนะนำ · ทุก commit ไม่มี co-author"
     },
@@ -160,7 +160,7 @@
       "name": "plan.json",
       "what": "ข้อมูลแผน",
       "status": "done",
-      "file": "~/.planview/<project>/<task>/plan.json",
+      "file": "~/.walkboard/<project>/<task>/plan.json",
       "in": "agent อ่าน context ของงาน",
       "out": "title, goal, steps, views, nodes\nเป็น JSON ไม่ใช่ HTML",
       "why": "agent เขียนแค่ข้อมูล viewer เป็นคนวาด ภาพจึงหน้าตาเหมือนกันทุกงานและแก้ง่าย"
@@ -169,34 +169,34 @@
       "name": "server ในเครื่อง",
       "what": "127.0.0.1 + token",
       "status": "done",
-      "file": "skills/planview/lib/server.mjs",
+      "file": "skills/walkboard/lib/server.mjs",
       "in": "GET / , /api/plan , /api/events , /api/poll\nPOST /api/feedback , /api/reply",
       "out": "แผนเปลี่ยน → แจ้งหน้าเว็บให้โหลดใหม่ (SSE)\nรีสตาร์ทแล้วใช้ port + token เดิม\ntoken ผิด → 403",
-      "why": "agent สั่ง planview open ครั้งเดียว server รันแยกเบื้องหลัง เปิดซ้ำก็ได้ตัวเดิม"
+      "why": "agent สั่ง walkboard open ครั้งเดียว server รันแยกเบื้องหลัง เปิดซ้ำก็ได้ตัวเดิม"
     },
     "viewer": {
       "name": "viewer.html",
       "what": "วาดภาพจาก plan.json",
       "status": "done",
-      "file": "skills/planview/assets/viewer.html",
+      "file": "skills/walkboard/assets/viewer.html",
       "in": "plan.json จาก /api/plan",
       "out": "ภาพ flow, k8s, sequence, transform\nกล่องพิมพ์ + ปุ่ม เข้าใจแล้ว/ยังงง/ขอแก้ + คำตอบ agent\nช่องทวนต่อขั้น (เมื่อ teachBack เปิด)",
       "why": "ไฟล์เดียว ไม่โหลดอะไรจากภายนอก ใส่ข้อความด้วย textContent กันโค้ดแปลกปลอมจากเนื้อหาแผน"
     },
     "queue": {
       "name": "คิว feedback",
-      "what": ".planview/feedback.jsonl",
+      "what": ".walkboard/feedback.jsonl",
       "status": "done",
-      "file": "<โฟลเดอร์แผน>/.planview/feedback.jsonl",
+      "file": "<โฟลเดอร์แผน>/.walkboard/feedback.jsonl",
       "in": "คลิกจากหน้าเว็บ",
       "out": "เก็บทุกรายการ + จำว่าส่งไปถึงไหน (delivered)\nserver รีสตาร์ทแล้วรายการที่ยังไม่ส่งยังอยู่",
       "why": "คลิกตอน agent ไม่ได้รอ หรือ server ล่ม ก็ไม่หาย และไม่ส่งซ้ำ"
     },
     "poll": {
-      "name": "planview poll",
+      "name": "walkboard poll",
       "what": "agent รอรับ",
       "status": "done",
-      "file": "planview poll <dir>",
+      "file": "walkboard poll <dir>",
       "in": "agent รันแบบ background",
       "out": "ค้างจนมี feedback แล้วพิมพ์ JSON และจบ\nserver ตอบว่างทุก 4 นาที poll รอต่อเอง",
       "why": "การจบของคำสั่ง background คือสัญญาณปลุก agent ไม่ต้องคอยเช็คเอง"
@@ -210,19 +210,19 @@
       "why": "ใช้ความสามารถที่ Claude Code มีอยู่แล้ว ไม่ต้องสร้างอะไรเพิ่ม"
     },
     "reply": {
-      "name": "planview reply",
+      "name": "walkboard reply",
       "what": "agent ตอบขึ้นหน้า",
       "status": "done",
-      "file": "planview reply --dir <dir> --node|--step <id> <text>",
+      "file": "walkboard reply --dir <dir> --node|--step <id> <text>",
       "in": "ข้อความจาก agent",
-      "out": "เก็บใน .planview/replies.jsonl + ขึ้นใต้คำถามบนหน้าทันที",
+      "out": "เก็บใน .walkboard/replies.jsonl + ขึ้นใต้คำถามบนหน้าทันที",
       "why": "คุยต่อในหน้าภาพได้ ไม่ต้องสลับไปแชต"
     },
     "check": {
-      "name": "planview check",
+      "name": "walkboard check",
       "what": "ตรวจแผนก่อนเปิด",
       "status": "done",
-      "file": "skills/planview/lib/schema.mjs",
+      "file": "skills/walkboard/lib/schema.mjs",
       "in": "plan.json",
       "out": "ok: 5 steps, 4 views, 15 nodes\nหรือรายการปัญหา + exit 1",
       "why": "กฎชุดเดียวกับที่หน้าเว็บใช้ agent รู้ว่าเขียนผิดทันทีโดยไม่ต้องเปิดหน้า"

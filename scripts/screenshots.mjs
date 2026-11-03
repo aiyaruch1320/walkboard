@@ -9,13 +9,13 @@ import {fileURLToPath} from "node:url";
 import {launch, sleep} from "./lib/chrome.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const cli = path.join(repo, "skills/planview/bin/planview.mjs");
+const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
 const out = path.join(repo, "docs/images");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
 
 // A copy of the build example with a short conversation, so the chat can be shown.
 function demoPlan() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "planview-demo-"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-demo-"));
   const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
   const st = plan.steps.find((s) => s.id === "manifests");
   st.status = "review";

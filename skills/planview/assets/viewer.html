@@ -1148,9 +1148,9 @@ function closeSide() {
 
 // A panel with a conversation keeps the box's explanation at the top and the chat under it, each scrolling on its own,
 // so a long conversation never pushes the explanation away.
-// Narrow, either part folds away under its heading so the other gets the whole panel (one at a time; remembered).
+// Narrow, details and chat each fold away under their heading (either or both; remembered), and a folded part says so.
 // Wide (⤢), the two sit side by side and nothing folds.
-let fold = ["info", "chat"].includes(store.get("planview.fold")) ? store.get("planview.fold") : "";
+const folded = {info: store.get("planview.fold.info") === "1", chat: store.get("planview.fold.chat") === "1"};
 function fillPanel(p, parts) {
   p.classList.remove("fold-info", "fold-chat", "split");
   const i = parts.findIndex((x) => x?.classList?.contains("talk"));
@@ -1162,20 +1162,22 @@ function fillPanel(p, parts) {
     const b = el("button", "fold");
     b.dataset.fold = which;
     b.append(el("span", "chev", "▾"), el("span", "lbl", label));
+    b.append(el("span", "fhint", t("foldedHint")));
     b.onclick = () => {
-      fold = fold === which ? "" : which;
-      store.set("planview.fold", fold);
-      p.classList.toggle("fold-info", fold === "info");
-      p.classList.toggle("fold-chat", fold === "chat");
+      folded[which] = !folded[which];
+      store.set("planview.fold." + which, folded[which] ? "1" : "");
+      p.classList.toggle("fold-" + which, folded[which]);
+      b.setAttribute("aria-expanded", String(!folded[which]));
     };
+    b.setAttribute("aria-expanded", String(!folded[which]));
     return b;
   };
   const a = el("div", "pcol pa"), b = el("div", "pcol pb");
   a.append(head("info", t("foldInfo")), info);
   b.append(head("chat", t("foldChat")), ...parts.slice(i));
   p.classList.add("split");
-  p.classList.toggle("fold-info", fold === "info");
-  p.classList.toggle("fold-chat", fold === "chat");
+  p.classList.toggle("fold-info", folded.info);
+  p.classList.toggle("fold-chat", folded.chat);
   p.replaceChildren(a, b);
   // Fade the bottom edge while there is more explanation to scroll to.
   const more = () => info.classList.toggle("more", info.scrollTop + info.clientHeight < info.scrollHeight - 4);

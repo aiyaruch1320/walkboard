@@ -490,11 +490,15 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .fold:hover{color:var(--text)}
 .fold .chev{display:inline-block;transition:transform .2s}
 .fold .lbl[data-n]:not([data-n=""])::after{content:" (" attr(data-n) ")";font-weight:400}
+.fold .fhint{display:none;margin-left:auto;font-weight:400;font-size:11.5px}
+/* A folded part is a bar of its own: dashed, tinted, saying it is folded. */
+.side .panel.fold-info .pa>.fold,.side .panel.fold-chat .pb>.fold{border:1.5px dashed var(--you-bd);background:var(--you-bg);color:var(--you-tx);padding:6px 10px;border-radius:8px}
+.side .panel.fold-info .pa>.fold .fhint,.side .panel.fold-chat .pb>.fold .fhint{display:inline}
+.side .panel.fold-info .pa>.fold .chev,.side .panel.fold-chat .pb>.fold .chev{transform:rotate(-90deg)}
 .side .panel.fold-info .pa{flex:none;max-height:none}
 .side .panel.fold-info .pinfo,.side .panel.fold-chat .thread{display:none}
-.side .panel.fold-info .pa .chev,.side .panel.fold-chat .pb .chev{transform:rotate(-90deg)}
-.side .panel.fold-chat .pa{flex:1 1 auto;max-height:none}
-.side .panel.fold-chat .pb{flex:none}
+.side .panel.fold-chat:not(.fold-info) .pa{flex:1 1 auto;max-height:none}
+.side .panel.fold-chat:not(.fold-info) .pb{flex:none}
 /* ⤢ wide: the picture keeps the left side; details and chat side by side, full height, nothing folded. */
 body.side-wide{--side-w:clamp(520px,62vw,1200px)}
 @media (min-width:820px){
@@ -504,6 +508,8 @@ body.side-wide{--side-w:clamp(520px,62vw,1200px)}
   body.side-wide .side .panel.split .thread{display:flex}
   body.side-wide .side .fold{pointer-events:none}
   body.side-wide .side .fold .chev{display:none}
+  body.side-wide .side .panel.split .fold{border:0;background:transparent;color:var(--muted);padding:4px 2px}
+  body.side-wide .side .fold .fhint{display:none!important}
 }
 #sideWide{font-size:14px;line-height:1}
 @media (max-width:819px){

@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/demo.gif" alt="Typing a request in Claude Code, opening the plan page, choosing a step, asking on a box, the agent answering in place, and confirming a restated step" width="100%">
+  <img src="docs/images/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking on a box in the side panel, the agent answering in place, restating a step, and exporting the plan" width="100%">
 </p>
 
 ## Why
@@ -29,10 +29,10 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 - **See it, don't scroll it.** Twelve kinds of picture (flow, Kubernetes, network map, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
 - **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
 - **You stay in charge.** Nothing is built before you press **Approve plan**. After each step you restate it in your own words and the agent corrects what you missed. Commit messages are suggested for you to edit, and proposed changes are drawn on the picture before anything is built.
-- **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it.
-- **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Choosing an option turns it into a step-by-step plan.
+- **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it or mark it not true.
+- **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Scores can show the figure behind them, such as a monthly price, and rows that rest on something not yet confirmed are marked ❓. Choosing an option turns it into a step-by-step plan.
 - **Lighter than a hand-written explainer.** The agent writes a small JSON file once and updates it with one-line commands, while the page does the drawing. A four-picture plan is about 7 KB of JSON instead of 26–43 KB of HTML rewritten on every change ([numbers](docs/GUIDE.md#light-on-tokens)).
-- **Easy to pass on.** Export a plan as one HTML file that anyone opens offline, read only, or print it to PDF with every step and picture laid out for paper.
+- **Easy to pass on.** Export a plan as one HTML file that anyone opens offline, read only, or print it to PDF: a design opens with the decision and why, and every step, picture and box is laid out for paper.
 - **For the whole team.** A product owner can compare options without reading code; a new developer can follow a plan step by step; a senior can check claims against the code.
 - **Private and simple.** Everything stays on your machine: a zero-dependency Node server on 127.0.0.1 behind a random token, no telemetry. The agent plans in the language you write in, and the page's labels follow (English and Thai).
 
@@ -55,6 +55,8 @@ The agent picks the mode from your request and asks up to three short questions 
 
 Needs Node.js 18.18 or newer. Nothing else.
 
+Walkboard is young (0.6): built and tested with Claude Code on macOS. Other agents and systems should work but are not tested yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
+
 ## Use
 
 Type `/walkboard` and say what you want, or just ask in your own words:
@@ -72,7 +74,7 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **⋮** holds export, the theme and a short tour.
 4. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
 
-Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours. Built and tested on macOS.
+Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours.
 
 <table>
   <tr>

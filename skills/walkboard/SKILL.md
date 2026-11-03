@@ -84,4 +84,5 @@ Summarize in chat with the URL. `WB stop <dir>` unless the user wants the page k
 | `WB open <dir> [--no-browser]` | Start or reuse the server, print the URL |
 | `WB poll <dir>` / `WB reply <dir> [--node id \| --step id] <text>` | Wait for the page / answer on it |
 | `WB status <dir>` / `WB stop <dir>` | URL, queue, settings / stop the server |
+| `WB export <dir> [--html file] [--no-code] [--with-chat]` | A read-only copy as one HTML file, when the user asks to share or send the plan (PDF: the page's ⤓ → print) |
 | `WB icons` | Icon names for `icon` |

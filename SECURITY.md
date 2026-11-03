@@ -23,6 +23,10 @@ Please report security issues privately through [GitHub's private vulnerability 
 - Explain mode never edits the project.
 - Design mode looks at live cloud state only with read-only commands (`describe`, `list`, `get`) and asks before running any; otherwise it gives you the command to run.
 
+## Exported files
+
+`walkboard export` and the page's **⤓** write one HTML file: the page, the plan, the glossary, the code excerpts the boxes point at (unless left out) and the chat (only when asked for). It contains no token, server address or path on your machine, opens without a server, and its Content-Security-Policy blocks every network request. Whoever you give it to can read everything in it, so check it before sending it on.
+
 ## Limits
 
 - The server trusts anyone who has the link with its token. Do not share it; anyone on your machine who can read `.walkboard/session.json` can reach your plan.

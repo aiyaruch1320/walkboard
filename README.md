@@ -32,6 +32,7 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 - **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it.
 - **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Choosing an option turns it into a step-by-step plan.
 - **Lighter than a hand-written explainer.** The agent writes a small JSON file once and updates it with one-line commands, while the page does the drawing. A four-picture plan is about 7 KB of JSON instead of 26–43 KB of HTML rewritten on every change ([numbers](docs/GUIDE.md#light-on-tokens)).
+- **Easy to pass on.** Export a plan as one HTML file that anyone opens offline, read only, or print it to PDF with every step and picture laid out for paper.
 - **For the whole team.** A product owner can compare options without reading code; a new developer can follow a plan step by step; a senior can check claims against the code.
 - **Private and simple.** Everything stays on your machine: a zero-dependency Node server on 127.0.0.1 behind a random token, no telemetry. The agent plans in the language you write in, and the page's labels follow (English and Thai).
 

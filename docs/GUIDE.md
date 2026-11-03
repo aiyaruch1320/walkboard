@@ -71,6 +71,15 @@ For something not built yet ("what should we use to connect EC2 across two accou
 - **Assumptions** (constraints in the bar above, dashed boxes in the pictures) stay unconfirmed until you press **Confirm**; choosing an option lists the ones still open.
 - **Choose this → write a plan** records the decision (why this one, why not the others) and starts a plan in a new page, linked from the choice.
 
+## Send a plan to someone
+
+**⤓** in the top bar, or `walkboard export <folder>`:
+
+- **HTML**: one file that opens anywhere, offline and read only: every picture, step and box, and in explain mode the code each box points at (untick it, or `--no-code`). The chat stays out unless you tick it (`--with-chat`). No server address, token or path on your machine goes into it, and the file cannot load anything from the network.
+- **PDF**: the browser's print window with a layout for paper: every step, every picture one after another (scaled to the page when wider), then the boxes. Choose **Save as PDF**.
+
+Look at what the file contains before you send it: it is your plan and, unless left out, your code.
+
 ## Light on tokens
 
 The page does the explaining, so the agent spends tokens on content once and very little afterwards.
@@ -132,6 +141,7 @@ Run from the repository root (the skill runs them for you).
 | `… poll <dir>` | Wait for the page; one JSON line per message |
 | `… reply <dir> [--node id \| --step id \| --option id [--criterion id]] <text>` | Answer on the page, in that box's, step's or design cell's thread |
 | `… status <dir>` / `… stop <dir>` | Show the link and queue / stop the server |
+| `… export <dir> [--html file] [--no-code] [--with-chat]` | Write a read-only copy of the plan as one HTML file (see below) |
 | `… icons` | List the icon names for `icon` |
 
 ### Links into a page

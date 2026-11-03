@@ -94,7 +94,7 @@ agent ──writes──► plan.json ──► page (pictures + chat)
   └── wakes up ◄── local server ◄─────┘
 ```
 
-The agent writes `plan.json`; a fixed page draws it, so every plan looks familiar and the agent never writes HTML. What you click or type is queued on disk and handed to a background `walkboard poll`, which wakes the agent; `walkboard reply` puts its answer back on the page.
+The agent writes `plan.json`; a fixed page draws it, so every plan looks familiar and the agent never writes HTML. What you click or type is queued on disk and handed to a background `walkboard poll`, which wakes the agent; `walkboard reply` puts its answer back on the page. The idea of a local page whose messages reach the agent through a waiting `poll` comes from [lavish-axi](https://github.com/kunchenguid/lavish-axi).
 
 ## Security and privacy
 
@@ -103,10 +103,12 @@ Everything stays on your machine: one zero-dependency Node server per plan, boun
 ## For AI agents
 
 - **Using Walkboard for a user**: read [skills/walkboard/SKILL.md](skills/walkboard/SKILL.md) and follow it. It covers the three modes, the questions to ask first, the plan format and every command. From a clone, the CLI also works without installing: `node skills/walkboard/bin/walkboard.mjs <command>`.
-- **Installing it for a user**: ask first, because it changes their Claude Code setup.
+- **Installing it for a user**: ask first, because it changes their agent's setup.
   1. Check `node -v` is 18.18 or newer.
-  2. Prefer the plugin: `claude plugin marketplace add aiyaruch1320/walkboard`, then `claude plugin install walkboard@walkboard`. If plugins are not available, clone this repository and copy `skills/walkboard` to `~/.claude/skills/walkboard`.
-  3. Tell the user to start a new Claude Code session. It worked if `/walkboard` appears in the slash-command menu and `node <skill dir>/bin/walkboard.mjs` prints its usage.
+  2. Claude Code: prefer the plugin, `claude plugin marketplace add aiyaruch1320/walkboard`, then `claude plugin install walkboard@walkboard`. Without plugins, clone this repository and copy `skills/walkboard` to `~/.claude/skills/walkboard`.
+  3. Other agents that read `SKILL.md` skills (Codex, GitHub Copilot, Cursor, Gemini CLI, …): clone this repository and copy the whole `skills/walkboard` folder, not only `SKILL.md`, into the agent's user skills folder: `~/.agents/skills/walkboard` for Codex (and the shared location several agents read), otherwise the folder that agent's documentation names.
+  4. Tell the user to start a new session. It worked if the agent lists the `walkboard` skill (in Claude Code, `/walkboard` appears in the slash-command menu) and `node <skill dir>/bin/walkboard.mjs` prints its usage.
+  5. Only Claude Code is tested so far. Elsewhere the page and pictures work the same; the agent just waits for clicks with `poll` in the foreground instead of being woken in the background (see SKILL.md).
 - **Changing this repository**: read [AGENTS.md](AGENTS.md) for the map, rules and checks.
 
 ## License

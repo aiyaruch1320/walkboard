@@ -50,6 +50,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
    - `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
+   No background commands that wake you when they end (agents other than Claude Code)? Run `WB poll <dir>` in the foreground instead: it waits until the page sends something; handle it, then poll again.
 3. Refer to steps by title. Start `WB poll` again. The user may also answer in chat.
 
 ## 4. Build (build)

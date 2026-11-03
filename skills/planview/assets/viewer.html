@@ -1156,6 +1156,44 @@ function closeSide() {
 // Narrow, details and chat each fold away under their heading (either or both; remembered), and a folded part says so.
 // Wide (⤢), the two sit side by side and nothing folds.
 const folded = {info: store.get("planview.fold.info") === "1", chat: store.get("planview.fold.chat") === "1"};
+// Fold or unfold smoothly: measure every part before and after, then slide each from one height to the other.
+// What is closing stays drawn (and fades) until it is gone; what opens grows from nothing.
+function morph(p, change) {
+  const pa = p.querySelector(".pa"), pb = p.querySelector(".pb"), info = pa?.querySelector(".pinfo"), th = pb?.querySelector(".thread");
+  const parts = [pa, pb, info, th].filter(Boolean);
+  const box = (e) => {
+    const cs = getComputedStyle(e);
+    return {height: e.getBoundingClientRect().height, shown: cs.display !== "none", pt: cs.paddingTop, pb: cs.paddingBottom, mb: cs.marginBottom};
+  };
+  // Measured first, so a click in the middle of a slide starts from where things are now.
+  const before = parts.map(box);
+  parts.forEach((e) => e.getAnimations().forEach((a) => a.cancel()));
+  p.classList.remove("morph");
+  [info, th].forEach((e) => e?.classList.remove("closing"));
+  change();
+  const after = parts.map(box);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || innerWidth < 820) return;
+  const closing = [info, th].filter((e) => e && before[parts.indexOf(e)].shown && !after[parts.indexOf(e)].shown);
+  closing.forEach((e) => e.classList.add("closing"));
+  p.classList.add("morph");
+  // Hold the last frame until the classes are back, so the end never flashes.
+  const opts = {duration: 300, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards"};
+  const runs = parts.map((e, i) => {
+    const a = before[i], b = after[i];
+    if (e === pa || e === pb) return e.animate([{height: a.height + "px"}, {height: b.height + "px"}], opts);
+    const open = {height: (b.shown ? b : a).height + "px", opacity: 1, paddingTop: (b.shown ? b : a).pt, paddingBottom: (b.shown ? b : a).pb, marginBottom: (b.shown ? b : a).mb};
+    const shut = {height: "0px", opacity: 0, paddingTop: "0px", paddingBottom: "0px", marginBottom: "0px"};
+    if (a.shown && !b.shown) return e.animate([{...open, height: a.height + "px"}, shut], opts);
+    if (!a.shown && b.shown) return e.animate([shut, open], opts);
+    return e.animate([{height: a.height + "px"}, {height: b.height + "px"}], opts);
+  });
+  Promise.all(runs.map((r) => r.finished)).then(() => {
+    p.classList.remove("morph");
+    closing.forEach((e) => e.classList.remove("closing"));
+    runs.forEach((r) => r.cancel());
+  }, () => {});
+}
+
 function fillPanel(p, parts) {
   p.classList.remove("fold-info", "fold-chat", "split");
   const i = parts.findIndex((x) => x?.classList?.contains("talk"));
@@ -1171,8 +1209,8 @@ function fillPanel(p, parts) {
     b.onclick = () => {
       folded[which] = !folded[which];
       store.set("planview.fold." + which, folded[which] ? "1" : "");
-      p.classList.toggle("fold-" + which, folded[which]);
       b.setAttribute("aria-expanded", String(!folded[which]));
+      morph(p, () => p.classList.toggle("fold-" + which, folded[which]));
     };
     b.setAttribute("aria-expanded", String(!folded[which]));
     return b;

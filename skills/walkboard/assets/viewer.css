@@ -626,3 +626,9 @@ svg.links path{fill:none;stroke-width:1.8}
 .linklegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:0 0 6px}
 .linklist{margin:0 0 14px;padding-left:18px;font-size:12.5px;color:var(--muted)}
 .scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px;position:sticky;left:0;width:max-content}
+/* A snapshot (an exported file) is read only: nothing that would talk to an agent. */
+body.snapshot .settings,body.snapshot .turnbtn,body.snapshot .turn,body.snapshot .acts,body.snapshot .cmpnote button,body.snapshot #proposals button,body.snapshot #constraints button,body.snapshot .commitbox{display:none!important}
+body.snapshot:not(.with-chat) .talklink,body.snapshot:not(.with-chat) #planTalk,body.snapshot:not(.with-chat) #talks,body.snapshot:not(.with-chat) .side .pb{display:none!important}
+body.snapshot:not(.with-chat) .side .pa{max-height:none;flex:1 1 auto}
+body.snapshot .wbtn{pointer-events:none}
+.conn.snap{border-color:var(--line);color:var(--muted)}

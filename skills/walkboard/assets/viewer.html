@@ -63,9 +63,18 @@ const store = {
   set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
 };
 const token = params.get("token");
-const served = location.protocol !== "file:" && token;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served ? await import("/schema.mjs?token=" + encodeURIComponent(token)) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
-const {GLYPHS, FAMILIES, iconOf} = served ? await import("/icons.mjs?token=" + encodeURIComponent(token)) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
+// An exported file carries its plan (and code, and the chat if chosen) inside: it reads that and never calls a server.
+const snapshot = (() => {
+  try {
+    return JSON.parse(document.getElementById("wb-snapshot")?.textContent || "null");
+  } catch {
+    return null;
+  }
+})();
+const served = !snapshot && location.protocol !== "file:" && token;
+const moduleUrl = (name) => window.__walkboardModules?.[name] || `/${name}.mjs?token=${encodeURIComponent(token)}`;
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
+const {GLYPHS, FAMILIES, iconOf} = served || snapshot ? await import(moduleUrl("icons")) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
 
 let lang = /^th\b/i.test(navigator.language) ? "th" : "en";
 const t = (k, ...a) => {
@@ -331,6 +340,14 @@ async function send(c, kind, text, extra = {}) {
 
 // quick: buttons that send at once; modes: what the typed text is sent as.
 function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = "", extra = {}}) {
+  if (snapshot) {
+    // Read-only: the conversation if it was exported, nothing to type into.
+    const box = el("div", "talk");
+    const thr = el("div", "thread");
+    thr.dataset.ctx = JSON.stringify(c);
+    box.append(thr);
+    return box;
+  }
   const key = ctxKey(c);
   const pickKey = key + "|" + phase;
   let current = modes.includes(picked[pickKey]) ? picked[pickKey] : mode && modes.includes(mode) ? mode : modes[0];
@@ -477,9 +494,12 @@ function typingEl(m) {
 function renderBadges() {
   const conn = document.getElementById("conn");
   const busy = working().length > 0, building = !!plan && steps().some((x) => x.status === "doing");
-  conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
-  conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
-  conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
+  // A snapshot says when it was exported instead (set once in load).
+  if (!snapshot) {
+    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
+    conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
+    conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
+  }
   if (!plan) return;
   updateTitle();
   const s = plan.settings || {};
@@ -2432,8 +2452,7 @@ function codeBox(id) {
   const box = el("details", "code");
   box.open = true;
   box.append(el("summary", null, t("codeHere")), el("div", "meta", t("loading")));
-  fetch(`/api/source?node=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`)
-    .then((r) => r.json())
+  (snapshot ? Promise.resolve(snapshot.sources?.[id] || {error: t("codeNotIncluded")}) : fetch(`/api/source?node=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`).then((r) => r.json()))
     .then((r) => {
       if (r.error) return box.lastChild.replaceWith(el("div", "meta err", `${t("codeFail")}: ${r.error}`));
       // Only the lines that make the point: "highlight", else a single referenced line; a range alone is just context.
@@ -2637,7 +2656,7 @@ document.addEventListener("click", () => (document.getElementById("toast").hidde
 
 // The tab title says when it is your turn, and stops saying so once you have answered.
 function updateTitle() {
-  const mine = ((plan.mode ?? "build") === "build" && !plan.approved && !approvePending()) || steps().some((s) => yourTurn(s) && !answered(s));
+  const mine = !snapshot && ((plan.mode ?? "build") === "build" && !plan.approved && !approvePending()) || steps().some((s) => yourTurn(s) && !answered(s));
   document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · Walkboard` : "Walkboard");
 }
 
@@ -2733,6 +2752,20 @@ async function fetchPlan() {
 }
 
 async function load() {
+  if (snapshot) {
+    document.body.classList.add("snapshot");
+    document.body.classList.toggle("with-chat", !!snapshot.thread?.length);
+    commonGlossary = snapshot.glossary || {};
+    thread = snapshot.thread || [];
+    thread.forEach((m) => m.from === "agent" && seen.add(m.id));
+    render(snapshot.plan);
+    const conn = document.getElementById("conn");
+    conn.className = "conn snap";
+    conn.textContent = t("snapshotAt", new Date(snapshot.exportedAt).toLocaleString(lang, {dateStyle: "medium", timeStyle: "short"}));
+    conn.title = t("snapshotTip");
+    refreshThreads();
+    return;
+  }
   if (!served) {
     document.getElementById("banner").hidden = false;
     return;

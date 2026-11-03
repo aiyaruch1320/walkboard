@@ -1,7 +1,7 @@
 // Page labels follow the plan's language (see langOf); anything else falls back to English.
 const STRINGS = {
   en: {
-    connOff: "○ Not connected to the server", connecting: "○ Connecting…", connLost: "○ Lost the server · reconnecting", connOn: "● Agent is listening", connIdle: "◐ Connected · agent is busy, messages wait in a queue",
+    connOff: "○ Not connected", connecting: "○ Connecting…", connLost: "○ Reconnecting…", connOn: "● Agent is listening", connIdle: "◐ Agent is busy",
     connLostTip: "The page cannot reach the local server", connOnTip: "Click or type: the agent sees it right away", connIdleTip: "The agent is working on something else; your message reaches it when it listens again",
     banner: "This page was opened as a file, so it is not connected to the agent and clicks reach no one. Open it with walkboard open instead.",
     ok: "Got it", confused: "Still unclear", deeper: "Go deeper", change: "Request change", question: "Ask", teachback: "Restate", approve: "Approve plan",
@@ -17,7 +17,7 @@ const STRINGS = {
     agentSettings: "⚙ Agent settings", commits: "Commits", commitAuto: "Agent commits", commitOnly: "Suggest messages", settingFail: "Could not save the setting: ",
     restateOnFx: (u) => `The agent waits for you to restate each ${u} before going on`, restateOffFx: (u) => `The agent goes on to the next ${u} without waiting`,
     commitAutoFx: "The agent commits after each step", commitOnlyFx: "The agent suggests messages; you commit",
-    settings: "Setting", working: (m) => (m ? `Agent is working on it · ${m} min` : "Agent is working on it"), noReply: (m) => `No reply after ${m} min. Check Claude Code`, connWorking: "✎ Agent is answering you", connBuilding: "✎ Agent is building · messages wait in a queue",
+    settings: "Setting", working: (m) => (m ? `Agent is working on it · ${m} min` : "Agent is working on it"), noReply: (m) => `No reply after ${m} min. Check Claude Code`, connWorking: "✎ Agent is answering you", connBuilding: "✎ Agent is building",
     connWorkingTip: "The agent took your message and has not answered yet",
     sb_doing: "In progress", sb_review: "Your turn", sb_done: "Done", sb_todo: "Not started", implementing: "The agent is building this step",
     progDoing: (i, n, x) => `Working on step ${i}/${n}: ${x}`, progReview: (i, n, x) => `Your turn, step ${i}/${n}: ${x}`, progDone: (n) => `✓ All ${n} steps done`,
@@ -38,7 +38,7 @@ const STRINGS = {
     pillTip_build: "Plan in small steps, approve, then the agent builds step by step", pillTip_explain: "How existing code works, drawn from the real code; nothing is changed",
     pillTip_design: "Options for something not built yet, compared with sources; choose one to plan it", constraintsLabel: "Constraints:", checkCons: "Confirm…", consTitle: "Constraints",
     assumedTip: "Assumed by the agent; not confirmed yet", confirm: "Confirm", q_confirm: (x) => `Confirmed: ${x}`, recommended: "★ recommended", choose: "Choose this → write a plan",
-    askOption: (o) => `Ask about ${o}…`, compareTitle: "Comparison", weightTip: "How much this matters to you; click to change (saved, the agent is not woken)", total: "Total, by your weights",
+    askOption: (o) => `Ask about ${o}…`, compareTitle: "Comparison", weightTip: "How much this matters to you; click to change (saved, the agent is not woken)", total: "Total, by your weights", totalShared: "Total, by weight", leadShared: (a, b) => `By the weights ${a} comes out ahead; the agent recommended ${b}.`,
     sourcesTitle: (n) => `📚 Sources (${n})`, checkedOn: (d) => `read ${d}`, decideTitle: (o) => `Choose ${o}`, decideWarn: (n) => `${n} ${n === 1 ? "assumption is" : "assumptions are"} not confirmed yet`,
     codeMoved: (n) => `This code changed since it was explained${n ? ` (now near line ${n})` : ""}`, drawFail: (x, m) => `Cannot draw ${x}: ${m}. Run walkboard check.`, must: "must", failsMust: "fails a must", ratingLegend: "●●●●● best · ✗ does not work", leadNote: (a, b) => `With your weights ${a} comes out ahead; the agent recommended ${b}.`, recFails: (a, b) => `${b} fails a must; ${a} leads.`, askRecheck: "Ask the agent to re-check", q_recheck: (a, b) => `With my weights ${a} is ahead of ${b}. Do you still recommend ${b}?`,
     decideReason: "Reason (optional)", decideSend: "Choose it and write a plan", q_decide: (o) => `Chosen: ${o}. Write a build plan for it.`, decide: "Choose",
@@ -64,12 +64,12 @@ const STRINGS = {
     q_apply: "Change the plan to include these proposals", withdraw: "Withdraw", q_withdraw: "Withdraw this proposal", linksLabel: "Plans from this page:", pickChange: "First choose: add, change or remove",
     talkStep: (n, u) => (n ? `💬 Talk about this ${u} (${n})` : `💬 Ask about this ${u}`), restateThis: (u) => `✍ Restate this ${u}`, talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"),
     in: "In", out: "Out", inSteps: "In steps: ", inStages: "In stages: ", askBox: (n) => `Ask about "${n}"…`,
-    newView: "New picture: ", planApproved: "Plan approved", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
+    newView: "New picture: ", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
     seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxRemoved: "The box you had open was removed from the plan",
     loadFail: (s) => `Cannot load the plan (${s}): `, parseFail: "plan.json cannot be read: ", problems: "plan.json has problems"
   },
   th: {
-    connOff: "○ ยังไม่ได้ต่อกับ server", connecting: "○ กำลังต่อ…", connLost: "○ หลุดจาก server · กำลังต่อใหม่", connOn: "● agent กำลังฟังอยู่", connIdle: "◐ ต่อแล้ว · agent ทำอย่างอื่นอยู่ ข้อความจะรอในคิว",
+    connOff: "○ ยังไม่ได้ต่อ", connecting: "○ กำลังต่อ…", connLost: "○ กำลังต่อใหม่…", connOn: "● agent กำลังฟังอยู่", connIdle: "◐ agent ติดงานอื่น",
     connLostTip: "หน้าเว็บติดต่อ server ในเครื่องไม่ได้", connOnTip: "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที", connIdleTip: "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง",
     banner: "หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้ต่อกับ agent คลิกแล้วจะไม่ไปถึงใคร เปิดผ่าน walkboard open แทน",
     ok: "เข้าใจแล้ว", confused: "ยังงง", deeper: "ลึกขึ้น", change: "ขอแก้", question: "ถาม", teachback: "ทวน", approve: "อนุมัติแผน",
@@ -85,7 +85,7 @@ const STRINGS = {
     agentSettings: "⚙ ตั้งค่า agent", commits: "การ commit", commitAuto: "agent commit ให้", commitOnly: "แนะนำข้อความ", settingFail: "บันทึกการตั้งค่าไม่ได้: ",
     restateOnFx: (u) => `agent รอให้คุณทวนก่อนไป${u}ถัดไป`, restateOffFx: (u) => `agent ไป${u}ถัดไปเองโดยไม่รอทวน`,
     commitAutoFx: "agent commit ให้หลังจบแต่ละขั้น", commitOnlyFx: "agent แนะนำข้อความ คุณ commit เอง",
-    settings: "ตั้งค่า", working: (m) => (m ? `agent กำลังตอบ · ${m} นาที` : "agent กำลังตอบ"), noReply: (m) => `ผ่านไป ${m} นาทียังไม่มีคำตอบ ลองดูที่ Claude Code`, connWorking: "✎ agent กำลังตอบคุณ", connBuilding: "✎ agent กำลังลงมือทำ · ข้อความจะรอในคิว",
+    settings: "ตั้งค่า", working: (m) => (m ? `agent กำลังตอบ · ${m} นาที` : "agent กำลังตอบ"), noReply: (m) => `ผ่านไป ${m} นาทียังไม่มีคำตอบ ลองดูที่ Claude Code`, connWorking: "✎ agent กำลังตอบคุณ", connBuilding: "✎ agent กำลังลงมือทำ",
     connWorkingTip: "agent รับข้อความแล้ว และยังไม่ได้ตอบ",
     sb_doing: "กำลังทำ", sb_review: "ถึงตาคุณ", sb_done: "เสร็จแล้ว", sb_todo: "ยังไม่เริ่ม", implementing: "agent กำลังลงมือทำขั้นนี้",
     progDoing: (i, n, x) => `กำลังทำขั้น ${i}/${n}: ${x}`, progReview: (i, n, x) => `ถึงตาคุณ ขั้น ${i}/${n}: ${x}`, progDone: (n) => `✓ เสร็จครบ ${n} ขั้น`,
@@ -106,7 +106,7 @@ const STRINGS = {
     pillTip_build: "วางแผนเป็นขั้นเล็กๆ อนุมัติแล้ว agent ลงมือทำทีละขั้น", pillTip_explain: "อธิบายโค้ดที่มีอยู่จากโค้ดจริง ไม่แก้อะไร",
     pillTip_design: "เทียบทางเลือกของสิ่งที่ยังไม่มี พร้อมแหล่งอ้างอิง เลือกแล้วต่อเป็นแผน", constraintsLabel: "ข้อจำกัด:", checkCons: "ยืนยัน…", consTitle: "ข้อจำกัด",
     assumedTip: "agent สมมติไว้ ยังไม่มีใครยืนยัน", confirm: "ยืนยัน", q_confirm: (x) => `ยืนยัน: ${x}`, recommended: "★ แนะนำ", choose: "เลือกทางนี้ → เขียนเป็นแผน",
-    askOption: (o) => `ถามเรื่อง ${o}…`, compareTitle: "เทียบทางเลือก", weightTip: "เกณฑ์นี้สำคัญกับคุณแค่ไหน คลิกเพื่อเปลี่ยน (บันทึกทันที ไม่ปลุก agent)", total: "รวมตามน้ำหนักของคุณ",
+    askOption: (o) => `ถามเรื่อง ${o}…`, compareTitle: "เทียบทางเลือก", weightTip: "เกณฑ์นี้สำคัญกับคุณแค่ไหน คลิกเพื่อเปลี่ยน (บันทึกทันที ไม่ปลุก agent)", total: "รวมตามน้ำหนักของคุณ", totalShared: "รวมตามน้ำหนัก", leadShared: (a, b) => `ตามน้ำหนัก ${a} นำ แต่ agent แนะนำ ${b}`,
     sourcesTitle: (n) => `📚 แหล่งอ้างอิง (${n})`, checkedOn: (d) => `อ่านเมื่อ ${d}`, decideTitle: (o) => `เลือก ${o}`, decideWarn: (n) => `ยังมี ${n} ข้อที่ยังไม่ยืนยัน`,
     codeMoved: (n) => `โค้ดเปลี่ยนไปหลังอธิบาย${n ? ` (ตอนนี้แถวบรรทัด ${n})` : ""}`, drawFail: (x, m) => `วาด ${x} ไม่ได้: ${m} ลองรัน walkboard check`, must: "ต้องมี", failsMust: "ไม่ผ่านข้อที่ต้องมี", ratingLegend: "●●●●● ดีที่สุด · ✗ ใช้ไม่ได้", leadNote: (a, b) => `ตามน้ำหนักของคุณ ${a} นำ แต่ agent แนะนำ ${b}`, recFails: (a, b) => `${b} ไม่ผ่านข้อที่ต้องมี ${a} นำแทน`, askRecheck: "ให้ agent ดูใหม่", q_recheck: (a, b) => `ตามน้ำหนักของฉัน ${a} นำ ${b} ยังแนะนำ ${b} อยู่ไหม`,
     decideReason: "เหตุผล (ไม่บังคับ)", decideSend: "ยืนยัน เลือกทางนี้และเขียนแผน", q_decide: (o) => `เลือก ${o} แล้วเขียนเป็นแผน`, decide: "เลือกทาง",
@@ -132,7 +132,7 @@ const STRINGS = {
     q_apply: "ปรับแผนตามข้อเสนอทั้งหมดนี้", withdraw: "ถอนข้อเสนอ", q_withdraw: "ถอนข้อเสนอนี้", linksLabel: "แผนที่สร้างจากหน้านี้:", pickChange: "เลือกก่อน: เพิ่ม แก้ หรือเอาออก",
     talkStep: (n, u) => (n ? `💬 คุยเรื่อง${u}นี้ (${n})` : `💬 ถามเรื่อง${u}นี้`), restateThis: (u) => `✍ ทวน${u}นี้`, talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"),
     in: "รับเข้า", out: "ได้ออกมา", inSteps: "อยู่ในขั้น: ", inStages: "อยู่ในช่วง: ", askBox: (n) => `ถามเกี่ยวกับ "${n}"…`,
-    newView: "ภาพใหม่: ", planApproved: "อนุมัติแผนแล้ว", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
+    newView: "ภาพใหม่: ", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
     seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxRemoved: "กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว",
     loadFail: (s) => `โหลดแผนไม่ได้ (${s}): `, parseFail: "plan.json อ่านไม่ได้: ", problems: "plan.json มีปัญหา"
   }

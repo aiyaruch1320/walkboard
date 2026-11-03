@@ -279,6 +279,14 @@ document.addEventListener("keydown", (e) => {
   else if (side && !(document.activeElement?.tagName === "TEXTAREA" && document.activeElement.value.trim())) closeSide();
 });
 
+// Every clickable box in a picture opens with Enter or Space too, whatever drew it.
+document.addEventListener("keydown", (e) => {
+  const d = e.target;
+  if ((e.key !== "Enter" && e.key !== " ") || !d?.matches?.("#view [data-id][tabindex]") || d.onkeydown || e.repeat) return;
+  e.preventDefault();
+  d.click();
+});
+
 const LINK_STATE_KEYS = ["ok", "todo", "blocked"];
 const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
 
@@ -496,6 +504,7 @@ function renderBadges() {
     conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
     conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
     conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
+    conn.setAttribute("aria-label", conn.textContent + ". " + conn.title);
   }
   if (!plan) return;
   updateTitle();
@@ -561,8 +570,9 @@ function renderBar() {
     const a = activeStep(plan);
     const all = list.every((s) => s.status === "done");
     if (a || all) {
-      const i = list.indexOf(a) + 1, review = a && a.status !== "doing";
-      const more = list.filter((s) => yourTurn(s)).length - (review ? 1 : 0);
+      // Answered and waiting for the agent is no longer the user's turn.
+      const i = list.indexOf(a) + 1, review = a && a.status !== "doing" && !answered(a);
+      const more = list.filter((s) => yourTurn(s) && !answered(s)).length - (review ? 1 : 0);
       const b = el("button", "progress " + (all ? "done" : review ? "review" : "doing"),
         all ? t("progDone", list.length) : t(review ? "progReview" : "progDoing", i, list.length, a.title) + (more > 0 ? ` (+${more})` : ""));
       if (a) b.onclick = () => {
@@ -616,7 +626,7 @@ const answered = (step) => thread.some((m, i) => m.step === step.id && !m.node &
   !thread.slice(i + 1).some((x) => x.from === "agent" && x.step === step.id && !x.node));
 
 function yourTurn(step) {
-  if (step?.status !== "review") return null;
+  if (snapshot || step?.status !== "review") return null;
   if (teachBackOn(plan) && !step.confirmed) return "turnRestate";
   if (plan.mode !== "explain" && plan.settings?.commit === "suggest") return "turnCommit";
   // Restating off and the agent commits itself: nothing waits for the user.
@@ -719,7 +729,8 @@ function renderStepCard() {
   const turn = yourTurn(step);
   const c = el("div", "stepcard " + (turn ? "review" : ""));
   const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
-  const st = !explain && (turn ? "review" : step.status === "done" || step.confirmed && step.status !== "doing" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
+  // Before approval every step is only proposed: no status to show yet.
+  const st = !explain && (plan.approved || (plan.mode ?? "build") !== "build") && (turn ? "review" : step.status === "done" || step.confirmed && step.status !== "doing" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
   if (st) h.append(el("span", "sbadge " + st, (st === "done" ? "✓ " : "") + t("sb_" + st)));
   if (step.confirmed && step.status !== "done") h.append(el("span", "passed", t("restated")));
   c.append(h);
@@ -980,7 +991,7 @@ function renderCompare() {
     tbody.append(tr);
   }
   const foot = el("tr");
-  foot.append(el("th", null, t("total")));
+  foot.append(el("th", null, t(snapshot ? "totalShared" : "total")));
   for (const o of options()) {
     if (out[o.id]) {
       const td = el("td", (o.id === cur ? "sel " : "") + "out", "✗ " + t("failsMust"));
@@ -1003,10 +1014,12 @@ function renderCompare() {
   const rec = options().find((o) => o.recommended);
   const lead = options().find((o) => !out[o.id] && pct[o.id] === best);
   if (rec && lead && lead.id !== rec.id && !plan.decision?.option && (out[rec.id] || pct[lead.id] > pct[rec.id])) {
-    const note = el("div", "cmpnote", t(out[rec.id] ? "recFails" : "leadNote", lead.title, rec.title));
+    const note = el("div", "cmpnote", t(out[rec.id] ? "recFails" : snapshot ? "leadShared" : "leadNote", lead.title, rec.title));
     const ask = el("button", null, t("askRecheck"));
     ask.onclick = async () => {
       ask.disabled = true;
+      // The answer comes in the plan's conversation: open it where it will appear.
+      openSide({kind: "plan"});
       await send({}, "question", t("q_recheck", lead.title, rec.title)).catch(() => (ask.disabled = false));
     };
     note.append(ask);
@@ -1109,7 +1122,7 @@ function renderDesignPanel() {
       const weights = Object.fromEntries(criteria().map((c) => [c.id, c.weight ?? 1]));
       await send({}, "decide", ta.value.trim() || t("q_decide", opt.title), {option: opt.id, weights}).catch(() => (go.disabled = false));
     };
-    const talk = el("div", "talk");
+    const talk = el("div", "talk decideform");
     talk.append(ta, go);
     const thr = el("div", "thread");
     thr.dataset.ctx = "{}";
@@ -1214,11 +1227,13 @@ function morph(p, change) {
 
 function fillPanel(p, parts) {
   p.classList.remove("fold-info", "fold-chat", "split");
-  const i = parts.findIndex((x) => x?.classList?.contains("talk"));
-  // Only a "your turn" line above the chat is no explanation to fold away.
-  if (i <= 0 || parts.slice(0, i).every((x) => x?.classList?.contains("turn"))) return p.replaceChildren(...parts);
+  const i = parts.findIndex((x) => x?.classList?.contains("talk") && !x.classList.contains("decideform"));
+  // What waits for the user (your turn, the commit) sits with the chat, by the buttons that answer it.
+  const act = (x) => x?.classList?.contains("turn") || x?.classList?.contains("commitbox");
+  const explain = parts.slice(0, Math.max(i, 0)).filter((x) => !act(x));
+  if (i < 0 || !explain.length) return p.replaceChildren(...parts);
   const info = el("div", "pinfo");
-  info.append(...parts.slice(0, i));
+  info.append(...explain);
   const head = (which, label) => {
     const b = el("button", "fold");
     b.dataset.fold = which;
@@ -1235,7 +1250,7 @@ function fillPanel(p, parts) {
   };
   const a = el("div", "pcol pa"), b = el("div", "pcol pb");
   a.append(head("info", t("foldInfo")), info);
-  b.append(head("chat", t("foldChat")), ...parts.slice(i));
+  b.append(head("chat", t("foldChat")), ...parts.slice(0, i).filter(act), ...parts.slice(i));
   p.classList.add("split");
   p.classList.toggle("fold-info", folded.info);
   p.classList.toggle("fold-chat", folded.chat);
@@ -1509,6 +1524,7 @@ function renderK8s(v) {
     pl.append(iconEl(plan.nodes[v.policy] || {}, v.policy, "k8s") || "🛡", plan.nodes[v.policy]?.name || v.policy);
     pl.dataset.id = v.policy;
     pl.tabIndex = 0;
+    pl.setAttribute("role", "button");
     pl.onclick = () => selectNode(v.policy);
     policy.append(pl);
   }
@@ -1627,6 +1643,7 @@ function renderTransform(v) {
     if (st.columns) card.style.flexBasis = Math.max(230, st.columns.length * 120) + "px";
     card.dataset.id = st.node;
     card.tabIndex = 0;
+    card.setAttribute("role", "button");
     card.onclick = () => selectNode(st.node);
     const head = el("div", "shead");
     const ic = iconEl(n, st.node);
@@ -2106,6 +2123,7 @@ function renderDataModel(v) {
     const card = anchored(tb.node, el("div", "ertable"));
     card.dataset.id = tb.node;
     card.tabIndex = 0;
+    card.setAttribute("role", "button");
     card.onclick = () => selectNode(tb.node);
     const head = el("div", "erhead");
     const ic = iconEl(plan.nodes[tb.node] || {}, tb.node);
@@ -2321,7 +2339,7 @@ function renderView() {
   try {
     kind?.after?.();
   } catch {}
-  if (side?.kind === "node" && nodeId && !document.querySelector(`#view [data-id="${CSS.escape(nodeId)}"]`)) closeSide();
+  if (side?.kind === "node" && nodeId && !Object.hasOwn(plan.nodes, nodeId)) closeSide();
   drawCounts();
   highlight();
   requestAnimationFrame(() => {
@@ -2616,7 +2634,6 @@ function noteChanges(prev) {
   for (const st of steps()) if (!same(content((prev.steps || []).find((x) => x.id === st.id), ["status", "confirmed", "commitMessage", "commits"]), content(st, ["status", "confirmed", "commitMessage", "commits"]))) changes.steps.add(st.id);
   const views = new Set((prev.views || []).map((v) => v.id));
   for (const v of plan.views) if (!views.has(v.id)) changes.notes.push(t("newView") + (v.title || v.id));
-  if (!prev.approved && plan.approved) changes.notes.push(t("planApproved"));
   if (!same(prev.glossary, plan.glossary)) changes.notes.push(t("glossaryChanged"));
   if (prev.title !== plan.title || prev.goal !== plan.goal) changes.notes.push(t("titleChanged"));
   changes.notes = [...new Set(changes.notes)];
@@ -2658,7 +2675,7 @@ document.addEventListener("click", () => (document.getElementById("toast").hidde
 
 // The tab title says when it is your turn, and stops saying so once you have answered.
 function updateTitle() {
-  const mine = !snapshot && ((plan.mode ?? "build") === "build" && !plan.approved && !approvePending()) || steps().some((s) => yourTurn(s) && !answered(s));
+  const mine = !snapshot && (((plan.mode ?? "build") === "build" && !plan.approved && !approvePending()) || steps().some((s) => yourTurn(s) && !answered(s)));
   document.title = (mine ? "👉 " : "") + (plan.title ? `${plan.title} · Walkboard` : "Walkboard");
 }
 
@@ -2687,6 +2704,7 @@ function draw(p) {
   renderSteps();
   renderStepCard();
   if (plan.views.length) renderView();
+  else document.getElementById("view").replaceChildren();
   renderCompare();
   renderSources();
   refreshThreads();
@@ -2711,7 +2729,10 @@ function draw(p) {
   if (prev && !same(prev, p)) noteChanges(prev);
   // Follow the agent: when the step you were watching is finished, show the one it moved on to.
   const was = prev && activeStep(prev), now = activeStep(plan);
-  if (was && now && stepId === was.id && now.id !== was.id) selectStep(now.id);
+  if (was && now && now.id !== was.id) {
+    if (stepId === was.id) selectStep(now.id);
+    if (side?.kind === "step" && side.id === was.id) openSide({kind: "step", id: now.id});
+  }
   markChanges();
   renderBar();
 }
@@ -2795,15 +2816,22 @@ async function load() {
     renderStepCard();
     if (side?.kind === "step") renderSide();
   });
+  // Approving sent from either button, or the agent answering it: both buttons follow at once.
+  const approval = () => keepFocus(() => {
+    renderBar();
+    if (side?.kind === "plan") renderSide();
+  });
   on("feedback", (m) => {
     thread.push({...m, from: "user", delivered: false});
     freshReply = m.id;
     if (m.step) turns();
+    if (m.kind === "approve") approval();
   });
   on("reply", (m) => {
     thread.push(m);
     freshReply = m.id;
     if (m.step) turns();
+    if (!m.step && !m.node) approval();
   });
   on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
   on("agent", (a) => (waiting = a.waiting));
@@ -2815,7 +2843,13 @@ document.getElementById("sideClose").onclick = closeSide;
 // ⤢ widens the panel (the picture stays in sight on the left) and puts the details beside the chat; again to go back.
 const wideBtn = document.getElementById("sideWide");
 const setWide = (on) => {
+  // The conversation stays where it was read: at the end if it was there, else at the same message.
+  const th = document.querySelector("#panel .thread");
+  const end = th && th.scrollTop + th.clientHeight >= th.scrollHeight - 4, top = th?.scrollTop;
+  const keep = () => th && (th.scrollTop = end ? th.scrollHeight : top);
   document.body.classList.toggle("side-wide", on);
+  keep();
+  setTimeout(keep, 320);
   wideBtn.textContent = on ? "⤡" : "⤢";
   wideBtn.title = t(on ? "narrowPanel" : "widePanel");
   wideBtn.setAttribute("aria-label", wideBtn.title);
@@ -2886,7 +2920,7 @@ function openHelp() {
     document.getElementById("toast").hidden = true;
     startTour();
   };
-  showCard(document.getElementById("more"), "helpcard", el("b", null, t("helpTitle")), ul, again);
+  showCard(document.getElementById("more"), "helpcard", el("b", null, t("helpTitle")), ul, ...(snapshot ? [] : [again]));
 }
 
 // A small card under the button that opened it; a click elsewhere, or on that button again, closes it.

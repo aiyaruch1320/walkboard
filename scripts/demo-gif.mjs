@@ -50,6 +50,8 @@ function save(name) {
   frames.length = 0;
   cam = {s: 1, cx: W / 2, cy: H / 2};
 }
+// Looping animations (a new box's glow, blinking dots) are sampled at uneven moments and strobe in a GIF: record them still.
+await page.send("Emulation.setEmulatedMedia", {features: [{name: "prefers-reduced-motion", value: "reduce"}]});
 // The first-visit tour would cover the page in every scene.
 await page.send("Page.enable");
 await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.tour", "done"); } catch {}`});

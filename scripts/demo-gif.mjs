@@ -208,24 +208,27 @@ async function typeInto(sel, text, per = 5) {
   }
 }
 
+// Scene changes dip through the dark background: the old scene fades out, then the new one fades in with its caption.
+// A straight cross-dissolve shows both screens and both captions at once, which reads as flicker.
 async function crossfade(load, steps = 4) {
-  const last = frames.at(-1);
+  const last = frames.at(-1), kept = frames.length;
   await load();
+  // Anything recorded while the next scene loads (a scroll, say) would flash it before the fade.
+  frames.length = kept;
   lastSrc = decodePng(await page.png());
-  const saved = cam;
   cam = {s: 1, cx: W / 2, cy: H / 2};
   const next = view(lastSrc, {x: 0, y: 0, w: W * SCALE, h: H * SCALE}, W, H);
   const cap = caption && captions.get(caption);
   if (cap) overlay(next, cap, Math.round((W - cap.width) / 2), H - cap.height - 10);
-  for (let i = 1; i < steps; i++) {
-    const t = ease(i / steps), rgb = new Uint32Array(W * H);
-    for (let j = 0; j < rgb.length; j++) {
-      const a = last.rgb[j], b = next.rgb[j];
-      rgb[j] = (Math.round(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t) << 16) | (Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t) << 8) | Math.round((a & 255) * (1 - t) + (b & 255) * t);
+  const dark = 0x121118;
+  const mix = (a, b, t) => (Math.round(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t) << 16) | (Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t) << 8) | Math.round((a & 255) * (1 - t) + (b & 255) * t);
+  for (const [from, to] of [[last.rgb, null], [null, next.rgb]]) {
+    for (let i = 1; i <= steps; i++) {
+      const t = ease(i / steps), rgb = new Uint32Array(W * H);
+      for (let j = 0; j < rgb.length; j++) rgb[j] = from ? mix(from[j], dark, t) : mix(dark, to[j], t);
+      frames.push({width: W, height: H, rgb, delay: 70});
     }
-    frames.push({width: W, height: H, rgb, delay: 60});
   }
-  void saved;
 }
 
 const TERMINAL_LINES = [

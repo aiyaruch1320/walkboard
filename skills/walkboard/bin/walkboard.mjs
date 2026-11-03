@@ -8,6 +8,7 @@ import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
 import {knownIcon, iconNames} from "../lib/icons.mjs";
 import {parseSet, applySet, savePlan} from "../lib/edit.mjs";
+import {snapshot} from "../lib/export.mjs";
 
 const USAGE = `walkboard <command> [options]
 
@@ -21,6 +22,7 @@ const USAGE = `walkboard <command> [options]
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
+  export [dir] [--html file] [--no-code] [--with-chat]   write a read-only copy of the plan as one HTML file
   icons                         list the icon names for "icon"
 
 dir defaults to the current directory and must contain plan.json.`;
@@ -32,6 +34,9 @@ function parse(argv) {
     const a = argv[i];
     if (a === "--no-browser") flags.noBrowser = true;
     else if (a === "--full") flags.full = true;
+    else if (a === "--no-code") flags.noCode = true;
+    else if (a === "--with-chat") flags.withChat = true;
+    else if (a === "--html") flags.html = argv[++i];
     else if (["--dir", "--node", "--step", "--option", "--criterion"].includes(a)) flags[a.slice(2)] = argv[++i];
     else rest.push(a);
   }
@@ -229,7 +234,20 @@ function icons() {
   console.log(iconNames().join(" "));
 }
 
-const commands = {check, set, open, poll, reply, status, stop, serve, icons};
+// One self-contained file anyone can open: no server, no token, no way to reach the agent.
+function exportPlan() {
+  if (!fs.existsSync(p.plan)) fail(`no plan.json in ${dir}`);
+  const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  const problems = validate(plan);
+  if (problems.length) fail("fix the plan first:\n" + problems.map((t) => `- ${t}`).join("\n"));
+  const {html, summary} = snapshot(dir, plan, {code: !flags.noCode, chat: !!flags.withChat});
+  const out = path.resolve(flags.html || path.join(dir, `${path.basename(dir)}.html`));
+  fs.writeFileSync(out, html);
+  console.log(out);
+  console.log(`${summary.steps} steps, ${summary.nodes} boxes; code from ${summary.files.length} files${summary.files.length ? ` (${summary.files.join(", ")})` : ""}; ${summary.chat ? `${summary.chat} chat messages` : "no chat"}`);
+}
+
+const commands = {check, set, open, poll, reply, status, stop, serve, icons, export: exportPlan};
 if (!commands[cmd]) {
   console.error(USAGE);
   process.exit(cmd ? 2 : 0);

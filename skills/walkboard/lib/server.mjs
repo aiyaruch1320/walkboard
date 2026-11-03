@@ -4,6 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {savePlan} from "./edit.mjs";
+import {pageHtml, snapshot} from "./export.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".walkboard");
@@ -19,18 +20,9 @@ export const paths = (dir) => {
   };
 };
 
-const assetsDir = new URL("../assets/", import.meta.url);
 const schemaFile = new URL("./schema.mjs", import.meta.url);
 const iconsFile = new URL("./icons.mjs", import.meta.url);
 const glossaryFile = new URL("../assets/glossary.json", import.meta.url);
-
-// The page links its stylesheet and labels so it also opens as a file; served, they are inlined into one response.
-function viewerPage() {
-  const part = (name) => fs.readFileSync(new URL(name, assetsDir), "utf8");
-  return part("viewer.html")
-    .replace('<link rel="stylesheet" href="viewer.css">', () => `<style>\n${part("viewer.css")}</style>`)
-    .replace('<script src="strings.js"></script>', () => `<script>\n${part("strings.js")}</script>`);
-}
 
 const MAX_BODY = 64 * 1024;
 const sameKey = (v) => JSON.stringify(["kind", "text", "node", "step", "option", "criterion", "constraint"].map((k) => v[k] ?? null));
@@ -145,7 +137,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     const route = `${req.method} ${url.pathname}`;
 
     if (route === "GET /") {
-      res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store"}).end(viewerPage());
+      res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store"}).end(pageHtml());
     } else if (route === "GET /schema.mjs") {
       res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(schemaFile));
     } else if (route === "GET /icons.mjs") {

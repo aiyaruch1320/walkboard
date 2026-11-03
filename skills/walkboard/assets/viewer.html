@@ -969,7 +969,8 @@ function renderCompare() {
   const wrap = el("div", "cmp");
   wrap.append(el("h4", null, t("compareTitle")));
   const table = el("table"), head = el("tr");
-  head.append(el("th"));
+  // The dots under each criterion are its weight; say so once, where the eye starts.
+  head.append(el("th", "whead", t(snapshot ? "weightHeadRO" : "weightHead")));
   for (const o of options()) {
     const th = el("th", (o.id === cur ? "sel" : "") + (out[o.id] ? " out" : ""), (o.recommended ? "★ " : "") + o.title);
     th.style.cursor = "pointer";
@@ -2207,18 +2208,20 @@ function renderDataModel(v) {
     for (const r of rels) {
       const a = row(r.from), b = row(r.to);
       if (!a || !b) continue;
-      const right = b.left + b.width / 2 > a.left + a.width / 2;
-      const x1 = (right ? a.right : a.left) - base.left, x2 = (right ? b.left : b.right) - base.left;
       const y1 = a.top + a.height / 2 - base.top, y2 = b.top + b.height / 2 - base.top;
-      const dx = Math.max(30, Math.abs(x2 - x1) / 2) * (right ? 1 : -1);
+      // Tables one above the other: leave and arrive on the right, a loop beside them, never across a table.
+      const stacked = a.left < b.right && b.left < a.right;
+      const right = stacked || b.left + b.width / 2 > a.left + a.width / 2;
+      const x1 = (right ? a.right : a.left) - base.left, x2 = (stacked ? b.right : right ? b.left : b.right) - base.left;
+      const dx = stacked ? Math.min(90, 28 + Math.abs(y2 - y1) / 6) : Math.max(30, Math.abs(x2 - x1) / 2) * (right ? 1 : -1);
       const path = document.createElementNS(svg.namespaceURI, "path");
-      path.setAttribute("d", `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`);
+      path.setAttribute("d", stacked ? `M${x1} ${y1} C${Math.max(x1, x2) + dx} ${y1} ${Math.max(x1, x2) + dx} ${y2} ${x2} ${y2}` : `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`);
       path.setAttribute("class", r.copy ? "l-copy" + (r.copy === lit ? " show" : "") : "l-flow");
       if (r.copy) path.dataset.group = r.copy;
       svg.append(path);
       if (r.copy) continue;
       const [m, n] = String(r.kind || "N:1").split(":");
-      for (const [txt, x, y, anchor] of [[m, x1 + (right ? 6 : -6), y1 - 5, right ? "start" : "end"], [n, x2 + (right ? -6 : 6), y2 - 5, right ? "end" : "start"]]) {
+      for (const [txt, x, y, anchor] of [[m, x1 + (right ? 6 : -6), y1 - 5, right ? "start" : "end"], [n, x2 + (stacked ? 6 : right ? -6 : 6), y2 - 5, stacked || !right ? "start" : "end"]]) {
         const tx = document.createElementNS(svg.namespaceURI, "text");
         tx.setAttribute("x", x);
         tx.setAttribute("y", y);

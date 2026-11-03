@@ -478,37 +478,38 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .side .panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:12px}
 .side .panel.split{overflow:hidden;gap:6px}
 .side .pcol{display:flex;flex-direction:column;min-height:0}
-.side .pa{flex:0 1 auto;max-height:45%}
+.side .pa{flex:0 1 auto;max-height:45%;display:grid;grid-template-rows:auto minmax(0,1fr);transition:grid-template-rows .28s ease,max-height .28s ease}
 .side .pb{flex:1 1 auto}
-.side .pa .pinfo{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none}
+.side .pa .pinfo{min-height:0;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none;transition:opacity .2s ease}
 .side .pa .pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
-.side .pb .talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}
-.side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
-.side .talk .thread:empty{flex:0 0 auto;background:transparent;border-style:dashed}
+.side .pb .talk{flex:1 1 auto;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;margin-top:0;border-top:0;padding-top:4px;transition:grid-template-rows .28s ease}
+.side .talk .thread{min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px;transition:opacity .2s ease,padding .28s ease,margin .28s ease,border-color .28s ease}
+.side .talk .thread:empty{background:transparent;border-style:dashed;align-self:start}
 .side .composer{flex:none;padding-top:8px;border-top:1px solid var(--line)}
+/* Folding: open and folded look alike; the arrow turns, the part slides shut, and a quiet "folded" stays beside the name. */
 .fold{display:flex;align-items:center;gap:6px;width:100%;border:0;border-radius:6px;background:transparent;padding:4px 2px;font-size:12px;font-weight:600;color:var(--muted);flex:none}
-.fold:hover{color:var(--text)}
-.fold .chev{display:inline-block;transition:transform .2s}
+.fold:hover{color:var(--text);background:color-mix(in srgb,var(--line) 40%,transparent)}
+.fold .chev{display:inline-block;transition:transform .28s ease}
 .fold .lbl[data-n]:not([data-n=""])::after{content:" (" attr(data-n) ")";font-weight:400}
-.fold .fhint{display:none;margin-left:auto;font-weight:400;font-size:11.5px}
-/* A folded part is a bar of its own: dashed, tinted, saying it is folded. */
-.side .panel.fold-info .pa>.fold,.side .panel.fold-chat .pb>.fold{border:1.5px dashed var(--you-bd);background:var(--you-bg);color:var(--you-tx);padding:6px 10px;border-radius:8px}
-.side .panel.fold-info .pa>.fold .fhint,.side .panel.fold-chat .pb>.fold .fhint{display:inline}
+.fold .fhint{margin-left:auto;font-weight:400;font-size:11.5px;opacity:0;transition:opacity .2s ease}
 .side .panel.fold-info .pa>.fold .chev,.side .panel.fold-chat .pb>.fold .chev{transform:rotate(-90deg)}
-.side .panel.fold-info .pa{flex:none;max-height:none}
-.side .panel.fold-info .pinfo,.side .panel.fold-chat .thread{display:none}
-.side .panel.fold-chat:not(.fold-info) .pa{flex:1 1 auto;max-height:none}
-.side .panel.fold-chat:not(.fold-info) .pb{flex:none}
+.side .panel.fold-info .pa>.fold .fhint,.side .panel.fold-chat .pb>.fold .fhint{opacity:.8}
+.side .panel.fold-info .pa{grid-template-rows:auto minmax(0,0fr);flex-shrink:0}
+.side .panel.fold-info .pinfo{opacity:0;overflow:hidden;padding-bottom:0}
+.side .panel.fold-chat .talk{grid-template-rows:minmax(0,0fr) auto}
+.side .panel.fold-chat .thread{opacity:0;overflow:hidden;padding-top:0;padding-bottom:0;margin-bottom:0;border-color:transparent}
+.side .panel.fold-chat:not(.fold-info) .pa{flex:1 1 auto;max-height:100%}
+.side .panel.fold-chat .pb{flex:0 0 auto}
 /* ⤢ wide: the picture keeps the left side; details and chat side by side, full height, nothing folded. */
 body.side-wide{--side-w:clamp(520px,62vw,1200px)}
 @media (min-width:820px){
   body.side-wide .side .panel.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:20px}
-  body.side-wide .side .panel.split .pa{max-height:none;flex:none}
-  body.side-wide .side .panel.split .pinfo{display:block}
-  body.side-wide .side .panel.split .thread{display:flex}
+  body.side-wide .side .panel.split .pa{max-height:none;flex:none;grid-template-rows:auto minmax(0,1fr)}
+  body.side-wide .side .panel.split .pinfo{opacity:1;overflow:auto;padding-bottom:10px}
+  body.side-wide .side .panel.split .talk{grid-template-rows:minmax(0,1fr) auto}
+  body.side-wide .side .panel.split .thread{opacity:1;overflow:auto;padding:10px;margin-bottom:8px;border-color:var(--line)}
   body.side-wide .side .fold{pointer-events:none}
   body.side-wide .side .fold .chev{display:none}
-  body.side-wide .side .panel.split .fold{border:0;background:transparent;color:var(--muted);padding:4px 2px}
   body.side-wide .side .fold .fhint{display:none!important}
 }
 #sideWide{font-size:14px;line-height:1}

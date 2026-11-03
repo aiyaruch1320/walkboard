@@ -728,6 +728,7 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
 .toast:not([hidden]){animation:pop .14s ease-out}
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}}
 @media (prefers-reduced-motion:reduce){.toast:not([hidden]){animation:none}}
+.msg{overflow-wrap:anywhere}
 .mitem{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;text-align:left;padding:6px 10px;border-radius:7px;font-size:13px}
 .mitem:hover{background:var(--you-bg)}
 .mthemes{display:flex;align-items:center;gap:14px;justify-content:space-between;padding:4px 6px 4px 10px;font-size:13px}

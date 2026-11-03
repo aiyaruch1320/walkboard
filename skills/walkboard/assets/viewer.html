@@ -81,6 +81,8 @@ const t = (k, ...a) => {
   const v = STRINGS[lang][k] ?? STRINGS.en[k] ?? k;
   return typeof v === "function" ? v(...a) : v;
 };
+// Thai text, Gregorian years: 2026, not 2569, as in code and commits.
+const dateLocale = () => (lang === "th" ? "th-TH-u-ca-gregory" : lang);
 const unit = (cap) => t((plan?.mode === "explain" ? "stage" : "step").replace(/^./, (c) => (cap ? c.toUpperCase() : c)));
 
 function setLang(code) {
@@ -135,6 +137,16 @@ function msgEl(m) {
   return d;
 }
 
+// **bold** and *italic* (or _italic_), still as text nodes.
+function emphasis(text) {
+  const f = document.createDocumentFragment();
+  text.split(/(\*\*[^*\n]+\*\*|(?<![\w*])\*[^*\s][^*\n]*\*(?![\w*])|(?<!\w)_[^_\s][^_\n]*_(?!\w))/).forEach((p, i) => {
+    if (!(i % 2)) return p && f.append(p);
+    f.append(p.startsWith("**") ? el("strong", null, p.slice(2, -2)) : el("em", null, p.slice(1, -1)));
+  });
+  return f;
+}
+
 // ```fenced``` blocks become code blocks and `ticks` inline code; everything stays text, never HTML.
 function msgBody(text) {
   const f = document.createDocumentFragment();
@@ -144,7 +156,7 @@ function msgBody(text) {
     part.split(/`([^`\n]+)`/).forEach((x, j) => {
       if (j % 2) return f.append(el("code", "mcode", x));
       x.split(/(https?:\/\/[^\s<>"'`]+)/).forEach((y, k) => {
-        if (!(k % 2)) return f.append(y);
+        if (!(k % 2)) return f.append(emphasis(y));
         const a = el("a", null, y);
         a.href = y;
         a.target = "_blank";
@@ -391,7 +403,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
       note.textContent = t("sent");
       note.className = "note";
     } catch (e) {
-      note.textContent = t("sendFail") + e.message;
+      note.textContent = /413/.test(e.message) ? t("tooLong") : t("sendFail") + e.message;
       note.className = "note err";
     } finally {
       busy = false;
@@ -665,7 +677,7 @@ function commitBox(step) {
     box.append(item);
     return ta;
   });
-  const now = el("button", "primary", t("commitNow"));
+  const now = el("button", "primary", t(list.length > 1 ? "commitNow" : "commitNow1"));
   const mine = el("button", null, t("committed"));
   const note = el("span", "note");
   const go = async (kind, text, extra) => {
@@ -915,7 +927,7 @@ function renderOptionCard() {
     // Who chose and when: from the decision, else from the user's "decide" message.
     const asked = thread.findLast((m) => m.kind === "decide" && m.option === d.option && m.from !== "agent");
     const when = d.at || asked?.at;
-    if (mine && (d.by || when)) box.append(el("div", "dwho", [d.by, when && new Date(when).toLocaleString(lang, {dateStyle: "medium", timeStyle: "short"})].filter(Boolean).join(" · ")));
+    if (mine && (d.by || when)) box.append(el("div", "dwho", [d.by, when && new Date(when).toLocaleString(dateLocale(), {dateStyle: "medium", timeStyle: "short"})].filter(Boolean).join(" · ")));
     const why = mine ? d.why : d.not?.[o.id];
     if (why) box.append(el("div", null, why));
     // The record in one place: why the others lost, and the plan the choice became.
@@ -1287,7 +1299,7 @@ function renderSide() {
     const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     parts.push(talkBox({step: step.id}, {
       placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
-      quick: plan.mode === "explain" ? ["confused", "deeper"] : ["confused"],
+      quick: plan.mode === "explain" ? ["confused", "deeper"] : thread.some((m) => m.from === "agent" && m.step === step.id && !m.node) ? ["confused"] : [],
       modes: teach && (turn === "turnRestate" || plan.mode === "explain") ? ["teachback", "question", "propose"] : ["question", "propose"],
       mode: turn === "turnRestate" ? "teachback" : "question",
       phase: step.status + (step.confirmed ? "+" : ""),
@@ -2640,13 +2652,20 @@ function render(p) {
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // What the agent changed since the user last acknowledged; outlines stay until then.
-const changes = {nodes: new Set(), steps: new Set(), notes: []};
+const changes = {nodes: new Set(), steps: new Set(), notes: [], was: {}};
 
 // Progress (statuses, restated, suggested commits) is not a change of plan.
 const content = (x, skip) => x && Object.fromEntries(Object.entries(x).filter(([k]) => !skip.includes(k)));
 function noteChanges(prev) {
+  // The first status seen before a change, so the list can say "todo → done" however many reloads it took.
+  const was = (key, a, b) => a?.status !== b?.status && !(key in changes.was) && (changes.was[key] = a?.status ?? "todo");
   for (const id of Object.keys(plan.nodes)) if (!same(content(prev.nodes?.[id], ["status"]), content(plan.nodes[id], ["status"]))) changes.nodes.add(id);
-  for (const st of steps()) if (!same(content((prev.steps || []).find((x) => x.id === st.id), ["status", "confirmed", "commitMessage", "commits"]), content(st, ["status", "confirmed", "commitMessage", "commits"]))) changes.steps.add(st.id);
+  for (const id of Object.keys(plan.nodes)) if (prev.nodes?.[id]) was("n:" + id, prev.nodes[id], plan.nodes[id]);
+  for (const st of steps()) {
+    const before = (prev.steps || []).find((x) => x.id === st.id);
+    if (!same(content(before, ["status", "confirmed", "commitMessage", "commits"]), content(st, ["status", "confirmed", "commitMessage", "commits"]))) changes.steps.add(st.id);
+    if (before) was("s:" + st.id, before, st);
+  }
   const views = new Set((prev.views || []).map((v) => v.id));
   for (const v of plan.views) if (!views.has(v.id)) changes.notes.push(t("newView") + (v.title || v.id));
   if (!same(prev.glossary, plan.glossary)) changes.notes.push(t("glossaryChanged"));
@@ -2668,14 +2687,19 @@ function showChangeList() {
   const ul = el("ul");
   for (const id of changes.steps) {
     const st = steps().find((x) => x.id === id);
-    if (st) ul.append(el("li", null, t("chStep") + st.title));
+    const from = changes.was["s:" + id];
+    if (st) ul.append(el("li", null, t("chStep") + st.title + (from != null && from !== (st.status ?? "todo") ? `: ${t("sb_" + from)} → ${t("sb_" + (st.status ?? "todo"))}` : "")));
   }
-  for (const id of changes.nodes) if (plan.nodes[id]) ul.append(el("li", null, t("chBox") + plan.nodes[id].name));
+  for (const id of changes.nodes) {
+    const n = plan.nodes[id], from = changes.was["n:" + id];
+    if (n) ul.append(el("li", null, t("chBox") + n.name + (from != null && from !== n.status ? `: ${statusLabel(from)} → ${statusLabel(n.status)}` : "")));
+  }
   for (const n of changes.notes) ul.append(el("li", null, n));
   box.style.left = box.style.top = box.style.right = "";
   const ok = el("button", "primary", t("seen"));
   ok.onclick = () => {
     changes.nodes.clear();
+    changes.was = {};
     changes.steps.clear();
     changes.notes = [];
     box.hidden = true;
@@ -2800,7 +2824,7 @@ async function load() {
     render(snapshot.plan);
     const conn = document.getElementById("conn");
     conn.className = "conn snap";
-    conn.textContent = t("snapshotAt", new Date(snapshot.exportedAt).toLocaleString(lang, {dateStyle: "medium", timeStyle: "short"}));
+    conn.textContent = t("snapshotAt", new Date(snapshot.exportedAt).toLocaleString(dateLocale(), {dateStyle: "medium", timeStyle: "short"}));
     conn.title = t("snapshotTip");
     refreshThreads();
     return;
@@ -2920,6 +2944,12 @@ function startTour() {
   };
   document.getElementById("tourNext").onclick = () => (++i < stops.length ? show() : end());
   document.getElementById("tourSkip").onclick = end;
+  const esc = (e) => {
+    if (e.key !== "Escape") return;
+    removeEventListener("keydown", esc);
+    if (!tour.hidden) end();
+  };
+  addEventListener("keydown", esc);
   tour.hidden = false;
   addEventListener("resize", place);
   show();
@@ -3056,7 +3086,7 @@ addEventListener("beforeprint", () => {
   pictureHook = null;
   linkObserver?.disconnect();
   linkObserver = null;
-  const date = new Date().toLocaleDateString(lang, {dateStyle: "medium"});
+  const date = new Date().toLocaleDateString(dateLocale(), {dateStyle: "medium"});
   const parts = [el("p", "pcover", [t("pill_" + (MODES_SHOWN.includes(plan.mode) ? plan.mode : "build")), date, steps().length && `${steps().length} ${t(plan.mode === "explain" ? "printStages" : "printSteps")}`, `${plan.views.length} ${t("printPictures")}`].filter(Boolean).join(" · "))];
   if (steps().length) {
     const ol = el("ol", "psteps");
@@ -3079,7 +3109,7 @@ addEventListener("beforeprint", () => {
     const chosen = options().find((o) => o.id === d?.option);
     if (chosen) {
       sum.append(el("b", null, t("decided", chosen.title)));
-      const who = [d.by, d.at && new Date(d.at).toLocaleDateString(lang, {dateStyle: "medium"})].filter(Boolean).join(" · ");
+      const who = [d.by, d.at && new Date(d.at).toLocaleDateString(dateLocale(), {dateStyle: "medium"})].filter(Boolean).join(" · ");
       if (who) sum.append(el("div", "pmeta", who));
       if (d.why) sum.append(richEl("p", null, d.why));
       for (const [id, why] of Object.entries(d.not || {})) {
@@ -3194,7 +3224,7 @@ function openExport() {
       a.click();
       document.getElementById("toast").hidden = true;
     };
-    parts.push(codeL, chatL);
+    parts.push(...(Object.values(plan.nodes).some((n) => n?.file) ? [codeL] : []), chatL);
     row.append(html);
   }
   const pdf = el("button", served ? null : "primary", t("exportPdf"));

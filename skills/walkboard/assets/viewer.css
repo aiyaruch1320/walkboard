@@ -502,13 +502,13 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .side .panel.split{overflow:hidden;gap:6px}
 .side .pcol{display:flex;flex-direction:column;min-height:0}
 /* Sizes that do not depend on how tall the content happens to be at that moment: details up to 45%, the chat the rest. */
-.side .pa{flex:0 0 auto;max-height:45%;display:flex;flex-direction:column}
+/* Details never take the room the chat needs: up to 45%, less in a short window, and the same before and after the first message. */
+.side .pa{flex:0 0 auto;max-height:min(45%,max(120px,calc(100% - 400px)));display:flex;flex-direction:column}
 .side .pb{flex:1 1 0}
 .side .pa .pinfo{flex:0 1 auto;min-height:0;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none}
 .side .pa .pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
 .side .pb>.turn{align-self:flex-start;margin:2px 0 6px}
 .side .pb>.commitbox{flex:0 1 auto;min-height:0;overflow:auto;margin:0 0 8px}
-.side .panel.split:has(.pb .thread:empty) .pa{max-height:70%}
 .side .pb .talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}
 .side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .side .talk .thread:empty,.thread:empty{display:none}

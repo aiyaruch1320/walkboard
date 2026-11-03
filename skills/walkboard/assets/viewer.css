@@ -523,7 +523,7 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .side .pa .pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
 .side .pb>.turn{align-self:flex-start;margin:2px 0 6px}
 .side .pb>.commitbox{flex:0 1 auto;min-height:0;overflow:auto;margin:0 0 8px}
-.side .pb .talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}
+.side .pb .talk,.side .panel:not(.split)>.talk{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:4px}
 .side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
 .side .talk .thread:empty,.thread:empty{display:none}
 .side .composer{flex:none;padding-top:8px;border-top:1px solid var(--line)}

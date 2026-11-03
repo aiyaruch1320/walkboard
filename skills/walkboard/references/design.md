@@ -27,7 +27,8 @@ For something that does not exist yet: research options, draw each, compare, rec
 - `rating` 0-5 (5 = best for the user: cheapest, easiest), `"yes"` / `"no"`, or `"na"`. `weight` 0-3; the page totals by weight and the user can change weights.
 - `"must": true` on a criterion the answer cannot do without (usually a constraint): an option rated `"no"` or 0 there is out of the running whatever its total.
 - Put what a product owner asks first into criteria or notes: money per month (with the pricing page), effort, risk and how to back out, and who has to act (e.g. "account B admin accepts within 7 days").
-- Anything you could not confirm is `"basis": "assumed"`.
+- Anything you could not confirm is `"basis": "assumed"`. A constraint can name the criteria it decides: `"affects": ["twoway"]`; while unconfirmed, those rows show ❓.
+- A cell can carry the figure behind its rating: `"value": "$73/month"` (from the cited page), shown under the dots.
 - Exactly one option `recommended`, with `why`, consistent with the totals (or `why` says what they miss).
 
 ## Messages

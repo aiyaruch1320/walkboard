@@ -307,8 +307,10 @@ function checkDesign(p) {
       if (!ids(p.criteria).includes(c)) out.push(`scores.${o}: no criterion "${c}"`);
       if (!isObj(cell) || (cell.rating !== "na" && ratingValue(cell.rating) == null)) out.push(`scores.${o}.${c}: rating must be 0-5, "yes", "no" or "na"`);
       for (const s of list(cell?.sources)) if (!sources.has(s)) out.push(`scores.${o}.${c}: no source "${s}"`);
+      if (isObj(cell) && cell.value != null && !TEXT(cell.value)) out.push(`scores.${o}.${c}: value must be text, e.g. "$73/month"`);
     }
   }
+  for (const c of list(p.constraints)) for (const k of isObj(c) ? list(c.affects) : []) if (!ids(p.criteria).includes(k)) out.push(`constraint "${c.id}": affects no criterion "${k}"`);
   if (p.decision != null && (!isObj(p.decision) || !ids(p.options).includes(p.decision.option))) out.push("decision must name one of the options");
   for (const [id, n] of Object.entries(isObj(p.nodes) ? p.nodes : {})) if (n?.source != null && !sources.has(n.source)) out.push(`node "${id}": no source "${n.source}"`);
   return out;

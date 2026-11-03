@@ -992,6 +992,12 @@ function renderCompare() {
       await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({weights: {[c.id]: next}})}).catch(() => {});
     };
     if (c.must) th.append(" ", el("span", "must", t("must")));
+    const guess = (plan.constraints || []).filter((k) => k && !k.confirmed && Array.isArray(k.affects) && k.affects.includes(c.id));
+    if (guess.length) {
+      const q = el("span", "cguess", " ❓");
+      q.title = t("restsOn") + guess.map((k) => k.text).join("; ");
+      th.append(q);
+    }
     th.append(el("br"), wb);
     tr.append(th);
     for (const o of options()) {
@@ -999,6 +1005,7 @@ function renderCompare() {
       const td = el("td", (o.id === cur ? "sel" : "") + (out[o.id] ? " out" : ""));
       td.append(ratingEl(x?.rating));
       for (const s of x?.sources || []) if (sourceNo(s)) td.append(el("sup", null, `[${sourceNo(s)}]`));
+      if (x?.value) td.append(el("div", "cval", String(x.value)));
       td.onclick = () => openSide({kind: "cell", option: o.id, criterion: c.id});
       tr.append(td);
     }
@@ -1072,12 +1079,7 @@ function renderDesignPanel() {
       const row = el("div", "propcard");
       row.append(el("p", null, (c.confirmed ? "✓ " : "❓ ") + c.text));
       if (!c.confirmed) {
-        const ok = el("button", null, t("confirm"));
-        ok.onclick = async () => {
-          ok.disabled = true;
-          await send({}, "confirm", t("q_confirm", c.text), {constraint: c.id}).catch(() => (ok.disabled = false));
-        };
-        row.append(ok);
+        row.append(...answerGuess({}, c.text, {constraint: c.id}));
       }
       list.append(row);
     }
@@ -1114,12 +1116,7 @@ function renderDesignPanel() {
       const ul = el("ul", "unconf");
       for (const [text, c, extra] of items) {
         const li = el("li", null, "❓ " + text + " ");
-        const ok = el("button", null, t("confirm"));
-        ok.onclick = async () => {
-          ok.disabled = true;
-          await send(c, "confirm", t("q_confirm", text), extra).catch(() => (ok.disabled = false));
-        };
-        li.append(ok);
+        li.append(...answerGuess(c, text, extra));
         ul.append(li);
       }
       warn.append(ul);
@@ -1148,6 +1145,18 @@ function renderDesignPanel() {
   }
   fillPanel(p, parts);
   refreshThreads();
+}
+
+// A guess (an unconfirmed constraint or box) is either right or wrong; "wrong" asks the agent to find out what is true.
+function answerGuess(c, text, extra) {
+  const ok = el("button", null, t("confirm")), no = el("button", null, t("wrongGuess"));
+  const go = (wrong) => async () => {
+    ok.disabled = no.disabled = true;
+    await send(c, "confirm", t(wrong ? "q_wrong" : "q_confirm", text), wrong ? {...extra, wrong: true} : extra).catch(() => (ok.disabled = no.disabled = false));
+  };
+  ok.onclick = go(false);
+  no.onclick = go(true);
+  return [ok, " ", no];
 }
 
 let side = null;
@@ -2331,7 +2340,9 @@ function renderView() {
     const byView = new Set(options().map((o) => o.view));
     tabs.replaceChildren(...options().map((o) => {
       const b = el("button", (o.id === curOption()?.id ? "on " : "") + (o.recommended ? "rec" : ""), (o.recommended ? "★ " : "") + o.title);
-      if (pct[o.id] != null) b.append(el("span", "pct", pct[o.id] + "%"));
+      // Out of the running (fails a must): no percentage to compare, as in the table.
+      if (failsMust(plan, o.id).length) b.append(el("span", "pct out", "✗"));
+      else if (pct[o.id] != null) b.append(el("span", "pct", pct[o.id] + "%"));
       b.onclick = () => chooseOption(o.id);
       return b;
     }), ...plan.views.filter((x) => !byView.has(x.id)).map((x) => {
@@ -2584,16 +2595,18 @@ function renderNodePanel(id) {
     if (src) line.append(sourceLink(src));
     if (n.checked) line.append(el("span", null, t("checkedOn", n.checked)));
     if (n.basis === "assumed") {
-      const ok = el("button", null, t("confirm"));
-      ok.onclick = async () => {
-        ok.disabled = true;
-        await send({node: id}, "confirm", t("q_confirm", n.name)).catch(() => (ok.disabled = false));
-      };
-      line.append(ok);
+      line.append(...answerGuess({node: id}, n.name, {}));
     }
     parts.push(line);
   }
   if (n.what) parts.push(richEl("p", "meta", n.what));
+  // A table's columns that store data again: where each comes from, and why a kept one is kept.
+  const copies = plan.views.filter((v) => v.kind === "datamodel").flatMap((v) => (v.tables || []).filter((tb) => tb?.node === id)).flatMap((tb) => (tb.columns || []).filter((c) => c?.copy));
+  if (copies.length) {
+    const ul = el("ul", "copylist");
+    for (const c of copies) ul.append(el("li", c.keep ? "keep" : null, `⧉ ${c.name} ← ${c.copy}${c.keep ? " · " + t("kept") : ""}${c.note ? ": " + c.note : ""}`));
+    parts.push(ul);
+  }
   if (n.file) parts.push(fileLine(n.file));
   if (n.in || n.out) {
     const io = el("div", "io");

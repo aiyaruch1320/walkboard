@@ -46,7 +46,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `WB set <dir> step:<id> confirmed=true`.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
-   - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed.
+   - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `wrong: true` = the user says it is not true: ask what is, or find out, then fix it the same way.
    - `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.

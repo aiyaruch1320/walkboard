@@ -47,6 +47,7 @@
   <footer class="foot"><a href="https://github.com/aiyaruch1320/walkboard" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/walkboard</a></footer>
 </main>
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
+<div id="scrim"></div>
 <aside class="side" id="side" inert>
   <div class="side-inner">
     <div class="side-head"><b id="sideTitle"></b><button id="sideWide">⤢</button><button id="sideClose" aria-label="Close">✕</button></div>
@@ -1969,6 +1970,17 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false}) {
         labels.append(lab);
       }
     }
+    // Labels that land on each other step down until each can be read.
+    const placed = [];
+    for (const lab of labels.children) {
+      for (let k = 0; k < 6; k++) {
+        const r = lab.getBoundingClientRect();
+        const hit = placed.find((p) => r.left < p.right && r.right > p.left && r.top < p.bottom + 2 && r.bottom + 2 > p.top);
+        if (!hit) break;
+        lab.style.top = parseFloat(lab.style.top) + (hit.bottom - r.top) + 3 + "px";
+      }
+      placed.push(lab.getBoundingClientRect());
+    }
   };
   addDrawer(draw, grid);
   const scroll = el("div", "scroll");
@@ -2844,6 +2856,7 @@ window.__walkboard = {get plan() { return plan; }, selectStep, selectNode, rende
 setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
+document.getElementById("scrim").onclick = closeSide;
 // ⤢ widens the panel (the picture stays in sight on the left) and puts the details beside the chat; again to go back.
 const wideBtn = document.getElementById("sideWide");
 const setWide = (on) => {

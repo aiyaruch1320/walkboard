@@ -42,6 +42,7 @@
   <div class="tabs" id="tabs"></div>
   <details class="legendbox" id="legendbox"><summary id="legendSum"></summary><div class="legend" id="legend"></div></details>
   <div id="view"></div>
+  <div id="printout"></div>
   <div id="compare"></div>
   <details id="sources" class="sources" hidden></details>
   <footer class="foot"><a href="https://github.com/aiyaruch1320/walkboard" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/walkboard</a></footer>
@@ -3092,12 +3093,12 @@ function prefetchCode() {
 addEventListener("beforeprint", () => {
   if (!plan || printState) return;
   // Colours for paper come from the print stylesheet, so the screen never flips to light behind the print window.
-  printState = {stepId};
+  // The printout is drawn off screen, so the page behind the print window never changes.
+  printState = {stepId, linkDrawer, linkObserver, pictureHook};
   stepId = null;
   document.body.classList.add("printing");
   linkDrawer = null;
   pictureHook = null;
-  linkObserver?.disconnect();
   linkObserver = null;
   const date = new Date().toLocaleDateString(dateLocale(), {dateStyle: "medium"});
   const parts = [el("p", "pcover", [t("pill_" + (MODES_SHOWN.includes(plan.mode) ? plan.mode : "build")), date, steps().length && `${steps().length} ${t(plan.mode === "explain" ? "printStages" : "printSteps")}`, `${plan.views.length} ${t("printPictures")}`].filter(Boolean).join(" · "))];
@@ -3145,7 +3146,7 @@ addEventListener("beforeprint", () => {
     if (cmp) parts.push(cmp.cloneNode(true));
   }
   const pics = [];
-  if (plan.views.length) parts.push(el("h2", "ph", t("printPictures")));
+  if (plan.views.length) parts.push(el("h2", "ph newpage", t("printPictures")));
   for (const v of plan.views) {
     const box = el("section", "pview");
     // In design mode a picture belongs to an option: its name, whether it is recommended, and its summary.
@@ -3182,7 +3183,7 @@ addEventListener("beforeprint", () => {
     }
     grid.append(card);
   }
-  parts.push(el("h2", "ph", t("printBoxes")), grid);
+  parts.push(el("h2", "ph newpage", t("printBoxes")), grid);
   if (snapshot?.thread?.length) {
     const ul = el("ul", "pchat");
     for (const m of snapshot.thread) {
@@ -3195,26 +3196,26 @@ addEventListener("beforeprint", () => {
   const sources = document.getElementById("sources");
   printState.sourcesOpen = sources.open;
   sources.open = true;
-  // Lay out at the width of an A4 page, so what fits flows and only what is wider gets scaled.
-  const view = document.getElementById("view");
-  view.style.width = "700px";
-  view.replaceChildren(...parts);
+  // Laid out at the width of an A4 page, so what fits flows and only what is wider gets scaled.
+  const out = document.getElementById("printout");
+  out.replaceChildren(...parts);
   linkDrawer?.();
   linkObserver?.disconnect();
-  linkObserver = null;
   for (const box of pics) {
     const pic = box.lastElementChild, w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
     if (w > 676) pic.style.zoom = String(676 / w);
+    // A picture that fits on one page is never split; a taller one breaks between its rows.
+    box.classList.toggle("fit", box.getBoundingClientRect().height < 960);
   }
+  ({linkDrawer, linkObserver, pictureHook} = printState);
+  stepId = printState.stepId;
 });
 addEventListener("afterprint", () => {
   if (!printState) return;
-  stepId = printState.stepId;
   document.getElementById("sources").open = printState.sourcesOpen;
   document.body.classList.remove("printing");
-  document.getElementById("view").style.width = "";
+  document.getElementById("printout").replaceChildren();
   printState = null;
-  renderView();
 });
 
 // Export: a one-file copy to send (with or without the code and the chat), or a PDF through the browser's print window.

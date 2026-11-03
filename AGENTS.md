@@ -51,4 +51,4 @@ The page script can be syntax-checked by extracting the `<script type="module">`
 
 ## Commits
 
-Small, one context each, imperative subject (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`). No `Co-Authored-By` or other AI attribution lines.
+Small, one context each, imperative subject (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`).

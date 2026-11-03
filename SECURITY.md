@@ -22,7 +22,6 @@ Please report security issues privately through [GitHub's private vulnerability 
 - Never put secrets, tokens or real customer data into a plan; shorten account ids, ARNs and IP addresses.
 - Explain mode never edits the project.
 - Design mode looks at live cloud state only with read-only commands (`describe`, `list`, `get`) and asks before running any; otherwise it gives you the command to run.
-- Commits and suggested commit messages carry no `Co-Authored-By` or other line naming an AI or tool. This is the author's preference for their own commits; edit `SKILL.md` if your team wants such lines.
 
 ## Limits
 

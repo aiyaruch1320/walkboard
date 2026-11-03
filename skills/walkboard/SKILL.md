@@ -59,7 +59,7 @@ Not before `approved` is true. For each step:
 1. `WB set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
 2. `WB set <dir> step:<id> status=review node:<a> status=done …`, and `WB reply <dir> --step <id>` with one line on what you built and the files touched, so the user has something to check or restate.
 3. `WB status <dir>` shows the current `settings`. Teach-back on: wait for `confirmed` (skip only if the user asks).
-4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (references/messages.md). No `Co-Authored-By` or other line naming an AI or tool: the user who installed Walkboard does not want them.
+4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (references/messages.md).
 5. `WB set <dir> step:<id> status=done`, next step. Teach-back off and `"auto"`: nothing waits.
 
 ## 4E. Walk through (explain)

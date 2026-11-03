@@ -477,9 +477,11 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .side-inner{display:flex;flex-direction:column}
 .side .panel{flex:1;min-height:0;display:flex;flex-direction:column;overflow:auto;padding-bottom:12px}
 .side .panel:has(>.talk){overflow:hidden}
-.side .panel>.pinfo{flex:0 1 auto;min-height:0;max-height:55%;overflow:auto;margin:0 -16px;padding:0 16px}
-.side .panel>.talk{flex:1 1 auto;min-height:180px;display:flex;flex-direction:column}
-.side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -6px 8px;padding:0 6px}
+.side .panel>.pinfo{flex:0 1 auto;min-height:0;max-height:45%;overflow:auto;margin:0 -16px;padding:0 16px 10px;-webkit-mask-image:none}
+.side .panel>.pinfo.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
+.side .panel>.talk{flex:1 1 auto;min-height:180px;display:flex;flex-direction:column;margin-top:0;border-top:0;padding-top:10px}
+.side .talk .thread{flex:1 1 auto;min-height:0;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.side .talk .thread:empty{flex:0 0 auto;background:transparent;border-style:dashed}
 .side .composer{flex:none;padding-top:8px;border-top:1px solid var(--line)}
 @media (max-width:819px){
   .side-inner{display:block}
@@ -506,8 +508,14 @@ button:disabled{opacity:.5;cursor:wait}
 .msg a,.side a,.propbar a{color:var(--you-tx);text-decoration:underline}
 .msg code.mcode{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border-radius:4px;padding:0 4px}
 .side .panel>.talk:first-child{border-top:0;margin-top:0;padding-top:0}
-.count{align-self:flex-end;margin-top:6px;font-size:11px;padding:0 6px;border-radius:6px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx)}
-.plabel .count,.stage .count{position:static;margin-left:6px}
+/* 💬 count sits on the box's top-right corner, over its border. */
+.count{position:absolute;top:-10px;right:-10px;z-index:2;font-size:11px;line-height:16px;padding:0 6px;border-radius:999px;border:1px solid var(--ext-bd);background:var(--card);color:var(--ext-tx);box-shadow:0 1px 3px rgba(0,0,0,.18);pointer-events:none;white-space:nowrap}
+.ertable,.stage,.tl-who{position:relative}
+[data-id]:has(>.count) .st{top:13px}
+.ertable{overflow:visible}
+.erhead{border-radius:9px 9px 0 0}
+.plabel .count,.g-q>.count{position:static;margin-left:6px;box-shadow:none}
+.g-q>.count{align-self:flex-end;margin-top:4px}
 .count.unread,.badges button.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
 .badges button.unread{font-size:12px;padding:1px 10px;border-radius:999px}
 .chip.unread::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn-bd);margin-left:6px;vertical-align:middle}

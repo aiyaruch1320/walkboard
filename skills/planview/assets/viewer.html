@@ -1152,6 +1152,10 @@ function fillPanel(p, parts) {
   const info = el("div", "pinfo");
   info.append(...parts.slice(0, i));
   p.replaceChildren(info, ...parts.slice(i));
+  // Fade the bottom edge while there is more explanation to scroll to.
+  const more = () => info.classList.toggle("more", info.scrollTop + info.clientHeight < info.scrollHeight - 4);
+  info.onscroll = more;
+  new ResizeObserver(more).observe(info);
 }
 
 function renderSide() {

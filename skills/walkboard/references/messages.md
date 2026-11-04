@@ -27,14 +27,14 @@ Both carry `proposals`, the ids of the proposed nodes.
 
 ## review (map)
 
-The user arranged a map and asks whether it still matches the plan. `geometry` is the picture as it stands on their screen, in px from the map's top left corner (never saved: it depends on the window):
+The user arranged a map and asks whether it still matches the plan. A box or zone dropped into another zone is drawn inside it, marked as not in the plan yet. `geometry` is the picture as it stands on their screen, in px from the map's top left corner (never saved: it depends on the window):
 
 - `boxes` and `zones`: `x`, `y`, `w`, `h`; `zone` = where the plan puts it, `inside` = the smallest zone its centre is in on screen (`null`: none). `outOfZone` lists where the two differ (zones as `z:<label>`); `moved` = what the user dragged.
 - `overlaps`: boxes lying on each other. `linesOverBoxes`: links drawn across other boxes.
 
 Reply with `WB reply <dir>` (whole plan) and change nothing yet. For each entry in `outOfZone`, say what it would mean for the plan ("A in Cloud now calls Oracle across the VPN, and needs a migrate step") and ask whether to change the plan that way. Mention an overlap or a crossing line only when it hides something. Nothing out of place: say it matches, in one line. Looks (balance, spacing) cannot be judged from numbers; leave them out.
 
-- Yes: move the node in that view's `zones`, update what depends on it (links, steps, notes), `WB check`, and reply with what changed. Leave `layout` alone: an offset remembers its zone, so the page drops it once the box sits in another one.
+- Yes: move the node (or the zone) in that view's `zones`, update what depends on it (links, steps, notes), `WB check`, and reply with what changed. Leave `layout` alone: the page sees the plan now agrees and drops the mark (an offset remembers its zone too).
 - No: change nothing; the user moves it back with undo or **Lay out automatically**.
 
 ## Suggested commits (`settings.commit` = `"suggest"`)

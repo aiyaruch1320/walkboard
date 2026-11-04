@@ -352,3 +352,16 @@ test("a map offset keeps the zone it was dragged in; a table's does not", async 
   assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: 5, y: 6, in: "Cloud"}}})).status, 200);
   assert.deepEqual(read(1), {a: {x: 5, y: 6}});
 });
+
+test("a box dropped into another zone is saved with that zone; only maps take one", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "DC", nodes: ["a"]}, {label: "Cloud", nodes: ["b"]}]}, {id: "d", kind: "datamodel", tables: [{node: "a"}]}], nodes: {a: {name: "A"}, b: {name: "B"}}};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const read = (i) => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[i].layout;
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {zone: "Cloud", from: "DC", at: 1}, b: {zone: "DC", at: -3, x: 4, y: 2, in: "DC"}}})).status, 200);
+  assert.deepEqual(read(0), {a: {zone: "Cloud", from: "DC", at: 1}, b: {x: 4, y: 2, in: "DC", zone: "DC", from: "", at: 0}});
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {zone: "Cloud", x: 1}}})).status, 400);
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {zone: "Cloud"}}})).status, 400);
+});

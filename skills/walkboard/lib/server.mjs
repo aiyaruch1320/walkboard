@@ -283,22 +283,33 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       // What was dragged on a picture: {view, positions: {id: {x, y}}}, or positions null to lay it out again.
       // Data model: where each table sits. Map: how far a box or a zone ("z:label") moved from its place,
       // and "in", the zone it was in then: the page drops an offset once the plan moves the box to another zone.
+      // Or "zone": dropped into that zone ("from" = its zone in the plan then, "at" = its place there), drawn there until the plan moves it.
       // Saved in plan.json so exports and other browsers keep it; the agent is not told, it is only arrangement.
       readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         const pos = v?.positions;
-        const ok = (q) => q && typeof q === "object" && [q.x, q.y].every((n) => Number.isFinite(n) && Math.abs(n) <= 20000);
+        const xy = (q) => [q.x, q.y].every((n) => Number.isFinite(n) && Math.abs(n) <= 20000);
+        // An offset, or (map only) a zone the box or zone was dropped into, with or without an offset there.
+        const ok = (q) => q && typeof q === "object" && (xy(q) || (typeof q.zone === "string" && q.x == null && q.y == null));
         if (err || typeof v?.view !== "string" || !(pos === null || (pos && typeof pos === "object" && !Array.isArray(pos) && Object.values(pos).every(ok))))
           return res.writeHead(400).end('need {"view": id, "positions": {table: {"x", "y"}} or null}');
         try {
           updatePlan(p.plan, (plan) => {
             const view = Array.isArray(plan?.views) ? plan.views.find((x) => x?.id === v.view) : null;
             if (view?.kind !== "datamodel" && view?.kind !== "map") throw Object.assign(new Error(`no data model or map view "${v.view}"`), {status: 400});
-            if (view.kind === "datamodel" && pos && Object.values(pos).some((q) => q.x < 0 || q.y < 0)) throw Object.assign(new Error("a table's position cannot be negative"), {status: 400});
+            if (view.kind === "datamodel" && pos && Object.values(pos).some((q) => !xy(q) || q.x < 0 || q.y < 0)) throw Object.assign(new Error("a table's position must be {x, y}, not negative"), {status: 400});
             const zoneLabels = (zs) => (Array.isArray(zs) ? zs : []).flatMap((z) => [`z:${z?.label}`, ...(z?.nodes || []), ...zoneLabels(z?.zones)]);
             const known = new Set(view.kind === "map" ? zoneLabels(view.zones) : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
             if (pos === null) delete view.layout;
-            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => known.has(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y), ...(view.kind === "map" && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {})}]));
+            else {
+              const text = (x) => String(x).slice(0, 200);
+              const keep = (q) => ({
+                ...(xy(q) ? {x: Math.round(q.x), y: Math.round(q.y)} : {}),
+                ...(view.kind === "map" && typeof q.in === "string" ? {in: text(q.in)} : {}),
+                ...(view.kind === "map" && typeof q.zone === "string" ? {zone: text(q.zone), from: typeof q.from === "string" ? text(q.from) : "", at: Number.isInteger(q.at) && q.at >= 0 ? Math.min(q.at, 999) : 0} : {}),
+              });
+              view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => known.has(id)).map(([id, q]) => [id, keep(q)]));
+            }
             return plan;
           });
         } catch (e) {

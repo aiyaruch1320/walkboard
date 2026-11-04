@@ -396,6 +396,10 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map [data-anchor]{z-index:2}
 .map .zone>.zhead{position:relative;z-index:1}
 .map .lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
+.map .zone.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+.map .node.placed,.map .zone.placed{outline:2px dashed var(--you-bd);outline-offset:3px}
+.ptag{display:block;width:max-content;max-width:100%;margin-top:6px;font-size:10.5px;font-weight:600;border-radius:999px;padding:1px 8px;background:var(--you-bg);color:var(--you-tx)}
+.zhead .ptag{display:inline-block;margin:0 0 0 4px}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}
 @media (pointer:fine) and (min-width:820px){body:not(.snapshot) .map .zhead{cursor:grab}}

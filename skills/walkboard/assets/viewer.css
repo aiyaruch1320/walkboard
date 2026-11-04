@@ -755,6 +755,21 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}}
 @media (prefers-reduced-motion:reduce){.toast:not([hidden]){animation:none}}
 .msg{overflow-wrap:anywhere}
+/* Story: what travels between boxes in a step, what stays, what a box shows. */
+.mv-packet{position:fixed;left:0;top:0;z-index:30;pointer-events:none;white-space:nowrap;font-size:13.5px;font-weight:600;background:var(--new-bd);color:#1f1e1c;border-radius:999px;padding:2px 10px;box-shadow:0 2px 12px color-mix(in srgb,var(--new-bd) 60%,transparent)}
+.mv-packet.dot{width:12px;height:12px;padding:0}
+.mv-layer{position:fixed;inset:0;width:100vw;height:100vh;z-index:29;pointer-events:none;overflow:visible}
+.mv-layer path{fill:none;stroke:var(--new-bd)}
+path.mv-on{stroke:var(--new-bd)!important;stroke-width:2.5!important;stroke-dasharray:7 7;opacity:1!important;animation:mvflow .6s linear infinite}
+@keyframes mvflow{to{stroke-dashoffset:-28}}
+.mv-hit{box-shadow:0 0 0 4px color-mix(in srgb,var(--new-bd) 55%,transparent)!important}
+.mv-kept{align-self:flex-start;display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:var(--new-tx);background:var(--new-bg);border:1px solid var(--new-bd);border-radius:999px;padding:0 8px}
+.mv-show{margin:6px 0 0;padding:5px 7px;font-size:11px;line-height:1.45;background:var(--code);color:var(--text);border-radius:6px;white-space:pre-wrap;animation:mvin .3s ease-out}
+@keyframes mvin{from{opacity:0}}
+.mv-again{margin-left:8px}
+#view [data-id]{scroll-margin:80px 20px 40px}
+@media (prefers-reduced-motion:reduce){path.mv-on,.mv-show{animation:none}}
+@media print{.mv-packet,.mv-layer{display:none!important}}
 .cmp th.whead{font-size:12px;font-weight:400;color:var(--muted);text-align:left;vertical-align:bottom;white-space:nowrap}
 .cmp .cval{font-size:11.5px;color:var(--muted);margin-top:2px}
 .cmp .cguess{cursor:help}

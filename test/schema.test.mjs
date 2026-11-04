@@ -261,3 +261,13 @@ test("data model groups name tables of the view, each in one group", () => {
   assert.match(out, /groups\[2\] needs a label/);
   assert.match(out, /layout is written by the page/);
 });
+
+test("a step's moves and show name boxes that exist", () => {
+  const good = {...base(), steps: [{id: "s1", title: "one", nodes: ["a"], moves: [{from: "a", to: "b", label: "key", keep: true}], show: {a: "$ run"}}]};
+  assert.deepEqual(validate(good), []);
+  const bad = {...base(), steps: [{id: "s1", title: "one", nodes: ["a"], moves: [{from: "a", to: "zz"}, null], show: {zz: "x", a: 1}}]};
+  const out = validate(bad).join("\n");
+  assert.match(out, /every move needs "from" and "to"/);
+  assert.match(out, /show needs a box that exists/);
+  assert.equal((validate({...base(), steps: [{id: "s1", title: "one", moves: "a"}]}).join("\n").match(/moves must be a list/) || []).length, 1);
+});

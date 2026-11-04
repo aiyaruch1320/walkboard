@@ -34,6 +34,25 @@ One JSON object, written compact. `WB check <dir>` validates it with the page's 
 
 `id`, `title` (≤ 8 words), `detail` (what it does), `done` (how we know; explain: what the reader understands), `nodes` (boxes it touches; the rest fade), `status` (`todo` `doing` `review` `done`; omit in explain), `confirmed` (restatement matched). Suggested commits: `commitMessage`, or `commits: [{"message","files":[…]}]` ([messages.md](messages.md)).
 
+### Telling a story with a step
+
+When something travels (a request, a key, a message), let the step show it. Optional on any step:
+
+```json
+{"id":"wake","title":"poll wakes the agent","nodes":["server","poll","agent"],
+ "moves":[{"from":"server","to":"poll","label":"question","keep":true},
+          {"from":"poll","to":"agent","label":"question","keep":true}],
+ "show":{"poll":"$ walkboard poll\n{\"text\":\"why?\"}"}}
+```
+
+| Field | Meaning |
+|---|---|
+| `moves` | Played in order each time the step opens: `label` travels from box `from` to box `to`, on the picture's line when there is one. 1-3 per step; `label` ≤ 3 words |
+| `keep` | The label stays on `to` in later steps; the same label moving again moves it. For what is carried on (a stolen key, a token), not for every move |
+| `show` | `{box: "text"}`: a few short lines inside the box from this step on, for what really changes there (a log, a prompt). Only where it adds something: boxes grow |
+
+Both boxes of a move must be in one picture (`map`, `k8s`, `flow`…); the page opens that picture. No code to paste here either: `show` is a line or two, the rest stays in `file`.
+
 ## nodes{}
 
 | Field | Meaning |

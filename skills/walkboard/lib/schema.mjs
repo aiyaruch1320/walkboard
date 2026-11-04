@@ -275,6 +275,10 @@ export function validate(p) {
     if (st.commitMessage != null && typeof st.commitMessage !== "string") out.push(`step "${st.id}" commitMessage must be a string`);
     if (st.commits != null && (!Array.isArray(st.commits) || st.commits.some((c) => !isObj(c) || typeof c.message !== "string" || (c.files != null && !(Array.isArray(c.files) && c.files.every((f) => typeof f === "string"))))))
       out.push(`step "${st.id}" commits must be [{"message": "…", "files": ["…"]}]`);
+    if (st.moves != null && !Array.isArray(st.moves)) out.push(`step "${st.id}": moves must be a list [{"from", "to", "label", "keep"}]`);
+    for (const m of list(st.moves)) if (!isObj(m) || !known(m.from) || !known(m.to) || !TEXT(m.label)) out.push(`step "${st.id}": every move needs "from" and "to" boxes that exist, and a text "label"`);
+    if (st.show != null && !isObj(st.show)) out.push(`step "${st.id}": show must be {box: "text"}`);
+    for (const [id, text] of Object.entries(isObj(st.show) ? st.show : {})) if (!known(id) || typeof text !== "string") out.push(`step "${st.id}": show needs a box that exists and text ("${id}")`);
     for (const k of list(st.nodes)) if (!known(k)) out.push(k == null ? `step "${st.id}": nodes has an empty item (null)` : `step "${st.id}": no node "${k}"`);
   }
 

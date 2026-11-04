@@ -29,6 +29,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
 - **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong (`WB icons` lists them).
 - **views**: leave out for a plain flow. When a picture explains better, pick one or two from the "Which picture" table in [references/views.md](references/views.md).
 - **glossary**: only project terms. No secrets, tokens or real customer data.
+- When something travels between boxes, add `moves` to the step ([references/schema.md](references/schema.md)): it shows cause and effect better than a sentence.
 - `WB check <dir>` until ok.
 
 ## 2E. Write the explanation (explain)
@@ -36,7 +37,8 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
 1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
 2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there.
 3. Every code box has `file` = `path:line` or `path:from-to` and `anchor` = a short piece of that code (`"function send("`), so `check` notices when the code moves; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
-4. `WB check <dir>` until ok (it fails when a file or line does not exist).
+4. A request or data passing through boxes: add `moves` to the stage ([references/schema.md](references/schema.md)).
+5. `WB check <dir>` until ok (it fails when a file or line does not exist).
 
 ## 3. Show and listen
 

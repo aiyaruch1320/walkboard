@@ -782,6 +782,14 @@ function renderStepCard() {
       c.append(b);
     }
     c.append(talk({kind: "step", id: step.id}, t("talkStep", n, unit())));
+    if (stepMoves(step).length) {
+      const again = el("button", "talklink mv-again", "↻ " + t("replayStep"));
+      again.onclick = () => {
+        stop();
+        startStory();
+      };
+      c.append(again);
+    }
   }
   card.replaceChildren(c);
   refreshThreads();
@@ -1474,10 +1482,11 @@ function linkLayer(container) {
 }
 
 // A link is a line plus its head; the head is never dashed.
-function linkPaths(svg, line, head, cls, dim) {
+function linkPaths(svg, line, head, cls, dim, ends) {
   for (const [d, extra] of [[line, ""], [head, " head"]]) {
     const e = document.createElementNS(svg.namespaceURI, "path");
     e.setAttribute("d", d);
+    if (!extra && ends) [e.dataset.from, e.dataset.to] = ends;
     e.setAttribute("class", cls + extra);
     if (extra) e.style.strokeDasharray = "none";
     if (dim) e.style.opacity = ".15";
@@ -1518,7 +1527,7 @@ function drawLinks(container, specs) {
         head = l.state === "blocked" ? `M${x2} ${y2 - 6} L${x2} ${y2 + 6}` : `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
       }
       const dim = inStep && !(inStep.has(l.from) && (inStep.has(l.to) || l.to === "#namespace"));
-      linkPaths(svg, d, head, `l-${l.state || "uses"}`, dim);
+      linkPaths(svg, d, head, `l-${l.state || "uses"}`, dim, [l.from, l.to]);
     }
   };
   addDrawer(draw, container);
@@ -2042,7 +2051,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false}) {
       const tip = (k) => `${p3[0] - 7 * Math.cos(ang + k)} ${p3[1] - 7 * Math.sin(ang + k)}`;
       const dim = inStep && !(inStep.has(e.from) && inStep.has(e.to));
       const flat = (d) => d.replaceAll(",", " ").replace(/ +/g, " ");
-      linkPaths(svg, flat(detour ? detour.d : `M${p0} C${p1}, ${p2}, ${p3}`), flat(`M${tip(0.45)} L${p3} L${tip(-0.45)}`), `l-${e.state || "flow"}`, dim);
+      linkPaths(svg, flat(detour ? detour.d : `M${p0} C${p1}, ${p2}, ${p3}`), flat(`M${tip(0.45)} L${p3} L${tip(-0.45)}`), `l-${e.state || "flow"}`, dim, [e.from, e.to]);
       if (e.label) {
         const [mx, my] = detour ? detour.mid : bezierMid(p0, p1, p2, p3);
         const lab = el("span", "elabel" + (dim ? " dim" : ""));
@@ -2629,6 +2638,7 @@ function highlight() {
   document.querySelectorAll("#view [data-step]").forEach((d) => d.classList.toggle("dim", !!step && d.dataset.step !== step.id));
   linkDrawer?.();
   pictureHook?.();
+  storyMarks();
   markChanges();
   syncUrl();
 }
@@ -2644,6 +2654,18 @@ function syncUrl() {
 // Show the step in a picture that contains its boxes; back to the picture the user picked when no step is selected.
 let chosenView = null;
 function followStep(step) {
+  // A step that tells a story needs the picture that holds the boxes it moves between.
+  const ends = stepMoves(step).flatMap((m) => [m.from, m.to]);
+  if (ends.length) {
+    const has = (v) => ends.filter((e) => (KINDS[v.kind]?.refs(v) || []).includes(e)).length;
+    const now = plan.views.find((x) => x.id === viewId) || plan.views[0];
+    const best = [...plan.views].sort((a, b) => has(b) - has(a))[0];
+    if (best && best !== now && has(best) > has(now)) {
+      viewId = best.id;
+      renderView();
+    }
+    return;
+  }
   if (!step && chosenView && chosenView !== viewId && plan.views.some((x) => x.id === chosenView)) {
     viewId = chosenView;
     return renderView();
@@ -2665,6 +2687,7 @@ function selectStep(id) {
   highlight();
   document.querySelector(".stepbar .chip.sel")?.scrollIntoView({block: "nearest", inline: "center"});
   stepFades();
+  startStory();
 }
 
 const EDITOR_URL = {
@@ -2825,8 +2848,132 @@ function renderNodePanel(id) {
   refreshThreads();
 }
 
+// ---------- story: what travels between boxes in a step (moves), what stays where it arrived (keep), what a box shows (show)
+const stepMoves = (st) => (Array.isArray(st?.moves) ? st.moves.filter((m) => m?.from && m?.to) : []);
+const storyStill = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const boxEl = (id) => document.querySelector(`#view [data-id="${CSS.escape(id)}"]`);
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const story = {token: 0, step: null, done: 0, finished: Promise.resolve()};
+
+// Everything earlier steps left behind, and what this step has delivered so far.
+function storyMarks() {
+  document.querySelectorAll("#view .mv-kept, #view .mv-show").forEach((e) => e.remove());
+  const cur = curStep();
+  if (!cur) return;
+  const list = steps(), held = new Map(), shown = {};
+  for (const st of list.slice(0, list.indexOf(cur) + 1)) {
+    const moves = stepMoves(st);
+    for (const m of moves.slice(0, st === cur && story.step === st.id ? story.done : moves.length)) if (m.keep && m.label) held.set(m.label, m.to);
+    if (st.show && typeof st.show === "object") Object.assign(shown, st.show);
+  }
+  for (const [id, text] of Object.entries(shown)) boxEl(id)?.append(el("pre", "mv-show", String(text)));
+  for (const [label, id] of held) boxEl(id)?.append(el("span", "mv-kept", label));
+}
+
+// The line a move travels on: the picture's own link when there is one (either way round), else a curve between the boxes.
+function movePath(m, a, b) {
+  const link = (x, y) => document.querySelector(`#view svg.links path[data-from="${CSS.escape(x)}"][data-to="${CSS.escape(y)}"]`);
+  const real = link(m.from, m.to) || link(m.to, m.from);
+  if (real) return {path: real, back: real.dataset.from !== m.from};
+  routeLine.dx = routeLine.dy = 0;
+  const others = [...document.querySelectorAll("#view [data-id]")].filter((e) => e !== a && e !== b).map((e) => e.getBoundingClientRect());
+  const route = routeLine(a.getBoundingClientRect(), b.getBoundingClientRect(), others);
+  const layer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  layer.classList.add("mv-layer");
+  const path = document.createElementNS(layer.namespaceURI, "path");
+  path.setAttribute("d", route.d);
+  layer.append(path);
+  document.body.append(layer);
+  return {path, back: false, layer};
+}
+
+// A move is there to be read: it waits at its start, travels slowly enough to follow, and rests where it arrives.
+const MOVE_WAIT = 650, MOVE_REST = 550, MOVE_SPEED = 0.11, MOVE_MIN = 1500, MOVE_MAX = 3600;
+
+function runMove(m, token) {
+  return new Promise((done) => {
+    const a = boxEl(m.from), b = boxEl(m.to);
+    if (!a || !b) return done();
+    let line = movePath(m, a, b), start = null, ms = 0;
+    const packet = el("div", "mv-packet" + (m.label ? "" : " dot"), m.label || "");
+    document.body.append(packet);
+    const light = () => {
+      line.path.classList.add("mv-on");
+      // The same speed on every line: a short hop is quick, a long one takes its time.
+      ms = Math.min(MOVE_MAX, Math.max(MOVE_MIN, line.path.getTotalLength() / MOVE_SPEED));
+    };
+    light();
+    const finish = () => {
+      packet.remove();
+      line.layer?.remove();
+      line.path.classList.remove("mv-on");
+      done();
+    };
+    const place = (e) => {
+      const len = line.path.getTotalLength(), p = line.path.getPointAtLength((line.back ? 1 - e : e) * len), c = line.path.getScreenCTM();
+      packet.style.transform = `translate(${c.a * p.x + c.c * p.y + c.e}px,${c.b * p.x + c.d * p.y + c.f}px) translate(-50%,-50%)`;
+    };
+    const frame = async (now) => {
+      if (story.token !== token) return finish();
+      // A box that changes size redraws the picture's lines: carry on along the new one.
+      if (!line.path.isConnected) {
+        line.layer?.remove();
+        line = movePath(m, a, b);
+        light();
+      }
+      start ??= now;
+      const k = Math.min(1, (now - start) / ms);
+      place(k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+      if (k < 1) return requestAnimationFrame(frame);
+      b.classList.add("mv-hit");
+      setTimeout(() => b.classList.remove("mv-hit"), MOVE_REST + 300);
+      await pause(MOVE_REST);
+      finish();
+    };
+    place(0);
+    setTimeout(() => (story.token === token ? requestAnimationFrame(frame) : finish()), MOVE_WAIT);
+  });
+}
+
+// Played on the way into a step, however you got there: Play, a chip, the arrows.
+function startStory() {
+  const st = curStep(), token = ++story.token, moves = stepMoves(st);
+  story.step = st?.id ?? null;
+  story.began = performance.now();
+  story.done = storyStill() ? moves.length : 0;
+  storyMarks();
+  story.finished = storyStill() || !moves.length ? Promise.resolve() : (async () => {
+    await pause(120);
+    for (const m of moves) {
+      if (story.token !== token) return;
+      // Both ends in sight before anything sets off.
+      boxEl(m.from)?.scrollIntoView({block: "nearest", inline: "nearest", behavior: "smooth"});
+      boxEl(m.to)?.scrollIntoView({block: "nearest", inline: "nearest", behavior: "smooth"});
+      await pause(260);
+      if (story.token !== token) return;
+      await runMove(m, token);
+      if (story.token !== token) return;
+      story.done++;
+      storyMarks();
+      await pause(220);
+    }
+  })();
+}
+
+// Long enough to read what the step says, once what it moves has arrived.
+const holdFor = (st) => Math.min(9000, Math.max(2200, 1000 + 45 * [st?.title, st?.detail, st?.done].join("").length));
+function playOn() {
+  const st = curStep();
+  timer = setTimeout(async () => {
+    if (st === steps().at(-1)) return stop();
+    step(1);
+    await story.finished;
+    if (timer) playOn();
+  }, Math.max(1800, holdFor(st) - (performance.now() - story.began)));
+}
+
 function stop() {
-  clearInterval(timer);
+  clearTimeout(timer);
   timer = null;
   document.getElementById("play").textContent = t("playShort");
 }
@@ -2840,8 +2987,10 @@ document.getElementById("next").onclick = () => { stop(); step(1); };
 document.getElementById("play").onclick = () => {
   if (timer) return stop();
   document.getElementById("play").textContent = t("pauseShort");
-  if (!curStep()) step(1);
-  timer = setInterval(() => (curStep() === steps().at(-1) ? stop() : step(1)), 6000);
+  timer = -1;
+  if (curStep()) startStory();
+  else step(1);
+  story.finished.then(() => timer && playOn());
 };
 
 // Redraws replace the chat boxes; put the cursor back where the user was typing.
@@ -3309,6 +3458,7 @@ addEventListener("beforeprint", () => {
       if (st.status) h.append(el("span", "pchip", t("sb_" + st.status)));
       body.append(h);
       if (st.detail) body.append(richEl("p", null, st.detail));
+      for (const m of stepMoves(st)) body.append(el("p", "pmeta", `${boxName(m.from)} → ${boxName(m.to)}${m.label ? ": " + m.label : ""}`));
       if (st.done) body.append(richEl("p", "pmeta", t("doneWhen") + st.done));
       li.append(el("span", "pnum", String(i + 1)), body);
       ol.append(li);

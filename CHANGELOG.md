@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Stories in pictures.** A step can say what travels: `moves` sends a label along the line between two boxes each time the step opens, `keep` leaves it on the box it reached, `show` puts a few lines inside a box. Play holds each step long enough to read it, and moves wait, travel slowly and rest so you can follow them. On paper, moves print under their step.
+- Map pictures route lines around boxes: below, above or beside them, each in its own lane, when the straight way would cross another box.
 - A box taken out of the plan keeps its conversation: 🗑 in the conversations list, with its name, still readable (and in exports with chat). Typing there continues in the whole plan's chat, naming the box. The agent says why in the whole plan's chat before taking out a box someone talked about.
 
 ## 0.7.0

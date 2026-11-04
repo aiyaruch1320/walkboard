@@ -305,8 +305,13 @@ body.side-open .side-inner{opacity:1;transform:none}
 .erframe-label{position:absolute;left:12px;top:7px;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
 @media (pointer:fine) and (min-width:820px){body:not(.snapshot) .erhead,body:not(.snapshot) .erframe-label{cursor:grab}}
 .er.dragging,.er.dragging .erhead,.er.dragging .erframe-label{cursor:grabbing;user-select:none}
-.erreset{display:block;margin:0 0 6px auto}
-.erreset[hidden]{display:none}
+.ltools{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 6px}
+.ltools[hidden],.ltools [hidden]{display:none}
+.ltools .talklink{margin:0 0 0 4px}
+.ltool{width:30px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
+.ltool svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ltool.flip svg{transform:scaleX(-1)}
+.ltool:disabled{opacity:.35;cursor:default}
 .ertable.active{outline:2px solid var(--text);outline-offset:2px}
 .g-q.active{border-color:var(--text);background:var(--you-bg)}
 .erhead{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:7px 10px;background:var(--code);border-bottom:1px solid var(--line)}
@@ -384,6 +389,12 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map.denser.linked .zone{padding:6px 6px 22px}
 .map.denser .node .what{font-size:11.5px}
 .map .zhead{cursor:default}
+/* Boxes above the lines and above every zone, so a box dropped anywhere can always be seen and grabbed. Moved last, on top. */
+.map{isolation:isolate}
+.map>svg.links{z-index:1}
+.map [data-anchor]{z-index:2}
+.map .zone>.zhead{position:relative;z-index:1}
+.map .lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}
 @media (pointer:fine) and (min-width:820px){body:not(.snapshot) .map .zhead{cursor:grab}}

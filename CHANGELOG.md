@@ -2,6 +2,11 @@
 
 ## 0.8.0
 
+- **Much faster pages.** Lines were recalculated with a slow browser call: a big map redrew at about 2 frames a second while dragging, and now keeps up with the screen. The page no longer redraws when nothing changed, and a new box pulses three times instead of forever.
+- **Undo and redo when arranging.** Buttons appear after the first drag, on maps and data models; ⌘Z and ⇧⌘Z (Ctrl+Z, Ctrl+Y) work too. Going back to the automatic layout can be undone.
+- **Boxes stay on top.** A box can no longer disappear behind a zone, and what you moved last lies over the rest.
+- **Choosing in design mode.** Every tab can be chosen: a picture no option owns offers **Choose this picture**, and the agent is told which one. Supporting pictures (`"option": "<id>"` on a view) sit under their option. `check` warns about a picture no option owns, and the guide tells the agent to keep revised designs as options.
+- The confirm panel no longer lets the chat run over the form: list, chat, then the form at the bottom. Confirm buttons line up.
 - **Drag on map pictures.** Move a box, or a whole zone by its title; arrow keys move a selected box; the place is saved and **Lay out automatically** puts it back.
 - **Landscape pages in PDF.** A big picture takes a landscape page of its own when that makes it larger. Check the print preview if your browser does not support mixed page orientation.
 - Thai text uses a looped face where the computer has one, easier to read at small sizes.

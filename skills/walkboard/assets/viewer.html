@@ -1813,6 +1813,8 @@ function zoneEl(z, depth, dense = false) {
 }
 
 // How much of a line runs through the given boxes. dx, dy: from the line's coordinates to the screen's.
+// How many points along a path (one every 6px) fall on a box, and its length. This runs for every way around for every line
+// on every redraw, so it walks the path itself: asking an SVG element for each point takes a hundred times longer.
 function lineHits(d, boxes, dx = 0, dy = 0) {
   let hits = 0, len = 0, carry = 0, x = 0, y = 0;
   const on = (near, px, py) => {
@@ -1921,12 +1923,85 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   let best = null;
   for (const c of candidates) {
     const {hits, len} = lineHits(c.d, others, routeLine.dx, routeLine.dy);
+    if (!hits && c.kind === "direct") return c;
     const score = hits * 1e5 + len;
     if (!best || score < best.score) best = {...c, score};
   }
   if (best.kind !== "direct") lanes[best.kind] = (lanes[best.kind] || 0) + 1;
   return best;
 }
+
+// Undo, redo and back to the automatic layout, for a picture arranged by hand. The history lasts while the page is open.
+const layoutHist = {};
+let layoutKeys = null, layoutSavedAt = 0;
+function layoutTools(v, canMove, apply) {
+  const hist = (layoutHist[v.id] ||= {back: [], fwd: []});
+  const row = el("div", "ltools");
+  const undo = el("button", "ltool"), redo = el("button", "ltool flip"), reset = el("button", "talklink", "↺ " + t("autoLayout"));
+  for (const b of [undo, redo]) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    path.setAttribute("d", "M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11");
+    svg.append(path);
+    b.append(svg);
+  }
+  const mac = /Mac|iP(hone|ad)/.test(navigator.platform);
+  undo.title = `${t("undo")} (${mac ? "⌘Z" : "Ctrl+Z"})`;
+  redo.title = `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`;
+  undo.setAttribute("aria-label", t("undo"));
+  redo.setAttribute("aria-label", t("redo"));
+  row.append(undo, redo, reset);
+  const save = (positions) => {
+    layoutSavedAt = Date.now();
+    fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
+  };
+  const refresh = () => {
+    const any = !!Object.keys(v.layout || {}).length;
+    row.hidden = !canMove() || !(any || hist.back.length || hist.fwd.length);
+    reset.hidden = !any;
+    undo.disabled = !hist.back.length;
+    redo.disabled = !hist.fwd.length;
+  };
+  const set = (positions) => {
+    if (positions) v.layout = positions;
+    else delete v.layout;
+    save(positions);
+    refresh();
+    apply();
+  };
+  const walk = (from, to) => {
+    if (!from.length) return;
+    to.push(v.layout || null);
+    set(from.pop());
+  };
+  undo.onclick = () => walk(hist.back, hist.fwd);
+  redo.onclick = () => walk(hist.fwd, hist.back);
+  reset.onclick = () => {
+    hist.back.push(v.layout || null);
+    hist.fwd.length = 0;
+    set(null);
+  };
+  layoutKeys = {undo: undo.onclick, redo: redo.onclick};
+  refresh();
+  return {
+    row,
+    done(before, positions) {
+      hist.back.push(before || null);
+      hist.fwd.length = 0;
+      v.layout = positions;
+      save(positions);
+      refresh();
+    },
+  };
+}
+addEventListener("keydown", (e) => {
+  const a = document.activeElement;
+  if (!(e.metaKey || e.ctrlKey) || e.altKey || !layoutKeys || /^(TEXTAREA|INPUT|SELECT)$/.test(a?.tagName) || a?.isContentEditable) return;
+  const k = e.key.toLowerCase(), go = k === "z" ? (e.shiftKey ? layoutKeys.redo : layoutKeys.undo) : k === "y" && !e.shiftKey ? layoutKeys.redo : null;
+  if (!go) return;
+  e.preventDefault();
+  go();
+});
 
 function renderMap(v) {
   const scroll = el("div", "scroll");
@@ -1944,35 +2019,48 @@ function renderMap(v) {
   let fitted = null;
   const fit = () => {
     fitted = map.clientWidth;
-    // The lines' layer must not count as the picture's width.
+    // The lines' layer and boxes moved by hand must not count as the picture's width.
     svg.style.display = "none";
+    movers().forEach((e) => place(e, null));
     map.classList.remove("denser", "wrapped");
     if (map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
     // Wrapping gives the room back: no need for boxes so small that long names break.
-    if (!hits && c.kind === "direct") return c;
     // Paper scales the picture instead, so its zones stay in a row.
     if (!printState && map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
+    movers().forEach((e) => place(e, layout()[keyOf(e)]));
     svg.style.display = "";
   };
   // Moving boxes or whole zones: each keeps an offset from its place, saved in plan.json; the lines follow.
+  // left/top and not a transform: a transform would make the zone its own layer, and its boxes could end up behind another zone.
   const layout = () => (v.layout && typeof v.layout === "object" ? v.layout : {});
-  const place = (e, q) => (e.style.transform = q && (q.x || q.y) ? `translate(${q.x}px,${q.y}px)` : "");
+  const place = (e, q) => {
+    e.style.left = q?.x ? q.x + "px" : "";
+    e.style.top = q?.y ? q.y + "px" : "";
+  };
   const keyOf = (e) => (e.classList.contains("zone") ? `z:${e.dataset.zone}` : e.dataset.anchor);
   const movers = () => [...map.querySelectorAll(".zone, [data-anchor]")];
-  movers().forEach((e) => place(e, layout()[keyOf(e)]));
-  const canMoveMap = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
-  const resetMap = el("button", "talklink erreset", "↺ " + t("autoLayout"));
-  const postLayout = (positions) => fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
-  const saveMap = (e, q) => {
-    v.layout = {...layout(), [keyOf(e)]: q};
-    resetMap.hidden = false;
-    postLayout(v.layout);
+  // Whatever was moved last lies on top: the layout keeps its keys in that order.
+  const stackUp = () => {
+    const boxes = [...map.querySelectorAll("[data-anchor]")];
+    boxes.forEach((e) => (e.style.zIndex = ""));
+    Object.keys(layout()).forEach((k, i) => {
+      const zone = k.startsWith("z:") && movers().find((e) => e.classList.contains("zone") && keyOf(e) === k);
+      for (const e of zone ? zone.querySelectorAll("[data-anchor]") : boxes.filter((x) => x.dataset.anchor === k)) e.style.zIndex = 3 + i;
+    });
   };
-  resetMap.hidden = !Object.keys(layout()).length || !canMoveMap();
-  resetMap.onclick = () => {
-    delete v.layout;
-    postLayout(null);
-    renderView();
+  const arrange = () => {
+    movers().forEach((e) => place(e, layout()[keyOf(e)]));
+    stackUp();
+  };
+  arrange();
+  const canMoveMap = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
+  const tools = layoutTools(v, canMoveMap, () => {
+    arrange();
+    draw();
+  });
+  const movedTo = (e, q) => {
+    const {[keyOf(e)]: _, ...rest} = layout();
+    return {...rest, [keyOf(e)]: q};
   };
   let mapDragged = false;
   // The click that ends a drag does not open the box.
@@ -1987,51 +2075,65 @@ function renderMap(v) {
     const it = head ? head.parentElement : e.target.closest?.("[data-anchor]");
     if (!it || !map.contains(it) || e.target.closest("a, button, .term")) return;
     const sx = e.clientX, sy = e.clientY, from = layout()[keyOf(it)] || {x: 0, y: 0};
-    let moved = null;
+    let moved = null, frame = 0;
     const move = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
       if (!moved) {
         it.setPointerCapture?.(e.pointerId);
         map.classList.add("dragging");
+        it.classList.add("lifted");
       }
       moved = {x: Math.round(from.x + dx), y: Math.round(from.y + dy)};
       place(it, moved);
-      draw();
+      frame ||= requestAnimationFrame(() => {
+        frame = 0;
+        draw();
+      });
     };
     const up = () => {
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       removeEventListener("pointercancel", up);
+      cancelAnimationFrame(frame);
       map.classList.remove("dragging");
+      it.classList.remove("lifted");
       if (!moved) return;
       mapDragged = true;
       setTimeout(() => (mapDragged = false));
-      saveMap(it, moved);
+      tools.done(v.layout, movedTo(it, moved));
+      stackUp();
+      draw();
     };
     addEventListener("pointermove", move);
     addEventListener("pointerup", up);
     addEventListener("pointercancel", up);
   });
-  // Arrow keys move a focused box (Shift: further); Enter still opens it.
-  let mapKeySave = null;
+  // Arrow keys move a focused box (Shift: further); Enter still opens it. A burst of presses is one undo.
+  let mapKeySave = null, mapKeyFrom;
   map.addEventListener("keydown", (e) => {
     const d = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[e.key];
     const it = e.target.closest?.("[data-anchor]");
     if (!d || !it || !canMoveMap() || e.altKey || e.metaKey || e.ctrlKey) return;
     e.preventDefault();
     e.stopPropagation();
+    if (!mapKeySave) mapKeyFrom = v.layout;
     const k = e.shiftKey ? 40 : 10, was = layout()[keyOf(it)] || {x: 0, y: 0}, q = {x: was.x + d[0] * k, y: was.y + d[1] * k};
-    v.layout = {...layout(), [keyOf(it)]: q};
+    v.layout = movedTo(it, q);
     place(it, q);
+    stackUp();
     draw();
     clearTimeout(mapKeySave);
-    mapKeySave = setTimeout(() => saveMap(it, q), 500);
+    mapKeySave = setTimeout(() => {
+      mapKeySave = null;
+      tools.done(mapKeyFrom, v.layout);
+    }, 500);
   });
   const draw = () => {
-    // Changing a class here would resize the picture inside its own ResizeObserver: on screen, wait for the next frame. On paper, now.
+    // Changing a class here would resize the picture inside its own ResizeObserver: on screen, wait for the next frame.
+    // On paper, and the first time (before the page is painted, so the picture never shows at the wrong size), now.
     if (many && fitted !== map.clientWidth) {
-      if (printState) fit();
+      if (printState || fitted === null) fit();
       else requestAnimationFrame(() => {
         fit();
         linkDrawer?.();
@@ -2056,7 +2158,7 @@ function renderMap(v) {
     }
   };
   addDrawer(draw, map);
-  scroll.prepend(resetMap);
+  scroll.prepend(tools.row);
   return scroll;
 }
 
@@ -2477,8 +2579,9 @@ function renderDataModel(v) {
 
   // Moving tables: the automatic layout until the first drag, then every table at its own x, y, saved in plan.json.
   const cards = () => [...grid.querySelectorAll(":scope > .ertable")];
-  const canMove = () => !snapshot && served && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
-  let free = false, dragged = false, keySave = null;
+  const canMove = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
+  const tools = layoutTools(v, canMove, renderView);
+  let free = false, dragged = false, keySave = null, keyFrom, lifted = [];
   const fit = () => {
     grid.style.width = Math.max(...cards().map((c) => c.offsetLeft + c.offsetWidth)) + 40 + "px";
     grid.style.height = Math.max(...cards().map((c) => c.offsetTop + c.offsetHeight)) + 30 + "px";
@@ -2492,17 +2595,21 @@ function renderDataModel(v) {
       c.style.left = q.x + "px";
       c.style.top = q.y + "px";
     }
+    Object.keys(v.layout || {}).forEach((k, i) => {
+      const c = cards().find((x) => x.dataset.id === k);
+      if (c) c.style.zIndex = i + 1;
+    });
     fit();
   };
-  const save = () => {
+  const save = (before = v.layout) => {
     // The picture starts at its top left corner: no empty band left where tables used to be.
     const at = cards().map((c) => [c, c.offsetLeft, c.offsetTop]);
     const dx = Math.min(...at.map((p) => p[1])) - (frameDefs.length ? 24 : 6), dy = Math.min(...at.map((p) => p[2])) - (frameDefs.length ? 44 : 10);
     if (dx || dy) shift(at.map(([c, x, y]) => [c, x - dx, y - dy]), 0, 0);
-    const positions = Object.fromEntries(cards().map((c) => [c.dataset.id, {x: c.offsetLeft, y: c.offsetTop}]));
-    v.layout = positions;
-    reset.hidden = false;
-    fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
+    // Moved last, last in the list: that is what lies on top.
+    const was = Object.keys(before || {}), order = [...cards()].sort((a, b) => (lifted.includes(a) - lifted.includes(b)) || was.indexOf(a.dataset.id) - was.indexOf(b.dataset.id));
+    order.forEach((c, i) => (c.style.zIndex = i + 1));
+    tools.done(before, Object.fromEntries(order.map((c) => [c.dataset.id, {x: c.offsetLeft, y: c.offsetTop}])));
   };
   const shift = (list, dx, dy) => {
     for (const [c, x, y] of list) {
@@ -2523,6 +2630,8 @@ function renderDataModel(v) {
           if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
           freeze();
           start = members().map((c) => [c, c.offsetLeft, c.offsetTop]);
+          lifted = start.map(([c]) => c);
+          lifted.forEach((c) => (c.style.zIndex = 9999));
           grid.classList.add("dragging");
         }
         shift(start, ev.clientX - sx, ev.clientY - sy);
@@ -2545,21 +2654,20 @@ function renderDataModel(v) {
       if (!d || !canMove() || e.altKey || e.metaKey || e.ctrlKey) return;
       e.preventDefault();
       e.stopPropagation();
+      if (!keySave) keyFrom = v.layout;
       freeze();
+      lifted = [card];
+      card.style.zIndex = 9999;
       const k = e.shiftKey ? 40 : 10;
       shift([[card, card.offsetLeft, card.offsetTop]], d[0] * k, d[1] * k);
       clearTimeout(keySave);
-      keySave = setTimeout(save, 500);
+      keySave = setTimeout(() => {
+        keySave = null;
+        save(keyFrom);
+      }, 500);
     });
     if (canMove()) handle.title = t("dragTip");
   }
-  const reset = el("button", "talklink erreset", "↺ " + t("autoLayout"));
-  reset.hidden = !v.layout || !canMove();
-  reset.onclick = () => {
-    delete v.layout;
-    fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions: null})}).catch(() => {});
-    renderView();
-  };
   const frames = frameDefs.map((g, i) => {
     const f = el("div", "erframe"), label = el("span", "erframe-label", g.label);
     f.append(label);
@@ -2662,7 +2770,7 @@ function renderDataModel(v) {
   const n = Object.values(groups).reduce((a, x) => a + x.length, 0);
   if (!n) {
     const wrap = el("div");
-    wrap.append(reset, scroll);
+    wrap.append(tools.row, scroll);
     return wrap;
   }
   const kept = tables.flatMap((tb) => (tb.columns || []).filter((c) => c?.copy && c.keep)).length;
@@ -2676,7 +2784,7 @@ function renderDataModel(v) {
     sum.append(chip);
   }
   const wrap = el("div");
-  wrap.append(sum, reset, scroll);
+  wrap.append(sum, tools.row, scroll);
   return wrap;
 }
 
@@ -2821,6 +2929,7 @@ function renderView() {
   const kind = VIEWS[v.kind];
   linkDrawer = null;
   pictureHook = null;
+  layoutKeys = null;
   linkObserver?.disconnect();
   linkObserver = null;
   // One picture that cannot be drawn must not take the rest of the page with it.
@@ -3412,7 +3521,7 @@ function draw(p) {
   renderBar();
   prefetchCode();
 }
-let rendered = false, loadedThread = false;
+let rendered = false, loadedThread = false, planSig = null;
 
 let everConnected = false;
 function setConn(on) {
@@ -3442,8 +3551,13 @@ async function fetchPlan() {
     box.textContent = t("parseFail") + e.message;
     return;
   }
+  // Nothing new (the second fetch on opening, a drag of ours coming back): nothing to draw again.
+  const sig = JSON.stringify(next, (k, x) => (k === "layout" ? undefined : x));
+  const layoutsSame = () => (next.views || []).every((v) => JSON.stringify(v?.layout ?? null) === JSON.stringify(plan.views.find((x) => x.id === v?.id)?.layout ?? null));
+  if (plan && sig === planSig && (Date.now() - layoutSavedAt < 2000 || layoutsSame())) return;
   try {
     render(next);
+    planSig = sig;
   } catch (e) {
     box.hidden = false;
     box.append(el("div", null, t("drawFail", "plan.json", e.message)));
@@ -3717,7 +3831,7 @@ addEventListener("beforeprint", () => {
   if (!plan || printState) return;
   // Colours for paper come from the print stylesheet, so the screen never flips to light behind the print window.
   // The printout is drawn off screen, so the page behind the print window never changes.
-  printState = {stepId, linkDrawer, linkObserver, pictureHook};
+  printState = {stepId, linkDrawer, linkObserver, pictureHook, layoutKeys};
   stepId = null;
   document.body.classList.add("printing");
   linkDrawer = null;
@@ -3864,7 +3978,7 @@ addEventListener("beforeprint", () => {
     }
     box.classList.toggle("fit", box.getBoundingClientRect().height < 980);
   }
-  ({linkDrawer, linkObserver, pictureHook} = printState);
+  ({linkDrawer, linkObserver, pictureHook, layoutKeys} = printState);
   stepId = printState.stepId;
 });
 addEventListener("afterprint", () => {

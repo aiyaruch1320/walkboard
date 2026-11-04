@@ -35,7 +35,7 @@ The user arranged a map and asks whether it still matches the plan. A box or zon
 Reply with `WB reply <dir>` (whole plan) and change nothing yet. For each entry in `outOfZone`, say what it would mean for the plan ("A in Cloud now calls Oracle across the VPN, and needs a migrate step") and ask whether to change the plan that way. Mention an overlap or a crossing line only when it hides something. Nothing out of place: say it matches, in one line. Looks (balance, spacing) cannot be judged from numbers; leave them out.
 
 - Yes: move the node (or the zone) in that view's `zones`, update what depends on it (links, steps, notes), `WB check`, and reply with what changed. Leave `layout` alone: the page sees the plan now agrees and drops the mark (an offset remembers its zone too).
-- No: change nothing; the user moves it back with undo or **Lay out automatically**.
+- No: change nothing; the user moves it back with undo or **Reset to the plan**.
 
 ## Suggested commits (`settings.commit` = `"suggest"`)
 

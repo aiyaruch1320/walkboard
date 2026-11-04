@@ -2,6 +2,12 @@
 // Azure and Kubernetes parts are recognisable at a glance. Runs in Node and the browser.
 
 export const GLYPHS = {
+  vpn: '<path d="M2.5 12h4M17.5 12h4"/><rect x="7.5" y="10" width="9" height="7.5" rx="1.5"/><path d="M9.5 10V8.2a2.5 2.5 0 0 1 5 0V10M12 13v1.5"/>',
+  circuit: '<circle cx="4.5" cy="12" r="2.2"/><circle cx="19.5" cy="12" r="2.2"/><path d="M6.7 10.2h10.6M6.7 13.8h10.6"/>',
+  firewall: '<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 9.7h18M3 14.3h18M9 5v4.7M15 5v4.7M6 9.7v4.6M12 9.7v4.6M18 9.7v4.6M9 14.3V19M15 14.3V19"/>',
+  datacenter: '<path d="M4 21V6l8-3 8 3v15z"/><path d="M8 9h8M8 13h8M8 17h8M7.5 21h9"/>',
+  rack: '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M5 8h14M5 13h14M5 18h14M8 5.5h.01M8 10.5h.01M8 15.5h.01"/>',
+  nas: '<rect x="3" y="6" width="18" height="12" rx="1.5"/><circle cx="8" cy="12" r="2.5"/><circle cx="16" cy="12" r="2.5"/><path d="M8 12h.01M16 12h.01"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2.2.6 3.5 2.6 3.5 5.7"/>',
   browser: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M6.5 6.5h.01M9 6.5h.01"/>',
@@ -60,22 +66,29 @@ export const FAMILIES = {
   gcp: {label: "Google Cloud", bg: "#1a73e8", fg: "#ffffff"},
   azure: {label: "Azure", bg: "#0078d4", fg: "#ffffff"},
   k8s: {label: "Kubernetes", bg: "#326ce5", fg: "#ffffff"},
+  huawei: {label: "Huawei Cloud", bg: "#c7000b", fg: "#ffffff"},
+  onprem: {label: "On-prem", bg: "#4a5568", fg: "#ffffff"},
 };
 
 // "provider:service" names an icon explicitly; the glyph comes from this table, or from the service name when it is a glyph.
 const SERVICES = {
-  aws: {s3: "bucket", lambda: "function", ec2: "vm", rds: "database", aurora: "database", dynamodb: "table", sqs: "queue", sns: "topic",
+  huawei: {ecs: "vm", cce: "cluster", cci: "container", functiongraph: "function", rds: "database", gaussdb: "database", dcs: "cache", obs: "bucket", sfs: "folder", evs: "nas",
+    vpc: "network", elb: "loadbalancer", nat: "gateway", vpn: "vpn", directconnect: "circuit", er: "topic", dns: "dns", cdn: "cdn", waf: "firewall", apig: "gateway",
+    smn: "topic", dms: "queue", iam: "identity", kms: "key", ces: "monitor", lts: "log", swr: "registry"},
+  onprem: {datacenter: "datacenter", rack: "rack", server: "server", vm: "vm", vmware: "vm", kubernetes: "cluster", loadbalancer: "loadbalancer", f5: "loadbalancer",
+    firewall: "firewall", router: "network", switch: "network", vpn: "vpn", database: "database", oracle: "database", storage: "nas", nas: "nas", san: "nas", ad: "identity", ldap: "identity"},
+  aws: {directconnect: "circuit", vpn: "vpn", waf: "firewall", natgateway: "gateway", internetgateway: "gateway", s3: "bucket", lambda: "function", ec2: "vm", rds: "database", aurora: "database", dynamodb: "table", sqs: "queue", sns: "topic",
     eventbridge: "topic", kinesis: "stream", msk: "stream", apigateway: "gateway", cloudfront: "cdn", route53: "dns", elb: "loadbalancer",
     alb: "loadbalancer", iam: "identity", cognito: "login", cloudwatch: "monitor", eks: "cluster", ecs: "container", fargate: "container",
     ecr: "registry", secretsmanager: "secret", kms: "key", ses: "email", stepfunctions: "workflow", vpc: "network", redshift: "warehouse",
     athena: "search", glue: "workflow", bedrock: "ai", elasticache: "cache", efs: "folder", codepipeline: "ci", codebuild: "ci",
     transitgateway: "topic", tgw: "topic", privatelink: "plug", endpoint: "ingress", peering: "plug", nlb: "loadbalancer", ram: "users",
     organizations: "cluster", securitygroup: "shield", routetable: "workflow"},
-  gcp: {gcs: "bucket", storage: "bucket", bigquery: "warehouse", pubsub: "topic", cloudrun: "container", run: "container", functions: "function",
+  gcp: {vpc: "network", interconnect: "circuit", vpn: "vpn", cloudarmor: "firewall", ncc: "topic", gcs: "bucket", storage: "bucket", bigquery: "warehouse", pubsub: "topic", cloudrun: "container", run: "container", functions: "function",
     gke: "cluster", cloudsql: "database", firestore: "table", spanner: "database", secretmanager: "secret", kms: "key", iam: "identity",
     logging: "log", monitoring: "monitor", dataflow: "stream", composer: "workflow", vertexai: "ai", cdn: "cdn", dns: "dns",
     loadbalancing: "loadbalancer", artifactregistry: "registry", memorystore: "cache", scheduler: "clock"},
-  azure: {blob: "bucket", storage: "bucket", functions: "function", aks: "cluster", sql: "database", cosmosdb: "table", servicebus: "queue",
+  azure: {vnet: "network", expressroute: "circuit", vpngateway: "vpn", firewall: "firewall", appgateway: "loadbalancer", vwan: "topic", blob: "bucket", storage: "bucket", functions: "function", aks: "cluster", sql: "database", cosmosdb: "table", servicebus: "queue",
     eventhubs: "stream", eventgrid: "topic", keyvault: "secret", entra: "identity", monitor: "monitor", appservice: "server", vm: "vm",
     apim: "gateway", frontdoor: "cdn", acr: "registry", openai: "ai"},
   k8s: {pod: "pod", deployment: "deployment", statefulset: "deployment", daemonset: "deployment", cronjob: "clock", job: "job",
@@ -85,6 +98,8 @@ const SERVICES = {
 
 // First match wins, so the more specific words come first.
 const GUESS = [
+  [/\bexpress ?route\b/, "azure:expressroute"], [/\bdirect ?connect\b/, "aws:directconnect"], [/\bcloud interconnect\b/, "gcp:interconnect"],
+  [/\bvpn\b/, "vpn"], [/\bfirewall\b/, "firewall"], [/\bdata ?cent(er|re)\b|\bon-?prem\b/, "datacenter"], [/\bnas\b|\bsan\b/, "nas"],
   [/\bs3\b/, "aws:s3"], [/\blambda\b/, "aws:lambda"], [/\bec2\b/, "aws:ec2"], [/\b(rds|aurora)\b/, "aws:rds"], [/\bdynamo ?db\b/, "aws:dynamodb"],
   [/\bsqs\b/, "aws:sqs"], [/\bsns\b/, "aws:sns"], [/\beventbridge\b/, "aws:eventbridge"], [/\bkinesis\b/, "aws:kinesis"],
   [/\bcloudfront\b/, "aws:cloudfront"], [/\broute ?53\b/, "aws:route53"], [/\bcognito\b/, "aws:cognito"], [/\bcloudwatch\b/, "aws:cloudwatch"],

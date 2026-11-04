@@ -31,3 +31,9 @@ test("every named icon resolves to a glyph", () => {
   assert.equal(knownIcon("nope"), false);
   assert.equal(knownIcon("acme:thing"), false);
 });
+
+test("Huawei Cloud, on-prem and network parts have icons", () => {
+  for (const name of ["huawei:cce", "huawei:obs", "huawei:vpn", "onprem:datacenter", "onprem:f5", "azure:expressroute", "aws:directconnect", "gcp:interconnect", "vpn", "firewall"]) assert.ok(knownIcon(name), name);
+  assert.equal(iconOf({name: "ExpressRoute circuit"}).glyph, "circuit");
+  assert.equal(iconOf({name: "Site-to-Site VPN"}).glyph, "vpn");
+});

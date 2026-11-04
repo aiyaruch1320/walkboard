@@ -1859,6 +1859,9 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   candidates.push({kind: "under", d: round([[px, a.bottom], [px, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
   candidates.push({kind: "over", d: round([[outFrom, ay], [outX, ay], [outX, over], [qx, over], [qx, b.top - 4]]), tip: [qx, b.top - 4], ang: Math.PI / 2});
   candidates.push({kind: "under", d: round([[outFrom, ay], [outX, ay], [outX, under], [qx, under], [qx, b.bottom + 4]]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
+  // Out of the side, around everything, in from the side: when boxes stand above and below both ends.
+  candidates.push({kind: "over", d: round([[outFrom, ay], [outX, ay], [outX, over], [gapIn, over], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "under", d: round([[outFrom, ay], [outX, ay], [outX, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
   const across = (kind, xOrY, build) => candidates.push({kind, ...build(xOrY)});
   if (b.right < a.left) for (const [kind, x] of [["z-a", a.left - step("z-a")], ["z-b", b.right + step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.left, py], [v, py], [v, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI}));
   if (b.left > a.right) for (const [kind, x] of [["z-a", a.right + step("z-a")], ["z-b", b.left - step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.right, py], [v, py], [v, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0}));

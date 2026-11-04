@@ -351,13 +351,15 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         // is there now, so the page can put its own changes on top instead of overwriting them.
         const rev = Object.hasOwn(d.views, v.view) ? d.views[v.view].rev ?? 0 : 0;
         if (v.rev != null && v.rev !== rev) return res.writeHead(412, {"content-type": "application/json"}).end(JSON.stringify({ops: Object.hasOwn(d.views, v.view) ? d.views[v.view].ops : [], rev}));
-        d.views[v.view] = {ops: v.ops, rev: rev + 1};
+        // Versions only grow, even after the file is gone (cleared): a page that missed that still conflicts.
+        const next = Math.max(rev + 1, Date.now());
+        d.views[v.view] = {ops: v.ops, rev: next};
         const problems = validateDraft(d);
         if (problems.length) return res.writeHead(400, {"content-type": "text/plain; charset=utf-8"}).end(problems.slice(0, 5).join("\n"));
         writeDraft(dir, d);
         draftSeen = fs.existsSync(p.draft) ? fs.statSync(p.draft).mtimeMs : 0;
         broadcast("draft", {view: v.view});
-        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({rev: rev + 1}));
+        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({rev: next}));
       }));
     } else if (route === "GET /api/poll") {
       let timer;

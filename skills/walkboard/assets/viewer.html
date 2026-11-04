@@ -2013,8 +2013,23 @@ addEventListener("beforeunload", (e) => {
   e.preventDefault();
   e.returnValue = "";
 });
+// Another page's change is drawn once the hand is off the mouse and no field or card is open, so a click in progress
+// is never lost to a redraw.
+let pointerHeld = false, redrawLater = false;
+addEventListener("pointerdown", () => (pointerHeld = true), true);
+addEventListener("pointerup", () => {
+  pointerHeld = false;
+  setTimeout(() => redrawLater && redrawDraft());
+}, true);
 const redrawDraft = () => {
   if (!plan) return;
+  if (pointerHeld || document.querySelector(".dedit, .dpop")) {
+    redrawLater = true;
+    clearTimeout(redrawDraft.timer);
+    redrawDraft.timer = setTimeout(redrawDraft, 600);
+    return;
+  }
+  redrawLater = false;
   keepFocus(() => renderView());
 };
 // Another tab, or `walkboard draft … clear`, changed it: take theirs, keeping what this page has not saved yet.
@@ -2366,7 +2381,7 @@ addEventListener("keydown", (e) => {
   else if ((e.key === "Enter" || e.key === "F2") && target && !a?.closest?.(".side, .dtools")) sketchApi.rename(target);
   else if (e.key === "Escape") {
     if (document.querySelector(".dpop, .dedit")) return;
-    if (sketchTool !== "select" || sketchSel) sketchApi.tool("select");
+    if (sketchTool !== "select" || sketchSel) sketchApi.tool("select", true);
     else if (side) closeSide();
     else sketchApi.exit();
   } else return;
@@ -2789,11 +2804,12 @@ function renderMap(real) {
   map.classList.toggle("sketch", isSketch);
   map.dataset.tool = isSketch ? sketchTool : "";
   const ops = () => draftOps(lv.id);
-  const setOps = (next) => {
+  // The box that had the keyboard focus keeps it after the picture is drawn again.
+  const setOps = (next, focusId = document.activeElement?.closest?.(".map [data-anchor]")?.dataset.anchor) => {
     const before = tools.snap();
     tools.change(before, {layout: before.layout, ops: next});
     keepFocus(() => renderView());
-    if (side?.kind === "draft") renderSide();
+    if (focusId) document.querySelector(`#view .map [data-anchor="${CSS.escape(focusId)}"]`)?.focus({preventScroll: true});
   };
   const nextId = (list = ops()) => newOpId(list);
   const newNode = () => {
@@ -2824,13 +2840,13 @@ function renderMap(real) {
     else setOps([...list, {id: nextId(list), op: x.kind === "node" ? "remove" : "removeZone", [x.kind === "node" ? "node" : "zone"]: x.id}]);
     sketchSel = null;
   };
-  const renameTo = (x, val) => {
+  const renameTo = (x, val, focusId) => {
     const list = ops(), added = addOp(x.kind, x.id);
     if (x.kind === "node") {
-      if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)));
+      if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)), focusId);
       const orig = plan.nodes[x.id]?.name ?? "", ed = list.find((o) => o.op === "editNode" && o.node === x.id);
       const next = ed ? list.map((o) => (o === ed ? {...o, name: val} : o)) : [...list, {id: nextId(list), op: "editNode", node: x.id, name: val}];
-      return setOps(next.flatMap((o) => (o.op === "editNode" && o.node === x.id && o.name === orig ? (({name: _, ...r}) => (r.what != null || r.icon != null ? [r] : []))(o) : [o])));
+      return setOps(next.flatMap((o) => (o.op === "editNode" && o.node === x.id && o.name === orig ? (({name: _, ...r}) => (r.what != null || r.icon != null ? [r] : []))(o) : [o])), focusId);
     }
     if (val !== x.id && zoneNamed(val)) return showProblem(t("zoneTaken", val));
     const fix = (o) => Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val : w]));
@@ -2844,7 +2860,11 @@ function renderMap(real) {
     if (!e) return;
     const over = x.kind === "zone" ? e.querySelector(":scope > .zhead") : e.querySelector(".name") || e;
     const initial = x.kind === "zone" ? x.id : drafted.plan.nodes[x.id]?.name ?? "";
-    editText(over, initial, t(x.kind === "zone" ? "zoneName" : "boxName"), {onDone: (val) => val && val !== initial && renameTo(x, val)});
+    const back = x.kind === "node" ? x.id : null;
+    editText(over, initial, t(x.kind === "zone" ? "zoneName" : "boxName"), {onDone: (val) => {
+      if (val && val !== initial) renameTo(x, val, back);
+      else if (back) document.querySelector(`#view .map [data-anchor="${CSS.escape(back)}"]`)?.focus({preventScroll: true});
+    }});
   };
   const setIcon = (id, icon) => {
     const list = ops(), added = addOp("node", id);
@@ -3140,9 +3160,9 @@ function renderMap(real) {
       count.classList.toggle("unsaved", unsaved.has(lv.id));
       count.title = unsaved.has(lv.id) ? t("draftUnsaved") : t("draftList");
     },
-    tool(name) {
+    tool(name, clear = false) {
       sketchTool = name;
-      if (name !== "select") select(null);
+      if (name !== "select" || clear) select(null);
       refreshBar();
     },
     exit() {

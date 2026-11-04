@@ -379,11 +379,16 @@ test("a draft saved from an older version is refused with what is there now; oth
   const s = await startServer(dir);
   t.after(s.close);
   const one = [{id: "o1", op: "remove", node: "a"}];
-  assert.deepEqual(await (await post(s, "/api/draft", {view: "m", ops: one, rev: 0})).json(), {rev: 1});
+  const {rev} = await (await post(s, "/api/draft", {view: "m", ops: one, rev: 0})).json();
+  assert.ok(rev > 0);
   const late = await post(s, "/api/draft", {view: "m", ops: [], rev: 0});
   assert.equal(late.status, 412);
-  assert.deepEqual(await late.json(), {ops: one, rev: 1});
-  assert.equal((await post(s, "/api/draft", {view: "m", ops: [], rev: 1})).status, 200);
+  assert.deepEqual(await late.json(), {ops: one, rev});
+  assert.equal((await post(s, "/api/draft", {view: "m", ops: [], rev})).status, 200);
+  // Cleared (no file left): a page that still holds the old version must not write over what comes next.
+  const fresh = (await (await post(s, "/api/draft", {view: "m", ops: [{id: "o2", op: "remove", node: "a"}], rev: 0})).json()).rev;
+  assert.ok(fresh > rev);
+  assert.equal((await post(s, "/api/draft", {view: "m", ops: one, rev})).status, 412);
   const evil = await new Promise((done) => http.get({host: "127.0.0.1", port: s.port, path: `/api/plan?token=${s.token}`, headers: {host: "evil.example:80"}}, (r) => done(r.statusCode)));
   assert.equal(evil, 403);
 });

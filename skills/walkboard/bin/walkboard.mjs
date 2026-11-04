@@ -287,7 +287,7 @@ function draft() {
       const unknown = ids.filter((id) => !v.ops.some((o) => o.id === id));
       if (unknown.length) fail(`no change ${unknown.join(", ")} on "${k}"; ids: ${v.ops.map((o) => o.id).join(", ")}`);
       v.ops = ids.length ? v.ops.filter((o) => !ids.includes(o.id)) : [];
-      v.rev = (v.rev ?? 0) + 1;
+      v.rev = Math.max((v.rev ?? 0) + 1, Date.now());
     }
     writeDraft(dir, d);
     console.log("cleared");

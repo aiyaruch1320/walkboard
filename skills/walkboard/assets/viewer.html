@@ -2071,7 +2071,7 @@ function renderMap(v) {
   scroll.append(map);
   viaChips(map, v.links);
   const svg = linkLayer(map);
-  let routes = [];
+  let routes = [], keptOnce = false;
   // Still too wide for the column: smaller again, then zones wrap, instead of scrolling sideways.
   let fitted = null;
   const fit = () => {
@@ -2084,7 +2084,7 @@ function renderMap(v) {
     // Wrapping gives the room back: no need for boxes so small that long names break.
     // Paper scales the picture instead, so its zones stay in a row.
     if (!printState && map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
-    movers().forEach((e) => place(e, layout()[keyOf(e)]));
+    placeAll();
     svg.style.display = "";
   };
   // Moving boxes or whole zones: each keeps an offset from its place, saved in plan.json; the lines follow.
@@ -2138,6 +2138,22 @@ function renderMap(v) {
     e.style.left = q?.x ? q.x + "px" : "";
     e.style.top = q?.y ? q.y + "px" : "";
   };
+  // A box or zone never leaves the picture: dragged past an edge, or saved on a wider screen, it stops at the edge.
+  const keepIn = (e, q) => {
+    place(e, q);
+    const r = e.getBoundingClientRect(), m = map.getBoundingClientRect();
+    const dx = r.left < m.left ? m.left - r.left : r.right > m.right ? Math.max(m.right - r.right, m.left - r.left) : 0;
+    const dy = r.top < m.top ? m.top - r.top : r.bottom > m.bottom ? Math.max(m.bottom - r.bottom, m.top - r.top) : 0;
+    const at = {...q, x: Math.round(q.x + dx), y: Math.round(q.y + dy)};
+    if (dx || dy) place(e, at);
+    return at;
+  };
+  // Zones first (document order), so the boxes inside one are checked where the zone ends up.
+  const placeAll = () => movers().forEach((e) => {
+    const q = layout()[keyOf(e)];
+    if (q?.x || q?.y) keepIn(e, q);
+    else place(e, q);
+  });
   // Whatever was moved last lies on top: the layout keeps its keys in that order.
   const stackUp = () => {
     const boxes = [...map.querySelectorAll("[data-anchor]")];
@@ -2148,7 +2164,7 @@ function renderMap(v) {
     });
   };
   const arrange = () => {
-    movers().forEach((e) => place(e, layout()[keyOf(e)]));
+    placeAll();
     stackUp();
   };
   arrange();
@@ -2201,8 +2217,7 @@ function renderMap(v) {
         map.classList.add("dragging");
         it.classList.add("lifted");
       }
-      moved = {x: Math.round(from.x + dx), y: Math.round(from.y + dy)};
-      place(it, moved);
+      moved = keepIn(it, {x: Math.round(from.x + dx), y: Math.round(from.y + dy)});
       frame ||= requestAnimationFrame(() => {
         frame = 0;
         const drop = dropZone(it);
@@ -2244,8 +2259,8 @@ function renderMap(v) {
     e.stopPropagation();
     if (!mapKeySave) mapKeyFrom = v.layout;
     const k = e.shiftKey ? 40 : 10, was = offsetOf(it), q = {x: was.x + d[0] * k, y: was.y + d[1] * k};
-    v.layout = movedTo(it, q);
-    place(it, q);
+    const kept = keepIn(it, q);
+    v.layout = movedTo(it, kept);
     stackUp();
     draw();
     clearTimeout(mapKeySave);
@@ -2263,6 +2278,11 @@ function renderMap(v) {
         fit();
         linkDrawer?.();
       });
+    }
+    // The first time on screen: offsets saved on a wider screen can only be checked against the edges now.
+    if (!keptOnce && map.isConnected) {
+      keptOnce = true;
+      placeAll();
     }
     const base = svg.clear();
     routes = [];

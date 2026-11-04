@@ -36,7 +36,7 @@ One JSON object, written compact. `WB check <dir>` validates it with the page's 
 
 ### Telling a story with a step
 
-When something travels (a request, a key, a message), let the step show it. Optional on any step:
+Animate only what needs it: a path that is easy to get wrong, something carried from box to box, or what gets blocked. A step whose point is a fact, not a movement, has no `moves`; most steps have none, and moving everything makes the moves that matter stand out less. Optional on any step:
 
 ```json
 {"id":"wake","title":"poll wakes the agent","nodes":["server","poll","agent"],
@@ -48,6 +48,7 @@ When something travels (a request, a key, a message), let the step show it. Opti
 | Field | Meaning |
 |---|---|
 | `moves` | Played in order each time the step opens: `label` travels from box `from` to box `to`, on the picture's line when there is one. 1-3 per step; `label` ≤ 3 words |
+| `blocked` | The label stops partway and turns red (automatic on a link with `"state":"blocked"`): what was tried and did not get through |
 | `keep` | The label stays on `to` in later steps; the same label moving again moves it. For what is carried on (a stolen key, a token), not for every move |
 | `show` | `{box: "text"}`: a few short lines inside the box from this step on, for what really changes there (a log, a prompt). Only where it adds something: boxes grow |
 

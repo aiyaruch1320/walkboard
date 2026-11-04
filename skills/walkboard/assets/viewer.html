@@ -2923,8 +2923,16 @@ function runMove(m, token) {
       }
       start ??= now;
       const k = Math.min(1, (now - start) / ms);
-      place(k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+      // A blocked line never gets there: the label stops partway and turns red.
+      const cut = m.blocked || line.path.classList.contains("l-blocked");
+      place((k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2) * (cut ? 0.6 : 1));
       if (k < 1) return requestAnimationFrame(frame);
+      if (cut) {
+        packet.classList.add("cut");
+        packet.textContent = (m.label ? m.label + " " : "") + "✗";
+        await pause(MOVE_REST + 700);
+        return finish();
+      }
       b.classList.add("mv-hit");
       setTimeout(() => b.classList.remove("mv-hit"), MOVE_REST + 300);
       await pause(MOVE_REST);

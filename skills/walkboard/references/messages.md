@@ -32,11 +32,13 @@ The user arranged or sketched on a map and asks whether it still matches the pla
 - `boxes` and `zones`: `x`, `y`, `w`, `h`; `zone` = where the plan puts it, `inside` = the smallest zone its centre is in on screen (`null`: none). `outOfZone` lists where the two differ (zones as `z:<label>`); `moved` = what the user dragged.
 - `overlaps`: boxes lying on each other. `linesOverBoxes`: links drawn across other boxes.
 
-`changes` (when the user sketched in draft mode): the draft, oldest first, each with an `id` (`op1`…) and names next to ids. `addNode` (a new box, id `new:N`), `addZone`, `addLink`, `editLink`, `removeLink`, `editNode`, `editZone` (rename), `remove`, `removeZone`, `move`, `moveZone`. `stale`: changes that no longer fit the plan, with `why`. `WB draft <dir>` prints the draft at any time.
+`changes` (when the user sketched in draft mode): the draft, oldest first, each with an `id` (`op1`…) and names next to ids. `addNode` (a new box, id `new:…`), `addZone`, `addLink`, `editLink`, `removeLink`, `editNode`, `editZone` (rename), `remove`, `removeZone`, `move`, `moveZone`. `stale`: changes that no longer fit the plan, with `why`. `WB draft <dir>` prints the draft at any time.
 
 Reply with `WB reply <dir>` (whole plan) and change nothing yet: one short line per change or out-of-place box, by id ("op3: the worker needs SG 6379 from the app subnet"), saying what it means for the plan (network, cost, a missing step, a broken constraint), then ask once whether to put them in the plan. Mention an overlap or a crossing line only when it hides something. Nothing out of place: say it matches, in one line. Looks (balance, spacing) cannot be judged from numbers; leave them out.
 
-- Yes (all or some): write those into the plan (a real id for each `new:N`, zones, links, the steps that depend on them), `WB check`, then `WB draft <dir> clear <view> <op…>` for exactly those, and reply with what changed. Leave `layout` alone.
+Before replying, check each new box against the boxes already there: a new "Redis sessions" next to an existing Redis is likely the same thing. A `remove` lists the lines that go with the box (`lines`).
+
+- Yes (all or some): write exactly those into plan.json (schema in references/schema.md): a node under `nodes` with a real id (short, lowercase, e.g. `redis-sessions`) for each `new:…`; its id in the zone's `nodes` in that view; `links` in that view; the `nodes` of the steps that build or change it. Then `WB check`, `WB draft <dir> clear <view> <op…>` for exactly those (it prints what is left), and reply with what changed. Leave `layout` alone.
 - No: change nothing; ask whether to clear the draft (`WB draft <dir> clear <view>`), or the user drops it on the page.
 - Explain mode never edits the project: agreed changes become `proposal`s. Design mode: agreed changes revise an option or make a new one (references/design.md), never a loose picture.
 

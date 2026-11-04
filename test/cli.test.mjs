@@ -88,7 +88,8 @@ test("draft prints the sketch in words and clears it by picture or change", asyn
   assert.match(out, /op1 {2}\+ box Redis \(new:1\) in "Cloud"/);
   assert.match(out, /op2 {2}\+ line API \(a\) → Redis \(new:1\)/);
   assert.match(out, /op3 .*no longer fits: no zone "Gone"/);
-  assert.equal((await run("draft", dir, "clear", "m", "op1", "op3")).stdout.trim(), "cleared");
+  const cleared = (await run("draft", dir, "clear", "m", "op1", "op3")).stdout;
+  assert.match(cleared, /^cleared\nm:\n {2}op2 .*no longer fits: a box on this line is not in the picture/, "prints what is left");
   assert.doesNotMatch((await run("draft", dir)).stdout, /op1|op3/);
   await run("draft", dir, "clear");
   assert.equal(fs.existsSync(path.join(dir, ".walkboard", "draft.json")), false);

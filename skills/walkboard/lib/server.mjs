@@ -80,9 +80,9 @@ export function readDraft(dir) {
 // Views with no changes left are dropped; nothing left, no file.
 export function writeDraft(dir, d) {
   const p = paths(dir);
-  for (const [k, v] of Object.entries(d.views)) if (!v.ops.length) delete d.views[k];
+  for (const [k, v] of Object.entries(d.views)) if (!v.ops.length && !v.rev) delete d.views[k];
   fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
-  if (!Object.keys(d.views).length) return fs.rmSync(p.draft, {force: true});
+  if (!Object.values(d.views).some((v) => v.ops.length)) return fs.rmSync(p.draft, {force: true});
   const tmp = `${p.draft}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(d), {mode: 0o600});
   fs.renameSync(tmp, p.draft);
@@ -203,6 +203,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   function handle(req, res) {
     const url = new URL(req.url, "http://127.0.0.1");
     if (url.searchParams.get("token") !== token) return res.writeHead(403).end();
+    // Only this machine's own names: a page on another site that renames itself to 127.0.0.1 (DNS rebinding) is refused.
+    if (req.headers.host && !/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(req.headers.host)) return res.writeHead(403).end();
     const route = `${req.method} ${url.pathname}`;
 
     if (route === "GET /") {
@@ -339,19 +341,23 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       // One picture's changes, all of them: {view, ops}. Sketching never wakes the agent; the review button does.
       readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
-        if (err || typeof v?.view !== "string" || !Array.isArray(v.ops)) return res.writeHead(400).end('need {"view": id, "ops": [...]}');
+        if (err || typeof v?.view !== "string" || !Array.isArray(v.ops)) return res.writeHead(400).end('need {"view": id, "ops": [...], "rev": n}');
         const {plan, error} = readPlan(p.plan);
         if (error) return res.writeHead(409, {"content-type": "text/plain; charset=utf-8"}).end(error);
         const view = Array.isArray(plan.views) ? plan.views.find((x) => x?.id === v.view) : null;
         if (!draftable(view)) return res.writeHead(400).end(`no picture "${v.view}" that takes a draft`);
         const d = readDraft(dir);
-        d.views[v.view] = {ops: v.ops};
+        // rev: the version the page started from. Another page (or `walkboard draft clear`) saved since: send back what
+        // is there now, so the page can put its own changes on top instead of overwriting them.
+        const rev = Object.hasOwn(d.views, v.view) ? d.views[v.view].rev ?? 0 : 0;
+        if (v.rev != null && v.rev !== rev) return res.writeHead(412, {"content-type": "application/json"}).end(JSON.stringify({ops: Object.hasOwn(d.views, v.view) ? d.views[v.view].ops : [], rev}));
+        d.views[v.view] = {ops: v.ops, rev: rev + 1};
         const problems = validateDraft(d);
         if (problems.length) return res.writeHead(400, {"content-type": "text/plain; charset=utf-8"}).end(problems.slice(0, 5).join("\n"));
         writeDraft(dir, d);
         draftSeen = fs.existsSync(p.draft) ? fs.statSync(p.draft).mtimeMs : 0;
         broadcast("draft", {view: v.view});
-        res.writeHead(200, {"content-type": "application/json"}).end("{}");
+        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({rev: rev + 1}));
       }));
     } else if (route === "GET /api/poll") {
       let timer;

@@ -17,8 +17,12 @@ export const isNewId = (id) => typeof id === "string" && /^new:[A-Za-z0-9_-]{1,3
 
 const BAD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 const isObj = (x) => !!x && typeof x === "object" && !Array.isArray(x);
-const text = (x, max = DRAFT_MAX_TEXT) => typeof x === "string" && x.trim() !== "" && x.length <= max;
-const optText = (x, max = DRAFT_MAX_TEXT) => x == null || (typeof x === "string" && x.length <= max);
+// Characters that turn text around or hide it: a name must read the same on the page and to the agent.
+export const HIDDEN_CHARS = /[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g;
+export const cleanText = (x) => String(x ?? "").replace(HIDDEN_CHARS, "").trim();
+const plain = (x) => !new RegExp(HIDDEN_CHARS.source).test(x);
+const text = (x, max = DRAFT_MAX_TEXT) => typeof x === "string" && x.trim() !== "" && x.length <= max && plain(x);
+const optText = (x, max = DRAFT_MAX_TEXT) => x == null || (typeof x === "string" && x.length <= max && plain(x));
 const id = (x) => typeof x === "string" && x !== "" && x.length <= 120 && !BAD_KEYS.has(x);
 const label = (x) => text(x, 120) && !BAD_KEYS.has(x);
 const at = (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 10000);
@@ -50,11 +54,12 @@ export function validateDraft(d) {
       out.push(`view "${view}": needs {"ops": [...]}`);
       continue;
     }
+    if (v.rev != null && !(Number.isInteger(v.rev) && v.rev >= 0)) out.push(`view "${view}": rev must be a whole number`);
     const seen = new Set();
     v.ops.forEach((op, i) => {
       count++;
       const at = `view "${view}" change ${i + 1}`;
-      if (!isObj(op) || !SHAPES[op.op]) return out.push(`${at}: unknown change ${JSON.stringify(op?.op ?? op)}`);
+      if (!isObj(op) || typeof op.op !== "string" || !Object.hasOwn(SHAPES, op.op)) return out.push(`${at}: unknown change ${JSON.stringify(op?.op ?? op)}`);
       if (!(typeof op.id === "string" && /^[A-Za-z0-9_-]{1,24}$/.test(op.id)) || seen.has(op.id)) out.push(`${at}: needs a unique id`);
       seen.add(op.id);
       const shape = SHAPES[op.op];
@@ -67,6 +72,18 @@ export function validateDraft(d) {
     });
   }
   if (count > DRAFT_MAX_OPS) out.push(`a draft holds at most ${DRAFT_MAX_OPS} changes`);
+  return out;
+}
+
+// Changes made on this page since it last saw the server's list (base), put on top of what the server has now:
+// added ones join, dropped ones go, edited ones win. Two pages sketching at once keep each other's changes.
+export function rebaseOps(base, local, remote) {
+  const ids = (list) => new Map((list || []).map((o) => [o.id, o]));
+  const b = ids(base), l = ids(local), r = ids(remote);
+  const dropped = new Set([...b.keys()].filter((id) => !l.has(id)));
+  const edited = new Map([...l].filter(([id, o]) => b.has(id) && JSON.stringify(o) !== JSON.stringify(b.get(id))));
+  const out = (remote || []).filter((o) => !dropped.has(o.id)).map((o) => edited.get(o.id) || o);
+  for (const o of local || []) if (!b.has(o.id) && !r.has(o.id)) out.push(o);
   return out;
 }
 
@@ -110,7 +127,7 @@ export function applyDraft(plan, draft, viewId) {
   const done = (op) => result.done.push(op.id);
   const nameOf = (n) => String(nodes[n]?.name ?? "").trim().toLowerCase();
   for (const op of ops) {
-    if (!isObj(op) || !SHAPES[op.op] || !DRAFT_OPS[v.kind].includes(op.op)) continue;
+    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS[v.kind].includes(op.op)) continue;
     const before = result.done.length + result.stale.length;
     switch (op.op) {
       case "addNode": {
@@ -301,7 +318,13 @@ export function describeDraft(plan, draft, viewId) {
     for (const k of ["node", "from", "to"]) if (out[k] != null && !(o.op === "move" && k !== "node") && o.op !== "moveZone" && o.op !== "addNode") out[k] = named(out[k]);
     return out;
   };
-  const changes = ops.filter((o) => pending.includes(o.id)).map(words);
+  // Taking out a box takes its lines too: say which, so the agent need not look them up.
+  const real = plan?.views?.find((x) => x?.id === viewId);
+  const linesOf = (n) => (Array.isArray(real?.links) ? real.links : []).filter((l) => l?.from === n || l?.to === n).map((l) => `${named(l.from)} → ${named(l.to)}${l.label ? ` ${l.label}` : ""}`);
+  const changes = ops.filter((o) => pending.includes(o.id)).map(words).map((c, i, all) => {
+    const o = ops.find((x) => x.id === c.id);
+    return o.op === "remove" && linesOf(o.node).length ? {...c, lines: linesOf(o.node)} : c;
+  });
   const staleOut = stale.map((s) => ({...words(ops.find((o) => o.id === s.id)), why: s.why}));
   return {view: viewId, changes, ...(staleOut.length ? {stale: staleOut} : {})};
 }
@@ -317,7 +340,7 @@ export function draftLine(c) {
     case "removeLink": return `− line ${c.from} → ${c.to}`;
     case "editNode": return `~ box ${c.node}: ${["name", "what", "icon"].filter((k) => c[k] != null).map((k) => `${k} ${JSON.stringify(c[k])}`).join(", ")}`;
     case "editZone": return `~ zone ${z(c.zone)} → ${z(c.label)}`;
-    case "remove": return `− box ${c.node}`;
+    case "remove": return `− box ${c.node}${c.lines?.length ? ` (and its lines: ${c.lines.join("; ")})` : ""}`;
     case "removeZone": return `− zone ${z(c.zone)}`;
     case "move": return `↦ box ${c.node} → ${z(c.to)}`;
     case "moveZone": return `↦ zone ${z(c.zone)} → ${z(c.to)}`;

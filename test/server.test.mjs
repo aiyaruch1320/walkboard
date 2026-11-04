@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import http from "node:http";
 import {startServer} from "../skills/walkboard/lib/server.mjs";
 
 function planDir() {
@@ -370,4 +371,19 @@ test("a draft is saved per picture, checked, announced, and never wakes the agen
   assert.equal((await post(s, "/api/draft", {view: "m", ops: [{id: "x", op: "addNode", node: "redis", name: "R", zone: "Cloud"}]})).status, 400);
   assert.equal((await post(s, "/api/draft", {view: "m", ops: []})).status, 200);
   assert.equal(fs.existsSync(path.join(dir, ".walkboard", "draft.json")), false, "an empty draft leaves no file");
+});
+
+test("a draft saved from an older version is refused with what is there now; other hosts are refused", async (t) => {
+  const dir = planDir();
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", views: [{id: "m", kind: "map", zones: [{label: "C", nodes: ["a"]}]}], nodes: {a: {name: "A"}}}));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const one = [{id: "o1", op: "remove", node: "a"}];
+  assert.deepEqual(await (await post(s, "/api/draft", {view: "m", ops: one, rev: 0})).json(), {rev: 1});
+  const late = await post(s, "/api/draft", {view: "m", ops: [], rev: 0});
+  assert.equal(late.status, 412);
+  assert.deepEqual(await late.json(), {ops: one, rev: 1});
+  assert.equal((await post(s, "/api/draft", {view: "m", ops: [], rev: 1})).status, 200);
+  const evil = await new Promise((done) => http.get({host: "127.0.0.1", port: s.port, path: `/api/plan?token=${s.token}`, headers: {host: "evil.example:80"}}, (r) => done(r.statusCode)));
+  assert.equal(evil, 403);
 });

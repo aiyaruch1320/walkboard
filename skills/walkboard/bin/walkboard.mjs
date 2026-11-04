@@ -287,9 +287,19 @@ function draft() {
       const unknown = ids.filter((id) => !v.ops.some((o) => o.id === id));
       if (unknown.length) fail(`no change ${unknown.join(", ")} on "${k}"; ids: ${v.ops.map((o) => o.id).join(", ")}`);
       v.ops = ids.length ? v.ops.filter((o) => !ids.includes(o.id)) : [];
+      v.rev = (v.rev ?? 0) + 1;
     }
     writeDraft(dir, d);
-    return console.log("cleared");
+    console.log("cleared");
+    // What is left, so there is no need to ask again.
+    const left = Object.keys(d.views).filter((k) => d.views[k].ops.length);
+    for (const view of left) {
+      const {changes, stale = []} = describeDraft(plan, d, view);
+      console.log(`${view}:`);
+      for (const c of changes) console.log(`  ${c.id}  ${draftLine(c)}`);
+      for (const c of stale) console.log(`  ${c.id}  ${draftLine(c)}  (no longer fits: ${c.why})`);
+    }
+    return;
   }
   if (words.length) fail(`draft takes "clear [view] [change …]", not "${words.join(" ")}"`);
   const views = Object.keys(d.views);

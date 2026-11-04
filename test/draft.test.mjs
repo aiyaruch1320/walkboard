@@ -79,3 +79,21 @@ test("the agent reads names next to ids, and one line per change", () => {
   assert.equal(d.stale[0].why, 'no zone "Nowhere"');
   assert.equal(draftLine(d.changes[1]), "+ line API (api) → Redis (new:1) :6379");
 });
+
+test("two pages' changes are kept together: added join, dropped go, edited win", async () => {
+  const {rebaseOps} = await import("../skills/walkboard/lib/draft.mjs");
+  const a = {id: "a", op: "remove", node: "x"}, b = {id: "b", op: "remove", node: "y"}, c = {id: "c", op: "remove", node: "z"};
+  const base = [a, b], local = [{...a, node: "x2"}, c], remote = [a, b, {id: "d", op: "remove", node: "w"}];
+  assert.deepEqual(rebaseOps(base, local, remote).map((o) => o.id + (o.node || "")), ["ax2", "dw", "cz"]);
+});
+
+test("text that reads one way on screen and another to the agent is refused; built-in names are no change kind", () => {
+  assert.match(validateDraft(draft({op: "addNode", node: "new:1", name: "‮evil", zone: "Data"})).join(), /bad name/);
+  assert.match(validateDraft(draft({op: "constructor"}, {op: "toString"})).join(), /unknown change "constructor".*unknown change "toString"/);
+});
+
+test("taking out a box tells which lines go with it", () => {
+  const d = describeDraft(plan(), draft({op: "remove", node: "nat"}), "m");
+  assert.deepEqual(d.changes[0].lines, ["API (api) → NAT (nat) egress"]);
+  assert.match(draftLine(d.changes[0]), /and its lines: API \(api\) → NAT \(nat\) egress/);
+});

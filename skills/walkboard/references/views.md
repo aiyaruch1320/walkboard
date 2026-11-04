@@ -19,7 +19,7 @@ Every view has `id`, `kind` and `title`; the `title` is its tab, so give it word
 | If this goes down, what breaks? | `impact` |
 | What changes between now and after? | `diff` |
 
-One or two pictures that answer the question; more is noise. Use made-up values, never real customer data.
+One or two pictures that answer the question; more is noise. The user can sketch changes on map, datamodel, flow, state, decision, impact and k8s pictures (draft mode); they reach you as `review` (references/messages.md), never in plan.json. Use made-up values, never real customer data.
 
 ## flow
 

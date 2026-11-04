@@ -479,6 +479,31 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .via.dr-change{border-style:dashed;border-color:#14a3b8}
 .via.dr-remove{text-decoration:line-through;opacity:.6}
 .zhead .ptag{position:static;margin-left:4px}
+.erhead .ptag,.erframe-label .ptag{position:static;margin-left:6px;box-shadow:none}
+.er li{position:relative}
+.ptag.small{position:absolute;right:-10px;top:50%;transform:translateY(-50%);min-width:17px;height:17px;font-size:11px;box-shadow:0 0 0 2px var(--card)}
+.ertable.dr-move .erhead>.ptag{background:var(--copy-tx)}.ertable.dr-change .erhead>.ptag,.erframe.dr-change .erframe-label>.ptag{background:#14a3b8}.ertable.dr-remove .erhead>.ptag,.erframe.dr-remove .erframe-label>.ptag{background:var(--warn-bd)}
+.ertable.dr-add,.erframe.dr-add{outline:2px dashed var(--you-bd);outline-offset:3px}
+.ertable.dr-change,.erframe.dr-change{outline:2px dashed #14a3b8;outline-offset:3px}
+.ertable.dr-remove,.erframe.dr-remove{outline:2px dashed var(--warn-bd);outline-offset:3px;opacity:.6}
+.ertable.dr-move{outline:2px dashed var(--copy-tx);outline-offset:3px}
+.ertable.dr-remove .erhead{text-decoration:line-through;text-decoration-color:var(--warn-bd)}
+.er li.dr-add{background:color-mix(in srgb,var(--you-bg) 60%,transparent)}
+.er li.dr-change{background:color-mix(in srgb,#14a3b8 14%,transparent)}
+.er li.dr-remove .ername,.er li.dr-remove .ertype{text-decoration:line-through;text-decoration-color:var(--warn-bd);opacity:.7}
+.er li.dr-add .ptag,.er li.dr-change .ptag{color:#fff}
+.er li.dr-change .ptag{background:#14a3b8}.er li.dr-remove .ptag{background:var(--warn-bd)}
+.er.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
+.er.sketch[data-tool="table"]{cursor:crosshair}
+.er.sketch[data-tool="column"] .ertable,.er.sketch[data-tool="group"] .ertable{cursor:copy}
+.er.sketch[data-tool="connect"] li[data-col]{cursor:alias}
+.er.sketch[data-tool="rename"] .ertable{cursor:text}
+.er.sketch[data-tool="remove"] .ertable,.er.sketch[data-tool="remove"] .erframe-label{cursor:pointer}
+.er .dsel{outline:2px solid var(--you-bd)!important;outline-offset:2px}
+.er li.dtarget{outline:2px solid var(--you-bd);outline-offset:-2px}
+.er .erframe.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 40%,transparent)}
+.er .dspot{position:absolute;width:160px;height:24px}
+.er svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}
 @media (pointer:fine) and (min-width:820px){body:not(.snapshot) .map .zhead{cursor:grab}}

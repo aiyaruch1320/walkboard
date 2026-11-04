@@ -2212,6 +2212,9 @@ const ICON_PATHS = {
   remove: ["M4 7h16", "M9.5 7V4.5h5V7", "M6.5 7l1 13h9l1-13", "M10.5 11v5.5", "M13.5 11v5.5"],
   close: ["M6 6l12 12", "M18 6L6 18"],
   undo: ["M9 14 4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 0 11H11"],
+  table: ["M3 5h13v14H3z", "M3 9.5h13", "M8 9.5V19", "M19.5 3v6", "M16.5 6h6"],
+  column: ["M3 5h13v14H3z", "M3 10h13", "M3 14.5h13", "M19.5 3v6", "M16.5 6h6"],
+  group: [{d: "M2 4h15v16H2z", dash: "2.6 2.2"}, "M5 8h9v8H5z", "M20 3v6", "M17 6h6"],
   redo: ["M15 14l5-5-5-5", "M20 9H9.5a5.5 5.5 0 0 0 0 11H13"],
   list: ["M9 6h11", "M9 12h11", "M9 18h11", "M4.5 6h.01", "M4.5 12h.01", "M4.5 18h.01"],
 };
@@ -2229,9 +2232,17 @@ function svgIcon(name) {
   return svg;
 }
 const SKETCH_TOOLS = [["select", "V"], ["box", "B"], ["zone", "Z"], ["connect", "L"], ["rename", "R"], ["remove", "D"]];
+const MODEL_TOOLS = [["select", "V"], ["table", "B"], ["column", "C"], ["connect", "L"], ["group", "Z"], ["rename", "R"], ["remove", "D"]];
+// What the draft does to a thing, in one sign; the words in its tooltip. small: inline, for a column.
+function draftSign(m, small = false) {
+  const tag = el("span", "ptag" + (small ? " small" : ""), {add: "+", change: "~", remove: "−", move: "↦"}[m.mark]);
+  const was = m.was ? (typeof m.was === "string" ? m.was : m.was.name ?? Object.values(m.was)[0]) : "";
+  tag.title = m.mark === "move" ? t("d_move", m.from || t("noGroup")) : m.mark === "change" ? t("d_change", was) : t("d_" + m.mark);
+  return tag;
+}
 // A small text field over a box's name or a zone's title; Enter keeps it, Escape (or nothing typed) drops it.
 function editText(over, initial, placeholder, {onInput, onDone}) {
-  const host = over.closest(".map") || document.body, r = over.getBoundingClientRect(), h = host.getBoundingClientRect();
+  const host = over.closest(".map, .er") || document.body, r = over.getBoundingClientRect(), h = host.getBoundingClientRect();
   const input = el("input", "dedit");
   input.value = initial;
   input.placeholder = placeholder;
@@ -2323,9 +2334,81 @@ function draftRows(viewId) {
       removeZone: ["−", o.zone, ""],
       move: ["↦", nm(o.node), `→ ${top(o.to)}`],
       moveZone: ["↦", o.zone, `→ ${top(o.to)}`],
+      addTable: ["+", o.name, o.group || ""],
+      addColumn: ["+", `${nm(o.table)}.${o.column}`, [o.type, o.key].filter(Boolean).join(" · ")],
+      editColumn: ["~", `${nm(o.table)}.${o.column}`, o.name ? `→ ${o.name}` : o.ref != null ? (o.ref ? `→ ${o.ref}` : t("fkOff")) : [o.type, o.key].filter((x) => x != null).join(" · ")],
+      removeColumn: ["−", `${nm(o.table)}.${o.column}`, ""],
+      moveTable: ["↦", nm(o.node), `→ ${o.to || t("noGroup")}`],
+      addGroup: ["+", o.group, (o.tables || []).map(nm).join(", ")],
+      editGroup: ["~", `${o.group} → ${o.label}`, ""],
+      removeGroup: ["−", o.group, ""],
     }[o.op] || ["?", o.op, ""];
     return {op: o, sign, main, sub, stale: stale[o.id]};
   });
+}
+// The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
+// picture: where the tool shows as the cursor; toolList: [name, key] for this kind of picture.
+function sketchBar(lv, tools, picture, toolList) {
+  document.body.classList.add("sketching");
+  const bar = el("div", "dtools");
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", t("sketch"));
+  // Which mode this is, in two words; the tooltip says the plan has not changed.
+  const mode = el("span", "dmode");
+  mode.append(svgIcon("pencil"), t("sketchShort"));
+  mode.title = t("sketchModeTip");
+  bar.append(mode);
+  const btn = (icon, title, cls = "") => {
+    const b = el("button", "dtool " + cls);
+    b.append(svgIcon(icon));
+    b.title = title;
+    b.setAttribute("aria-label", title);
+    return b;
+  };
+  for (const [name, key] of toolList) {
+    const b = btn(name, `${t("tool_" + name)} (${key})`);
+    b.dataset.tool = name;
+    b.onclick = () => sketchApi.tool(name);
+    bar.append(b);
+  }
+  bar.append(el("span", "dsep"));
+  const mac = /Mac|iP(hone|ad)/.test(navigator.platform);
+  const u = btn("undo", `${t("undo")} (${mac ? "⌘Z" : "Ctrl+Z"})`, "du"), r = btn("redo", `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`, "dr");
+  u.onclick = tools.undo;
+  r.onclick = tools.redo;
+  bar.append(u, r, el("span", "dsep"));
+  const count = el("button", "dcount");
+  count.append(svgIcon("list"), el("span", null, "0"));
+  count.title = t("draftList");
+  count.onclick = () => (side?.kind === "draft" ? closeSide() : openSide({kind: "draft", view: lv.id}));
+  const send = el("button", "primary dsend", t("reviewPic"));
+  // Sent: says so until the next change, so it is not sent twice by accident.
+  send.onclick = async () => {
+    if (await tools.ask()) {
+      send.textContent = "✓ " + t("reviewSent");
+      send.disabled = true;
+    }
+  };
+  const exit = btn("close", `${t("exitSketch")} (Esc)`, "dexit");
+  exit.onclick = () => sketchApi.exit();
+  bar.append(count, send, exit);
+  document.body.append(bar);
+  const refresh = () => {
+    picture.dataset.tool = sketchTool;
+    bar.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === sketchTool)));
+    const h = tools.history();
+    u.disabled = !h.back;
+    r.disabled = !h.fwd;
+    const n = draftRows(lv.id).length;
+    count.lastChild.textContent = String(n);
+    count.classList.toggle("unsaved", unsaved.has(lv.id));
+    count.title = unsaved.has(lv.id) ? t("draftUnsaved") : t("draftList");
+    send.textContent = t("reviewPic");
+    send.disabled = !n && !Object.keys(lv.layout || {}).length;
+  };
+  tools.onChange = refresh;
+  refresh();
+  return {bar, refresh};
 }
 function renderDraftPanel() {
   const title = document.getElementById("sideTitle"), p = document.getElementById("panel");
@@ -2373,9 +2456,9 @@ addEventListener("keydown", (e) => {
   if (!sketching || !sketchApi || boxDragging || e.metaKey || e.ctrlKey || e.altKey) return;
   const a = document.activeElement;
   if (/^(TEXTAREA|INPUT|SELECT)$/.test(a?.tagName) || a?.isContentEditable) return;
-  const focused = a?.closest?.(".map [data-anchor]");
+  const focused = a?.closest?.("#view [data-anchor]");
   const target = sketchSel || (focused ? {kind: "node", id: focused.dataset.anchor} : null);
-  const tool = SKETCH_TOOLS.find(([, k]) => k.toLowerCase() === e.key.toLowerCase());
+  const tool = (sketchApi.toolList || SKETCH_TOOLS).find(([, k]) => k.toLowerCase() === e.key.toLowerCase());
   if (tool && !a?.closest?.(".side")) sketchApi.tool(tool[0]);
   else if ((e.key === "Delete" || e.key === "Backspace") && target) sketchApi.remove(target);
   else if ((e.key === "Enter" || e.key === "F2") && target && !a?.closest?.(".side, .dtools")) sketchApi.rename(target);
@@ -3086,70 +3169,9 @@ function renderMap(real) {
       addEventListener("pointerup", up);
     }
   };
-  // The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
-  let bar = null;
-  const refreshBar = () => {
-    if (!bar) return;
-    map.dataset.tool = sketchTool;
-    bar.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === sketchTool)));
-    const h = tools.history();
-    bar.querySelector(".du").disabled = !h.back;
-    bar.querySelector(".dr").disabled = !h.fwd;
-    const n = draftRows(lv.id).length, count = bar.querySelector(".dcount");
-    count.lastChild.textContent = String(n);
-    count.classList.toggle("unsaved", unsaved.has(lv.id));
-    count.title = unsaved.has(lv.id) ? t("draftUnsaved") : t("draftList");
-    const send = bar.querySelector(".dsend");
-    send.textContent = t("reviewPic");
-    send.disabled = !n && !Object.keys(lv.layout || {}).length;
-  };
+  let bar = null, refreshBar = () => {};
   if (isSketch) {
-    document.body.classList.add("sketching");
-    bar = el("div", "dtools");
-    bar.setAttribute("role", "toolbar");
-    bar.setAttribute("aria-label", t("sketch"));
-    // Which mode this is, in two words; the tooltip says the plan has not changed.
-    const mode = el("span", "dmode");
-    mode.append(svgIcon("pencil"), t("sketchShort"));
-    mode.title = t("sketchModeTip");
-    bar.append(mode);
-    const btn = (icon, title, cls = "") => {
-      const b = el("button", "dtool " + cls);
-      b.append(svgIcon(icon));
-      b.title = title;
-      b.setAttribute("aria-label", title);
-      return b;
-    };
-    for (const [name, key] of SKETCH_TOOLS) {
-      const b = btn(name, `${t("tool_" + name)} (${key})`);
-      b.dataset.tool = name;
-      b.onclick = () => sketchApi.tool(name);
-      bar.append(b);
-    }
-    bar.append(el("span", "dsep"));
-    const mac = /Mac|iP(hone|ad)/.test(navigator.platform);
-    const u = btn("undo", `${t("undo")} (${mac ? "⌘Z" : "Ctrl+Z"})`, "du"), r = btn("redo", `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`, "dr");
-    u.onclick = tools.undo;
-    r.onclick = tools.redo;
-    bar.append(u, r, el("span", "dsep"));
-    const count = el("button", "dcount");
-    count.append(svgIcon("list"), el("span", null, "0"));
-    count.title = t("draftList");
-    count.onclick = () => (side?.kind === "draft" ? closeSide() : openSide({kind: "draft", view: lv.id}));
-    const send = el("button", "primary dsend", t("reviewPic"));
-    // Sent: says so until the next change, so it is not sent twice by accident.
-    send.onclick = async () => {
-      if (await tools.ask()) {
-        send.textContent = "✓ " + t("reviewSent");
-        send.disabled = true;
-      }
-    };
-    const exit = btn("close", `${t("exitSketch")} (Esc)`, "dexit");
-    exit.onclick = () => sketchApi.exit();
-    bar.append(count, send, exit);
-    document.body.append(bar);
-    tools.onChange = refreshBar;
-    refreshBar();
+    ({bar, refresh: refreshBar} = sketchBar(lv, tools, map, SKETCH_TOOLS));
     if (sketchSel) requestAnimationFrame(() => select(sketchSel));
   }
   if (isSketch) sketchApi = {
@@ -3583,7 +3605,11 @@ function renderTimeline(v) {
 }
 
 // ---------- data model: tables, keys and relations between columns
-function renderDataModel(v) {
+function renderDataModel(real) {
+  // Drawn with its draft in it (not on paper); the arrangement (layout) stays on the real view.
+  const drafted = applyDraft(plan, printState ? null : draft, real.id), v = drafted.view, marks = drafted.marks;
+  if (v !== real) Object.defineProperty(v, "layout", {get: () => real.layout, set: (x) => (real.layout = x), configurable: true});
+  const cmark = (k) => marks.columns?.[k];
   const tables = (v.tables || []).filter((x) => x?.node);
   // A column that points at another table is a foreign key, whatever "key" says: a shared primary key (1:1) is both PK and FK.
   const pointing = new Set([...tables.flatMap((tb) => (tb.columns || []).filter((c) => c?.ref).map((c) => `${tb.node}.${c.name}`)), ...(v.relations || []).map((r) => r?.from)]);
@@ -3621,7 +3647,9 @@ function renderDataModel(v) {
   // Moving tables: the automatic layout until the first drag, then every table at its own x, y, saved in plan.json.
   const cards = () => [...grid.querySelectorAll(":scope > .ertable")];
   const canMove = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
-  const tools = layoutTools(v, canMove, renderView);
+  const tools = layoutTools(real, canMove, renderView, () => ({}), true);
+  if (sketching && sketching !== real.id) sketching = null;
+  const isSketch = sketching === real.id && canMove();
   let free = false, dragged = false, keySave = null, keyFrom, lifted = [];
   const fit = () => {
     grid.style.width = Math.max(...cards().map((c) => c.offsetLeft + c.offsetWidth)) + 40 + "px";
@@ -3642,7 +3670,8 @@ function renderDataModel(v) {
     });
     fit();
   };
-  const save = (before = v.layout) => {
+  // commit false: only work out the positions (a caller saves them with something else, as one undo).
+  const save = (before = v.layout, commit = true) => {
     // The picture starts at its top left corner: no empty band left where tables used to be.
     const at = cards().map((c) => [c, c.offsetLeft, c.offsetTop]);
     const dx = Math.min(...at.map((p) => p[1])) - (frameDefs.length ? 24 : 6), dy = Math.min(...at.map((p) => p[2])) - (frameDefs.length ? 44 : 10);
@@ -3650,7 +3679,21 @@ function renderDataModel(v) {
     // Moved last, last in the list: that is what lies on top.
     const was = Object.keys(before || {}), order = [...cards()].sort((a, b) => (lifted.includes(a) - lifted.includes(b)) || was.indexOf(a.dataset.id) - was.indexOf(b.dataset.id));
     order.forEach((c, i) => (c.style.zIndex = i + 1));
-    tools.done(before, Object.fromEntries(order.map((c) => [c.dataset.id, {x: c.offsetLeft, y: c.offsetTop}])));
+    const positions = Object.fromEntries(order.map((c) => [c.dataset.id, {x: c.offsetLeft, y: c.offsetTop}]));
+    if (!commit) return positions;
+    tools.done(before, positions);
+  };
+  // The group frame under a point, other than the table's own.
+  const frameAt = (x, y, id) => [...grid.querySelectorAll(".erframe:not([hidden])")].find((f) => {
+    const b = f.getBoundingClientRect();
+    return x >= b.left && x <= b.right && y >= b.top && y <= b.bottom && !frameDefs.find((g) => g.label === f.dataset.group)?.tables?.includes(id);
+  });
+  const moveOps = (id, to) => {
+    const list = draftOps(real.id), from = (real.groups || []).find((g) => g?.tables?.includes(id))?.label ?? "";
+    const added = list.find((o) => o.op === "addTable" && o.node === id);
+    if (added) return list.map((o) => (o === added ? {...o, group: to || undefined} : o));
+    const rest = list.filter((o) => !(o.op === "moveTable" && o.node === id));
+    return to === from ? rest : [...rest, {id: newOpId(rest), op: "moveTable", node: id, to, from}];
   };
   const shift = (list, dx, dy) => {
     for (const [c, x, y] of list) {
@@ -3662,7 +3705,7 @@ function renderDataModel(v) {
   };
   function movable(card, handle, members) {
     handle.addEventListener("pointerdown", (e) => {
-      if (!canMove() || e.button !== 0) return;
+      if (!canMove() || e.button !== 0 || (isSketch && sketchTool !== "select")) return;
       const sx = e.clientX, sy = e.clientY;
       let start = null;
       handle.setPointerCapture(e.pointerId);
@@ -3676,14 +3719,24 @@ function renderDataModel(v) {
           grid.classList.add("dragging");
         }
         shift(start, ev.clientX - sx, ev.clientY - sy);
+        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id);
+        grid.querySelectorAll(".erframe").forEach((f) => f.classList.toggle("droptarget", f === to));
       };
-      const up = () => {
+      const up = (ev) => {
         for (const [n, fn] of [["pointermove", move], ["pointerup", up], ["pointercancel", up]]) handle.removeEventListener(n, fn);
         grid.classList.remove("dragging");
+        grid.querySelectorAll(".erframe.droptarget").forEach((f) => f.classList.remove("droptarget"));
         if (!start) return;
         // The click that ends a drag does not open the table.
         dragged = true;
         setTimeout(() => (dragged = false));
+        // One table let go over another group: it moves to that group (a draft change), and stays where it was dropped.
+        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id);
+        if (to) {
+          const before = tools.snap(), positions = save(v.layout, false);
+          tools.change(before, {layout: positions, ops: moveOps(card.dataset.id, to.dataset.group)});
+          return renderView();
+        }
         save();
       };
       for (const [n, fn] of [["pointermove", move], ["pointerup", up], ["pointercancel", up]]) handle.addEventListener(n, fn);
@@ -3711,6 +3764,12 @@ function renderDataModel(v) {
   }
   const frames = frameDefs.map((g, i) => {
     const f = el("div", "erframe"), label = el("span", "erframe-label", g.label);
+    f.dataset.group = g.label;
+    const gm = marks.zones[g.label];
+    if (gm) {
+      f.classList.add("dr-" + gm.mark);
+      label.append(draftSign(gm));
+    }
     f.append(label);
     movable(null, label, () => cards().filter((c) => groupOf[c.dataset.id] === i));
     grid.append(f);
@@ -3734,14 +3793,25 @@ function renderDataModel(v) {
     card.setAttribute("role", "button");
     card.onclick = () => !dragged && selectNode(tb.node);
     const head = el("div", "erhead");
-    const ic = iconEl(plan.nodes[tb.node] || {}, tb.node);
+    const tn = drafted.plan.nodes[tb.node];
+    const ic = iconEl(tn || {}, tb.node);
     if (ic) head.append(ic);
-    head.append(plan.nodes[tb.node]?.name || tb.node);
+    head.append(tn?.name || tb.node);
+    const tm = marks.nodes[tb.node];
+    if (tm) {
+      card.classList.add("dr-" + tm.mark);
+      head.append(draftSign(tm));
+    }
     const ul = el("ul");
     for (const c of tb.columns || []) {
       const li = el("li");
       li.dataset.col = `${tb.node}.${c.name}`;
       li.append(keyEl(tb, c), el("span", "ername", c.name), el("span", "ertype", c.type || ""));
+      const m = cmark(li.dataset.col);
+      if (m) {
+        li.classList.add("dr-" + m.mark);
+        li.append(draftSign(m, true));
+      }
       if (c.copy) li.classList.add("ercopy", ...(c.keep ? ["keep"] : []));
       if (c.note || c.copy) li.title = [c.copy && t("erCopyOf", c.copy), c.note].filter(Boolean).join("\n");
       ul.append(li);
@@ -3789,7 +3859,8 @@ function renderDataModel(v) {
       const dx = stacked ? Math.min(90, 28 + Math.abs(y2 - y1) / 6) : Math.max(30, Math.abs(x2 - x1) / 2) * (right ? 1 : -1);
       const path = document.createElementNS(svg.namespaceURI, "path");
       path.setAttribute("d", stacked ? `M${x1} ${y1} C${Math.max(x1, x2) + dx} ${y1} ${Math.max(x1, x2) + dx} ${y2} ${x2} ${y2}` : `M${x1} ${y1} C${x1 + dx} ${y1} ${x2 - dx} ${y2} ${x2} ${y2}`);
-      path.setAttribute("class", r.copy ? "l-copy" + (r.copy === lit ? " show" : "") : "l-flow");
+      const lm = marks.links[`${r.from}>${r.to}`]?.mark;
+      path.setAttribute("class", r.copy ? "l-copy" + (r.copy === lit ? " show" : "") : "l-flow" + (lm ? " dr-" + lm : ""));
       if (r.copy) path.dataset.group = r.copy;
       svg.append(path);
       if (r.copy) continue;
@@ -3806,6 +3877,8 @@ function renderDataModel(v) {
     }
   };
   addDrawer(draw, grid);
+  if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt});
+  else if (draftOps(real.id).length) sketchApi = {view: real.id, show() {}, drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()), review: () => tools.ask(), discard: () => (saveDraft(real.id, []), renderView())};
   const scroll = el("div", "scroll");
   scroll.append(grid);
   const n = Object.values(groups).reduce((a, x) => a + x.length, 0);
@@ -3827,6 +3900,245 @@ function renderDataModel(v) {
   const wrap = el("div");
   wrap.append(sum, tools.row, scroll);
   return wrap;
+}
+
+// ---------- sketching a data model: tables, columns, foreign keys (drag a column onto another), groups
+function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
+  const marks = drafted.marks;
+  const ops = () => draftOps(real.id);
+  const setOps = (next) => {
+    const before = tools.snap();
+    tools.change(before, {layout: before.layout, ops: next});
+    keepFocus(() => renderView());
+  };
+  const split = (k) => [k.slice(0, k.indexOf(".")), k.slice(k.indexOf(".") + 1)];
+  const parseCol = (val) => {
+    const [name, ...rest] = val.split(/\s+/);
+    const key = rest.find((w) => /^(pk|fk|uk)$/i.test(w));
+    return {name, type: rest.filter((w) => w !== key).join(" "), key: key?.toLowerCase()};
+  };
+  const selOf = (e) => {
+    const li = e?.closest?.("li[data-col]"), card = e?.closest?.(".ertable"), f = e?.closest?.(".erframe");
+    return li ? {kind: "column", id: li.dataset.col} : card ? {kind: "node", id: card.dataset.id} : f ? {kind: "group", id: f.dataset.group} : null;
+  };
+  const elOf = (x) => (!x ? null : x.kind === "column" ? grid.querySelector(`li[data-col="${CSS.escape(x.id)}"]`) : x.kind === "group" ? grid.querySelector(`.erframe[data-group="${CSS.escape(x.id)}"]`) : grid.querySelector(`.ertable[data-id="${CSS.escape(x.id)}"]`));
+  const select = (x) => {
+    sketchSel = x;
+    grid.querySelectorAll(".dsel").forEach((e) => e.classList.remove("dsel"));
+    elOf(x)?.classList.add("dsel");
+  };
+  const newNode = () => {
+    const used = new Set([...Object.keys(plan.nodes), ...ops().filter((o) => o.op === "addTable").map((o) => o.node)]);
+    let id;
+    do id = "new:" + randomId();
+    while (used.has(id));
+    return id;
+  };
+  const addedTable = (id) => ops().find((o) => o.op === "addTable" && o.node === id);
+  const addedCol = (k) => {
+    const [tb, c] = split(k);
+    return ops().find((o) => o.op === "addColumn" && o.table === tb && o.column === c);
+  };
+  const realCol = (k) => {
+    const [tb, c] = split(k);
+    return (real.tables || []).find((x) => x?.node === tb)?.columns?.find((x) => x?.name === c);
+  };
+  // An edit of a column already in the plan, merged with earlier edits of it; fields back to what the plan has drop out.
+  const editCol = (list, k, change) => {
+    const [table, column] = split(k), orig = realCol(k) || {};
+    const ed = list.find((o) => o.op === "editColumn" && o.table === table && o.column === column);
+    const merged = {...(ed || {id: newOpId(list), op: "editColumn", table, column}), ...change};
+    for (const f of ["name", "type", "key", "ref"]) if (merged[f] != null && merged[f] === (f === "name" ? orig.name : orig[f] ?? "")) delete merged[f];
+    const keep = ["name", "type", "key", "ref"].some((f) => merged[f] != null);
+    return ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list;
+  };
+  const remove = (x) => {
+    if (!x) return;
+    const list = ops();
+    if (x.kind === "node") {
+      if (addedTable(x.id)) return setOps(list.filter((o) => o.node !== x.id && o.table !== x.id && !String(o.ref ?? "").startsWith(x.id + ".")));
+      const gone = list.find((o) => o.op === "remove" && o.node === x.id);
+      return setOps(gone ? list.filter((o) => o !== gone) : [...list, {id: newOpId(list), op: "remove", node: x.id}]);
+    }
+    if (x.kind === "column") {
+      const [table, column] = split(x.id), added = addedCol(x.id);
+      if (added) return setOps(list.filter((o) => !(o.table === table && o.column === column)));
+      const gone = list.find((o) => o.op === "removeColumn" && o.table === table && o.column === column);
+      return setOps(gone ? list.filter((o) => o !== gone) : [...list, {id: newOpId(list), op: "removeColumn", table, column}]);
+    }
+    const added = list.find((o) => o.op === "addGroup" && o.group === x.id);
+    if (added) return setOps(list.filter((o) => o !== added && o.group !== x.id && o.to !== x.id));
+    const gone = list.find((o) => o.op === "removeGroup" && o.group === x.id);
+    setOps(gone ? list.filter((o) => o !== gone) : [...list, {id: newOpId(list), op: "removeGroup", group: x.id}]);
+  };
+  const rename = (x) => {
+    const e = elOf(x);
+    if (!e) return;
+    if (x.kind === "node") {
+      const initial = drafted.plan.nodes[x.id]?.name ?? x.id;
+      return editText(e.querySelector(".erhead"), initial, t("tableName"), {onDone: (val) => {
+        if (!val || val === initial) return;
+        const list = ops(), added = addedTable(x.id);
+        if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)));
+        const ed = list.find((o) => o.op === "editNode" && o.node === x.id), orig = plan.nodes[x.id]?.name ?? x.id;
+        if (val === orig) return setOps(list.filter((o) => o !== ed));
+        setOps(ed ? list.map((o) => (o === ed ? {...o, name: val} : o)) : [...list, {id: newOpId(list), op: "editNode", node: x.id, name: val}]);
+      }});
+    }
+    if (x.kind === "column") {
+      const [table, column] = split(x.id), col = v.tables.find((tb) => tb.node === table)?.columns.find((c) => c.name === column) || {};
+      const initial = [column, col.type, col.key].filter(Boolean).join(" ");
+      return editText(e, initial, t("colPlaceholder"), {onDone: (val) => {
+        if (!val || val === initial) return;
+        const {name, type, key} = parseCol(val);
+        if (name.includes(".")) return showProblem(t("colDot"));
+        const list = ops(), added = addedCol(x.id);
+        if (added) return setOps(list.map((o) => (o === added ? {...o, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})} : o.table === table && o.column === column ? {...o, column: name} : o)));
+        setOps(editCol(list, x.id, {...(name !== column ? {name} : {}), type, key: key ?? (col.key && !val.toLowerCase().includes(String(col.key).toLowerCase()) ? "" : col.key ?? "")}));
+      }});
+    }
+    const initial = x.id;
+    editText(e.querySelector(".erframe-label") || e, initial, t("groupName"), {onDone: (val) => {
+      if (!val || val === initial) return;
+      if ((v.groups || []).some((g) => g.label === val)) return showProblem(t("zoneTaken", val));
+      const list = ops(), added = list.find((o) => o.op === "addGroup" && o.group === x.id);
+      if (added) return setOps(list.map((o) => (o === added ? {...o, group: val} : o.group === x.id ? {...o, group: val} : o.to === x.id ? {...o, to: val} : o)));
+      const ed = list.find((o) => o.op === "editGroup" && o.label === x.id);
+      if (ed) return setOps(ed.group === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)));
+      setOps([...list, {id: newOpId(list), op: "editGroup", group: x.id, label: val}]);
+    }});
+  };
+  // A text field at a point of the picture, for a new table.
+  const fieldAt = (x, y) => {
+    const g = grid.getBoundingClientRect(), spot = el("div", "dspot");
+    spot.style.left = x - g.left + "px";
+    spot.style.top = y - g.top + "px";
+    grid.append(spot);
+    return spot;
+  };
+  // A foreign key: drag from a column onto the column it points at; the same pair again takes it out.
+  const connect = (e) => {
+    const from = e.target.closest?.("li[data-col]");
+    if (!from) return;
+    e.preventDefault();
+    const m = grid.getBoundingClientRect(), a = from.getBoundingClientRect();
+    const ax = a.right - m.left, ay = a.top + a.height / 2 - m.top;
+    const line = document.createElementNS(svg.namespaceURI, "path");
+    line.setAttribute("class", "dr-add dtmp");
+    svg.append(line);
+    let over = null;
+    const move = (ev) => {
+      line.setAttribute("d", `M${ax} ${ay} L${ev.clientX - m.left} ${ev.clientY - m.top}`);
+      const t2 = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("li[data-col]");
+      const next = t2 && t2 !== from && grid.contains(t2) ? t2 : null;
+      if (next !== over) {
+        over?.classList.remove("dtarget");
+        next?.classList.add("dtarget");
+        over = next;
+      }
+    };
+    const up = () => {
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      line.remove();
+      over?.classList.remove("dtarget");
+      if (!over) return;
+      const k = from.dataset.col, to = over.dataset.col;
+      const cur = v.tables.find((tb) => tb.node === split(k)[0])?.columns.find((c) => c.name === split(k)[1])?.ref;
+      setOps(editCol(ops(), k, {ref: cur === to && marks.links[`${k}>${to}`]?.mark !== "remove" ? "" : to}));
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+  };
+  grid.classList.add("sketch");
+  grid.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest(".dedit")) return;
+    if (sketchTool === "connect") return connect(e);
+    const x = selOf(e.target);
+    if (sketchTool === "remove") return x && (e.preventDefault(), remove(x));
+    if (sketchTool === "rename") return x && (e.preventDefault(), rename(x));
+    if (sketchTool === "column") {
+      const card = e.target.closest?.(".ertable");
+      if (!card) return;
+      e.preventDefault();
+      const li = el("li", "dr-add dtemp", " ");
+      card.querySelector("ul").append(li);
+      return editText(li, "", t("colPlaceholder"), {onDone: (val) => {
+        li.remove();
+        sketchTool = "select";
+        if (!val) return refresh();
+        const {name, type, key} = parseCol(val);
+        if (name.includes(".")) return showProblem(t("colDot"));
+        const list = ops();
+        setOps([...list, {id: newOpId(list), op: "addColumn", table: card.dataset.id, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})}]);
+      }});
+    }
+    if (sketchTool === "group") {
+      if (x?.kind !== "node") return;
+      e.preventDefault();
+      return editText(elOf(x).querySelector(".erhead"), "", t("groupName"), {onDone: (val) => {
+        sketchTool = "select";
+        if (!val) return refresh();
+        if ((v.groups || []).some((g) => g.label === val)) return showProblem(t("zoneTaken", val));
+        const list = ops();
+        setOps([...list, {id: newOpId(list), op: "addGroup", group: val, tables: [x.id]}]);
+      }});
+    }
+    if (sketchTool === "table") {
+      if (e.target.closest(".ertable")) return;
+      e.preventDefault();
+      const f = frameAt(e.clientX, e.clientY, null), spot = fieldAt(e.clientX, e.clientY);
+      return editText(spot, "", t("tableName"), {onDone: (val) => {
+        spot.remove();
+        sketchTool = "select";
+        if (!val) return refresh();
+        const list = ops();
+        setOps([...list, {id: newOpId(list), op: "addTable", node: newNode(), name: val, ...(f ? {group: f.dataset.group} : {})}]);
+      }});
+    }
+  }, true);
+  grid.addEventListener("click", (e) => {
+    if (e.target.closest(".dedit")) return;
+    e.stopPropagation();
+    e.preventDefault();
+    if (sketchTool === "select") select(selOf(e.target));
+  }, true);
+  grid.addEventListener("dblclick", (e) => sketchTool === "select" && rename(selOf(e.target)));
+  const {refresh} = sketchBar(real, tools, grid, MODEL_TOOLS);
+  if (sketchSel) requestAnimationFrame(() => select(sketchSel));
+  sketchApi = {
+    view: real.id,
+    toolList: MODEL_TOOLS,
+    tool(name, clear = false) {
+      sketchTool = name;
+      if (name !== "select" || clear) select(null);
+      refresh();
+    },
+    exit() {
+      sketching = null;
+      sketchSel = null;
+      sketchTool = "select";
+      renderView();
+    },
+    remove,
+    rename,
+    saved: refresh,
+    review: () => tools.ask(),
+    discard: () => setOps([]),
+    drop(id) {
+      const list = ops(), o = list.find((x) => x.id === id);
+      if (!o) return;
+      setOps(o.op === "addTable" ? list.filter((x) => x.node !== o.node && x.table !== o.node) : o.op === "addColumn" ? list.filter((x) => !(x.table === o.table && x.column === o.column)) : list.filter((x) => x !== o));
+    },
+    show(o) {
+      const k = o.table && o.column ? grid.querySelector(`li[data-col="${CSS.escape(`${o.table}.${o.name && o.op !== "editColumn" ? o.name : o.column}`)}"]`) : null;
+      const e = k || grid.querySelector(`.ertable[data-id="${CSS.escape(o.node || o.table || "")}"]`) || grid.querySelector(`.erframe[data-group="${CSS.escape(o.label || o.group || "")}"]`);
+      e?.scrollIntoView({block: "center", behavior: "smooth"});
+      e?.classList.remove("dflash");
+      void e?.offsetWidth;
+      e?.classList.add("dflash");
+    },
+  };
 }
 
 // ---------- before / after: two pictures side by side, with what was added, removed or changed marked

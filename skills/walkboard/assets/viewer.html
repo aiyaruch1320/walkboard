@@ -2031,7 +2031,7 @@ function mapGeometry(v, map, routes, layout) {
   const rect = (b) => ({x: Math.round(b.left - m.left), y: Math.round(b.top - m.top), w: Math.round(b.width), h: Math.round(b.height)});
   // The plan's zone, not the one a box was dropped into (that one is "inside").
   const home = (e) => (e.dataset.plan ?? e.parentElement.closest(".zone")?.dataset.zone) || null;
-  const zones = [...map.querySelectorAll(".zone")].map((e) => ({e, b: e.getBoundingClientRect()}));
+  const zones = [...map.querySelectorAll(".zone:not(.ghost)")].map((e) => ({e, b: e.getBoundingClientRect()}));
   const inside = (b, self = null) => {
     const x = b.left + b.width / 2, y = b.top + b.height / 2;
     const hit = zones.filter((z) => !(self && self.contains(z.e)) && x >= z.b.left && x <= z.b.right && y >= z.b.top && y <= z.b.bottom);
@@ -2090,16 +2090,28 @@ function renderMap(v) {
   // Moving boxes or whole zones: each keeps an offset from its place, saved in plan.json; the lines follow.
   // left/top and not a transform: a transform would make the zone its own layer, and its boxes could end up behind another zone.
   const keyOf = (e) => (e.classList.contains("zone") ? `z:${e.dataset.zone}` : e.dataset.anchor);
-  const movers = () => [...map.querySelectorAll(".zone, [data-anchor]")];
-  const zoneEls = () => [...map.querySelectorAll(".zone")];
+  const movers = () => [...map.querySelectorAll(".zone:not(.ghost), [data-anchor]")];
+  const zoneEls = () => [...map.querySelectorAll(".zone:not(.ghost)")];
   const homeOf = (e) => e.parentElement.closest(".zone")?.dataset.zone ?? "";
   // Dropped into another zone ("zone", "from" = its zone in the plan then, "at" = its place there): drawn inside that zone,
   // which grows to hold it, until the plan moves it. Once the plan puts it there the placement is done; once the plan
   // puts it anywhere else, the placement no longer applies.
   movers().forEach((e) => (e.dataset.plan = homeOf(e)));
+  // An empty copy holds the place it left, so its old zone keeps its size and the zones around do not move.
+  const ghostOf = (e) => {
+    const g = e.cloneNode(true);
+    for (const x of [g, ...g.querySelectorAll("*")]) {
+      for (const a of ["data-anchor", "data-zone", "data-plan", "data-id", "id", "tabindex", "role", "title"]) x.removeAttribute(a);
+      if (x.classList.contains("zone")) x.classList.add("ghost");
+    }
+    g.classList.add("ghost");
+    g.setAttribute("aria-hidden", "true");
+    g.inert = true;
+    return g;
+  };
   const putIn = (e, to, at) => {
     const body = to.querySelector(":scope > .zbody"), isZone = e.classList.contains("zone");
-    const kids = [...body.children].filter((c) => c !== e && (isZone ? c.classList.contains("zone") : c.matches("[data-anchor]")));
+    const kids = [...body.children].filter((c) => c !== e && (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
     body.insertBefore(e, kids[Math.max(0, Math.round(at) || 0)] ?? (isZone ? body.querySelector(":scope > [data-anchor]") : null));
     if (isZone) body.classList.add("zones");
   };
@@ -2108,6 +2120,7 @@ function renderMap(v) {
     if (typeof q?.zone !== "string") continue;
     const e = movers().find((x) => keyOf(x) === k), to = zoneEls().find((z) => z.dataset.zone === q.zone);
     if (e && to && !e.contains(to) && q.zone !== e.dataset.plan && (q.from ?? "") === e.dataset.plan) {
+      e.before(ghostOf(e));
       putIn(e, to, q.at);
       e.classList.add("placed");
       const tag = el("span", "ptag", t("placedTag"));
@@ -2188,7 +2201,7 @@ function renderMap(v) {
     const k = keyOf(it), {[k]: _, ...rest} = layout();
     if (to.dataset.zone === it.dataset.plan) return rest;
     const isZone = it.classList.contains("zone");
-    const kids = [...to.querySelector(":scope > .zbody").children].filter((c) => c !== it && (isZone ? c.classList.contains("zone") : c.matches("[data-anchor]")));
+    const kids = [...to.querySelector(":scope > .zbody").children].filter((c) => c !== it && (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
     const at = kids.filter((c) => {
       const b = c.getBoundingClientRect();
       return b.bottom < y - b.height / 2 || (Math.abs(b.top + b.height / 2 - y) <= b.height / 2 && b.left + b.width / 2 < x);

@@ -78,7 +78,7 @@ Each stage has `columns` + `rows` (rows as long as `columns`) or `text`. Empty a
  "links":[{"from":"ec2a","to":"pcx","state":"ok","label":"route 10.1.0.0/16"},{"from":"pcx","to":"ec2b"}]}
 ```
 
-Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `"stack": true` stacks what a zone holds top to bottom (`false` keeps it side by side). A whole system (over 12 boxes, or 4+ top-level zones) gets smaller boxes, top-level zones in one row and zones of only boxes stacked: read left to right, outside first, one column per site or provider, at most 5. The user can drag boxes and zones on the page, then ask you to review the picture (`review`); never write `layout`. A shared box with no line reads as floating: put such boxes in a zone named for it ("Shared"). `links` as in `k8s`.
+Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `"stack": true` stacks what a zone holds top to bottom (`false` keeps it side by side). A whole system (over 12 boxes, or 4+ top-level zones) gets smaller boxes, top-level zones in one row and zones of only boxes stacked: read left to right, outside first, one column per site or provider, at most 5. The user can drag boxes and zones, sketch changes in draft mode, then ask you to review (`review`); never write `layout` or the draft. A shared box with no line reads as floating: put such boxes in a zone named for it ("Shared"). `links` as in `k8s`.
 
 ## journey
 

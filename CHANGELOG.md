@@ -2,10 +2,12 @@
 
 ## Unreleased
 
-- **Ask the agent to review a map.** After you arrange a map, **Ask the agent to review** sends where every box and zone sits on screen (no screenshot, nothing saved). The agent says what a box dragged into another zone would mean for the plan and changes the plan only if you agree. Dragging still never wakes it.
+- **Draft changes on maps.** **✎ Draft changes** opens a toolbar at the bottom of the window: add a box (its icon follows the name), add a zone, draw a line with its label and kind, rename, take out, select and move; undo and redo; keys V B Z L R D, Delete, Enter, Escape. Every change is drawn on the picture with an outline and one sign (+ ~ − ↦), listed in the side panel, and kept in `.walkboard/draft.json`, never in plan.json; sketching never wakes the agent. **Ask the agent to review** sends the changes with names next to ids, and the agent puts the agreed ones in the plan. `walkboard draft <dir> [clear …]` prints or clears the draft. Exports and PDF show the plan without the draft.
+- **Ask the agent to review a map.** After you arrange or sketch on a map, **Ask the agent to review** sends where every box and zone sits on screen (no screenshot, nothing saved) and the draft. The agent says what each change would mean for the plan and changes the plan only if you agree. Dragging still never wakes it.
 - **Drop a box into another zone.** On a map, a box or zone dropped into another zone moves into it (the zone grows to hold it) and is marked as not in the plan yet; the zone it will land in lights up while you drag. Review it with the agent or undo. Its old place stays as an empty outline, so the zone it left keeps its size and nothing around it moves. It is a draft change, kept in `.walkboard/draft.json` (never in plan.json), and it goes once the plan moves the box.
 - **Lay out automatically** is now **Reset to the plan**, which is what it does.
 - A box or zone dragged past the edge of a map stops there, and one saved off screen comes back to the edge.
+- **Smoother big maps.** Dragging redraws only the lines that touch what moves, a redraw is skipped when nothing moved, and routing tests each path only against nearby boxes: on a 52-box map a drag frame went from about 53 ms to 4 ms. `scripts/perf.mjs` measures it.
 - A map offset in `layout` remembers the zone it was dragged in (`"in"`). When the plan moves the box to another zone, the old offset is dropped instead of pushing the box away from its new place.
 
 ## 0.8.0

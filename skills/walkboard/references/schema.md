@@ -70,3 +70,5 @@ Both boxes of a move must be in one picture (`map`, `k8s`, `flow`…); the page 
 | `proposal` | `{"type":"add"\|"change"\|"remove","note"}`: drawn on the picture until planned or withdrawn |
 
 Explain mode with a `root`: every `file` must exist and its lines too.
+
+What the user sketches in draft mode is kept in `.walkboard/draft.json`, never in plan.json; it reaches you with `review` (references/messages.md) and `WB draft <dir>`.

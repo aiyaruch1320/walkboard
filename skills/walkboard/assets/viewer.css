@@ -311,8 +311,8 @@ body.side-open .side-inner{opacity:1;transform:none}
 .lreview{margin-left:6px;font-size:12.5px;padding:3px 12px;border-radius:999px}
 .lsketch{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:12.5px;padding:3px 12px 3px 9px;border-radius:999px}
 .ticon{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.dtools{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:4px;padding:6px;border-radius:14px;border:1px solid var(--you-bd);background:var(--card);box-shadow:0 8px 28px rgba(0,0,0,.18)}
-body.side-open .dtools{left:calc((100% - var(--side-w)) / 2)}
+.dtools{position:fixed;left:12px;right:12px;margin:0 auto;width:max-content;max-width:calc(100vw - 24px);overflow-x:auto;bottom:18px;z-index:60;display:flex;align-items:center;gap:4px;padding:6px;border-radius:14px;border:1px solid var(--you-bd);background:var(--card);box-shadow:0 8px 28px rgba(0,0,0,.18)}
+body.side-open .dtools{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var(--side-w) - 24px)}
 body.sketching{padding-bottom:84px}
 .dtools button{height:34px;border-radius:9px;border-color:transparent;background:transparent;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .dtools .dtool{width:36px;padding:0}
@@ -997,3 +997,7 @@ path.mv-on{stroke:var(--new-bd)!important;stroke-width:3.2!important;stroke-dash
 .scroll.more-r{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
 .scroll.more-l{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px);mask-image:linear-gradient(to right,transparent,#000 36px)}
 .scroll.more-l.more-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,transparent,#000 36px,#000 calc(100% - 36px),transparent)}
+/* A line or a label is marked by its own stroke, never by a box drawn around it. */
+svg .dr-add,svg .dr-change,svg .dr-remove,svg .dr-move{outline:none!important}
+.er li[class*="dr-"]{padding-right:16px}
+.er .erwas{color:var(--muted);font-weight:400}

@@ -1471,8 +1471,10 @@ function renderFlow(real) {
     box.dataset.lane = li;
     const lm = marks.lanes?.[li];
     if (lm) box.classList.add("dr-" + lm.mark);
+    // A plan's own steps: the lane says which step it is, and dragging it reorders the steps.
     if (lane.title || lm) {
-      const title = richEl("div", "lane-title", lane.title || "");
+      const title = richEl("div", "lane-title", lane.step ? `${li + 1} · ${lane.title || ""}` : lane.title || "");
+      if (lane.step && sketching === real.id) title.title = t("stepLaneTip");
       if (lm) title.append(draftSign(lm));
       box.append(title);
     }
@@ -1717,7 +1719,7 @@ function k8sPicture(v, {marks, sketch}) {
     const ul = el("ul", "linklist");
     for (const l of listed) {
       const li = el("li");
-      li.append(`${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to} · ${t("lk_" + (l.state || "ok"))}`);
+      li.append(`${nodeOf(l.from)?.name || l.from} → ${nodeOf(l.to)?.name || l.to} · ${t("lk_" + (l.state || "ok"))}`);
       if (l.label) li.append(" · ", rich(l.label));
       ul.append(li);
     }
@@ -2365,6 +2367,8 @@ function draftRows(viewId) {
   const old = (id) => plan.nodes[id]?.name ?? id;
   const top = (z) => z || t("topLevel");
   const stale = Object.fromEntries(drafted.stale.map((x) => [x.id, x.why]));
+  // A lane by its title (as it was when the change was made), else by its number.
+  const laneName = (o) => drafted.lanes?.[o.id]?.laneTitle || o.laneTitle || `${t("laneWord")} ${(o.lane ?? 0) + 1}`;
   return draftOps(viewId).filter((o) => !drafted.done.includes(o.id)).map((o) => {
     const [sign, main, sub] = {
       addNode: ["+", o.name, top(o.zone)],
@@ -2384,11 +2388,11 @@ function draftRows(viewId) {
       removeColumn: ["−", `${nm(o.table)}.${o.column}`, ""],
       moveTable: ["↦", nm(o.node), `→ ${o.to || t("noGroup")}`],
       addGroup: ["+", o.group, (o.tables || []).map(nm).join(", ")],
-      addBox: ["+", o.name, o.lane != null ? `${t("laneWord")} ${o.lane + 1}` : ""],
-      moveBox: ["↦", nm(o.node), `→ ${t("laneWord")} ${o.lane + 1}`],
+      addBox: ["+", o.name, o.lane != null ? laneName(o) : ""],
+      moveBox: ["↦", nm(o.node), `→ ${laneName(o)}`],
       addLane: ["+", o.title, t("laneWord")],
-      editLane: ["~", `${t("laneWord")} ${o.lane + 1} → ${o.title}`, ""],
-      moveLane: ["↦", `${t("laneWord")} ${o.lane + 1}`, `→ ${o.to + 1}`],
+      editLane: ["~", `${laneName(o)} → ${o.title}`, ""],
+      moveLane: ["↦", laneName(o), `→ ${o.to + 1}`],
       addEdge: ["+", `${nm(o.from)} → ${nm(o.to)}`, o.label || ""],
       editEdge: ["~", `${nm(o.from)} → ${nm(o.to)}`, o.label || "—"],
       removeEdge: ["−", `${nm(o.from)} → ${nm(o.to)}`, ""],
@@ -3169,7 +3173,10 @@ function renderMap(real) {
           tmp.remove();
           sketchTool = "select";
           if (!val) return refreshBar();
-          if (zoneNamed(val)) return showProblem(t("zoneTaken", val));
+          if (zoneNamed(val)) {
+            refreshBar();
+            return showProblem(t("zoneTaken", val));
+          }
           const list = ops();
           setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at}]);
         },
@@ -3909,6 +3916,7 @@ function renderDataModel(real) {
       const m = cmark(li.dataset.col);
       if (m) {
         li.classList.add("dr-" + m.mark);
+        if (m.mark === "change" && m.was?.name) li.querySelector(".ername").prepend(el("s", "erwas", m.was.name), " ");
         li.append(draftSign(m, true));
       }
       if (c.copy) li.classList.add("ercopy", ...(c.keep ? ["keep"] : []));
@@ -4045,6 +4053,9 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
   // An edit of a column already in the plan, merged with earlier edits of it; fields back to what the plan has drop out.
   const editCol = (list, k, change) => {
     const [table, column] = split(k), orig = realCol(k) || {};
+    // A column the draft adds takes its foreign key in the same change.
+    const added = list.find((o) => o.op === "addColumn" && o.table === table && o.column === column);
+    if (added && Object.keys(change).every((f) => f === "ref")) return list.map((o) => (o === added ? Object.fromEntries(Object.entries({...o, ref: change.ref}).filter(([f, w]) => !(f === "ref" && !w))) : o));
     const ed = list.find((o) => o.op === "editColumn" && o.table === table && o.column === column);
     const merged = {...(ed || {id: newOpId(list), op: "editColumn", table, column}), ...change};
     for (const f of ["name", "type", "key", "ref"]) if (merged[f] != null && merged[f] === (f === "name" ? orig.name : orig[f] ?? "")) delete merged[f];
@@ -4149,6 +4160,30 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
     addEventListener("pointermove", move);
     addEventListener("pointerup", up);
   };
+  // Enter adds the column and opens a field for the next one, as when typing a schema; Escape (or nothing typed) stops.
+  const addColumnTo = (table) => {
+    const card = grid.querySelector(`.ertable[data-id="${CSS.escape(table)}"]`);
+    if (!card) return;
+    const li = el("li", "dr-add dtemp", " ");
+    card.querySelector("ul").append(li);
+    editText(li, "", t("colPlaceholder"), {onDone: (val) => {
+      li.remove();
+      if (!val) {
+        sketchTool = "select";
+        return refresh();
+      }
+      const {name, type, key} = parseCol(val);
+      if (name.includes(".")) {
+        sketchTool = "select";
+        refresh();
+        return showProblem(t("colDot"));
+      }
+      const list = ops();
+      sketchTool = "column";
+      setOps([...list, {id: newOpId(list), op: "addColumn", table, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})}]);
+      requestAnimationFrame(() => sketchApi?.addColumnTo?.(table));
+    }});
+  };
   grid.classList.add("sketch");
   grid.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".dedit")) return;
@@ -4160,24 +4195,15 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
       const card = e.target.closest?.(".ertable");
       if (!card) return;
       e.preventDefault();
-      const li = el("li", "dr-add dtemp", " ");
-      card.querySelector("ul").append(li);
-      return editText(li, "", t("colPlaceholder"), {onDone: (val) => {
-        li.remove();
-        sketchTool = "select";
-        if (!val) return refresh();
-        const {name, type, key} = parseCol(val);
-        if (name.includes(".")) return showProblem(t("colDot"));
-        const list = ops();
-        setOps([...list, {id: newOpId(list), op: "addColumn", table: card.dataset.id, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})}]);
-      }});
+      return addColumnTo(card.dataset.id);
     }
     if (sketchTool === "group") {
       if (x?.kind !== "node") return;
       e.preventDefault();
       return editText(elOf(x).querySelector(".erhead"), "", t("groupName"), {onDone: (val) => {
         sketchTool = "select";
-        if (!val) return refresh();
+        refresh();
+        if (!val) return;
         if ((v.groups || []).some((g) => g.label === val)) return showProblem(t("zoneTaken", val));
         const list = ops();
         setOps([...list, {id: newOpId(list), op: "addGroup", group: val, tables: [x.id]}]);
@@ -4208,6 +4234,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
   sketchApi = {
     view: real.id,
     toolList: MODEL_TOOLS,
+    addColumnTo,
     tool(name, clear = false) {
       sketchTool = name;
       if (name !== "select" || clear) select(null);
@@ -4523,7 +4550,7 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       return editText(title, initial, t("laneName"), {onDone: (val) => {
         if (!val || val === initial) return;
         const list = kit.ops(), ed = list.find((o) => o.op === "editLane" && o.lane === li);
-        kit.setOps(ed ? list.map((o) => (o === ed ? {...o, title: val} : o)) : [...list, {id: newOpId(list), op: "editLane", lane: li, title: val}]);
+        kit.setOps(ed ? list.map((o) => (o === ed ? {...o, title: val} : o)) : [...list, {id: newOpId(list), op: "editLane", lane: li, ...(initial ? {laneTitle: initial} : {}), title: val}]);
       }});
     }
     if (sketchTool === "box") {
@@ -4539,7 +4566,7 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
         sketchTool = "select";
         if (!val) return refresh();
         const list = kit.ops();
-        kit.setOps([...list, {id: newOpId(list), op: "addBox", node: kit.newNode(), name: val, lane: li, at}]);
+        kit.setOps([...list, {id: newOpId(list), op: "addBox", node: kit.newNode(), name: val, lane: li, ...(v.lanes[li]?.title ? {laneTitle: v.lanes[li].title} : {}), at}]);
       }});
     }
     if (sketchTool === "lane") {
@@ -4582,11 +4609,12 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       const list = kit.ops(), to = Number(lane.dataset.lane);
       if (b) {
         const id = b.dataset.anchor, at = indexAt(lane, ev.clientX, b), added = list.find((o) => o.op === "addBox" && o.node === id);
-        if (added) return kit.setOps(list.map((o) => (o === added ? {...o, lane: to, at} : o)));
-        return kit.setOps([...list, {id: newOpId(list), op: "moveBox", node: id, lane: to, at}]);
+        const named = v.lanes[to]?.title ? {laneTitle: v.lanes[to].title} : {};
+        if (added) return kit.setOps(list.map((o) => (o === added ? {...o, lane: to, ...named, at} : o)));
+        return kit.setOps([...list, {id: newOpId(list), op: "moveBox", node: id, lane: to, ...named, at}]);
       }
       const from = Number(it.dataset.lane);
-      if (from !== to) kit.setOps([...list, {id: newOpId(list), op: "moveLane", lane: from, to}]);
+      if (from !== to) kit.setOps([...list, {id: newOpId(list), op: "moveLane", lane: from, ...(v.lanes[from]?.title ? {laneTitle: v.lanes[from].title} : {}), to}]);
     };
     addEventListener("pointermove", move);
     addEventListener("pointerup", up);

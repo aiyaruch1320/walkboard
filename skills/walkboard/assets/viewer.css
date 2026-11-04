@@ -99,6 +99,8 @@ body.side-open .side-inner{opacity:1;transform:none}
 .talklist{display:grid;gap:2px}
 .rtalk{display:grid;gap:1px;text-align:left;padding:6px 10px;border-radius:8px;border-color:transparent;background:transparent}
 .rtalk:hover{background:var(--you-bg)}
+.rtalk.gone .rt{color:var(--muted)}
+.side .gone{flex:none;margin:0 0 8px;padding:6px 10px;font-size:12.5px;color:var(--muted);background:var(--code);border-radius:8px}
 .rtalk .rt{font-weight:500;font-size:13px}
 .rtalk .rm{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rtalk.unread{border-color:var(--you-bd)}

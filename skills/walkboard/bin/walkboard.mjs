@@ -177,7 +177,7 @@ async function poll() {
       gone = 0;
       if (items.length) {
         // One short line per item keeps what the agent reads small; --full adds ids, times and the view.
-        await new Promise((done) => process.stdout.write(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, ...rest}) => rest)(i))).join("\n") + "\n", done));
+        await new Promise((done) => process.stdout.write(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, nodeName, ...rest}) => rest)(i))).join("\n") + "\n", done));
         // Only now are they delivered: if this process is killed before here, the server hands them out again.
         await fetch(`http://127.0.0.1:${s.port}/api/ack?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ids: items.map((i) => i.id)})}).catch(() => {});
         return;

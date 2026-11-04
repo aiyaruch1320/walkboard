@@ -65,7 +65,7 @@ const STRINGS = {
     talkStep: (n, u) => (n ? `💬 Talk about this ${u} (${n})` : `💬 Ask about this ${u}`), restateThis: (u) => `✍ Restate this ${u}`, talkPlan: (n) => (n ? `💬 Talk about the whole plan (${n})` : "💬 Ask about the whole plan"),
     in: "In", out: "Out", inSteps: "In steps: ", inStages: "In stages: ", askBox: (n) => `Ask about "${n}"…`,
     newView: "New picture: ", glossaryChanged: "Glossary changed", titleChanged: "Title or goal changed", chStep: "Step: ", chBox: "Box: ",
-    seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxRemoved: "The box you had open was removed from the plan",
+    seen: "Mark as seen", changedTitle: "The agent changed these (outlined in purple)", boxGone: "This box was taken out of the plan. Its conversation stays here.", goneTag: "taken out", askGone: (x) => `Continue about ${x} in the whole plan's chat…`, aboutGone: (x) => `About the box taken out, ${x}: `,
     loadFail: (s) => `Cannot load the plan (${s}): `, parseFail: "plan.json cannot be read: ", problems: "plan.json has problems"
   },
   th: {
@@ -133,7 +133,7 @@ const STRINGS = {
     talkStep: (n, u) => (n ? `💬 คุยเรื่อง${u}นี้ (${n})` : `💬 ถามเรื่อง${u}นี้`), restateThis: (u) => `✍ ทวน${u}นี้`, talkPlan: (n) => (n ? `💬 คุยเรื่องทั้งแผน (${n})` : "💬 ถามเรื่องทั้งแผน"),
     in: "รับเข้า", out: "ได้ออกมา", inSteps: "อยู่ในขั้น: ", inStages: "อยู่ในช่วง: ", askBox: (n) => `ถามเกี่ยวกับ "${n}"…`,
     newView: "ภาพใหม่: ", glossaryChanged: "คำศัพท์เปลี่ยน", titleChanged: "ชื่อหรือเป้าหมายเปลี่ยน", chStep: "ขั้น: ", chBox: "กล่อง: ",
-    seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxRemoved: "กล่องที่เปิดอยู่ถูกลบออกจากแผนแล้ว",
+    seen: "รับทราบ", changedTitle: "agent เปลี่ยนแผนตรงนี้ (มีกรอบสีม่วง)", boxGone: "กล่องนี้ถูกเอาออกจากแผนแล้ว บทสนทนายังอยู่ตรงนี้", goneTag: "เอาออกแล้ว", askGone: (x) => `คุยต่อเรื่อง ${x} ในแชททั้งแผน…`, aboutGone: (x) => `เรื่องกล่อง ${x} ที่เอาออก: `,
     loadFail: (s) => `โหลดแผนไม่ได้ (${s}): `, parseFail: "plan.json อ่านไม่ได้: ", problems: "plan.json มีปัญหา"
   }
 };

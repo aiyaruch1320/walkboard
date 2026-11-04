@@ -40,7 +40,7 @@ export function snapshot(dir, plan, {code = true, chat = false} = {}) {
   const thread = chat
     ? [...lines(path.join(state, "feedback.jsonl")).map((m) => ({...m, from: "user", delivered: true})), ...lines(path.join(state, "replies.jsonl"))]
         .filter((m) => m?.kind !== "settings" && typeof m?.text === "string")
-        .map(({id, from, kind, text, node, step, option, criterion, at, delivered}) => ({id, from, kind, text, node, step, option, criterion, at, delivered}))
+        .map(({id, from, kind, text, node, nodeName, step, option, criterion, at, delivered}) => ({id, from, kind, text, node, nodeName, step, option, criterion, at, delivered}))
         .sort((a, b) => String(a.at).localeCompare(String(b.at)))
     : [];
   // Nothing about this machine leaves in the file: not the repository's path, not links to local pages (they carry a token).

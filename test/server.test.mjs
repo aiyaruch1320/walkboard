@@ -311,3 +311,18 @@ test("dragged tables are saved in the view, and cleared again", async (t) => {
   assert.equal((await post(s, "/api/layout", {view: "d", positions: null})).status, 200);
   assert.equal(read(), undefined);
 });
+
+test("messages about a box carry its name, so it survives the box being taken out", async (t) => {
+  const dir = planDir();
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", views: [], nodes: {a: {name: "Queue"}}}));
+  const s = await startServer(dir);
+  t.after(s.close);
+  await post(s, "/api/feedback", {node: "a", text: "why?", nodeName: "spoofed"});
+  await post(s, "/api/reply", {node: "a", from: "agent", text: "because"});
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", views: [], nodes: {}}));
+  await post(s, "/api/reply", {node: "a", from: "agent", text: "taken out"});
+  await post(s, "/api/feedback", {node: "constructor", text: "odd id"});
+  const {items} = await (await call(s, "/api/thread")).json();
+  const byText = Object.fromEntries(items.map((i) => [i.text, i.nodeName]));
+  assert.deepEqual(byText, {"why?": "Queue", because: "Queue", "taken out": undefined, "odd id": undefined});
+});

@@ -230,7 +230,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         // A double click sends the same message twice; keep the first.
         const same = route === "POST /api/feedback" && recent.find((r) => Date.now() - r.t < 5000 && r.key === sameKey(v));
         if (same) return res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(same.item));
-        const item = {...v, id: crypto.randomUUID(), at: new Date().toISOString()};
+        // The box's name goes with the message: a box taken out of the plan later still has a name in its conversation.
+        const {nodeName: _, ...sent} = v;
+        const nodes = typeof v.node === "string" ? readPlan(p.plan).plan?.nodes : null;
+        const name = nodes && Object.hasOwn(nodes, v.node) ? nodes[v.node]?.name : null;
+        const item = {...sent, ...(typeof name === "string" ? {nodeName: name} : {}), id: crypto.randomUUID(), at: new Date().toISOString()};
         if (route === "POST /api/feedback") recent = [...recent.filter((r) => Date.now() - r.t < 5000), {t: Date.now(), key: sameKey(v), item}];
         if (route === "POST /api/reply") {
           fs.appendFileSync(p.replies, JSON.stringify(item) + "\n");

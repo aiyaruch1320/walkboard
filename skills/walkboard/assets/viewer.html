@@ -367,7 +367,8 @@ async function send(c, kind, text, extra = {}) {
 }
 
 // quick: buttons that send at once; modes: what the typed text is sent as.
-function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = "", extra = {}}) {
+// to, prefix, sent: for a conversation that continues elsewhere (a box taken out of the plan continues in the whole plan's).
+function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = "", extra = {}, to = c, prefix = "", sent = null}) {
   if (snapshot) {
     // Read-only: the conversation if it was exported, nothing to type into.
     const box = el("div", "talk");
@@ -406,8 +407,9 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     busy = true;
     buttons.forEach((b) => (b.disabled = true));
     try {
-      await send(c, kind, text, kind === "propose" ? {...extra, change: c.node ? pchange : "add"} : extra);
+      await send(to, kind, prefix + text, kind === "propose" ? {...extra, change: c.node ? pchange : "add"} : extra);
       if (ta.value.trim()) ta.value = drafts[key] = "";
+      if (sent) return sent();
       note.textContent = t("sent");
       note.className = "note";
     } catch (e) {
@@ -1172,9 +1174,13 @@ let side = null;
 
 const sideKey = (c) => JSON.stringify([c.kind, c.id ?? null, c.option ?? null, c.criterion ?? null]);
 
+// A box taken out of the plan is still known by the name its messages carry.
+const inPlan = (id) => Object.hasOwn(plan.nodes, id);
+const boxName = (id) => plan.nodes[id]?.name || thread.findLast((m) => m.node === id && m.nodeName)?.nodeName || id;
+
 function sideTitle(c) {
   const opt = options().find((o) => o.id === (c.option || c.id));
-  if (c.kind === "node") return plan.nodes[c.id]?.name || c.id;
+  if (c.kind === "node") return boxName(c.id);
   if (c.kind === "step") {
     const st = steps().find((s) => s.id === c.id);
     return st ? `${unit(true)} ${steps().indexOf(st) + 1}: ${st.title}` : c.id;
@@ -2519,7 +2525,7 @@ function renderView() {
   try {
     kind?.after?.();
   } catch {}
-  if (side?.kind === "node" && nodeId && !Object.hasOwn(plan.nodes, nodeId)) closeSide();
+  if (side?.kind === "node" && nodeId && !inPlan(nodeId) && !thread.some((m) => m.node === nodeId)) closeSide();
   drawCounts();
   highlight();
   requestAnimationFrame(() => {
@@ -2707,8 +2713,12 @@ function renderNodePanel(id) {
   const p = document.getElementById("panel");
   const title = document.getElementById("sideTitle");
   if (!n) {
-    title.textContent = "";
-    return p.replaceChildren(el("p", "meta", t("boxRemoved")));
+    const name = boxName(id);
+    title.textContent = name;
+    p.classList.remove("fold-info", "fold-chat", "split");
+    // The conversation is why the box went: it stays readable, and carries on in the whole plan's chat.
+    p.replaceChildren(el("p", "gone", t("boxGone")), talkBox({node: id}, {placeholder: t("askGone", name), to: {}, prefix: t("aboutGone", name), sent: () => openSide({kind: "plan"})}));
+    return refreshThreads();
   }
   title.textContent = n.name;
   const h = el("h3");
@@ -3183,8 +3193,9 @@ document.getElementById("talks").onclick = (e) => {
   const list = conversations().sort((a, b) => isNew(b.c) - isNew(a.c));
   const ul = el("div", "talklist");
   for (const {c, m} of list) {
-    const row = el("button", "rtalk" + (isNew(c) ? " unread" : ""));
-    row.append(el("span", "rt", sideTitle(c)), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 80)));
+    const gone = c.kind === "node" && !inPlan(c.id);
+    const row = el("button", "rtalk" + (isNew(c) ? " unread" : "") + (gone ? " gone" : ""));
+    row.append(el("span", "rt", (gone ? "🗑 " : "") + sideTitle(c) + (gone ? ` · ${t("goneTag")}` : "")), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 80)));
     row.onclick = () => goTalk(c);
     ul.append(row);
   }

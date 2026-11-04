@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A box taken out of the plan keeps its conversation: 🗑 in the conversations list, with its name, still readable (and in exports with chat). Typing there continues in the whole plan's chat, naming the box. The agent says why in the whole plan's chat before taking out a box someone talked about.
+
 ## 0.7.0
 
 - **Move tables yourself.** On a data model picture, drag a table by its title or a group by its label; the place is saved in plan.json, so exports and other browsers keep it, and the agent is not woken. Arrow keys move a selected table; **Lay out automatically** puts everything back.

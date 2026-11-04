@@ -51,7 +51,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
    - `settings`: already saved in plan.json; arrives with another message; no reply.
    Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
    No background commands that wake you when they end (agents other than Claude Code)? Run `WB poll <dir> --timeout 240` in the foreground instead (`[]` after 240 s = nothing yet, poll again); handle what it prints, then poll again. A batch is only marked read once poll has printed it, so a killed poll loses nothing.
-3. Refer to steps by title. Start `WB poll` again. The user may also answer in chat.
+3. Refer to steps by title. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why; its conversation stays readable on the page. Start `WB poll` again. The user may also answer in chat.
 
 ## 4. Build (build)
 

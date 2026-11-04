@@ -10,6 +10,7 @@ const LINK_STATES = ["ok", "todo", "blocked", "standby"];
 // What can be sketched on each kind of picture.
 export const DRAFT_OPS = {
   map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
+  datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove"],
 };
 export const draftable = (view) => !!DRAFT_OPS[view?.kind];
 export const emptyDraft = () => ({version: 1, views: {}});
@@ -28,6 +29,9 @@ const label = (x) => text(x, 120) && !BAD_KEYS.has(x);
 const at = (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 10000);
 
 // The fields each change needs (true) or may have (false).
+// A column's name (no dot: "table.column" points at one) and a pointer to a column.
+const colName = (x) => text(x, 60) && !x.includes(".");
+const colRef = (x) => typeof x === "string" && /^[^.\s]+\.[^.\s]+$/.test(x) && x.length <= 120 && !x.split(".").some((k) => BAD_KEYS.has(k));
 const SHAPES = {
   addNode: {node: isNewId, name: text, what: optText, icon: (x) => optText(x, 60), zone: label, at},
   addZone: {zone: label, parent: (x) => x === "" || label(x), at},
@@ -40,8 +44,16 @@ const SHAPES = {
   removeZone: {zone: label},
   move: {node: id, to: label, from: (x) => x == null || label(x), at},
   moveZone: {zone: label, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x), at},
+  addTable: {node: isNewId, name: text, group: (x) => x == null || label(x), at},
+  addColumn: {table: id, column: colName, type: (x) => optText(x, 40), key: (x) => optText(x, 12), at},
+  editColumn: {table: id, column: colName, name: (x) => x == null || colName(x), type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x)},
+  removeColumn: {table: id, column: colName},
+  moveTable: {node: id, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x)},
+  addGroup: {group: label, tables: (x) => Array.isArray(x) && x.length > 0 && x.length <= 50 && x.every(id)},
+  editGroup: {group: label, label},
+  removeGroup: {group: label},
 };
-const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from"]);
+const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref"]);
 
 // Problems with a draft (an empty list: fine). Shapes only; whether a change still fits the plan is applyDraft's job.
 export function validateDraft(d) {
@@ -64,7 +76,7 @@ export function validateDraft(d) {
       seen.add(op.id);
       const shape = SHAPES[op.op];
       for (const [k, ok] of Object.entries(shape)) {
-        if (op[k] == null && OPTIONAL.has(k) && !(op.op === "editZone" && k === "label")) continue;
+        if (op[k] == null && OPTIONAL.has(k) && !((op.op === "editZone" || op.op === "editGroup") && k === "label")) continue;
         if (!ok(op[k])) out.push(`${at} (${op.op}): bad ${k}`);
       }
       for (const k of Object.keys(op)) if (k !== "id" && k !== "op" && !(k in shape)) out.push(`${at} (${op.op}): unknown field ${k}`);
@@ -116,6 +128,12 @@ export function applyDraft(plan, draft, viewId) {
   if (!real || !ops.length || !draftable(real)) return result;
   const v = structuredClone(real);
   const nodes = {...(isObj(plan.nodes) ? plan.nodes : {})};
+  if (v.kind === "datamodel") {
+    applyTables(v, nodes, ops, result);
+    result.plan = {...plan, nodes, views: plan.views.map((x) => (x === real ? v : x))};
+    result.view = v;
+    return result;
+  }
   if (!Array.isArray(v.zones)) v.zones = [];
   if (!Array.isArray(v.links)) v.links = [];
   const alias = new Map();
@@ -301,6 +319,187 @@ export function applyDraft(plan, draft, viewId) {
   return result;
 }
 
+// A data model's draft: tables (marks.nodes), their columns (marks.columns, "table.column"), groups (marks.zones)
+// and the lines of foreign keys (marks.links, "table.column>table.column").
+function applyTables(v, nodes, ops, result) {
+  const marks = result.marks;
+  marks.columns = {};
+  v.tables = Array.isArray(v.tables) ? v.tables.filter(isObj) : [];
+  v.groups = Array.isArray(v.groups) ? v.groups.filter(isObj) : [];
+  for (const tb of v.tables) tb.columns = Array.isArray(tb.columns) ? tb.columns.filter(isObj) : [];
+  const alias = new Map();
+  const r = (x) => alias.get(x) ?? x;
+  const table = (n) => v.tables.find((tb) => tb.node === n);
+  const col = (n, c) => table(n)?.columns.find((x) => x.name === c);
+  const groupOf = (n) => v.groups.find((g) => Array.isArray(g.tables) && g.tables.includes(n));
+  const group = (lbl) => v.groups.find((g) => g.label === lbl);
+  const stale = (op, why) => result.stale.push({id: op.id, why});
+  const done = (op) => result.done.push(op.id);
+  const out = (n) => {
+    for (const g of v.groups) if (Array.isArray(g.tables)) g.tables = g.tables.filter((x) => x !== n);
+  };
+  for (const op of ops) {
+    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS.datamodel.includes(op.op)) continue;
+    const before = result.done.length + result.stale.length;
+    const n = r(op.node ?? op.table);
+    switch (op.op) {
+      case "addTable": {
+        const same = v.tables.find((tb) => !isNewId(tb.node) && String(nodes[tb.node]?.name ?? tb.node).trim().toLowerCase() === op.name.trim().toLowerCase());
+        if (Object.hasOwn(nodes, op.node)) stale(op, `id ${op.node} is taken`);
+        else if (same) {
+          alias.set(op.node, same.node);
+          done(op);
+        } else if (op.group && !group(op.group)) stale(op, `no group "${op.group}"`);
+        else {
+          nodes[op.node] = {name: op.name.trim()};
+          insert(v.tables, {node: op.node, columns: []}, op.at);
+          if (op.group) group(op.group).tables.push(op.node);
+          marks.nodes[op.node] = {mark: "add"};
+        }
+        break;
+      }
+      case "addColumn": {
+        const tb = table(n);
+        if (!tb) stale(op, `no table ${op.table}`);
+        else if (col(n, op.column)) done(op);
+        else {
+          insert(tb.columns, {name: op.column, ...(op.type ? {type: op.type} : {}), ...(op.key ? {key: op.key} : {})}, op.at);
+          marks.columns[`${n}.${op.column}`] = {mark: "add"};
+        }
+        break;
+      }
+      case "editColumn": {
+        const c = col(n, op.column);
+        if (!c) {
+          stale(op, `no column ${op.table}.${op.column}`);
+          break;
+        }
+        const changed = ["name", "type", "key", "ref"].filter((k) => op[k] != null && op[k] !== (k === "name" ? c.name : c[k] ?? ""));
+        if (!changed.length) {
+          done(op);
+          break;
+        }
+        const k0 = `${n}.${c.name}`, m = marks.columns[k0];
+        const was = Object.fromEntries(changed.map((k) => [k, (k === "name" ? c.name : c[k]) ?? ""]));
+        if (changed.includes("ref")) {
+          // A key taken out stays drawn, marked as going; a new one is drawn as added.
+          if (op.ref === "") marks.links[`${k0}>${c.ref}`] = {mark: "remove"};
+          else {
+            if (c.ref) marks.links[`${k0}>${c.ref}`] = {mark: "remove"};
+            c.ref = op.ref;
+            marks.links[`${k0}>${op.ref}`] = {mark: "add"};
+          }
+        }
+        for (const k of changed.filter((x) => x !== "ref" && x !== "name")) {
+          if (op[k] === "") delete c[k];
+          else c[k] = op[k];
+        }
+        if (changed.includes("name")) {
+          // What pointed at the old name points at the new one.
+          for (const tb of v.tables) for (const x of tb.columns) if (x.ref === k0) x.ref = `${n}.${op.name}`;
+          c.name = op.name;
+          delete marks.columns[k0];
+        }
+        marks.columns[`${n}.${c.name}`] = m?.mark === "add" ? m : {mark: "change", was: {...was, ...m?.was}};
+        break;
+      }
+      case "removeColumn": {
+        const tb = table(n), c = col(n, op.column);
+        if (!c) done(op);
+        else if (marks.columns[`${n}.${op.column}`]?.mark === "add") {
+          tb.columns.splice(tb.columns.indexOf(c), 1);
+          delete marks.columns[`${n}.${op.column}`];
+        } else marks.columns[`${n}.${op.column}`] = {mark: "remove"};
+        break;
+      }
+      case "moveTable": {
+        const tb = table(n), from = groupOf(n)?.label ?? "";
+        if (!tb) stale(op, `no table ${op.node}`);
+        else if (op.to && !group(op.to)) stale(op, `no group "${op.to}"`);
+        else if (from === op.to) done(op);
+        else if (op.from != null && from !== op.from && marks.nodes[n]?.mark !== "move" && marks.nodes[n]?.mark !== "add") stale(op, `the plan now puts it in "${from || "no group"}"`);
+        else {
+          out(n);
+          if (op.to) group(op.to).tables.push(n);
+          const m = marks.nodes[n];
+          if (m?.mark !== "add") marks.nodes[n] = m?.mark === "move" ? m : {mark: "move", from};
+          if (marks.nodes[n]?.mark === "move" && marks.nodes[n].from === op.to) delete marks.nodes[n];
+        }
+        break;
+      }
+      case "addGroup": {
+        if (group(op.group)) stale(op, `a group is already called "${op.group}"`);
+        else {
+          const ids = op.tables.map(r).filter((x) => table(x));
+          if (!ids.length) {
+            stale(op, "none of its tables is in the picture");
+            break;
+          }
+          ids.forEach(out);
+          v.groups.push({label: op.group, tables: ids});
+          marks.zones[op.group] = {mark: "add"};
+        }
+        break;
+      }
+      case "editGroup": {
+        const g = group(op.group);
+        if (!g) stale(op, `no group "${op.group}"`);
+        else if (op.label === op.group) done(op);
+        else if (group(op.label)) stale(op, `a group is already called "${op.label}"`);
+        else {
+          g.label = op.label;
+          const m = marks.zones[op.group];
+          delete marks.zones[op.group];
+          marks.zones[op.label] = m?.mark === "add" ? m : {mark: "change", was: op.group};
+        }
+        break;
+      }
+      case "removeGroup": {
+        const g = group(op.group);
+        if (!g) done(op);
+        else if (marks.zones[op.group]?.mark === "add") {
+          v.groups.splice(v.groups.indexOf(g), 1);
+          delete marks.zones[op.group];
+        } else marks.zones[op.group] = {mark: "remove"};
+        break;
+      }
+      case "editNode": {
+        if (!table(n)) {
+          stale(op, `no table ${op.node}`);
+          break;
+        }
+        const cur = nodes[n] || {};
+        if (op.name == null || op.name === (cur.name ?? n)) {
+          done(op);
+          break;
+        }
+        nodes[n] = {...cur, name: op.name};
+        if (!marks.nodes[n]) marks.nodes[n] = {mark: "change", was: {name: cur.name ?? n}};
+        break;
+      }
+      case "remove": {
+        const tb = table(n);
+        if (!tb) done(op);
+        else if (marks.nodes[n]?.mark === "add") {
+          v.tables.splice(v.tables.indexOf(tb), 1);
+          out(n);
+          delete nodes[n];
+          delete marks.nodes[n];
+          for (const t2 of v.tables) for (const x of t2.columns) if (String(x.ref ?? "").split(".")[0] === n) delete x.ref;
+        } else marks.nodes[n] = {...marks.nodes[n], mark: "remove"};
+        break;
+      }
+    }
+    if (result.done.length + result.stale.length === before) result.pending.push(op.id);
+  }
+  // Keys to or from a table the draft takes out are drawn as going too.
+  for (const tb of v.tables) for (const c of tb.columns) {
+    if (!c.ref) continue;
+    const k = `${tb.node}.${c.name}>${c.ref}`;
+    if (marks.nodes[tb.node]?.mark === "remove" || marks.nodes[String(c.ref).split(".")[0]]?.mark === "remove" || marks.columns[`${tb.node}.${c.name}`]?.mark === "remove") marks.links[k] ||= {mark: "remove"};
+  }
+}
+
 // The draft in words the agent can act on without opening plan.json: names next to ids, zones by label.
 export function describeDraft(plan, draft, viewId) {
   const {stale, pending, plan: drawn} = applyDraft(plan, draft, viewId);
@@ -315,7 +514,7 @@ export function describeDraft(plan, draft, viewId) {
   // Box ids get their names; zones are already words, and a new box's own id stays bare (its name is beside it).
   const words = (o) => {
     const out = {...o};
-    for (const k of ["node", "from", "to"]) if (out[k] != null && !(o.op === "move" && k !== "node") && o.op !== "moveZone" && o.op !== "addNode") out[k] = named(out[k]);
+    for (const k of ["node", "from", "to", "table"]) if (out[k] != null && !((o.op === "move" || o.op === "moveTable") && k !== "node") && o.op !== "moveZone" && o.op !== "addNode" && o.op !== "addTable") out[k] = named(out[k]);
     return out;
   };
   // Taking out a box takes its lines too: say which, so the agent need not look them up.
@@ -344,6 +543,14 @@ export function draftLine(c) {
     case "removeZone": return `− zone ${z(c.zone)}`;
     case "move": return `↦ box ${c.node} → ${z(c.to)}`;
     case "moveZone": return `↦ zone ${z(c.zone)} → ${z(c.to)}`;
+    case "addTable": return `+ table ${c.name} (${c.node})${c.group ? ` in group "${c.group}"` : ""}`;
+    case "addColumn": return `+ column ${c.table}: ${c.column}${c.type ? ` ${c.type}` : ""}${c.key ? ` [${c.key}]` : ""}`;
+    case "editColumn": return `~ column ${c.table}: ${c.column} ${["name", "type", "key", "ref"].filter((k) => c[k] != null).map((k) => (k === "ref" ? (c.ref ? `→ ${c.ref} (foreign key)` : "foreign key taken out") : `${k} ${JSON.stringify(c[k])}`)).join(", ")}`;
+    case "removeColumn": return `− column ${c.table}: ${c.column}`;
+    case "moveTable": return `↦ table ${c.node} → ${c.to ? `group "${c.to}"` : "no group"}`;
+    case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}`;
+    case "editGroup": return `~ group "${c.group}" → "${c.label}"`;
+    case "removeGroup": return `− group "${c.group}"`;
     default: return JSON.stringify(c);
   }
 }

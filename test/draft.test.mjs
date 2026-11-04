@@ -97,3 +97,42 @@ test("taking out a box tells which lines go with it", () => {
   assert.deepEqual(d.changes[0].lines, ["API (api) → NAT (nat) egress"]);
   assert.match(draftLine(d.changes[0]), /and its lines: API \(api\) → NAT \(nat\) egress/);
 });
+
+const model = () => ({
+  title: "t", nodes: {users: {name: "users"}, orders: {name: "orders"}},
+  views: [{id: "d", kind: "datamodel", groups: [{label: "Shop", tables: ["orders"]}], tables: [
+    {node: "users", columns: [{name: "id", type: "bigint", key: "pk"}, {name: "email", type: "text"}]},
+    {node: "orders", columns: [{name: "id", type: "uuid", key: "pk"}, {name: "user_id", type: "bigint", ref: "users.id"}]}]}],
+});
+const dm = (...ops) => ({version: 1, views: {d: {ops: ops.map((o, i) => ({id: "op" + (i + 1), ...o}))}}});
+
+test("data models: tables, columns, keys and groups are drafted, marked, and the plan untouched", () => {
+  const p = model(), before = JSON.stringify(p);
+  const r = applyDraft(p, dm(
+    {op: "addTable", node: "new:p", name: "payments", group: "Shop"},
+    {op: "addColumn", table: "new:p", column: "order_id", type: "uuid"},
+    {op: "editColumn", table: "new:p", column: "order_id", ref: "orders.id"},
+    {op: "editColumn", table: "users", column: "email", name: "email_address"},
+    {op: "removeColumn", table: "orders", column: "user_id"},
+    {op: "addGroup", group: "Accounts", tables: ["users"]}), "d");
+  assert.equal(JSON.stringify(p), before);
+  assert.deepEqual(r.validate ?? validateDraft(dm({op: "addTable", node: "new:p", name: "payments"})), []);
+  assert.deepEqual(r.marks.nodes["new:p"], {mark: "add"});
+  assert.equal(r.view.tables.at(-1).columns[0].ref, "orders.id");
+  assert.equal(r.marks.links["new:p.order_id>orders.id"].mark, "add");
+  assert.deepEqual(r.marks.columns["users.email_address"], {mark: "change", was: {name: "email"}});
+  assert.equal(r.marks.columns["orders.user_id"].mark, "remove");
+  assert.equal(r.marks.links["orders.user_id>users.id"].mark, "remove");
+  assert.deepEqual(r.view.groups.map((g) => [g.label, g.tables]), [["Shop", ["orders", "new:p"]], ["Accounts", ["users"]]]);
+  assert.deepEqual(r.pending.length, 6);
+});
+
+test("data models: moving a table between groups, stale and done changes, words for the agent", () => {
+  const r = applyDraft(model(), dm({op: "moveTable", node: "orders", to: "", from: "Shop"}, {op: "addColumn", table: "ghost", column: "x"}, {op: "addColumn", table: "users", column: "id"}), "d");
+  assert.deepEqual(r.marks.nodes.orders, {mark: "move", from: "Shop"});
+  assert.deepEqual(r.stale.map((s) => s.id), ["op2"]);
+  assert.deepEqual(r.done, ["op3"]);
+  const d = describeDraft(model(), dm({op: "editColumn", table: "orders", column: "user_id", ref: ""}), "d");
+  assert.equal(draftLine(d.changes[0]), "~ column orders: user_id foreign key taken out");
+  assert.match(validateDraft(dm({op: "addColumn", table: "users", column: "a.b"})).join(), /bad column/);
+});

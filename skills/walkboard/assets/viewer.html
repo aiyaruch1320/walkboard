@@ -2129,6 +2129,11 @@ function renderMap(v) {
     else delete v.layout;
   }
   const layout = () => (v.layout && typeof v.layout === "object" ? v.layout : {});
+  // Where a box sits now, from its place: a box dropped into a zone has no offset there until it is moved again.
+  const offsetOf = (e) => {
+    const q = layout()[keyOf(e)];
+    return {x: Number.isFinite(q?.x) ? q.x : 0, y: Number.isFinite(q?.y) ? q.y : 0};
+  };
   const place = (e, q) => {
     e.style.left = q?.x ? q.x + "px" : "";
     e.style.top = q?.y ? q.y + "px" : "";
@@ -2186,7 +2191,7 @@ function renderMap(v) {
     const head = e.target.closest?.(".zhead");
     const it = head ? head.parentElement : e.target.closest?.("[data-anchor]");
     if (!it || !map.contains(it) || e.target.closest("a, button, .term")) return;
-    const sx = e.clientX, sy = e.clientY, from = layout()[keyOf(it)] || {x: 0, y: 0};
+    const sx = e.clientX, sy = e.clientY, from = offsetOf(it);
     let moved = null, frame = 0;
     const move = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
@@ -2238,7 +2243,7 @@ function renderMap(v) {
     e.preventDefault();
     e.stopPropagation();
     if (!mapKeySave) mapKeyFrom = v.layout;
-    const k = e.shiftKey ? 40 : 10, was = layout()[keyOf(it)] || {x: 0, y: 0}, q = {x: was.x + d[0] * k, y: was.y + d[1] * k};
+    const k = e.shiftKey ? 40 : 10, was = offsetOf(it), q = {x: was.x + d[0] * k, y: was.y + d[1] * k};
     v.layout = movedTo(it, q);
     place(it, q);
     stackUp();

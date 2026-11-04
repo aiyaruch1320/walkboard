@@ -78,7 +78,7 @@ Each stage has `columns` + `rows` (rows as long as `columns`) or `text`. Empty a
  "links":[{"from":"ec2a","to":"pcx","state":"ok","label":"route 10.1.0.0/16"},{"from":"pcx","to":"ec2b"}]}
 ```
 
-Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `links` as in `k8s`.
+Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `"stack": true` stacks what a zone holds top to bottom instead of side by side. For a whole system (over 12 boxes the page uses smaller ones and keeps top-level zones in one row), read left to right: outside, then network zones as columns, then shared services; 2-3 top-level zones. `links` as in `k8s`.
 
 ## journey
 

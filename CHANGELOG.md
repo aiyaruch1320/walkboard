@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Stories in pictures.** A step can say what travels: `moves` sends a label along the line between two boxes each time the step opens, `keep` leaves it on the box it reached, `show` puts a few lines inside a box. Play holds each step long enough to read it, and moves wait, travel slowly and rest so you can follow them. On paper, moves print under their step.
+- Big map pictures: `"stack": true` stacks what a zone holds, over 12 boxes the page uses smaller ones and keeps top-level zones in one row, and lines look for the nearest gap first.
 - Kubernetes pictures: a line that would run through a box, or between workloads stacked one above the other, now goes around.
 - Thai labels keep technical terms as engineers say them (commit message, block, Input/Output, Snapshot) and say what a thing is where they were vague.
 - Map pictures route lines around boxes: below, above or beside them, each in its own lane, when the straight way would cross another box.

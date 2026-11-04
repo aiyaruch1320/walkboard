@@ -1754,7 +1754,7 @@ function zoneEl(z, depth) {
   if (ic) head.append(ic);
   head.append(richEl("span", null, z.label || ""));
   if (z.note) head.append(el("small", null, z.note));
-  const body = el("div", "zbody");
+  const body = el("div", "zbody" + (z.stack ? " stack" : ""));
   for (const c of (z.zones || []).filter((x) => x && typeof x === "object")) body.append(zoneEl(c, depth + 1));
   for (const id of z.nodes || []) body.append(anchored(id));
   box.append(head, body);
@@ -1810,6 +1810,19 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   candidates.push({kind: "right", d: elbow([a.right, py], [right, py], [right, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
   const left = Math.min(a.left, b.left, ...between(...ys, inY).map((r) => r.left)) - 12 - 9 * (lanes.left || 0);
   candidates.push({kind: "left", d: elbow([a.left, py], [left, py], [left, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
+  // Through the nearest gap: around one side, or out of one side and into the facing side of the other box.
+  const step = (kind) => 14 + 9 * (lanes[kind] || 0);
+  const nearUnder = Math.max(a.bottom, b.bottom) + step("near-under"), nearOver = Math.min(a.top, b.top) - step("near-over");
+  const nearRight = Math.max(a.right, b.right) + step("near-right"), nearLeft = Math.min(a.left, b.left) - step("near-left");
+  candidates.push({kind: "near-under", d: elbow([px, a.bottom], [px, nearUnder], [qx, nearUnder], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
+  candidates.push({kind: "near-over", d: elbow([px, a.top], [px, nearOver], [qx, nearOver], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
+  candidates.push({kind: "near-right", d: elbow([a.right, py], [nearRight, py], [nearRight, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
+  candidates.push({kind: "near-left", d: elbow([a.left, py], [nearLeft, py], [nearLeft, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
+  const across = (kind, xOrY, build) => candidates.push({kind, ...build(xOrY)});
+  if (b.right < a.left) for (const [kind, x] of [["z-a", a.left - step("z-a")], ["z-b", b.right + step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.left, py], [v, py], [v, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI}));
+  if (b.left > a.right) for (const [kind, x] of [["z-a", a.right + step("z-a")], ["z-b", b.left - step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.right, py], [v, py], [v, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0}));
+  if (b.top > a.bottom) for (const [kind, y] of [["z-c", a.bottom + step("z-c")], ["z-d", b.top - step("z-d")]]) across(kind, y, (v) => ({d: elbow([px, a.bottom], [px, v], [qx, v], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2}));
+  if (b.bottom < a.top) for (const [kind, y] of [["z-c", a.top - step("z-c")], ["z-d", b.bottom + step("z-d")]]) across(kind, y, (v) => ({d: elbow([px, a.top], [px, v], [qx, v], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2}));
   // Fewest boxes crossed, then the shortest; the direct line wins whenever it is clear.
   let best = null;
   for (const c of candidates) {
@@ -1825,7 +1838,9 @@ function renderMap(v) {
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
   if (states.length) scroll.append(linkLegend(states, false));
-  const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : ""));
+  // Many boxes: smaller ones, and zones stay side by side, so the whole system fits in one look.
+  const many = new Set(KINDS.map.refs(v)).size > 12;
+  const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : "") + (many ? " dense" : ""));
   for (const z of (v.zones || []).filter((x) => x && typeof x === "object")) map.append(zoneEl(z, 0));
   scroll.append(map);
   viaChips(map, v.links);

@@ -7,6 +7,7 @@
 //   {"drag": {"from": "selector" | [x, y], "to": "selector" | [x, y] | {"by": [dx, dy]}, "steps": 20, "hold": ms}}
 //   {"type": "text"}                              {"key": "Enter" | "Escape" | "Delete" | "Tab" | "z", "mods": ["Meta", "Shift"]}
 //   {"shot": "/path/file.png"}                    {"scroll": "selector"}
+// A target can also be {"sel": "css selector", "at": [fx, fy]}: that point of the element, as fractions of its size.
 // Prints one JSON line per eval and at the end {"errors": [...]} with the page's console errors and exceptions.
 // Needs Google Chrome (CHROME=… for another Chromium) and Node 22.
 import fs from "node:fs";
@@ -38,6 +39,12 @@ if (args.includes("--dark")) await page.send("Emulation.setEmulatedMedia", {feat
 
 const point = async (target) => {
   if (Array.isArray(target)) return {x: target[0], y: target[1]};
+  if (target?.sel) {
+    const [fx, fy] = target.at || [0.5, 0.5];
+    const r = await page.eval(`const e = document.querySelector(${JSON.stringify(target.sel)}); if (!e) return null; e.scrollIntoView({block: "nearest", inline: "nearest"}); await new Promise((r) => setTimeout(r, 150)); const b = e.getBoundingClientRect(); return {x: b.left + b.width * ${+fx}, y: b.top + b.height * ${+fy}};`);
+    if (!r) throw new Error(`nothing matches ${target.sel}`);
+    return r;
+  }
   const r = await page.eval(`const e = document.querySelector(${JSON.stringify(target)}); if (!e) return null; e.scrollIntoView({block: "nearest", inline: "nearest"}); await new Promise((r) => setTimeout(r, 120)); const b = e.getBoundingClientRect(); return {x: b.left + Math.min(24, b.width / 2), y: b.top + Math.min(12, b.height / 2)};`);
   if (!r) throw new Error(`nothing matches ${target}`);
   return r;
@@ -61,8 +68,10 @@ try {
       }
       await sleep(150);
     } else if (a.drag) {
+      // The far end first: finding an element may scroll the page, and the start must be measured after that.
+      const end = a.drag.to?.by ? null : await point(a.drag.to);
       const from = await point(a.drag.from);
-      const to = a.drag.to?.by ? {x: from.x + a.drag.to.by[0], y: from.y + a.drag.to.by[1]} : await point(a.drag.to);
+      const to = end || {x: from.x + a.drag.to.by[0], y: from.y + a.drag.to.by[1]};
       const steps = a.drag.steps || 20;
       await page.send("Input.dispatchMouseEvent", {type: "mouseMoved", ...from});
       await mouse("mousePressed", from);

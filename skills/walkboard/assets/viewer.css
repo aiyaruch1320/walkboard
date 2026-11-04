@@ -395,7 +395,7 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map>svg.links{z-index:1}
 .map [data-anchor]{z-index:2}
 .map .zone>.zhead{position:relative;z-index:1}
-.map .lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
+.map [data-anchor].lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
 .map .zone.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
 .map .node.placed,.map .zone.placed{outline:2px dashed var(--you-bd);outline-offset:3px}
 .map .ghost{pointer-events:none;background:transparent!important;border:1.5px dashed color-mix(in srgb,var(--line) 80%,transparent)!important;outline:none!important;box-shadow:none!important;opacity:1!important}

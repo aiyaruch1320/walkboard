@@ -1528,6 +1528,7 @@ function linkLayer(container) {
 
 // A link is a line plus its head; the head is never dashed.
 function linkPaths(svg, line, head, cls, dim, ends) {
+  const out = [];
   for (const [d, extra] of [[line, ""], [head, " head"]]) {
     const e = document.createElementNS(svg.namespaceURI, "path");
     e.setAttribute("d", d);
@@ -1536,7 +1537,9 @@ function linkPaths(svg, line, head, cls, dim, ends) {
     if (extra) e.style.strokeDasharray = "none";
     if (dim) e.style.opacity = ".15";
     svg.append(e);
+    out.push(e);
   }
+  return out;
 }
 
 function drawLinks(container, specs) {
@@ -2059,6 +2062,14 @@ function mapGeometry(v, map, routes, layout) {
   return out;
 }
 
+// scripts/perf.mjs sets window.__wbPerf to an array: each redraw adds how long it took (ms).
+const timed = (fn) => (...a) => {
+  if (!window.__wbPerf) return fn(...a);
+  const t0 = performance.now();
+  fn(...a);
+  window.__wbPerf.push(performance.now() - t0);
+};
+
 function renderMap(v) {
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
@@ -2221,6 +2232,7 @@ function renderMap(v) {
     const it = head ? head.parentElement : e.target.closest?.("[data-anchor]");
     if (!it || !map.contains(it) || e.target.closest("a, button, .term")) return;
     const sx = e.clientX, sy = e.clientY, from = offsetOf(it);
+    const moving = new Set(it.matches("[data-anchor]") ? [it.dataset.anchor] : [...it.querySelectorAll("[data-anchor]")].map((x) => x.dataset.anchor));
     let moved = null, frame = 0;
     const move = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
@@ -2235,7 +2247,7 @@ function renderMap(v) {
         frame = 0;
         const drop = dropZone(it);
         zoneEls().forEach((z) => z.classList.toggle("droptarget", z === drop?.to));
-        draw();
+        draw(moving);
       });
     };
     const up = () => {
@@ -2282,7 +2294,20 @@ function renderMap(v) {
       tools.done(mapKeyFrom, v.layout);
     }, 500);
   });
-  const draw = () => {
+  // A line between two boxes, in the coordinates of the lines' layer (base = its rectangle), with its arrow head.
+  const routeOf = (l, a, b, all, lanes, base) => {
+    const o = (x, y) => `${x - base.left} ${y - base.top}`;
+    routeLine.dx = base.left;
+    routeLine.dy = base.top;
+    const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o);
+    const [x2, y2] = route.tip, ang = route.ang;
+    const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
+    route.headD = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;
+    return route;
+  };
+  let drawn = [];
+  // moving: ids of the boxes being dragged (a Set), or nothing for a full redraw.
+  const draw = timed((moving = null) => {
     // Changing a class here would resize the picture inside its own ResizeObserver: on screen, wait for the next frame.
     // On paper, and the first time (before the page is painted, so the picture never shows at the wrong size), now.
     if (many && fitted !== map.clientWidth) {
@@ -2297,8 +2322,35 @@ function renderMap(v) {
       keptOnce = true;
       placeAll();
     }
+    // While something is dragged, only the lines that touch it change: lines with both ends inside a dragged zone
+    // move with it (a translate), lines with one end on it are routed again, the rest stay as they were drawn.
+    if (moving && drawn.length) {
+      const mr = map.getBoundingClientRect(), rects = {};
+      for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
+      const all = Object.values(rects), lanes = {};
+      for (const c of drawn) {
+        const inA = moving.has(c.from), inB = moving.has(c.to);
+        if (!inA && !inB) continue;
+        const a = rects[c.from], b = rects[c.to];
+        if (!a || !b) continue;
+        if (inA && inB) {
+          const t = `translate(${a.left - mr.left - c.at.left} ${a.top - mr.top - c.at.top})`;
+          c.line.setAttribute("transform", t);
+          c.head.setAttribute("transform", t);
+          continue;
+        }
+        const route = routeOf(c.link, a, b, all, lanes, mr);
+        c.line.removeAttribute("transform");
+        c.head.removeAttribute("transform");
+        c.line.setAttribute("d", route.d);
+        c.head.setAttribute("d", route.headD);
+        c.route.d = route.d;
+      }
+      return;
+    }
     const base = svg.clear();
     routes = [];
+    drawn = [];
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     const rects = {}, lanes = {}, mr = map.getBoundingClientRect();
     for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
@@ -2306,17 +2358,13 @@ function renderMap(v) {
     for (const l of v.links || []) {
       const a = rects[l.from], b = rects[l.to];
       if (!a || !b) continue;
-      const o = (x, y) => `${x - base.left} ${y - base.top}`;
-      routeLine.dx = base.left;
-      routeLine.dy = base.top;
-      const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o);
-      routes.push({from: l.from, to: l.to, d: route.d, dx: base.left - mr.left, dy: base.top - mr.top});
-      const [x2, y2] = route.tip, ang = route.ang;
-      const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
-      const head = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;
-      linkPaths(svg, route.d, head, `l-${l.state || "ok"}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
+      const route = routeOf(l, a, b, all, lanes, base);
+      const r = {from: l.from, to: l.to, d: route.d, dx: base.left - mr.left, dy: base.top - mr.top};
+      routes.push(r);
+      const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
+      drawn.push({link: l, from: l.from, to: l.to, line, head, route: r, at: {left: a.left - mr.left, top: a.top - mr.top}});
     }
-  };
+  });
   addDrawer(draw, map);
   scroll.prepend(tools.row);
   return scroll;

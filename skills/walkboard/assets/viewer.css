@@ -503,6 +503,33 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er li.dtarget{outline:2px solid var(--you-bd);outline-offset:-2px}
 .er .erframe.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 40%,transparent)}
 .er .dspot{position:absolute;width:160px;height:24px}
+.flowview,.graph,.k8s{position:relative}
+.flowview .dspot,.graph .dspot,.k8s .dspot{position:absolute;width:160px;height:24px}
+.graph [data-anchor],.k8s [data-anchor],.lane .node{position:relative}
+.graph .dr-add,.k8s .dr-add,.lane .dr-add{outline:2px dashed var(--you-bd);outline-offset:3px}
+.graph .dr-change,.k8s .dr-change,.lane .dr-change{outline:2px dashed #14a3b8;outline-offset:3px}
+.graph .dr-remove,.k8s .dr-remove,.lane .dr-remove{outline:2px dashed var(--warn-bd);outline-offset:3px;opacity:.6}
+.graph .dr-remove .name,.k8s .dr-remove .name,.lane .dr-remove .name{text-decoration:line-through;text-decoration-color:var(--warn-bd)}
+.lane .dr-move{outline:2px dashed var(--copy-tx);outline-offset:3px}
+.lane .dr-move>.ptag{background:var(--copy-tx)}
+.lane.dr-add{outline:2px dashed var(--you-bd);outline-offset:4px;border-radius:10px}
+.lane.dr-change>.lane-title,.lane.dr-move>.lane-title{text-decoration:underline dashed #14a3b8}
+.lane-title .ptag{position:static;margin-left:6px;box-shadow:none}
+.lane.dr-change>.lane-title .ptag{background:#14a3b8}.lane.dr-move>.lane-title .ptag{background:var(--copy-tx)}
+.elabel.dr-add{border:1px dashed var(--you-bd);color:var(--you-tx)}
+.elabel.dr-change{border:1px dashed #14a3b8}
+.elabel.dr-remove{text-decoration:line-through;opacity:.6}
+.flowview.sketch,.graph.sketch,.k8s.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
+.sketch[data-tool="box"],.sketch[data-tool="lane"]{cursor:crosshair}
+.sketch[data-tool="connect"] [data-anchor]{cursor:alias}
+.sketch[data-tool="rename"] [data-anchor],.sketch[data-tool="rename"] .lane-title{cursor:text}
+.sketch[data-tool="remove"] [data-anchor]{cursor:pointer}
+.sketch .dsel{outline:2px solid var(--you-bd)!important;outline-offset:3px}
+.sketch [data-anchor].dtarget{outline:2px solid var(--you-bd)!important;outline-offset:3px}
+.flowview .lifted{z-index:50;position:relative;opacity:.9}
+.lane.droptarget{background:color-mix(in srgb,var(--you-bg) 40%,transparent);border-radius:10px}
+.graph svg.links .dhit,.k8s svg.links .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke;cursor:pointer}
+.graph svg.links .dtmp,.k8s svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .er svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}

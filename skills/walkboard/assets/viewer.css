@@ -368,6 +368,7 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 body.pic-wide main{max-width:min(1560px,100%)}
 .map.denser .zbody>.node{width:128px}
 .map.denser .node .name{font-size:12.5px}
+.map.denser .node .st{position:absolute;top:4px;right:5px}
 .map.denser .node{padding:6px 7px}
 .map.denser .node .icon{width:20px;height:20px;border-radius:5px}
 .map.denser .node .nhead{gap:5px}

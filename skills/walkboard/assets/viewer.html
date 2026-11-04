@@ -3601,13 +3601,28 @@ addEventListener("beforeprint", () => {
   // Laid out at the width of an A4 page, so what fits flows and only what is wider gets scaled.
   const out = document.getElementById("printout");
   out.replaceChildren(...parts);
+  pics.forEach(tidyGuesses);
   linkDrawer?.();
   linkObserver?.disconnect();
+  // Lines are one layer over the whole picture and cannot follow its boxes onto the next page, so a picture with lines
+  // is scaled to fit one page. Without lines a tall picture breaks between its rows.
   for (const box of pics) {
-    const pic = box.lastElementChild, w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
-    if (w > 676) pic.style.zoom = String(676 / w);
-    // A picture that fits on one page is never split; a taller one breaks between its rows.
-    box.classList.toggle("fit", box.getBoundingClientRect().height < 960);
+    const diff = box.querySelector(".diffview");
+    box.classList.toggle("ppage", !!diff);
+    const parts = diff ? [...box.querySelectorAll(".dhalf")] : [box.lastElementChild];
+    for (const pic of parts) {
+      const w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
+      // A diff's list of changes shares the first page with its first picture.
+      const room = 880 - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0);
+      const tall = pic.querySelector("svg.links") ? Math.max(0.3, room / pic.getBoundingClientRect().height) : 1;
+      const scale = Math.min(1, 676 / w, tall);
+      if (scale < 1) {
+        // The width stays what it was when the lines were drawn: zoom alone would let the boxes reflow under them.
+        pic.style.width = w + "px";
+        pic.style.zoom = String(scale);
+      }
+    }
+    box.classList.toggle("fit", box.getBoundingClientRect().height < 980);
   }
   ({linkDrawer, linkObserver, pictureHook} = printState);
   stepId = printState.stepId;

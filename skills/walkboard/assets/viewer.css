@@ -118,6 +118,11 @@ body.side-open .side-inner{opacity:1;transform:none}
   .side .pb,.side .pb .talk{display:contents}
 }
 #printout{position:absolute;left:-10000px;top:0;width:700px;visibility:hidden}
+/* Everything that sizes a picture on paper applies here too: its lines are drawn while it is off screen, and must still meet its boxes when printed. */
+#printout{font-size:12px}
+#printout .pview{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin:0 0 12px;break-inside:avoid}
+#printout .pcap{font-size:12.5px;font-weight:600;margin:0 0 10px}
+#printout .pcap+.pmeta{margin:-6px 0 10px;color:var(--muted);font-size:11px}
 #scrim{display:none;position:fixed;inset:0;z-index:24;background:rgba(0,0,0,.35)}
 @media (prefers-reduced-motion:reduce){.layout,.side,.side-inner{transition:none!important}}
 .turnbtn{display:flex;width:100%;align-items:center;gap:8px;margin-top:10px;text-align:left;background:var(--you-bg);color:var(--you-tx);border:1.5px solid var(--you-bd);border-radius:9px;padding:7px 12px;font-weight:500}
@@ -734,8 +739,10 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
   .node,.ertable,.stage{break-inside:avoid}
   .impbar,.jbar,.jpacket{display:none!important}
   body.printing #compare{display:none}
-  .pview{break-inside:auto}
-  .pview.fit{break-inside:avoid}
+  #printout .pview{break-inside:auto}
+  #printout .pview.fit{break-inside:avoid}
+  #printout .pview.ppage{break-before:page}
+  .dhalf{break-inside:avoid;display:block!important}
   .ph.newpage{break-before:page}
   .lane,.zone,.ns,.seq-row,.tl-row,.ertable,.stage,.pjourney li,.pnode{break-inside:avoid}
   #view,#scrim{display:none!important}

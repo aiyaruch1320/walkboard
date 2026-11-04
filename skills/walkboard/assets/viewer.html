@@ -1823,8 +1823,19 @@ function zoneEl(z, depth, dense = false) {
 // How much of a line runs through the given boxes. dx, dy: from the line's coordinates to the screen's.
 // How many points along a path (one every 6px) fall on a box, and its length. This runs for every way around for every line
 // on every redraw, so it walks the path itself: asking an SVG element for each point takes a hundred times longer.
-function lineHits(d, boxes, dx = 0, dy = 0) {
+// limit: stop counting once a path hits more boxes than that (it has already lost to a better way around).
+function lineHits(d, boxes, dx = 0, dy = 0, limit = Infinity) {
   let hits = 0, len = 0, carry = 0, x = 0, y = 0;
+  // A path never leaves the box around its points (control points included): only the boxes there can be hit.
+  const nums = d.match(/-?[\d.]+(?:e-?\d+)?/g)?.map(Number) || [];
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    if (nums[i] < x0) x0 = nums[i];
+    if (nums[i] > x1) x1 = nums[i];
+    if (nums[i + 1] < y0) y0 = nums[i + 1];
+    if (nums[i + 1] > y1) y1 = nums[i + 1];
+  }
+  boxes = boxes.filter((r) => x1 + dx > r.left - 3 && x0 + dx < r.right + 3 && y1 + dy > r.top - 3 && y0 + dy < r.bottom + 3);
   const on = (near, px, py) => {
     const qx = px + dx, qy = py + dy;
     for (const r of near) if (qx > r.left - 3 && qx < r.right + 3 && qy > r.top - 3 && qy < r.bottom + 3) return hits++;
@@ -1841,6 +1852,7 @@ function lineHits(d, boxes, dx = 0, dy = 0) {
     y = y2;
   };
   for (const [, cmd, args] of d.matchAll(/([MLQC])([^MLQC]*)/g)) {
+    if (hits > limit) break;
     const n = args.match(/-?[\d.]+(?:e-?\d+)?/g).map(Number);
     if (cmd === "M") {
       [x, y] = n;
@@ -1930,7 +1942,7 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   // Fewest boxes crossed, then the shortest; the direct line wins whenever it is clear.
   let best = null;
   for (const c of candidates) {
-    const {hits, len} = lineHits(c.d, others, routeLine.dx, routeLine.dy);
+    const {hits, len} = lineHits(c.d, others, routeLine.dx, routeLine.dy, best ? best.score / 1e5 : Infinity);
     if (!hits && c.kind === "direct") return c;
     const score = hits * 1e5 + len;
     if (!best || score < best.score) best = {...c, score};
@@ -2378,7 +2390,7 @@ function renderMap(real) {
     route.headD = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;
     return route;
   };
-  let drawn = [];
+  let drawn = [], drawnSig = "";
   // moving: ids of the boxes being dragged (a Set), or nothing for a full redraw.
   const draw = timed((moving = null) => {
     // Changing a class here would resize the picture inside its own ResizeObserver: on screen, wait for the next frame.
@@ -2398,6 +2410,7 @@ function renderMap(real) {
     // While something is dragged, only the lines that touch it change: lines with both ends inside a dragged zone
     // move with it (a translate), lines with one end on it are routed again, the rest stay as they were drawn.
     if (moving && drawn.length) {
+      drawnSig = "";
       const mr = map.getBoundingClientRect(), rects = {};
       for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
       const all = Object.values(rects), lanes = {};
@@ -2421,12 +2434,17 @@ function renderMap(real) {
       }
       return;
     }
-    const base = svg.clear();
-    routes = [];
-    drawn = [];
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     const rects = {}, lanes = {}, mr = map.getBoundingClientRect();
     for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
+    // The page asks for a redraw from several places at once (the render, the resize observer, the next frame):
+    // when no box has moved since the last one, the lines are already right.
+    const sig = `${curStep()?.id ?? ""}|${Math.round(mr.width)}|` + Object.entries(rects).map(([k, r]) => `${k}:${Math.round(r.left - mr.left)},${Math.round(r.top - mr.top)},${Math.round(r.width)},${Math.round(r.height)}`).join(";");
+    if (sig === drawnSig && svg.childElementCount) return;
+    drawnSig = sig;
+    const base = svg.clear();
+    routes = [];
+    drawn = [];
     const all = Object.values(rects);
     for (const l of v.links || []) {
       const a = rects[l.from], b = rects[l.to];

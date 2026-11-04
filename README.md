@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version 0.7.0" src="https://img.shields.io/badge/version-0.7.0-7f77dd"></a>
+  <a href="CHANGELOG.md"><img alt="version 0.8.0" src="https://img.shields.io/badge/version-0.8.0-7f77dd"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-1d9e75"></a>
   <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-ef9f27">
 </p>
@@ -66,7 +66,7 @@ The agent picks the mode from your request and asks up to three short questions 
 
 Needs Node.js 18.18 or newer. Nothing else.
 
-Walkboard is young (0.7): built and tested with Claude Code on macOS. Other agents and systems should work but are not tested yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
+Walkboard is young (0.8): built and tested with Claude Code on macOS. Other agents and systems should work but are not tested yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
 
 ## Use
 

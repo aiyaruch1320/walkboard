@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
+
+- **Drag on map pictures.** Move a box, or a whole zone by its title; arrow keys move a selected box; the place is saved and **Lay out automatically** puts it back.
+- **Landscape pages in PDF.** A big picture takes a landscape page of its own when that makes it larger. Check the print preview if your browser does not support mixed page orientation.
+- Thai text uses a looped face where the computer has one, easier to read at small sizes.
 
 - **Pictures for cloud architects.** Icons for Huawei Cloud and on-prem (data center, VMware, F5, Oracle, NAS, AD), for ExpressRoute, Direct Connect, Cloud Interconnect, VPN and firewalls. A `standby` line for a backup path. A big map keeps its zones in a row: over 12 boxes or 4+ top-level zones it uses smaller boxes, uses the whole window, and wraps only when it still does not fit. Lines also leave or enter a box from the side when another box is in the way.
 - **PDF fixes.** A picture with lines stays whole on one page, scaled to fit: before, tall ones lost their boxes to the next page. Lines now meet their boxes on paper. A diff prints its change list with the first picture.

@@ -326,3 +326,16 @@ test("messages about a box carry its name, so it survives the box being taken ou
   const byText = Object.fromEntries(items.map((i) => [i.text, i.nodeName]));
   assert.deepEqual(byText, {"why?": "Queue", because: "Queue", "taken out": undefined, "odd id": undefined});
 });
+
+test("boxes and zones moved on a map are saved as offsets, only for what the map holds", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "VPC", zones: [{label: "Sub", nodes: ["a"]}]}]}], nodes: {a: {name: "A"}}};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const read = () => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[0].layout;
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {x: -30, y: 12}, "z:Sub": {x: 5, y: 0}, ghost: {x: 1, y: 1}}})).status, 200);
+  assert.deepEqual(read(), {a: {x: -30, y: 12}, "z:Sub": {x: 5, y: 0}});
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: null})).status, 200);
+  assert.equal(read(), undefined);
+});

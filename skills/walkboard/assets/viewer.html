@@ -1507,6 +1507,7 @@ function drawLinks(container, specs) {
       (fanIn[l.to] ||= []).push(l);
     }
     const ns = container.querySelector(".ns")?.getBoundingClientRect();
+    const lanes = {};
     for (const l of specs) {
       const a = box(l.from)?.getBoundingClientRect(), b = box(l.to)?.getBoundingClientRect();
       if (!a || !b) continue;
@@ -1525,6 +1526,21 @@ function drawLinks(container, specs) {
         const x1 = a.right - base.left, dx = Math.max(20, (x2 - leave) / 2);
         d = `M${x1} ${y1} L${leave} ${y1} C${leave + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
         head = l.state === "blocked" ? `M${x2} ${y2 - 6} L${x2} ${y2 + 6}` : `M${x2 - 7} ${y2 - 4} L${x2} ${y2} L${x2 - 7} ${y2 + 4}`;
+      }
+      // The usual line unless it would run through another box; then around it.
+      if (!l.down) {
+        const others = [...container.querySelectorAll("[data-id]")].filter((e) => e !== box(l.from) && e !== box(l.to) && !e.contains(box(l.from)) && !e.contains(box(l.to))).map((e) => e.getBoundingClientRect());
+        // Boxes one above the other: side to side would cut across both of them.
+        const stacked = a.left < b.right && b.left < a.right;
+        if (stacked || lineHits(d, others, base.left, base.top).hits) {
+          routeLine.dx = base.left;
+          routeLine.dy = base.top;
+          const o = (x, y) => `${x - base.left} ${y - base.top}`;
+          const route = routeLine(a, b, others, lanes, o);
+          d = route.d;
+          const [tx, ty] = route.tip, tip = (k) => o(tx - 7 * Math.cos(route.ang + k), ty - 7 * Math.sin(route.ang + k));
+          head = l.state === "blocked" ? `M${o(tx - 6 * Math.sin(route.ang), ty + 6 * Math.cos(route.ang))} L${o(tx + 6 * Math.sin(route.ang), ty - 6 * Math.cos(route.ang))}` : `M${tip(0.45)} L${o(tx, ty)} L${tip(-0.45)}`;
+        }
       }
       const dim = inStep && !(inStep.has(l.from) && (inStep.has(l.to) || l.to === "#namespace"));
       linkPaths(svg, d, head, `l-${l.state || "uses"}`, dim, [l.from, l.to]);
@@ -1745,6 +1761,19 @@ function zoneEl(z, depth) {
   return box;
 }
 
+// How much of a line runs through the given boxes. dx, dy: from the line's coordinates to the screen's.
+function lineHits(d, boxes, dx = 0, dy = 0) {
+  const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  probe.setAttribute("d", d);
+  const len = probe.getTotalLength();
+  let hits = 0;
+  for (let at = 0; at <= len; at += 6) {
+    const p = probe.getPointAtLength(at), x = p.x + dx, y = p.y + dy;
+    if (boxes.some((r) => x > r.left - 3 && x < r.right + 3 && y > r.top - 3 && y < r.bottom + 3)) hits++;
+  }
+  return {hits, len};
+}
+
 // A line between two boxes that goes around the others: across when the way is clear, else along a lane
 // below, above or beside them. Lanes are shared per draw (lanes), so lines running the same way stay apart.
 function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
@@ -1782,16 +1811,9 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   const left = Math.min(a.left, b.left, ...between(...ys, inY).map((r) => r.left)) - 12 - 9 * (lanes.left || 0);
   candidates.push({kind: "left", d: elbow([a.left, py], [left, py], [left, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
   // Fewest boxes crossed, then the shortest; the direct line wins whenever it is clear.
-  const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
   let best = null;
   for (const c of candidates) {
-    probe.setAttribute("d", c.d);
-    const len = probe.getTotalLength();
-    let hits = 0;
-    for (let at = 0; at <= len; at += 6) {
-      const p = probe.getPointAtLength(at), x = p.x + (routeLine.dx || 0), y = p.y + (routeLine.dy || 0);
-      if (others.some((r) => x > r.left - 3 && x < r.right + 3 && y > r.top - 3 && y < r.bottom + 3)) hits++;
-    }
+    const {hits, len} = lineHits(c.d, others, routeLine.dx, routeLine.dy);
     const score = hits * 1e5 + len;
     if (!best || score < best.score) best = {...c, score};
   }
@@ -2897,8 +2919,16 @@ function runMove(m, token) {
     let line = movePath(m, a, b), start = null, ms = 0;
     const packet = el("div", "mv-packet" + (m.label ? "" : " dot"), m.label || "");
     document.body.append(packet);
+    const cutAt = 0.6;
+    const isCut = () => m.blocked || line.path.classList.contains("l-blocked");
     const light = () => {
       line.path.classList.add("mv-on");
+      // A blocked line lights only as far as the label gets.
+      if (isCut()) {
+        const len = line.path.getTotalLength();
+        line.path.style.animation = "none";
+        line.path.style.strokeDasharray = line.back ? `0 ${len * (1 - cutAt)} ${len * cutAt} ${len}` : `${len * cutAt} ${len}`;
+      }
       // The same speed on every line: a short hop is quick, a long one takes its time.
       ms = Math.min(MOVE_MAX, Math.max(MOVE_MIN, line.path.getTotalLength() / MOVE_SPEED));
     };
@@ -2907,6 +2937,7 @@ function runMove(m, token) {
       packet.remove();
       line.layer?.remove();
       line.path.classList.remove("mv-on");
+      line.path.style.animation = line.path.style.strokeDasharray = "";
       done();
     };
     const place = (e) => {
@@ -2924,8 +2955,8 @@ function runMove(m, token) {
       start ??= now;
       const k = Math.min(1, (now - start) / ms);
       // A blocked line never gets there: the label stops partway and turns red.
-      const cut = m.blocked || line.path.classList.contains("l-blocked");
-      place((k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2) * (cut ? 0.6 : 1));
+      const cut = isCut();
+      place((k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2) * (cut ? cutAt : 1));
       if (k < 1) return requestAnimationFrame(frame);
       if (cut) {
         packet.classList.add("cut");

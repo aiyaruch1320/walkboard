@@ -2113,7 +2113,9 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     const any = !!Object.keys(v.layout || {}).length || (drafts && !!draftOps(v.id).length), history = hist.back.length || hist.fwd.length;
     // A picture that takes a draft always offers the pencil; while sketching, the toolbar holds all of this.
     const narrow = !canMove(), n = drafts ? draftOps(v.id).length : 0;
-    row.hidden = narrow ? !n || snapshot || printState : sketching === v.id || !(any || history || drafts);
+    row.hidden = narrow ? !n || snapshot || printState : !(any || history || drafts);
+    // While sketching the toolbar holds these; the row keeps its room, so the picture does not jump up.
+    row.style.visibility = !narrow && sketching === v.id ? "hidden" : "";
     for (const b of [undo, redo]) b.hidden = narrow || (drafts && !history);
     reset.hidden = narrow || !any;
     ask.hidden = narrow || !review || !any;

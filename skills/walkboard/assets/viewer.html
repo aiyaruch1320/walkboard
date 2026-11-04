@@ -369,7 +369,8 @@ async function send(c, kind, text, extra = {}) {
   if (c.step) body.step = c.step;
   if (c.option) body.option = c.option;
   if (c.criterion) body.criterion = c.criterion;
-  if (viewId || plan.views[0]) body.view = viewId || plan.views[0].id;
+  body.view ||= viewId || plan.views[0]?.id;
+  if (!body.view) delete body.view;
   if (stepId && !c.step) body.viewingStep = stepId;
   const r = await fetch("/api/feedback?token=" + encodeURIComponent(token), {
     method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(body),
@@ -878,6 +879,12 @@ const options = () => (isDesign() && Array.isArray(plan.options) ? plan.options.
 const criteria = () => (Array.isArray(plan?.criteria) ? plan.criteria.filter((c) => c?.id) : []);
 let optionId = null;
 const curOption = () => options().find((o) => o.id === optionId) || options().find((o) => o.id === plan.decision?.option) || options().find((o) => o.recommended) || options()[0] || null;
+// The option the picture on screen belongs to: its main picture, or one marked "option". None for a picture of its own.
+const shownOption = () => {
+  const v = plan.views.find((x) => x.id === viewId), c = curOption();
+  const owns = (o) => o.view === v.id || v.option === o.id;
+  return !v || !c?.view || owns(c) ? c : options().find(owns) || null;
+};
 const cell = (o, c) => plan.scores?.[o]?.[c] || null;
 const sourceNo = (id) => (plan.sources || []).findIndex((x) => x?.id === id) + 1;
 const unconfirmed = () => (plan.constraints || []).filter((c) => c && !c.confirmed).length + Object.values(plan.nodes || {}).filter((n) => n?.basis === "assumed").length;
@@ -941,8 +948,22 @@ function renderConstraints() {
 
 function renderOptionCard() {
   const card = document.getElementById("stepcard");
-  const o = curOption();
-  if (!o) return card.replaceChildren();
+  const o = shownOption();
+  if (!o) {
+    // A picture no option owns can still be what the user wants: choosing it tells the agent which picture.
+    const v = plan.views.find((x) => x.id === viewId);
+    if (!options().length || !v) return card.replaceChildren();
+    const c = el("div", "stepcard optcard");
+    c.append(el("h3", null, v.title || v.id));
+    if (!plan.decision?.option) {
+      const acts = el("div", "acts"), go = el("button", "primary", t("chooseView"));
+      go.onclick = () => openSide({kind: "decide", view: v.id});
+      acts.append(go);
+      c.append(acts);
+    }
+    card.replaceChildren(c);
+    return refreshThreads();
+  }
   const c = el("div", "stepcard optcard");
   const h = el("h3", null, o.title);
   if (o.recommended) h.append(el("span", "orec", t("recommended")));
@@ -993,7 +1014,7 @@ function renderCompare() {
   if (!isDesign() || !options().length || !criteria().length) return box.replaceChildren();
   const pct = totals(), out = Object.fromEntries(options().map((o) => [o.id, failsMust(plan, o.id).length > 0]));
   const best = Math.max(...options().filter((o) => !out[o.id] && pct[o.id] != null).map((o) => pct[o.id]));
-  const cur = curOption()?.id;
+  const cur = shownOption()?.id;
   const wrap = el("div", "cmp");
   wrap.append(el("h4", null, t("compareTitle")));
   const table = el("table"), head = el("tr");
@@ -1141,8 +1162,10 @@ function renderDesignPanel() {
     }
     parts.push(talkBox({option: opt.id, criterion: c.id}, {placeholder: t("cellAsk", c.label, opt.title), modes: ["question", "propose"]}));
   } else if (side.kind === "decide") {
-    if (!opt) return closeSide();
-    title.textContent = t("decideTitle", opt.title);
+    const pv = side.view && plan.views.find((x) => x.id === side.view);
+    const name = pv ? pv.title || pv.id : opt?.title;
+    if (!name) return closeSide();
+    title.textContent = t("decideTitle", name);
     const n = unconfirmed();
     if (n) {
       const warn = el("div", "warnbox", "⚠ " + t("decideWarn", n));
@@ -1159,20 +1182,20 @@ function renderDesignPanel() {
     }
     const ta = el("textarea");
     ta.placeholder = t("decideReason");
-    ta.dataset.key = "decide:" + opt.id;
+    ta.dataset.key = "decide:" + (opt?.id || side.view);
     ta.value = drafts[ta.dataset.key] || "";
     ta.oninput = () => (drafts[ta.dataset.key] = ta.value);
     const go = el("button", "primary", t("decideSend"));
     go.onclick = async () => {
       go.disabled = true;
       const weights = Object.fromEntries(criteria().map((c) => [c.id, c.weight ?? 1]));
-      await send({}, "decide", ta.value.trim() || t("q_decide", opt.title), {option: opt.id, weights}).catch(() => (go.disabled = false));
+      await send({}, "decide", ta.value.trim() || t("q_decide", name), {...(pv ? {view: pv.id} : {option: opt.id}), weights}).catch(() => (go.disabled = false));
     };
     const talk = el("div", "talk decideform");
     talk.append(ta, go);
     const thr = el("div", "thread");
     thr.dataset.ctx = "{}";
-    parts.push(talk, thr);
+    parts.push(thr, talk);
   } else {
     if (!opt) return closeSide();
     title.textContent = opt.title;
@@ -1191,12 +1214,14 @@ function answerGuess(c, text, extra) {
   };
   ok.onclick = go(false);
   no.onclick = go(true);
-  return [ok, " ", no];
+  const row = el("span", "gbtns");
+  row.append(ok, no);
+  return [row];
 }
 
 let side = null;
 
-const sideKey = (c) => JSON.stringify([c.kind, c.id ?? null, c.option ?? null, c.criterion ?? null]);
+const sideKey = (c) => JSON.stringify([c.kind, c.id ?? null, c.option ?? null, c.criterion ?? null, c.view ?? null]);
 
 // A box taken out of the plan is still known by the name its messages carry.
 const inPlan = (id) => Object.hasOwn(plan.nodes, id);
@@ -1204,6 +1229,7 @@ const boxName = (id) => plan.nodes[id]?.name || thread.findLast((m) => m.node ==
 
 function sideTitle(c) {
   const opt = options().find((o) => o.id === (c.option || c.id));
+  if (c.view) return plan.views.find((x) => x.id === c.view)?.title || c.view;
   if (c.kind === "node") return boxName(c.id);
   if (c.kind === "step") {
     const st = steps().find((s) => s.id === c.id);
@@ -2761,23 +2787,29 @@ function renderView() {
   const v = plan.views.find((x) => x.id === viewId) || plan.views[0];
   const tabs = document.getElementById("tabs");
   if (isDesign()) {
-    const pct = totals();
-    const byView = new Set(options().map((o) => o.view));
+    const pct = totals(), shown = shownOption();
+    // Options first; a supporting picture sits under its option, a picture of its own after them.
+    const belongs = (x) => options().some((o) => o.view === x.id || o.id === x.option);
+    const pick = (x, label = x.title || x.id, cls = "") => {
+      const b = el("button", (x.id === v.id ? "on " : "") + cls, label);
+      b.onclick = () => {
+        viewId = chosenView = x.id;
+        renderView();
+        renderCompare();
+      };
+      return b;
+    };
+    const under = shown ? plan.views.filter((x) => x.id === shown.view || x.option === shown.id) : [];
+    const sub = under.length > 1 ? el("div", "subtabs") : null;
+    sub?.append(...under.map((x) => pick(x)));
     tabs.replaceChildren(...options().map((o) => {
-      const b = el("button", (o.id === curOption()?.id ? "on " : "") + (o.recommended ? "rec" : ""), (o.recommended ? "★ " : "") + o.title);
+      const b = el("button", (o.id === shown?.id ? "on " : "") + (o.recommended ? "rec" : ""), (o.recommended ? "★ " : "") + o.title);
       // Out of the running (fails a must): no percentage to compare, as in the table.
       if (failsMust(plan, o.id).length) b.append(el("span", "pct out", "✗"));
       else if (pct[o.id] != null) b.append(el("span", "pct", pct[o.id] + "%"));
       b.onclick = () => chooseOption(o.id);
       return b;
-    }), ...plan.views.filter((x) => !byView.has(x.id)).map((x) => {
-      const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
-      b.onclick = () => {
-        viewId = chosenView = x.id;
-        renderView();
-      };
-      return b;
-    }));
+    }), ...plan.views.filter((x) => !belongs(x)).map((x, i) => pick(x, undefined, i ? "" : "afteropts")), ...(sub ? [sub] : []));
   } else tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
     const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
     b.onclick = () => {
@@ -2808,6 +2840,7 @@ function renderView() {
   if (side?.kind === "node" && nodeId && !inPlan(nodeId) && !thread.some((m) => m.node === nodeId)) closeSide();
   drawCounts();
   highlight();
+  if (isDesign()) renderOptionCard();
   requestAnimationFrame(() => {
     // An arrow left at the end of a wrapped row points at nothing.
     for (const a of document.querySelectorAll("#view .tf > .arrow")) a.style.visibility = a.nextElementSibling && a.nextElementSibling.offsetTop > a.offsetTop + a.offsetHeight / 2 ? "hidden" : "";

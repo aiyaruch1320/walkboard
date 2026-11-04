@@ -280,3 +280,17 @@ test("standby links and judgment scores are accepted, and untitled tabs get a wa
   const d = {...base(), mode: "design", steps: undefined, options: [{id: "o", title: "O", view: "f"}], criteria: [{id: "c", label: "C", weight: 1}], scores: {o: {c: {rating: 3, basis: "judgment", note: "n"}}}, views: [{id: "f", kind: "flow", title: "F", lanes: [{nodes: ["a"]}]}]};
   assert.doesNotMatch(lint(d).join("\n"), /cites no source/);
 });
+
+test("design: a picture belongs to an option, or check says it cannot be chosen", () => {
+  const plan = {title: "t", goal: "g", mode: "design", nodes: {a: {name: "A"}},
+    options: [{id: "o", title: "O", view: "main", recommended: true}], criteria: [],
+    views: [{id: "main", title: "Main", kind: "flow", lanes: [{title: "x", nodes: ["a"]}]},
+      {id: "more", title: "More", option: "o", kind: "flow", lanes: [{title: "x", nodes: ["a"]}]},
+      {id: "loose", title: "Loose", kind: "flow", lanes: [{title: "x", nodes: ["a"]}]}]};
+  assert.deepEqual(validate(plan), []);
+  const warned = lint(plan).filter((w) => /belongs to no option/.test(w));
+  assert.equal(warned.length, 1);
+  assert.match(warned[0], /"loose"/);
+  plan.views[1].option = "nope";
+  assert.ok(validate(plan).some((x) => /no option "nope"/.test(x)));
+});

@@ -319,6 +319,7 @@ function checkDesign(p) {
     if (!isObj(o) || !o.id || !o.title) out.push("every option needs an id and a title");
     else if (o.view != null && !views.has(o.view)) out.push(`option "${o.id}": no view "${o.view}"`);
   }
+  for (const v of list(p.views)) if (isObj(v) && v.option != null && !ids(p.options).includes(v.option)) out.push(`view "${v.id}": no option "${v.option}"`);
   for (const c of list(p.criteria)) if (!isObj(c) || !c.id || !c.label || (c.weight != null && !(Number.isInteger(c.weight) && c.weight >= 0 && c.weight <= 3))) out.push("every criterion needs an id, a label and a weight from 0 to 3");
   for (const c of list(p.criteria)) if (isObj(c) && c.must != null && typeof c.must !== "boolean") out.push(`criterion "${c.id}": must is true or false`);
   for (const s of list(p.sources)) if (!isObj(s) || !s.id || typeof s.url !== "string" || !/^https?:\/\//.test(s.url)) out.push("every source needs an id and an http(s) url");
@@ -362,6 +363,7 @@ export function lint(p) {
   for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" has no detail (what the step does)`);
   if (list(p.steps).length > 10) out.push(`${list(p.steps).length} steps, more than 10: merge some or split the plan`);
   if (p.mode === "design") {
+    for (const v of list(p.views)) if (isObj(v) && v.id && !list(p.options).some((o) => o?.view === v.id || o?.id === v.option)) out.push(`view "${v.id}" belongs to no option: only options can be chosen. A revised design is the option's "view" or a new option; a supporting picture takes "option": "<id>"`);
     for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) for (const [c, cell] of Object.entries(isObj(row) ? row : {})) if (cell?.rating !== "na" && cell?.basis !== "judgment" && !list(cell?.sources).length) out.push(`scores.${o}.${c} cites no source`);
     if (!list(p.options).some((o) => o?.recommended)) out.push("no option is marked recommended");
     for (const o of list(p.options)) for (const c of list(p.criteria)) if (o?.id && c?.id && !isObj(p.scores?.[o.id]?.[c.id])) out.push(`scores.${o.id}.${c.id} is missing (counts as 0; use "na" if it does not apply)`);

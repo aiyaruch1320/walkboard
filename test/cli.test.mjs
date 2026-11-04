@@ -42,6 +42,18 @@ test("poll prints the batch and acknowledges it; --timeout gives up quietly", as
   assert.equal(empty.stdout.trim(), "[]");
 });
 
+test("a review reaches poll with the picture's geometry, view included", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const geometry = {view: "m", map: {w: 900, h: 500}, zones: {Cloud: {x: 0, y: 0, w: 400, h: 300, zone: null, inside: null}}, boxes: {a: {x: 600, y: 40, w: 150, h: 80, zone: "Cloud", inside: "On-prem"}}, moved: ["a"], outOfZone: ["a"], overlaps: [], linesOverBoxes: []};
+  await fetch(`http://127.0.0.1:${s.port}/api/feedback?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({kind: "review", text: "check", view: "m", geometry})});
+  const r = await run("poll", dir, "--timeout", "5");
+  const got = JSON.parse(r.stdout.trim());
+  assert.equal(got.kind, "review");
+  assert.deepEqual(got.geometry, geometry);
+});
+
 test("a reply that starts with text containing a slash is not taken for the folder", async (t) => {
   const dir = planDir();
   const s = await startServer(dir);

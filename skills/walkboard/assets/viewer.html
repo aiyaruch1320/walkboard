@@ -1934,10 +1934,14 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
 // Undo, redo and back to the automatic layout, for a picture arranged by hand. The history lasts while the page is open.
 const layoutHist = {};
 let layoutKeys = null, layoutSavedAt = 0;
-function layoutTools(v, canMove, apply) {
+// review: what the picture looks like now, for "ask the agent to review"; only pictures that have it get the button.
+function layoutTools(v, canMove, apply, review = null) {
   const hist = (layoutHist[v.id] ||= {back: [], fwd: []});
   const row = el("div", "ltools");
   const undo = el("button", "ltool"), redo = el("button", "ltool flip"), reset = el("button", "talklink", "↺ " + t("autoLayout"));
+  const ask = el("button", "lreview", t("reviewPic"));
+  ask.title = t("reviewTip");
+  ask.hidden = !review;
   for (const b of [undo, redo]) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
     svg.setAttribute("viewBox", "0 0 24 24");
@@ -1950,7 +1954,22 @@ function layoutTools(v, canMove, apply) {
   redo.title = `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`;
   undo.setAttribute("aria-label", t("undo"));
   redo.setAttribute("aria-label", t("redo"));
-  row.append(undo, redo, reset);
+  row.append(undo, redo, reset, ask);
+  // Dragging never wakes the agent; this does, with where everything is on screen.
+  ask.onclick = async () => {
+    ask.disabled = true;
+    try {
+      await send({}, "review", t("reviewAsk"), {view: v.id, geometry: review()});
+      ask.textContent = t("reviewSent");
+      openSide({kind: "plan"});
+    } catch (e) {
+      ask.textContent = t("sendFail") + e.message;
+    }
+    setTimeout(() => {
+      ask.disabled = false;
+      ask.textContent = t("reviewPic");
+    }, 3000);
+  };
   const save = (positions) => {
     layoutSavedAt = Date.now();
     fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
@@ -1959,6 +1978,7 @@ function layoutTools(v, canMove, apply) {
     const any = !!Object.keys(v.layout || {}).length;
     row.hidden = !canMove() || !(any || hist.back.length || hist.fwd.length);
     reset.hidden = !any;
+    ask.hidden = !review || !any;
     undo.disabled = !hist.back.length;
     redo.disabled = !hist.fwd.length;
   };
@@ -2003,6 +2023,41 @@ addEventListener("keydown", (e) => {
   go();
 });
 
+// The map as it stands on screen, for the agent to review: rectangles in px from the map's top left corner.
+// zone = where the plan puts a box or zone, inside = the smallest zone its centre is in on screen (null: none).
+// Never saved: it depends on the window, and the plan keeps only the offsets (layout).
+function mapGeometry(v, map, routes, layout) {
+  const m = map.getBoundingClientRect();
+  const rect = (b) => ({x: Math.round(b.left - m.left), y: Math.round(b.top - m.top), w: Math.round(b.width), h: Math.round(b.height)});
+  const home = (e) => e.parentElement.closest(".zone")?.dataset.zone ?? null;
+  const zones = [...map.querySelectorAll(".zone")].map((e) => ({e, b: e.getBoundingClientRect()}));
+  const inside = (b, self = null) => {
+    const x = b.left + b.width / 2, y = b.top + b.height / 2;
+    const hit = zones.filter((z) => !(self && self.contains(z.e)) && x >= z.b.left && x <= z.b.right && y >= z.b.top && y <= z.b.bottom);
+    return hit.sort((p, q) => p.b.width * p.b.height - q.b.width * q.b.height)[0]?.e.dataset.zone ?? null;
+  };
+  const out = {view: v.id, map: {w: Math.round(m.width), h: Math.round(m.height)}, zones: {}, boxes: {}, moved: Object.keys(layout), outOfZone: [], overlaps: [], linesOverBoxes: []};
+  for (const {e, b} of zones) {
+    const z = (out.zones[e.dataset.zone] = {...rect(b), zone: home(e), inside: inside(b, e)});
+    if (z.zone !== z.inside) out.outOfZone.push("z:" + e.dataset.zone);
+  }
+  const boxes = [...map.querySelectorAll("[data-anchor]")].map((e) => ({id: e.dataset.anchor, e, b: e.getBoundingClientRect()}));
+  for (const {id, e, b} of boxes) {
+    const x = (out.boxes[id] = {...rect(b), zone: home(e), inside: inside(b)});
+    if (x.zone !== x.inside) out.outOfZone.push(id);
+  }
+  // More than a hair of overlap, so boxes that only touch do not count.
+  const over = (p, q, k = 2) => Math.min(p.right, q.right) - Math.max(p.left, q.left) > k && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > k;
+  boxes.forEach((p, i) => boxes.slice(i + 1).forEach((q) => p.id !== q.id && over(p.b, q.b) && out.overlaps.push([p.id, q.id])));
+  // Lines were kept relative to the map when drawn, so scrolling since then does not matter.
+  const rel = (b) => ({left: b.left - m.left, right: b.right - m.left, top: b.top - m.top, bottom: b.bottom - m.top});
+  for (const r of routes) {
+    const hit = boxes.filter((x) => x.id !== r.from && x.id !== r.to && lineHits(r.d, [rel(x.b)], r.dx, r.dy).hits).map((x) => x.id);
+    if (hit.length) out.linesOverBoxes.push({from: r.from, to: r.to, over: [...new Set(hit)]});
+  }
+  return out;
+}
+
 function renderMap(v) {
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
@@ -2015,6 +2070,7 @@ function renderMap(v) {
   scroll.append(map);
   viaChips(map, v.links);
   const svg = linkLayer(map);
+  let routes = [];
   // Still too wide for the column: smaller again, then zones wrap, instead of scrolling sideways.
   let fitted = null;
   const fit = () => {
@@ -2066,7 +2122,7 @@ function renderMap(v) {
   const tools = layoutTools(v, canMoveMap, () => {
     arrange();
     draw();
-  });
+  }, () => mapGeometry(v, map, routes, layout()));
   const movedTo = (e, q) => {
     const {[keyOf(e)]: _, ...rest} = layout();
     return Object.fromEntries(Object.entries({...rest, [keyOf(e)]: q}).map(([k, p]) => [k, {x: p.x, y: p.y, ...(k in homes ? {in: homes[k]} : {})}]));
@@ -2149,8 +2205,9 @@ function renderMap(v) {
       });
     }
     const base = svg.clear();
+    routes = [];
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
-    const rects = {}, lanes = {};
+    const rects = {}, lanes = {}, mr = map.getBoundingClientRect();
     for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
     const all = Object.values(rects);
     for (const l of v.links || []) {
@@ -2160,6 +2217,7 @@ function renderMap(v) {
       routeLine.dx = base.left;
       routeLine.dy = base.top;
       const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o);
+      routes.push({from: l.from, to: l.to, d: route.d, dx: base.left - mr.left, dy: base.top - mr.top});
       const [x2, y2] = route.tip, ang = route.ang;
       const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
       const head = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;

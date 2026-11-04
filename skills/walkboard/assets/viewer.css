@@ -308,6 +308,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .ltools{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 6px}
 .ltools[hidden],.ltools [hidden]{display:none}
 .ltools .talklink{margin:0 0 0 4px}
+.lreview{margin-left:6px;font-size:12.5px;padding:3px 12px;border-radius:999px}
 .ltool{width:30px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
 .ltool svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ltool.flip svg{transform:scaleX(-1)}

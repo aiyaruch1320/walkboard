@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Ask the agent to review a map.** After you arrange a map, **Ask the agent to review** sends where every box and zone sits on screen (no screenshot, nothing saved). The agent says what a box dragged into another zone would mean for the plan and changes the plan only if you agree. Dragging still never wakes it.
 - A map offset in `layout` remembers the zone it was dragged in (`"in"`). When the plan moves the box to another zone, the old offset is dropped instead of pushing the box away from its new place.
 
 ## 0.8.0

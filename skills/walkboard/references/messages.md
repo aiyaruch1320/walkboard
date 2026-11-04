@@ -25,6 +25,18 @@ Both carry `proposals`, the ids of the proposed nodes.
 - `plan`: write a build plan in a new folder from those proposals, carrying their context (root, related boxes and their `file`). `WB open` it, add `{"title": "…", "url": "…"}` to this plan's `links` (`WB set <dir> 'links=[…]'`), and reply with the URL. Open questions become the first step.
 - `apply`: turn the proposals into real steps and nodes, drop their `proposal` field, `WB check`, and reply with what changed.
 
+## review (map)
+
+The user arranged a map and asks whether it still matches the plan. `geometry` is the picture as it stands on their screen, in px from the map's top left corner (never saved: it depends on the window):
+
+- `boxes` and `zones`: `x`, `y`, `w`, `h`; `zone` = where the plan puts it, `inside` = the smallest zone its centre is in on screen (`null`: none). `outOfZone` lists where the two differ (zones as `z:<label>`); `moved` = what the user dragged.
+- `overlaps`: boxes lying on each other. `linesOverBoxes`: links drawn across other boxes.
+
+Reply with `WB reply <dir>` (whole plan) and change nothing yet. For each entry in `outOfZone`, say what it would mean for the plan ("A in Cloud now calls Oracle across the VPN, and needs a migrate step") and ask whether to change the plan that way. Mention an overlap or a crossing line only when it hides something. Nothing out of place: say it matches, in one line. Looks (balance, spacing) cannot be judged from numbers; leave them out.
+
+- Yes: move the node in that view's `zones`, update what depends on it (links, steps, notes), `WB check`, and reply with what changed. Leave `layout` alone: an offset remembers its zone, so the page drops it once the box sits in another one.
+- No: change nothing; the user moves it back with undo or **Lay out automatically**.
+
 ## Suggested commits (`settings.commit` = `"suggest"`)
 
 When a step is done, put the message on the step and wait:

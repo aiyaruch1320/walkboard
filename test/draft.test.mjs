@@ -6,7 +6,7 @@ const plan = () => ({
   title: "t",
   nodes: {api: {name: "API"}, db: {name: "Aurora"}, erp: {name: "ERP"}, nat: {name: "NAT"}},
   views: [{id: "m", kind: "map", zones: [{label: "AWS", zones: [{label: "App", nodes: ["api", "nat"]}, {label: "Data", nodes: ["db"]}]}, {label: "On-prem", nodes: ["erp"]}],
-    links: [{from: "api", to: "db"}, {from: "api", to: "nat", label: "egress"}]}, {id: "f", kind: "flow"}],
+    links: [{from: "api", to: "db"}, {from: "api", to: "nat", label: "egress"}]}, {id: "f", kind: "sequence"}],
 });
 const draft = (...ops) => ({version: 1, views: {m: {ops: ops.map((o, i) => ({id: "op" + (i + 1), ...o}))}}});
 
@@ -135,4 +135,39 @@ test("data models: moving a table between groups, stale and done changes, words 
   const d = describeDraft(model(), dm({op: "editColumn", table: "orders", column: "user_id", ref: ""}), "d");
   assert.equal(draftLine(d.changes[0]), "~ column orders: user_id foreign key taken out");
   assert.match(validateDraft(dm({op: "addColumn", table: "users", column: "a.b"})).join(), /bad column/);
+});
+
+test("flows: boxes added and moved between lanes, lanes added, renamed and moved; a plan of steps is a flow", () => {
+  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}, c: {name: "C"}}, steps: [{id: "s1", title: "One", nodes: ["a", "b"]}, {id: "s2", title: "Two", nodes: ["c"]}]};
+  const d = {version: 1, views: {flow: {ops: [
+    {id: "o1", op: "addBox", node: "new:x", name: "X", lane: 1, at: 0},
+    {id: "o2", op: "moveBox", node: "b", lane: 1},
+    {id: "o3", op: "addLane", title: "Three"},
+    {id: "o4", op: "editLane", lane: 0, title: "First"},
+    {id: "o5", op: "moveLane", lane: 2, to: 0},
+    {id: "o6", op: "remove", node: "a"}]}}};
+  assert.deepEqual(validateDraft(d), []);
+  const r = applyDraft(p, d, "flow");
+  assert.deepEqual(r.view.lanes.map((l) => [l.title, l.nodes]), [["Three", []], ["First", ["a"]], ["Two", ["new:x", "c", "b"]]]);
+  assert.deepEqual(r.marks.lanes, {0: {mark: "add"}, 1: {mark: "change", was: "One"}});
+  assert.deepEqual(r.marks.nodes.b, {mark: "move", from: "One"});
+  assert.equal(r.marks.nodes.a.mark, "remove");
+  assert.equal(r.pending.length, 6);
+  assert.equal(draftLine(describeDraft(p, d, "flow").changes[1]), "↦ box B (b) → lane 2");
+});
+
+test("state, decision and impact pictures: boxes and lines; k8s: lines like a map's, new boxes on the right", () => {
+  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}, w: {name: "W"}, db: {name: "DB"}}, views: [
+    {id: "st", kind: "state", states: ["a", "b"], transitions: [{from: "a", to: "b", label: "go"}]},
+    {id: "im", kind: "impact", edges: [{from: "a", to: "b"}]},
+    {id: "k", kind: "k8s", workloads: [{node: "w"}], targets: ["db"], links: [{from: "w", to: "db", label: ":5432"}]}]};
+  const st = applyDraft(p, {version: 1, views: {st: {ops: [{id: "o1", op: "addBox", node: "new:c", name: "C"}, {id: "o2", op: "addEdge", from: "b", to: "new:c", label: "done"}, {id: "o3", op: "editEdge", from: "a", to: "b", label: "start"}]}}}, "st");
+  assert.deepEqual(st.view.states, ["a", "b", "new:c"]);
+  assert.deepEqual(st.marks.links, {"b>new:c": {mark: "add"}, "a>b": {mark: "change", was: "go"}});
+  const im = applyDraft(p, {version: 1, views: {im: {ops: [{id: "o1", op: "removeEdge", from: "a", to: "b"}]}}}, "im");
+  assert.equal(im.marks.links["a>b"].mark, "remove");
+  const k = applyDraft(p, {version: 1, views: {k: {ops: [{id: "o1", op: "addBox", node: "new:r", name: "Redis"}, {id: "o2", op: "addLink", from: "w", to: "new:r", label: ":6379", state: "todo"}, {id: "o3", op: "editLink", from: "w", to: "db", state: "blocked"}]}}}, "k");
+  assert.deepEqual(k.view.targets, ["db", "new:r"]);
+  assert.equal(k.marks.links["w>new:r"].mark, "add");
+  assert.deepEqual(k.marks.links["w>db"], {mark: "change", was: {label: ":5432", state: "ok"}});
 });

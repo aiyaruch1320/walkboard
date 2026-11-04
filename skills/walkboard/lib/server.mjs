@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
 import {pageHtml, snapshot} from "./export.mjs";
-import {validateDraft, emptyDraft, draftable} from "./draft.mjs";
+import {validateDraft, emptyDraft, draftable, viewList} from "./draft.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".walkboard");
@@ -344,7 +344,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         if (err || typeof v?.view !== "string" || !Array.isArray(v.ops)) return res.writeHead(400).end('need {"view": id, "ops": [...], "rev": n}');
         const {plan, error} = readPlan(p.plan);
         if (error) return res.writeHead(409, {"content-type": "text/plain; charset=utf-8"}).end(error);
-        const view = Array.isArray(plan.views) ? plan.views.find((x) => x?.id === v.view) : null;
+        // A plan without views has one picture made of its steps ("flow"): that takes a draft too.
+        const view = viewList(plan).find((x) => x?.id === v.view);
         if (!draftable(view)) return res.writeHead(400).end(`no picture "${v.view}" that takes a draft`);
         const d = readDraft(dir);
         // rev: the version the page started from. Another page (or `walkboard draft clear`) saved since: send back what

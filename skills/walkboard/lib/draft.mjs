@@ -11,7 +11,18 @@ const LINK_STATES = ["ok", "todo", "blocked", "standby"];
 export const DRAFT_OPS = {
   map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
   datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove"],
+  flow: ["addBox", "moveBox", "addLane", "editLane", "moveLane", "editNode", "remove"],
+  state: ["addBox", "addEdge", "editEdge", "removeEdge", "editNode", "remove"],
+  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "editNode", "remove"],
+  impact: ["addBox", "addEdge", "removeEdge", "editNode", "remove"],
+  k8s: ["addBox", "addLink", "editLink", "removeLink", "editNode", "remove"],
 };
+// A plan without views is drawn as one flow of its steps (as in lib/schema.mjs, kept here so this file imports nothing).
+export function viewList(p) {
+  if (Array.isArray(p?.views) && p.views.length) return p.views;
+  const lanes = (Array.isArray(p?.steps) ? p.steps : []).filter((s) => Array.isArray(s?.nodes) && s.nodes.length).map((s) => ({title: s.title, nodes: s.nodes}));
+  return lanes.length ? [{id: "flow", kind: "flow", title: p?.lang === "th" ? "ภาพรวม" : "Overview", lanes}] : [];
+}
 export const draftable = (view) => !!DRAFT_OPS[view?.kind];
 export const emptyDraft = () => ({version: 1, views: {}});
 export const isNewId = (id) => typeof id === "string" && /^new:[A-Za-z0-9_-]{1,32}$/.test(id);
@@ -52,6 +63,14 @@ const SHAPES = {
   addGroup: {group: label, tables: (x) => Array.isArray(x) && x.length > 0 && x.length <= 50 && x.every(id)},
   editGroup: {group: label, label},
   removeGroup: {group: label},
+  addBox: {node: isNewId, name: text, lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), at},
+  moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, at},
+  addLane: {title: text, at},
+  editLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, title: text},
+  moveLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, to: (x) => Number.isInteger(x) && x >= 0 && x < 200},
+  addEdge: {from: id, to: id, label: (x) => optText(x, 60)},
+  editEdge: {from: id, to: id, label: (x) => typeof x === "string" && x.length <= 60 && plain(x)},
+  removeEdge: {from: id, to: id},
 };
 const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref"]);
 
@@ -122,15 +141,17 @@ const key = (from, to) => `${from}>${to}`;
 export function applyDraft(plan, draft, viewId) {
   const marks = {nodes: {}, zones: {}, links: {}};
   const result = {plan, view: null, marks, done: [], stale: [], pending: []};
-  const real = Array.isArray(plan?.views) ? plan.views.find((x) => x?.id === viewId) : null;
+  const views = viewList(plan);
+  const real = views.find((x) => x?.id === viewId) || null;
   result.view = real;
   const ops = Array.isArray(draft?.views?.[viewId]?.ops) ? draft.views[viewId].ops : [];
   if (!real || !ops.length || !draftable(real)) return result;
   const v = structuredClone(real);
   const nodes = {...(isObj(plan.nodes) ? plan.nodes : {})};
-  if (v.kind === "datamodel") {
-    applyTables(v, nodes, ops, result);
-    result.plan = {...plan, nodes, views: plan.views.map((x) => (x === real ? v : x))};
+  const others = {datamodel: applyTables, flow: applyFlow, state: applyGraph, decision: applyGraph, impact: applyGraph, k8s: applyK8s};
+  if (others[v.kind]) {
+    others[v.kind](v, nodes, ops, result);
+    result.plan = {...plan, nodes, views: views.map((x) => (x === real ? v : x))};
     result.view = v;
     return result;
   }
@@ -314,7 +335,7 @@ export function applyDraft(plan, draft, viewId) {
   }
   // A line to a box the draft takes out is drawn as going too.
   for (const l of v.links) if (isObj(l) && (marks.nodes[l.from]?.mark === "remove" || marks.nodes[l.to]?.mark === "remove")) marks.links[key(l.from, l.to)] ||= {mark: "remove"};
-  result.plan = {...plan, nodes, views: plan.views.map((x) => (x === real ? v : x))};
+  result.plan = {...plan, nodes, views: views.map((x) => (x === real ? v : x))};
   result.view = v;
   return result;
 }
@@ -500,6 +521,226 @@ function applyTables(v, nodes, ops, result) {
   }
 }
 
+// Shared by the pictures below: a change the plan already has is done, one that no longer fits is stale.
+function tally(result) {
+  return {
+    stale: (op, why) => result.stale.push({id: op.id, why}),
+    done: (op) => result.done.push(op.id),
+    track(op, fn) {
+      const before = result.done.length + result.stale.length;
+      fn();
+      if (result.done.length + result.stale.length === before) result.pending.push(op.id);
+    },
+  };
+}
+const editNodeIn = (has, nodes, op, marks, {stale, done}) => {
+  if (!has(op.node)) return stale(op, `no box ${op.node}`);
+  const cur = nodes[op.node] || {};
+  const changed = ["name", "what", "icon"].filter((k) => op[k] != null && op[k] !== (cur[k] ?? ""));
+  if (!changed.length) return done(op);
+  nodes[op.node] = {...cur, ...Object.fromEntries(changed.map((k) => [k, op[k]]))};
+  marks.nodes[op.node] ||= {mark: "change", was: Object.fromEntries(changed.map((k) => [k, cur[k] ?? ""]))};
+};
+
+// A flow: lanes of boxes in order. Lanes are counted from 0 as they are when the change is made.
+// For a plan drawn from its steps, a lane is a step.
+function applyFlow(v, nodes, ops, result) {
+  const marks = result.marks, t = tally(result);
+  marks.lanes = {};
+  v.lanes = (Array.isArray(v.lanes) ? v.lanes : []).filter(isObj).map((l) => ({...l, nodes: Array.isArray(l.nodes) ? [...l.nodes] : []}));
+  const laneOf = (n) => v.lanes.findIndex((l) => l.nodes.includes(n));
+  const has = (n) => laneOf(n) >= 0;
+  for (const op of ops) {
+    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS.flow.includes(op.op)) continue;
+    t.track(op, () => {
+      switch (op.op) {
+        case "addBox": {
+          const lane = v.lanes[op.lane ?? 0];
+          if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
+          if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
+          nodes[op.node] = {name: op.name.trim()};
+          insert(lane.nodes, op.node, op.at);
+          marks.nodes[op.node] = {mark: "add"};
+          return;
+        }
+        case "moveBox": {
+          const from = laneOf(op.node), lane = v.lanes[op.lane];
+          if (from < 0) return t.stale(op, `no box ${op.node}`);
+          if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
+          const at0 = v.lanes[from].nodes.indexOf(op.node);
+          if (from === op.lane && (op.at == null || op.at === at0)) return t.done(op);
+          v.lanes[from].nodes.splice(at0, 1);
+          insert(lane.nodes, op.node, op.at);
+          if (marks.nodes[op.node]?.mark !== "add") marks.nodes[op.node] ||= {mark: "move", from: v.lanes[from].title ?? String(from + 1)};
+          return;
+        }
+        case "addLane":
+          insert(v.lanes, {title: op.title, nodes: [], draft: true}, op.at);
+          return;
+        case "editLane": {
+          const lane = v.lanes[op.lane];
+          if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
+          if (lane.title === op.title) return t.done(op);
+          if (!lane.draft) lane.was ??= lane.title ?? "";
+          lane.title = op.title;
+          return;
+        }
+        case "moveLane": {
+          if (!v.lanes[op.lane] || op.to >= v.lanes.length) return t.stale(op, `no lane ${op.lane + 1}`);
+          if (op.lane === op.to) return t.done(op);
+          const [lane] = v.lanes.splice(op.lane, 1);
+          v.lanes.splice(op.to, 0, lane);
+          lane.moved = true;
+          return;
+        }
+        case "editNode":
+          return editNodeIn(has, nodes, op, marks, t);
+        case "remove": {
+          const i = laneOf(op.node);
+          if (i < 0) return t.done(op);
+          if (marks.nodes[op.node]?.mark === "add") {
+            v.lanes[i].nodes.splice(v.lanes[i].nodes.indexOf(op.node), 1);
+            delete nodes[op.node];
+            delete marks.nodes[op.node];
+          } else marks.nodes[op.node] = {...marks.nodes[op.node], mark: "remove"};
+        }
+      }
+    });
+  }
+  // Lanes in the order drawn: added, renamed or moved.
+  v.lanes.forEach((l, i) => {
+    if (l.draft) marks.lanes[i] = {mark: "add"};
+    else if (l.was != null) marks.lanes[i] = {mark: "change", was: l.was};
+    else if (l.moved) marks.lanes[i] = {mark: "move"};
+    delete l.draft;
+    delete l.was;
+    delete l.moved;
+  });
+}
+
+// State, decision and impact pictures: boxes and the lines between them, laid out by the page.
+function applyGraph(v, nodes, ops, result) {
+  const marks = result.marks, t = tally(result);
+  const listKey = v.kind === "state" ? "states" : "nodes", edgeKey = v.kind === "state" ? "transitions" : "edges";
+  v[listKey] = Array.isArray(v[listKey]) ? [...v[listKey]] : [];
+  v[edgeKey] = (Array.isArray(v[edgeKey]) ? v[edgeKey] : []).filter(isObj).map((e) => ({...e}));
+  const has = (n) => v[listKey].includes(n) || v[edgeKey].some((e) => e.from === n || e.to === n);
+  const edge = (f, to) => v[edgeKey].find((e) => e.from === f && e.to === to);
+  const key = (f, to) => `${f}>${to}`;
+  for (const op of ops) {
+    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS[v.kind].includes(op.op)) continue;
+    t.track(op, () => {
+      switch (op.op) {
+        case "addBox":
+          if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
+          nodes[op.node] = {name: op.name.trim()};
+          v[listKey].push(op.node);
+          marks.nodes[op.node] = {mark: "add"};
+          return;
+        case "addEdge":
+          if (!has(op.from) || !has(op.to)) return t.stale(op, "a box on this line is not in the picture");
+          if (edge(op.from, op.to)) return t.done(op);
+          v[edgeKey].push({from: op.from, to: op.to, ...(op.label ? {label: op.label} : {})});
+          marks.links[key(op.from, op.to)] = {mark: "add"};
+          return;
+        case "editEdge": {
+          const e = edge(op.from, op.to);
+          if (!e) return t.stale(op, "no such line");
+          if ((e.label ?? "") === op.label) return t.done(op);
+          const was = e.label ?? "";
+          if (op.label) e.label = op.label;
+          else delete e.label;
+          marks.links[key(op.from, op.to)] ||= {mark: "change", was};
+          return;
+        }
+        case "removeEdge": {
+          const e = edge(op.from, op.to);
+          if (!e) return t.done(op);
+          if (marks.links[key(op.from, op.to)]?.mark === "add") {
+            v[edgeKey].splice(v[edgeKey].indexOf(e), 1);
+            delete marks.links[key(op.from, op.to)];
+          } else marks.links[key(op.from, op.to)] = {mark: "remove"};
+          return;
+        }
+        case "editNode":
+          return editNodeIn(has, nodes, op, marks, t);
+        case "remove":
+          if (!has(op.node)) return t.done(op);
+          if (marks.nodes[op.node]?.mark === "add") {
+            v[listKey] = v[listKey].filter((x) => x !== op.node);
+            v[edgeKey] = v[edgeKey].filter((e) => e.from !== op.node && e.to !== op.node);
+            delete nodes[op.node];
+            delete marks.nodes[op.node];
+          } else marks.nodes[op.node] = {...marks.nodes[op.node], mark: "remove"};
+      }
+    });
+  }
+  for (const e of v[edgeKey]) if (marks.nodes[e.from]?.mark === "remove" || marks.nodes[e.to]?.mark === "remove") marks.links[key(e.from, e.to)] ||= {mark: "remove"};
+}
+
+// A Kubernetes picture: its lines are like a map's; a new box joins the targets on the right.
+function applyK8s(v, nodes, ops, result) {
+  const marks = result.marks, t = tally(result);
+  v.targets = Array.isArray(v.targets) ? [...v.targets] : [];
+  v.links = (Array.isArray(v.links) ? v.links : []).filter(isObj).map((l) => ({...l}));
+  const ids = () => new Set([...(v.outside || []), ...(v.configs || []), ...v.targets, ...(v.policy ? [v.policy] : []), ...(v.workloads || []).map((w) => w?.node)]);
+  const has = (n) => ids().has(n);
+  const link = (f, to) => v.links.find((l) => l.from === f && l.to === to);
+  const key = (f, to) => `${f}>${to}`;
+  for (const op of ops) {
+    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS.k8s.includes(op.op)) continue;
+    t.track(op, () => {
+      switch (op.op) {
+        case "addBox":
+          if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
+          nodes[op.node] = {name: op.name.trim()};
+          v.targets.push(op.node);
+          marks.nodes[op.node] = {mark: "add"};
+          return;
+        case "addLink":
+          if (!has(op.from) || !has(op.to)) return t.stale(op, "a box on this line is not in the picture");
+          if (link(op.from, op.to)) return t.done(op);
+          v.links.push({from: op.from, to: op.to, ...(op.label ? {label: op.label} : {}), ...(op.state ? {state: op.state} : {})});
+          marks.links[key(op.from, op.to)] = {mark: "add"};
+          return;
+        case "editLink": {
+          const l = link(op.from, op.to);
+          if (!l) return t.stale(op, "no such line");
+          const was = {label: l.label ?? "", state: l.state ?? "ok"};
+          const changed = ["label", "state"].filter((k) => op[k] != null && (op[k] || (k === "state" ? "ok" : "")) !== was[k]);
+          if (!changed.length) return t.done(op);
+          for (const k of changed) {
+            if (op[k] === "" || (k === "state" && op[k] === "ok")) delete l[k];
+            else l[k] = op[k];
+          }
+          marks.links[key(op.from, op.to)] ||= {mark: "change", was};
+          return;
+        }
+        case "removeLink": {
+          const l = link(op.from, op.to);
+          if (!l) return t.done(op);
+          if (marks.links[key(op.from, op.to)]?.mark === "add") {
+            v.links.splice(v.links.indexOf(l), 1);
+            delete marks.links[key(op.from, op.to)];
+          } else marks.links[key(op.from, op.to)] = {mark: "remove"};
+          return;
+        }
+        case "editNode":
+          return editNodeIn(has, nodes, op, marks, t);
+        case "remove":
+          if (!has(op.node)) return t.done(op);
+          if (marks.nodes[op.node]?.mark === "add") {
+            v.targets = v.targets.filter((x) => x !== op.node);
+            v.links = v.links.filter((l) => l.from !== op.node && l.to !== op.node);
+            delete nodes[op.node];
+            delete marks.nodes[op.node];
+          } else marks.nodes[op.node] = {...marks.nodes[op.node], mark: "remove"};
+      }
+    });
+  }
+  for (const l of v.links) if (marks.nodes[l.from]?.mark === "remove" || marks.nodes[l.to]?.mark === "remove") marks.links[key(l.from, l.to)] ||= {mark: "remove"};
+}
+
 // The draft in words the agent can act on without opening plan.json: names next to ids, zones by label.
 export function describeDraft(plan, draft, viewId) {
   const {stale, pending, plan: drawn} = applyDraft(plan, draft, viewId);
@@ -514,11 +755,11 @@ export function describeDraft(plan, draft, viewId) {
   // Box ids get their names; zones are already words, and a new box's own id stays bare (its name is beside it).
   const words = (o) => {
     const out = {...o};
-    for (const k of ["node", "from", "to", "table"]) if (out[k] != null && !((o.op === "move" || o.op === "moveTable") && k !== "node") && o.op !== "moveZone" && o.op !== "addNode" && o.op !== "addTable") out[k] = named(out[k]);
+    for (const k of ["node", "from", "to", "table"]) if (out[k] != null && !((o.op === "move" || o.op === "moveTable") && k !== "node") && !["moveZone", "addNode", "addTable", "addBox"].includes(o.op)) out[k] = named(out[k]);
     return out;
   };
   // Taking out a box takes its lines too: say which, so the agent need not look them up.
-  const real = plan?.views?.find((x) => x?.id === viewId);
+  const real = viewList(plan).find((x) => x?.id === viewId);
   const linesOf = (n) => (Array.isArray(real?.links) ? real.links : []).filter((l) => l?.from === n || l?.to === n).map((l) => `${named(l.from)} → ${named(l.to)}${l.label ? ` ${l.label}` : ""}`);
   const changes = ops.filter((o) => pending.includes(o.id)).map(words).map((c, i, all) => {
     const o = ops.find((x) => x.id === c.id);
@@ -551,6 +792,14 @@ export function draftLine(c) {
     case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}`;
     case "editGroup": return `~ group "${c.group}" → "${c.label}"`;
     case "removeGroup": return `− group "${c.group}"`;
+    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in lane ${c.lane + 1}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}`;
+    case "moveBox": return `↦ box ${c.node} → lane ${c.lane + 1}${c.at != null ? `, place ${c.at + 1}` : ""}`;
+    case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at ${c.at + 1}` : ""}`;
+    case "editLane": return `~ lane ${c.lane + 1} → "${c.title}"`;
+    case "moveLane": return `↦ lane ${c.lane + 1} → place ${c.to + 1}`;
+    case "addEdge": return `+ line ${c.from} → ${c.to}${c.label ? ` "${c.label}"` : ""}`;
+    case "editEdge": return `~ line ${c.from} → ${c.to}: label ${JSON.stringify(c.label)}`;
+    case "removeEdge": return `− line ${c.from} → ${c.to}`;
     default: return JSON.stringify(c);
   }
 }

@@ -11,7 +11,7 @@ Long text loses people. You write `plan.json`; Walkboard draws it as a local pag
 
 ## 0. Language, mode, questions, settings
 
-Use the user's language for everything (questions, plan, replies, suggested commit messages) and set `"lang"` (`"en"`, `"th"`, …). Code, ids and paths stay as they are.
+Use the user's language for everything (questions, plan, replies, suggested commit messages) and set `"lang"` (`"en"`, `"th"`, …). Code, ids and paths stay as they are. Readers build software: keep technical terms as the team says them (config, deploy, Secret, egress, batch) instead of translating them or inventing a word; say what a thing is or does, not a vague label. Hard terms are explained on hover (common ones ship with Walkboard, `glossary` for the project's).
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
@@ -29,7 +29,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
 - **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong (`WB icons` lists them).
 - **views**: leave out for a plain flow. When a picture explains better, pick one or two from the "Which picture" table in [references/views.md](references/views.md).
 - **glossary**: only project terms. No secrets, tokens or real customer data.
-- When something travels between boxes, add `moves` to the step ([references/schema.md](references/schema.md)): it shows cause and effect better than a sentence.
+- Only where the flow itself is the hard part, add `moves` to that step ([references/schema.md](references/schema.md)). Most steps need none.
 - `WB check <dir>` until ok.
 
 ## 2E. Write the explanation (explain)
@@ -37,7 +37,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
 1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
 2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there.
 3. Every code box has `file` = `path:line` or `path:from-to` and `anchor` = a short piece of that code (`"function send("`), so `check` notices when the code moves; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …".
-4. A request or data passing through boxes: add `moves` to the stage ([references/schema.md](references/schema.md)).
+4. Only where the flow itself is hard to follow, add `moves` to that stage ([references/schema.md](references/schema.md)). Most stages need none.
 5. `WB check <dir>` until ok (it fails when a file or line does not exist).
 
 ## 3. Show and listen

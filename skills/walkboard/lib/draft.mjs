@@ -5,6 +5,8 @@
 
 export const DRAFT_MAX_OPS = 300;
 export const DRAFT_MAX_TEXT = 80;
+// A box's description ("what"): a note for whoever reads the plan, so longer than a name.
+export const DRAFT_MAX_NOTE = 300;
 const LINK_STATES = ["ok", "todo", "blocked", "standby"];
 
 // What can be sketched on each kind of picture.
@@ -44,12 +46,12 @@ const at = (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 10000);
 const colName = (x) => text(x, 60) && !x.includes(".");
 const colRef = (x) => typeof x === "string" && /^[^.\s]+\.[^.\s]+$/.test(x) && x.length <= 120 && !x.split(".").some((k) => BAD_KEYS.has(k));
 const SHAPES = {
-  addNode: {node: isNewId, name: text, what: optText, icon: (x) => optText(x, 60), zone: label, at},
+  addNode: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), zone: label, at},
   addZone: {zone: label, parent: (x) => x === "" || label(x), at},
   addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x)},
   editLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x)},
   removeLink: {from: id, to: id},
-  editNode: {node: id, name: (x) => x == null || text(x), what: optText, icon: (x) => optText(x, 60)},
+  editNode: {node: id, name: (x) => x == null || text(x), what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60)},
   editZone: {zone: label, label},
   remove: {node: id},
   removeZone: {zone: label},
@@ -166,12 +168,29 @@ export function applyDraft(plan, draft, viewId) {
   const stale = (op, why) => result.stale.push({id: op.id, why});
   const done = (op) => result.done.push(op.id);
   const nameOf = (n) => String(nodes[n]?.name ?? "").trim().toLowerCase();
-  for (const op of ops) {
-    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS[v.kind].includes(op.op)) continue;
+  // A change can need a zone or box that a later change makes: a new box dropped into a zone sketched after it,
+  // a line drawn to a box that waits for its zone. It waits for that change instead of not fitting.
+  const finished = new Set(), waiting = {};
+  let last = false;
+  const makes = (o, k) => (k.startsWith("z:") ? o.op === "addZone" && o.zone === k.slice(2) : o.op === "addNode" && o.node === k.slice(2));
+  const need = (op, keys) => {
+    if (last) return false;
+    const k = keys.find((x) => ops.some((o) => o !== op && isObj(o) && !finished.has(o.id) && makes(o, x)));
+    if (!k) return false;
+    (waiting[k] ||= []).push(op);
+    return true;
+  };
+  const wake = (k) => {
+    const q = waiting[k];
+    delete waiting[k];
+    q?.forEach(run);
+  };
+  const run = (op) => {
     const before = result.done.length + result.stale.length;
     switch (op.op) {
       case "addNode": {
         const w = zone(op.zone);
+        if (!w && need(op, ["z:" + op.zone])) return;
         if (!w) stale(op, `no zone "${op.zone}"`);
         else if (Object.hasOwn(nodes, op.node)) stale(op, `id ${op.node} is taken`);
         else {
@@ -180,27 +199,33 @@ export function applyDraft(plan, draft, viewId) {
           if (same) {
             alias.set(op.node, same);
             done(op);
-            break;
+          } else {
+            nodes[op.node] = {name: op.name.trim(), ...(op.what ? {what: op.what} : {}), ...(op.icon ? {icon: op.icon} : {})};
+            insert((w.z.nodes ||= []), op.node, op.at);
+            marks.nodes[op.node] = {mark: "add"};
           }
-          nodes[op.node] = {name: op.name.trim(), ...(op.what ? {what: op.what} : {}), ...(op.icon ? {icon: op.icon} : {})};
-          insert((w.z.nodes ||= []), op.node, op.at);
-          marks.nodes[op.node] = {mark: "add"};
+          finished.add(op.id);
+          wake("n:" + op.node);
         }
         break;
       }
       case "addZone": {
         const p = op.parent ? zone(op.parent) : null;
         const there = zone(op.zone);
+        if (op.parent && !p && need(op, ["z:" + op.parent])) return;
         if (op.parent && !p) stale(op, `no zone "${op.parent}"`);
         else if (there) (there.parent?.label ?? "") === (op.parent || "") && !marks.zones[op.zone] ? done(op) : stale(op, `a zone is already called "${op.zone}"`);
         else {
           insert(p ? (p.z.zones ||= []) : v.zones, {label: op.zone, nodes: []}, op.at);
           marks.zones[op.zone] = {mark: "add"};
+          finished.add(op.id);
+          wake("z:" + op.zone);
         }
         break;
       }
       case "addLink": {
         const from = r(op.from), to = r(op.to);
+        if (need(op, [from, to].filter((n) => !home(n)).map((n) => "n:" + n))) return;
         if (!home(from) || !home(to)) stale(op, "a box on this line is not in the picture");
         else if (link(from, to)) done(op);
         else {
@@ -211,6 +236,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "editLink": {
         const from = r(op.from), to = r(op.to), l = link(from, to);
+        if (!l && need(op, [from, to].filter((n) => !home(n)).map((n) => "n:" + n))) return;
         if (!l) {
           stale(op, "no such line");
           break;
@@ -239,6 +265,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "editNode": {
         const n = r(op.node);
+        if (!home(n) && need(op, ["n:" + n])) return;
         if (!Object.hasOwn(nodes, n) || !home(n)) {
           stale(op, `no box ${op.node}`);
           break;
@@ -258,6 +285,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "editZone": {
         const w = zone(op.zone);
+        if (!w && need(op, ["z:" + op.zone])) return;
         if (!w) stale(op, `no zone "${op.zone}"`);
         else if (op.label === op.zone) done(op);
         else if (zone(op.label)) stale(op, `a zone is already called "${op.label}"`);
@@ -272,6 +300,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "remove": {
         const n = r(op.node), w = home(n);
+        if (!w && need(op, ["n:" + n])) return;
         if (!w) done(op);
         else if (marks.nodes[n]?.mark === "add") {
           // Taking out a box this draft added takes it and its lines out of the picture.
@@ -288,6 +317,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "removeZone": {
         const w = zone(op.zone);
+        if (!w && need(op, ["z:" + op.zone])) return;
         if (!w) done(op);
         else if (marks.zones[op.zone]?.mark === "add" && !(w.z.nodes || []).length && !(w.z.zones || []).length) {
           w.list.splice(w.list.indexOf(w.z), 1);
@@ -297,6 +327,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "move": {
         const n = r(op.node), w = home(n), to = zone(op.to);
+        if (need(op, [...(w ? [] : ["n:" + n]), ...(to ? [] : ["z:" + op.to])])) return;
         if (!w) stale(op, `no box ${op.node}`);
         else if (!to) stale(op, `no zone "${op.to}"`);
         else if (w.z.label === op.to) done(op);
@@ -315,6 +346,7 @@ export function applyDraft(plan, draft, viewId) {
       }
       case "moveZone": {
         const w = zone(op.zone), to = op.to ? zone(op.to) : null;
+        if (need(op, [...(w ? [] : ["z:" + op.zone]), ...(op.to && !to ? ["z:" + op.to] : [])])) return;
         if (!w) stale(op, `no zone "${op.zone}"`);
         else if (op.to && !to) stale(op, `no zone "${op.to}"`);
         else if (to && (to.z === w.z || walk({zones: [w.z]}).some((x) => x.z === to.z))) stale(op, "a zone cannot go inside itself");
@@ -332,8 +364,13 @@ export function applyDraft(plan, draft, viewId) {
         break;
       }
     }
+    finished.add(op.id);
     if (result.done.length + result.stale.length === before) result.pending.push(op.id);
-  }
+  };
+  for (const op of ops) if (isObj(op) && Object.hasOwn(SHAPES, op.op) && DRAFT_OPS[v.kind].includes(op.op)) run(op);
+  // Whatever still waits never got what it needed (two changes waiting on each other): it does not fit.
+  last = true;
+  for (const q of Object.values(waiting)) q.forEach(run);
   // A line to a box the draft takes out is drawn as going too.
   for (const l of v.links) if (isObj(l) && (marks.nodes[l.from]?.mark === "remove" || marks.nodes[l.to]?.mark === "remove")) marks.links[key(l.from, l.to)] ||= {mark: "remove"};
   result.plan = {...plan, nodes, views: views.map((x) => (x === real ? v : x))};
@@ -806,7 +843,7 @@ const laneWords = (c) => `lane ${(c.lane ?? 0) + 1}${c.laneTitle ? ` "${c.laneTi
 export function draftLine(c) {
   const z = (x) => (x ? `"${x}"` : "the top");
   switch (c.op) {
-    case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}`;
+    case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addZone": return `+ zone ${z(c.zone)} in ${z(c.parent)}`;
     case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}`;
     case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}` : ""}${c.state ? ` [${c.state}]` : ""}`;

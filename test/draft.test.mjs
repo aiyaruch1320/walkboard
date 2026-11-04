@@ -36,6 +36,22 @@ test("added boxes, zones and lines are drawn in, marked, and the plan itself is 
   assert.deepEqual(r.pending, ["op1", "op2", "op3"]);
 });
 
+test("a new box dropped into a zone sketched after it waits for the zone, and so does a line to it", () => {
+  const r = applyDraft(plan(), draft(
+    {op: "addZone", zone: "Hub", parent: ""},
+    {op: "addNode", node: "new:1", name: "Gateway", zone: "Edge", at: 0},
+    {op: "addLink", from: "erp", to: "new:1"},
+    {op: "addZone", zone: "Edge", parent: "Hub", at: 0},
+    {op: "addNode", node: "new:2", name: "Loop", zone: "Nowhere"},
+  ), "m");
+  assert.deepEqual(r.view.zones.find((z) => z.label === "Hub").zones[0], {label: "Edge", nodes: ["new:1"]});
+  assert.deepEqual(r.marks.links["erp>new:1"], {mark: "add"});
+  assert.deepEqual(r.stale, [{id: "op5", why: 'no zone "Nowhere"'}]);
+  assert.deepEqual(r.pending.sort(), ["op1", "op2", "op3", "op4"]);
+  assert.deepEqual(validateDraft(draft({op: "addNode", node: "new:1", name: "Gateway", zone: "App", what: "x".repeat(300)})), []);
+  assert.match(validateDraft(draft({op: "addNode", node: "new:1", name: "Gateway", zone: "App", what: "x".repeat(301)})).join(), /bad what/);
+});
+
 test("moves leave where they came from; edits keep what was there; removals stay drawn", () => {
   const r = applyDraft(plan(), draft({op: "move", node: "erp", to: "App", from: "On-prem"}, {op: "editNode", node: "db", name: "Aurora v2"}, {op: "remove", node: "nat"}, {op: "editLink", from: "api", to: "nat", state: "blocked"}), "m");
   assert.deepEqual(r.marks.nodes.erp, {mark: "move", from: "On-prem", fromAt: 0});

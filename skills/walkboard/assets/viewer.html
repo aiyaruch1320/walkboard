@@ -4744,7 +4744,8 @@ addEventListener("beforeprint", () => {
     if (cmp) parts.push(cmp.cloneNode(true));
   }
   const pics = [];
-  if (plan.views.length) parts.push(el("h2", "ph newpage", t("printPictures")));
+  const picsHead = plan.views.length ? el("h2", "ph newpage", t("printPictures")) : null;
+  if (picsHead) parts.push(picsHead);
   for (const v of plan.views) {
     const box = el("section", "pview");
     // In design mode a picture belongs to an option: its name, whether it is recommended, and its summary.
@@ -4815,6 +4816,11 @@ addEventListener("beforeprint", () => {
     back.forEach(([box]) => box.classList.remove("landscape"));
     if (back.length) linkDrawer?.();
   }
+  // A first picture on a landscape page takes the section's title with it, instead of leaving it alone on a blank page.
+  if (picsHead && pics[0]?.classList.contains("landscape")) {
+    picsHead.classList.remove("newpage");
+    pics[0].prepend(picsHead);
+  }
   for (const box of pics) {
     const diff = box.querySelector(".diffview");
     box.classList.toggle("ppage", !!diff);
@@ -4822,7 +4828,7 @@ addEventListener("beforeprint", () => {
     for (const pic of parts) {
       const w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
       // A diff's list of changes shares the first page with its first picture.
-      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0);
+      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0) - (picsHead && box.contains(picsHead) ? picsHead.offsetHeight + 16 : 0);
       // Unless that would make it too small: then the list keeps its page and the picture takes the next.
       if (diff && pic === parts[0] && room / pic.getBoundingClientRect().height < 0.6) {
         room = pageH;

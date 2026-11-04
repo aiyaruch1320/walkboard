@@ -1736,40 +1736,86 @@ function zoneEl(z, depth) {
   return box;
 }
 
+// A line between two boxes that goes around the others: across when the way is clear, else along a lane
+// below, above or beside them. Lanes are shared per draw (lanes), so lines running the same way stay apart.
+function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
+  const ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
+  const between = (lo, hi, f) => others.filter((r) => f(r, lo, hi));
+  const inX = (r, lo, hi) => r.right > lo && r.left < hi, inY = (r, lo, hi) => r.bottom > lo && r.top < hi;
+  const xs = [Math.min(a.left, b.left), Math.max(a.right, b.right)], ys = [Math.min(a.top, b.top), Math.max(a.bottom, b.bottom)];
+  const elbow = (p, q, r, s, rad = 8) => {
+    // p → corner q → corner r → s, with rounded corners.
+    const toward = (u, v) => {
+      const d = Math.hypot(v[0] - u[0], v[1] - u[1]) || 1, k = Math.min(rad, d / 2) / d;
+      return [u[0] + (v[0] - u[0]) * k, u[1] + (v[1] - u[1]) * k];
+    };
+    return `M${o(...p)} L${o(...toward(q, p))} Q${o(...q)} ${o(...toward(q, r))} L${o(...toward(r, q))} Q${o(...r)} ${o(...toward(r, s))} L${o(...s)}`;
+  };
+  const candidates = [];
+  if (Math.abs(bx - ax) >= Math.abs(by - ay)) {
+    const dir = bx > ax ? 1 : -1, x1 = dir > 0 ? a.right : a.left, x2 = dir > 0 ? b.left - 4 : b.right + 4;
+    const dx = Math.max(24, Math.abs(x2 - x1) / 2) * dir;
+    candidates.push({kind: "direct", d: `M${o(x1, ay)} C${o(x1 + dx, ay)}, ${o(x2 - dx, by)}, ${o(x2, by)}`, tip: [x2, by], ang: dir > 0 ? 0 : Math.PI});
+  } else {
+    const dir = by > ay ? 1 : -1, y1 = dir > 0 ? a.bottom : a.top, y2 = dir > 0 ? b.top - 4 : b.bottom + 4;
+    const dy = Math.max(20, Math.abs(y2 - y1) / 2) * dir;
+    candidates.push({kind: "direct", d: `M${o(ax, y1)} C${o(ax, y1 + dy)}, ${o(bx, y2 - dy)}, ${o(bx, y2)}`, tip: [bx, y2], ang: dir > 0 ? Math.PI / 2 : -Math.PI / 2});
+  }
+  // Leave and arrive off centre, so a line going one way and one coming back do not share a point.
+  const sx = bx > ax ? 1 : -1, sy = by > ay ? 1 : -1;
+  const px = ax + sx * a.width * 0.22, qx = bx - sx * b.width * 0.22, py = ay + sy * a.height * 0.22, qy = by - sy * b.height * 0.22;
+  const under = Math.max(a.bottom, b.bottom, ...between(...xs, inX).map((r) => r.bottom)) + 12 + 9 * (lanes.under || 0);
+  candidates.push({kind: "under", d: elbow([px, a.bottom], [px, under], [qx, under], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
+  const over = Math.min(a.top, b.top, ...between(...xs, inX).map((r) => r.top)) - 12 - 9 * (lanes.over || 0);
+  candidates.push({kind: "over", d: elbow([px, a.top], [px, over], [qx, over], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
+  const right = Math.max(a.right, b.right, ...between(...ys, inY).map((r) => r.right)) + 12 + 9 * (lanes.right || 0);
+  candidates.push({kind: "right", d: elbow([a.right, py], [right, py], [right, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
+  const left = Math.min(a.left, b.left, ...between(...ys, inY).map((r) => r.left)) - 12 - 9 * (lanes.left || 0);
+  candidates.push({kind: "left", d: elbow([a.left, py], [left, py], [left, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
+  // Fewest boxes crossed, then the shortest; the direct line wins whenever it is clear.
+  const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  let best = null;
+  for (const c of candidates) {
+    probe.setAttribute("d", c.d);
+    const len = probe.getTotalLength();
+    let hits = 0;
+    for (let at = 0; at <= len; at += 6) {
+      const p = probe.getPointAtLength(at), x = p.x + (routeLine.dx || 0), y = p.y + (routeLine.dy || 0);
+      if (others.some((r) => x > r.left - 3 && x < r.right + 3 && y > r.top - 3 && y < r.bottom + 3)) hits++;
+    }
+    const score = hits * 1e5 + len;
+    if (!best || score < best.score) best = {...c, score};
+  }
+  if (best.kind !== "direct") lanes[best.kind] = (lanes[best.kind] || 0) + 1;
+  return best;
+}
+
 function renderMap(v) {
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
   if (states.length) scroll.append(linkLegend(states, false));
-  const map = el("div", "map diagram");
+  const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : ""));
   for (const z of (v.zones || []).filter((x) => x && typeof x === "object")) map.append(zoneEl(z, 0));
   scroll.append(map);
   viaChips(map, v.links);
   const svg = linkLayer(map);
-  const at = (id) => map.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
   const draw = () => {
     const base = svg.clear();
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
+    const rects = {}, lanes = {};
+    for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
+    const all = Object.values(rects);
     for (const l of v.links || []) {
-      const a = at(l.from), b = at(l.to);
+      const a = rects[l.from], b = rects[l.to];
       if (!a || !b) continue;
-      const ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
-      let x1, y1, x2, y2, c1, c2;
-      if (Math.abs(bx - ax) >= Math.abs(by - ay)) {
-        const dir = bx > ax ? 1 : -1;
-        x1 = dir > 0 ? a.right : a.left; x2 = dir > 0 ? b.left - 4 : b.right + 4; y1 = ay; y2 = by;
-        const dx = Math.max(24, Math.abs(x2 - x1) / 2) * dir;
-        c1 = [x1 + dx, y1]; c2 = [x2 - dx, y2];
-      } else {
-        const dir = by > ay ? 1 : -1;
-        y1 = dir > 0 ? a.bottom : a.top; y2 = dir > 0 ? b.top - 4 : b.bottom + 4; x1 = ax; x2 = bx;
-        const dy = Math.max(20, Math.abs(y2 - y1) / 2) * dir;
-        c1 = [x1, y1 + dy]; c2 = [x2, y2 - dy];
-      }
       const o = (x, y) => `${x - base.left} ${y - base.top}`;
-      const ang = Math.atan2(y2 - c2[1], x2 - c2[0]);
+      routeLine.dx = base.left;
+      routeLine.dy = base.top;
+      const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o);
+      const [x2, y2] = route.tip, ang = route.ang;
       const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
       const head = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;
-      linkPaths(svg, `M${o(x1, y1)} C${o(...c1)}, ${o(...c2)}, ${o(x2, y2)}`, head, `l-${l.state || "ok"}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)));
+      linkPaths(svg, route.d, head, `l-${l.state || "ok"}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
     }
   };
   addDrawer(draw, map);

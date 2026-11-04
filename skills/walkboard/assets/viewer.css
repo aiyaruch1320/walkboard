@@ -345,6 +345,10 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 .zhead .icon svg{width:13px;height:13px}
 .zbody{display:flex;flex-wrap:wrap;gap:18px 40px;align-items:flex-start}
 .zbody>.node{flex:0 0 auto;width:190px;min-width:0}
+/* Room for lines to run around boxes instead of over them. */
+.map.linked{gap:44px 64px}
+.map.linked .zone{padding-bottom:46px}
+.map.linked .zbody{gap:34px 56px}
 /* journey */
 .journey{margin-bottom:14px}
 .jtrack{position:relative;display:flex;align-items:stretch;padding:44px 4px 10px;min-width:max-content}

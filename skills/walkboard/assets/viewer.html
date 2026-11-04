@@ -1788,13 +1788,37 @@ function zoneEl(z, depth, dense = false) {
 
 // How much of a line runs through the given boxes. dx, dy: from the line's coordinates to the screen's.
 function lineHits(d, boxes, dx = 0, dy = 0) {
-  const probe = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  probe.setAttribute("d", d);
-  const len = probe.getTotalLength();
-  let hits = 0;
-  for (let at = 0; at <= len; at += 6) {
-    const p = probe.getPointAtLength(at), x = p.x + dx, y = p.y + dy;
-    if (boxes.some((r) => x > r.left - 3 && x < r.right + 3 && y > r.top - 3 && y < r.bottom + 3)) hits++;
+  let hits = 0, len = 0, carry = 0, x = 0, y = 0;
+  const on = (near, px, py) => {
+    const qx = px + dx, qy = py + dy;
+    for (const r of near) if (qx > r.left - 3 && qx < r.right + 3 && qy > r.top - 3 && qy < r.bottom + 3) return hits++;
+  };
+  const seg = (x2, y2) => {
+    const l = Math.hypot(x2 - x, y2 - y);
+    // Only the boxes this stretch can reach; most stretches reach none.
+    const lo = Math.min(x, x2) + dx, hi = Math.max(x, x2) + dx, up = Math.min(y, y2) + dy, down = Math.max(y, y2) + dy;
+    const near = boxes.filter((r) => hi > r.left - 3 && lo < r.right + 3 && down > r.top - 3 && up < r.bottom + 3);
+    for (; carry <= l && l; carry += 6) if (near.length) on(near, x + ((x2 - x) * carry) / l, y + ((y2 - y) * carry) / l);
+    carry -= l;
+    len += l;
+    x = x2;
+    y = y2;
+  };
+  for (const [, cmd, args] of d.matchAll(/([MLQC])([^MLQC]*)/g)) {
+    const n = args.match(/-?[\d.]+(?:e-?\d+)?/g).map(Number);
+    if (cmd === "M") {
+      [x, y] = n;
+      on(boxes, x, y);
+      carry = 6;
+    } else if (cmd === "L") seg(n[0], n[1]);
+    else {
+      const x0 = x, y0 = y;
+      for (let i = 1; i <= 16; i++) {
+        const k = i / 16, m = 1 - k;
+        if (cmd === "Q") seg(m * m * x0 + 2 * m * k * n[0] + k * k * n[2], m * m * y0 + 2 * m * k * n[1] + k * k * n[3]);
+        else seg(m * m * m * x0 + 3 * m * m * k * n[0] + 3 * m * k * k * n[2] + k * k * k * n[4], m * m * m * y0 + 3 * m * m * k * n[1] + 3 * m * k * k * n[3] + k * k * k * n[5]);
+      }
+    }
   }
   return {hits, len};
 }
@@ -1899,6 +1923,7 @@ function renderMap(v) {
     map.classList.remove("denser", "wrapped");
     if (map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
     // Wrapping gives the room back: no need for boxes so small that long names break.
+    if (!hits && c.kind === "direct") return c;
     // Paper scales the picture instead, so its zones stay in a row.
     if (!printState && map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
     svg.style.display = "";

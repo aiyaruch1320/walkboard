@@ -467,7 +467,7 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .node.todo{opacity:1}
 .ext{background:var(--ext-bg);border-color:var(--ext-bd);color:var(--ext-tx)}
 .node.ext{background:color-mix(in srgb,var(--ext-bg) 45%,var(--card))}
-:is(#view,#printout) .dim{opacity:.5;filter:saturate(.35)}
+:is(#view,#printout) .dim{opacity:.5}
 :is(#view,#printout) .node.todo.dim{opacity:.45}
 :is(#view,#printout) .node.todo.instep{opacity:.9}
 :is(#view,#printout) .node.active,:is(#view,#printout) .stage.active{opacity:1;filter:none}
@@ -476,7 +476,7 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .arrow svg{width:26px;height:14px}
 .arrow line{stroke:currentColor;stroke-width:1.6;stroke-dasharray:4 4}
-@media (prefers-reduced-motion:no-preference){.node.new{animation:pulse 1.8s ease-in-out infinite}}
+@media (prefers-reduced-motion:no-preference){.node.new{animation:pulse 1.8s ease-in-out 3}}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--new-bd) 12%,transparent)}}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:6px}
 .panel h3{margin:0 0 4px;font-size:16px;font-weight:500;display:flex;align-items:center;gap:10px}

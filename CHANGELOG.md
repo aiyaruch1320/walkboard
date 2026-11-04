@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0
 
 - **Draft changes on the pictures.** **✎ Draft changes** opens a toolbar at the bottom of the window, on maps, data models, flows (including a plan's own steps), state, decision, impact and Kubernetes pictures: add boxes, zones, tables, columns, foreign keys, groups, lanes and lines (with label and kind), rename, take out, drag between zones, groups or lanes; undo and redo; keys V B Z L R D (C for a column), Delete, Enter, Escape. Every change is drawn on the picture with an outline and one sign (+ ~ − ↦), listed in the side panel, and kept in `.walkboard/draft.json`, never in plan.json; sketching never wakes the agent. **Ask the agent to review** sends the changes with names next to ids, and the agent puts the agreed ones in the plan. Two pages sketching at once, a stopped server or a moment when plan.json cannot be read lose nothing: saves carry a version, merge, and retry. `walkboard draft <dir> [clear …]` prints or clears the draft. Exports, PDF and before / after pictures show the plan without the draft.
 - **Ask the agent to review a map.** After you arrange or sketch on a map, **Ask the agent to review** sends where every box and zone sits on screen (no screenshot, nothing saved) and the draft. The agent says what each change would mean for the plan and changes the plan only if you agree. Dragging still never wakes it.

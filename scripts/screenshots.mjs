@@ -31,9 +31,11 @@ async function post(url, route, body) {
 }
 
 // side: the shot is the side panel only (its own left and right edges), not the page's full width.
-async function shot(page, url, file, {select, pad = 12, prepare = "", side = false}) {
+// height: a taller window, for a shot whose toolbar floats at the window's bottom.
+async function shot(page, url, file, {select, pad = 12, prepare = "", side = false, height = 0}) {
   // A side panel fills the window's height: a shorter window keeps its shot compact.
   await page.send("Emulation.setDeviceMetricsOverride", {width: 1200, height: side ? 640 : 900, deviceScaleFactor: 1, mobile: false});
+  if (height) await page.send("Emulation.setDeviceMetricsOverride", {width: 1200, height, deviceScaleFactor: 1, mobile: false});
   await page.goto(url);
   await sleep(500);
   if (prepare) {
@@ -50,12 +52,27 @@ async function shot(page, url, file, {select, pad = 12, prepare = "", side = fal
   console.log(`${file} ${box.width}x${Math.round(box.height)}`);
 }
 
+// A copy of the design example with a few changes sketched on its map, for the draft mode shot.
+function draftPlan() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-draft-"));
+  fs.copyFileSync(path.join(repo, "examples/connect-vpcs/plan.json"), path.join(dir, "plan.json"));
+  fs.mkdirSync(path.join(dir, ".walkboard"), {recursive: true});
+  fs.writeFileSync(path.join(dir, ".walkboard", "draft.json"), JSON.stringify({version: 1, views: {"v-peering": {rev: 1, ops: [
+    {id: "o1", op: "addNode", node: "new:db", name: "RDS replica", icon: "aws:rds", zone: "VPC B"},
+    {id: "o2", op: "addLink", from: "appa", to: "new:db", label: ":5432", state: "todo"},
+    {id: "o3", op: "editLink", from: "pcx", to: "appb", label: "SG allows A on :443"},
+  ]}}}));
+  return dir;
+}
+
 fs.mkdirSync(out, {recursive: true});
 const demo = demoPlan();
+const drafted = draftPlan();
 const urls = {
   build: pv("open", path.join(repo, "examples/nightly-import"), "--no-browser"),
   explain: pv("open", path.join(repo, "examples/explain-login"), "--no-browser"),
   demo: pv("open", demo, "--no-browser"),
+  draft: pv("open", drafted, "--no-browser"),
 };
 await post(urls.demo, "/api/feedback", {node: "cronjob", kind: "confused", text: "Why keep it suspended for now?"});
 await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night, so it stays suspended until step 4 is done."});
@@ -96,10 +113,17 @@ try {
     pad: 0,
     prepare: `document.querySelector('#stepcard .turnbtn').click();`,
   });
+  // Draft mode: the toolbar at the bottom, the changes drawn on the map and listed beside it.
+  await shot(page, at(urls.draft, "view=v-peering&step=all"), "draft.png", {
+    select: ["#view", ".dtools", "#side .side-head", "#panel"],
+    pad: 8,
+    height: 1240,
+    prepare: `document.querySelector('.lsketch').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.dtools .dcount').click();`,
+  });
 } finally {
   page.close();
   for (const u of Object.values(urls)) {
-    const dir = u === urls.demo ? demo : u === urls.build ? path.join(repo, "examples/nightly-import") : path.join(repo, "examples/explain-login");
+    const dir = u === urls.demo ? demo : u === urls.draft ? drafted : u === urls.build ? path.join(repo, "examples/nightly-import") : path.join(repo, "examples/explain-login");
     pv("stop", dir);
   }
 }

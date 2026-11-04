@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **Ask the agent to review a map.** After you arrange a map, **Ask the agent to review** sends where every box and zone sits on screen (no screenshot, nothing saved). The agent says what a box dragged into another zone would mean for the plan and changes the plan only if you agree. Dragging still never wakes it.
-- **Drop a box into another zone.** On a map, a box or zone dropped into another zone moves into it (the zone grows to hold it) and is marked as not in the plan yet; the zone it will land in lights up while you drag. Review it with the agent or undo. Its old place stays as an empty outline, so the zone it left keeps its size and nothing around it moves. Saved in `layout` as `{"zone", "from", "at"}`, and dropped once the plan moves the box.
+- **Drop a box into another zone.** On a map, a box or zone dropped into another zone moves into it (the zone grows to hold it) and is marked as not in the plan yet; the zone it will land in lights up while you drag. Review it with the agent or undo. Its old place stays as an empty outline, so the zone it left keeps its size and nothing around it moves. It is a draft change, kept in `.walkboard/draft.json` (never in plan.json), and it goes once the plan moves the box.
 - **Lay out automatically** is now **Reset to the plan**, which is what it does.
 - A box or zone dragged past the edge of a map stops there, and one saved off screen comes back to the edge.
 - A map offset in `layout` remembers the zone it was dragged in (`"in"`). When the plan moves the box to another zone, the old offset is dropped instead of pushing the box away from its new place.

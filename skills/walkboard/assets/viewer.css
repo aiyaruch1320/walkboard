@@ -397,11 +397,22 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map .zone>.zhead{position:relative;z-index:1}
 .map [data-anchor].lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
 .map .zone.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
-.map .node.placed,.map .zone.placed{outline:2px dashed var(--you-bd);outline-offset:3px}
+.map .dr-add,.map .dr-move{outline:2px dashed var(--you-bd);outline-offset:3px}
+.map .dr-change{outline:2px dashed #14a3b8;outline-offset:3px}
+.map .dr-remove{outline:2px dashed var(--warn-bd);outline-offset:3px;opacity:.6}
+.map .node.dr-remove .name,.map .zone.dr-remove>.zhead>span{text-decoration:line-through;text-decoration-color:var(--warn-bd)}
+svg.links path.dr-add:not(.head){stroke:var(--you-bd)!important;stroke-dasharray:7 4}
+svg.links path.dr-add.head{stroke:var(--you-bd)!important}
+svg.links path.dr-change:not(.head){stroke:#14a3b8!important;stroke-dasharray:7 4}
+svg.links path.dr-change.head{stroke:#14a3b8!important}
+svg.links path.dr-remove{stroke:var(--warn-bd)!important;opacity:.55}
+svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .map .ghost{pointer-events:none;background:transparent!important;border:1.5px dashed color-mix(in srgb,var(--line) 80%,transparent)!important;outline:none!important;box-shadow:none!important;opacity:1!important}
 .map .ghost>*{visibility:hidden}
-.ptag{display:block;width:max-content;max-width:100%;margin-top:6px;font-size:10.5px;font-weight:600;border-radius:999px;padding:1px 8px;background:var(--you-bg);color:var(--you-tx)}
-.zhead .ptag{display:inline-block;margin:0 0 0 4px}
+.ptag{position:absolute;top:-9px;right:-9px;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;font-size:12px;font-weight:700;line-height:1;border-radius:999px;background:var(--you-bd);color:var(--card);z-index:2;cursor:help}
+.dr-change>.ptag,.dr-change>.zhead>.ptag{background:#14a3b8}
+.dr-remove>.ptag,.dr-remove>.zhead>.ptag{background:var(--warn-bd)}
+.zhead .ptag{position:static;margin-left:4px}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}
 @media (pointer:fine) and (min-width:820px){body:not(.snapshot) .map .zhead{cursor:grab}}

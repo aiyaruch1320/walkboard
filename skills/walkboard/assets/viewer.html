@@ -76,6 +76,7 @@ const served = !snapshot && location.protocol !== "file:" && token;
 const moduleUrl = (name) => window.__walkboardModules?.[name] || `/${name}.mjs?token=${encodeURIComponent(token)}`;
 const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
 const {GLYPHS, FAMILIES, iconOf} = served || snapshot ? await import(moduleUrl("icons")) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
+const {applyDraft, describeDraft, draftable, isNewId} = served || snapshot ? await import(moduleUrl("draft")) : {applyDraft: (p, d, id) => ({plan: p, view: p.views.find((x) => x.id === id), marks: {nodes: {}, zones: {}, links: {}}, pending: [], stale: [], done: []}), describeDraft: () => ({changes: []}), draftable: () => false, isNewId: () => false};
 
 let lang = /^th\b/i.test(navigator.language) ? "th" : "en";
 const t = (k, ...a) => {
@@ -1417,8 +1418,12 @@ function iconEl(n, id, family) {
   return s;
 }
 
+// While a picture with a draft is built, its boxes come from the plan with the draft drawn in.
+let drawnNodes = null;
+const nodeOf = (id) => (drawnNodes || plan.nodes)[id];
+
 function nodeBox(id, family = null) {
-  const n = plan.nodes[id];
+  const n = nodeOf(id);
   if (!n) return el("div", "node todo", `? ${id}`);
   // A design draws options that do not exist yet: neutral boxes unless a status is given.
   const status = NODE_STATUS[n.status] ? n.status : plan.mode === "explain" ? "done" : plan.mode === "design" ? "plain" : "todo";
@@ -1493,7 +1498,7 @@ function viaChips(container, links) {
     if (!b) continue;
     const row = b.querySelector(":scope > .vias") || b.appendChild(el("div", "vias"));
     const state = LINK_STATE_KEYS.includes(l.state) ? l.state : "ok";
-    const tip = `${plan.nodes[l.from]?.name || l.from} → ${plan.nodes[l.to]?.name || l.to}`;
+    const tip = `${nodeOf(l.from)?.name || l.from} → ${nodeOf(l.to)?.name || l.to}`;
     const same = [...row.children].find((c) => c.dataset.label === l.label && c.dataset.state === state);
     if (same) {
       same.dataset.n = (Number(same.dataset.n) || 1) + 1;
@@ -1934,11 +1939,52 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   return best;
 }
 
-// Undo, redo and back to the automatic layout, for a picture arranged by hand. The history lasts while the page is open.
+// ---------- draft: changes sketched on a picture, kept in .walkboard/draft.json until the agent puts them in the plan
+let draft = {version: 1, views: {}};
+const draftOps = (viewId) => draft.views?.[viewId]?.ops || [];
+const newOpId = (ops) => {
+  const ids = new Set(ops.map((o) => o.id));
+  let i = ops.length + 1;
+  while (ids.has("op" + i)) i++;
+  return "op" + i;
+};
+let draftSavedAt = 0;
+// One picture's changes, all of them; never wakes the agent.
+function saveDraft(viewId, ops) {
+  draft = {...draft, views: {...draft.views}};
+  if (ops.length) draft.views[viewId] = {ops};
+  else delete draft.views[viewId];
+  draftSavedAt = Date.now();
+  if (!served) return;
+  fetch("/api/draft?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: viewId, ops})})
+    .then(async (r) => r.ok || showProblem(t("draftFail") + (await r.text())))
+    .catch((e) => showProblem(t("draftFail") + e.message));
+}
+// Another tab, or `walkboard draft … clear`, changed it: draw it again unless it is what this page just saved.
+async function fetchDraft() {
+  if (!served) return;
+  try {
+    const r = await fetch("/api/draft?token=" + encodeURIComponent(token));
+    if (!r.ok) return;
+    const d = await r.json();
+    if (JSON.stringify(d) === JSON.stringify(draft)) return;
+    draft = d;
+    if (plan) keepFocus(() => renderView());
+  } catch {}
+}
+const showProblem = (msg) => {
+  const box = document.getElementById("problems");
+  box.hidden = false;
+  box.replaceChildren(el("div", null, msg));
+};
+
+// Undo, redo and back to the plan, for a picture arranged by hand (and its draft, where it takes one).
+// The history lasts while the page is open; each entry is {layout, ops}.
 const layoutHist = {};
 let layoutKeys = null, layoutSavedAt = 0;
-// review: what the picture looks like now, for "ask the agent to review"; only pictures that have it get the button.
-function layoutTools(v, canMove, apply, review = null) {
+// review: what to send with "ask the agent to review" ({geometry}); only pictures that have it get the button.
+// drafts: this picture's history and reset cover its draft too.
+function layoutTools(v, canMove, apply, review = null, drafts = false) {
   const hist = (layoutHist[v.id] ||= {back: [], fwd: []});
   const row = el("div", "ltools");
   const undo = el("button", "ltool"), redo = el("button", "ltool flip"), reset = el("button", "talklink", "↺ " + t("autoLayout"));
@@ -1958,11 +2004,12 @@ function layoutTools(v, canMove, apply, review = null) {
   undo.setAttribute("aria-label", t("undo"));
   redo.setAttribute("aria-label", t("redo"));
   row.append(undo, redo, reset, ask);
-  // Dragging never wakes the agent; this does, with where everything is on screen.
+  // Dragging and sketching never wake the agent; this does, with where everything is on screen and what was sketched.
   ask.onclick = async () => {
     ask.disabled = true;
     try {
-      await send({}, "review", t("reviewAsk"), {view: v.id, geometry: review()});
+      const {changes, stale} = drafts ? describeDraft(plan, draft, v.id) : {changes: []};
+      await send({}, "review", t(changes.length ? "reviewDraftAsk" : "reviewAsk"), {view: v.id, ...review(), ...(changes.length ? {changes} : {}), ...(stale?.length ? {stale} : {})});
       ask.textContent = t("reviewSent");
       openSide({kind: "plan"});
     } catch (e) {
@@ -1977,42 +2024,60 @@ function layoutTools(v, canMove, apply, review = null) {
     layoutSavedAt = Date.now();
     fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
   };
+  const snap = () => ({layout: v.layout || null, ops: drafts ? draftOps(v.id) : null});
   const refresh = () => {
-    const any = !!Object.keys(v.layout || {}).length;
+    const any = !!Object.keys(v.layout || {}).length || (drafts && !!draftOps(v.id).length);
     row.hidden = !canMove() || !(any || hist.back.length || hist.fwd.length);
     reset.hidden = !any;
     ask.hidden = !review || !any;
     undo.disabled = !hist.back.length;
     redo.disabled = !hist.fwd.length;
   };
-  const set = (positions) => {
-    if (positions) v.layout = positions;
-    else delete v.layout;
-    save(positions);
-    refresh();
-    apply();
+  // Put both back; save only what changed.
+  const put = (state) => {
+    if (JSON.stringify(state.layout ?? null) !== JSON.stringify(v.layout ?? null)) {
+      if (state.layout) v.layout = state.layout;
+      else delete v.layout;
+      save(state.layout ?? null);
+    }
+    if (drafts && state.ops && JSON.stringify(state.ops) !== JSON.stringify(draftOps(v.id))) saveDraft(v.id, state.ops);
   };
   const walk = (from, to) => {
     if (!from.length) return;
-    to.push(v.layout || null);
-    set(from.pop());
+    to.push(snap());
+    const was = from.pop();
+    // Entries from before the draft held only a layout.
+    put(was && "layout" in was ? {...was, ops: was.ops ?? (drafts ? [] : null)} : {layout: was, ops: null});
+    refresh();
+    apply();
   };
   undo.onclick = () => walk(hist.back, hist.fwd);
   redo.onclick = () => walk(hist.fwd, hist.back);
   reset.onclick = () => {
-    hist.back.push(v.layout || null);
+    hist.back.push(snap());
     hist.fwd.length = 0;
-    set(null);
+    put({layout: null, ops: drafts ? [] : null});
+    refresh();
+    apply();
   };
   layoutKeys = {undo: undo.onclick, redo: redo.onclick};
   refresh();
   return {
     row,
+    snap,
+    // An offset moved (the layout before, the layout now).
     done(before, positions) {
-      hist.back.push(before || null);
+      hist.back.push({layout: before || null, ops: drafts ? draftOps(v.id) : null});
       hist.fwd.length = 0;
       v.layout = positions;
       save(positions);
+      refresh();
+    },
+    // Anything else: the state before (from snap()) and the state now ({layout, ops}).
+    change(before, next) {
+      hist.back.push(before);
+      hist.fwd.length = 0;
+      put(next);
       refresh();
     },
   };
@@ -2070,7 +2135,10 @@ const timed = (fn) => (...a) => {
   window.__wbPerf.push(performance.now() - t0);
 };
 
-function renderMap(v) {
+function renderMap(real) {
+  // The picture drawn is the plan with this view's draft in it; arranging (layout) stays on the real view.
+  const drafted = applyDraft(plan, draft, real.id), v = drafted.view, marks = drafted.marks, lv = real;
+  drawnNodes = drafted.plan.nodes;
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
   if (states.length) scroll.append(linkLegend(states, false));
@@ -2081,6 +2149,7 @@ function renderMap(v) {
   for (const z of tops) map.append(zoneEl(z, 0, many));
   scroll.append(map);
   viaChips(map, v.links);
+  drawnNodes = null;
   const svg = linkLayer(map);
   let routes = [], keptOnce = false;
   // Still too wide for the column: smaller again, then zones wrap, instead of scrolling sideways.
@@ -2103,57 +2172,58 @@ function renderMap(v) {
   const keyOf = (e) => (e.classList.contains("zone") ? `z:${e.dataset.zone}` : e.dataset.anchor);
   const movers = () => [...map.querySelectorAll(".zone:not(.ghost), [data-anchor]")];
   const zoneEls = () => [...map.querySelectorAll(".zone:not(.ghost)")];
+  const zoneNamed = (label) => zoneEls().find((z) => z.dataset.zone === label);
   const homeOf = (e) => e.parentElement.closest(".zone")?.dataset.zone ?? "";
-  // Dropped into another zone ("zone", "from" = its zone in the plan then, "at" = its place there): drawn inside that zone,
-  // which grows to hold it, until the plan moves it. Once the plan puts it there the placement is done; once the plan
-  // puts it anywhere else, the placement no longer applies.
-  movers().forEach((e) => (e.dataset.plan = homeOf(e)));
-  // An empty copy holds the place it left, so its old zone keeps its size and the zones around do not move.
+  const markOf = (e) => (e.classList.contains("zone") ? marks.zones[e.dataset.zone] : marks.nodes[e.dataset.anchor]);
+  // Where the plan puts it (a box the draft moved still belongs where it came from until the plan agrees).
+  movers().forEach((e) => {
+    const m = markOf(e);
+    e.dataset.plan = m?.mark === "move" ? m.from : homeOf(e);
+  });
+  // An empty copy holds the place a moved box left, so its old zone keeps its size and the zones around do not move.
   const ghostOf = (e) => {
     const g = e.cloneNode(true);
     for (const x of [g, ...g.querySelectorAll("*")]) {
       for (const a of ["data-anchor", "data-zone", "data-plan", "data-id", "id", "tabindex", "role", "title"]) x.removeAttribute(a);
       if (x.classList.contains("zone")) x.classList.add("ghost");
     }
+    g.classList.remove("dr-move");
+    g.querySelectorAll(".ptag").forEach((x) => x.remove());
     g.classList.add("ghost");
     g.setAttribute("aria-hidden", "true");
     g.inert = true;
     return g;
   };
-  const putIn = (e, to, at) => {
-    const body = to.querySelector(":scope > .zbody"), isZone = e.classList.contains("zone");
-    const kids = [...body.children].filter((c) => c !== e && (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
-    body.insertBefore(e, kids[Math.max(0, Math.round(at) || 0)] ?? (isZone ? body.querySelector(":scope > [data-anchor]") : null));
-    if (isZone) body.classList.add("zones");
-  };
-  const raw = v.layout && typeof v.layout === "object" ? {...v.layout} : {};
-  for (const [k, q] of Object.entries(raw)) {
-    if (typeof q?.zone !== "string") continue;
-    const e = movers().find((x) => keyOf(x) === k), to = zoneEls().find((z) => z.dataset.zone === q.zone);
-    if (e && to && !e.contains(to) && q.zone !== e.dataset.plan && (q.from ?? "") === e.dataset.plan) {
-      e.before(ghostOf(e));
-      putIn(e, to, q.at);
-      e.classList.add("placed");
-      const tag = el("span", "ptag", t("placedTag"));
-      tag.title = t("placedTip", e.dataset.plan || "—");
-      (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(tag);
-      continue;
-    }
-    const {zone: _z, from: _f, at: _a, ...rest} = q;
-    if (e && q.zone === e.dataset.plan && Number.isFinite(q.x)) raw[k] = rest;
-    else delete raw[k];
+  // What the draft does to each box, zone and line, at a glance: an outline and one sign; the words are in the tooltip.
+  for (const e of movers()) {
+    const m = markOf(e);
+    if (!m) continue;
+    e.classList.add("dr-" + m.mark);
+    const tag = el("span", "ptag", {add: "+", change: "~", remove: "−", move: "↦"}[m.mark]);
+    const was = m.was ? (typeof m.was === "string" ? m.was : m.was.name ?? Object.values(m.was)[0]) : "";
+    tag.title = m.mark === "move" ? t("d_move", m.from || "—") : m.mark === "change" ? t("d_change", was) : t("d_" + m.mark);
+    (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(tag);
   }
+  for (const e of movers()) {
+    const m = markOf(e);
+    if (m?.mark !== "move") continue;
+    const isZone = e.classList.contains("zone"), from = m.from ? zoneNamed(m.from) : null;
+    const body = from ? from.querySelector(":scope > .zbody") : !m.from && isZone ? map : null;
+    if (!body) continue;
+    const kids = [...body.children].filter((c) => (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
+    body.insertBefore(ghostOf(e), kids[m.fromAt] ?? (isZone && body !== map ? body.querySelector(":scope > [data-anchor]") : null));
+  }
+  const raw = lv.layout && typeof lv.layout === "object" ? {...lv.layout} : {};
   // Each offset remembers the zone it was dragged in ("in"): once the plan puts the box in another zone, the old offset
   // no longer applies, so the box is not pushed again from its new place.
   const homes = Object.fromEntries(movers().map((e) => [keyOf(e), homeOf(e)]));
-  for (const [k, q] of Object.entries(raw)) if (q?.in != null && q.in !== homes[k]) delete raw[k];
+  for (const [k, q] of Object.entries(raw)) if (!Number.isFinite(q?.x) || !Number.isFinite(q?.y) || (q.in != null && q.in !== homes[k])) delete raw[k];
   // Forget the rest on the page now too, so undo, the buttons and the next save see only what still applies.
-  if (v.layout && JSON.stringify(raw) !== JSON.stringify(v.layout)) {
-    if (Object.keys(raw).length) v.layout = raw;
-    else delete v.layout;
+  if (lv.layout && JSON.stringify(raw) !== JSON.stringify(lv.layout)) {
+    if (Object.keys(raw).length) lv.layout = raw;
+    else delete lv.layout;
   }
-  const layout = () => (v.layout && typeof v.layout === "object" ? v.layout : {});
-  // Where a box sits now, from its place: a box dropped into a zone has no offset there until it is moved again.
+  const layout = () => (lv.layout && typeof lv.layout === "object" ? lv.layout : {});
   const offsetOf = (e) => {
     const q = layout()[keyOf(e)];
     return {x: Number.isFinite(q?.x) ? q.x : 0, y: Number.isFinite(q?.y) ? q.y : 0};
@@ -2193,13 +2263,12 @@ function renderMap(v) {
   };
   arrange();
   const canMoveMap = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
-  // Undo and redo can take a box out of a zone or put it in one: draw the picture again.
-  const tools = layoutTools(v, canMoveMap, renderView, () => mapGeometry(v, map, routes, layout()));
-  // An offset is kept with the zone the box is in now; a placement keeps its zone.
+  // Undo and redo cover arranging and the draft together; either can take a box out of a zone: draw the picture again.
+  const tools = layoutTools(lv, canMoveMap, renderView, () => ({geometry: mapGeometry(v, map, routes, layout())}), true);
+  // An offset is kept with the zone the box is in now.
   const movedTo = (e, q) => {
-    const k = keyOf(e), {[k]: was, ...rest} = layout();
-    const next = {...rest, [k]: {...(typeof was?.zone === "string" ? {zone: was.zone, from: was.from, at: was.at} : {}), x: q.x, y: q.y}};
-    return Object.fromEntries(Object.entries(next).map(([id, p]) => [id, Number.isFinite(p?.x) && id in homes ? {...p, in: homes[id]} : p]));
+    const k = keyOf(e), {[k]: _, ...rest} = layout();
+    return Object.fromEntries(Object.entries({...rest, [k]: {x: q.x, y: q.y}}).map(([id, p]) => [id, id in homes ? {...p, in: homes[id]} : p]));
   };
   // Dropped with its centre in another zone: put it there, before the first box (or zone) that comes after it.
   const dropZone = (it) => {
@@ -2208,16 +2277,19 @@ function renderMap(v) {
     const to = hit.sort((p, q) => p[1].width * p[1].height - q[1].width * q[1].height)[0]?.[0];
     return to && to !== it.parentElement.closest(".zone") ? {to, x, y} : null;
   };
-  const placedTo = (it, {to, x, y}) => {
-    const k = keyOf(it), {[k]: _, ...rest} = layout();
-    if (to.dataset.zone === it.dataset.plan) return rest;
-    const isZone = it.classList.contains("zone");
+  // Dropped into another zone: a change of plan, so a draft change (a box or zone the draft added just changes where it goes).
+  const dropOps = (it, {to, x, y}) => {
+    const isZone = it.classList.contains("zone"), k = isZone ? it.dataset.zone : it.dataset.anchor, m = markOf(it);
     const kids = [...to.querySelector(":scope > .zbody").children].filter((c) => c !== it && (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
     const at = kids.filter((c) => {
       const b = c.getBoundingClientRect();
       return b.bottom < y - b.height / 2 || (Math.abs(b.top + b.height / 2 - y) <= b.height / 2 && b.left + b.width / 2 < x);
     }).length;
-    return {...rest, [k]: {zone: to.dataset.zone, from: it.dataset.plan, at}};
+    const ops = draftOps(lv.id);
+    if (m?.mark === "add") return ops.map((o) => (isZone ? o.op === "addZone" && o.zone === k ? {...o, parent: to.dataset.zone, at} : o : o.op === "addNode" && o.node === k ? {...o, zone: to.dataset.zone, at} : o));
+    const rest = ops.filter((o) => !(isZone ? o.op === "moveZone" && o.zone === k : o.op === "move" && o.node === k));
+    if (to.dataset.zone === it.dataset.plan) return rest;
+    return [...rest, {id: newOpId(rest), op: isZone ? "moveZone" : "move", [isZone ? "zone" : "node"]: k, to: to.dataset.zone, from: it.dataset.plan, at}];
   };
   let mapDragged = false;
   // The click that ends a drag does not open the box.
@@ -2263,10 +2335,11 @@ function renderMap(v) {
       setTimeout(() => (mapDragged = false));
       const drop = dropZone(it);
       if (drop) {
-        tools.done(v.layout, placedTo(it, drop));
+        const before = tools.snap(), {[keyOf(it)]: _, ...rest} = layout();
+        tools.change(before, {layout: Object.keys(rest).length ? rest : null, ops: dropOps(it, drop)});
         return renderView();
       }
-      tools.done(v.layout, movedTo(it, moved));
+      tools.done(lv.layout, movedTo(it, moved));
       stackUp();
       draw();
     };
@@ -2282,16 +2355,16 @@ function renderMap(v) {
     if (!d || !it || !canMoveMap() || e.altKey || e.metaKey || e.ctrlKey) return;
     e.preventDefault();
     e.stopPropagation();
-    if (!mapKeySave) mapKeyFrom = v.layout;
+    if (!mapKeySave) mapKeyFrom = lv.layout;
     const k = e.shiftKey ? 40 : 10, was = offsetOf(it), q = {x: was.x + d[0] * k, y: was.y + d[1] * k};
     const kept = keepIn(it, q);
-    v.layout = movedTo(it, kept);
+    lv.layout = movedTo(it, kept);
     stackUp();
     draw();
     clearTimeout(mapKeySave);
     mapKeySave = setTimeout(() => {
       mapKeySave = null;
-      tools.done(mapKeyFrom, v.layout);
+      tools.done(mapKeyFrom, lv.layout);
     }, 500);
   });
   // A line between two boxes, in the coordinates of the lines' layer (base = its rectangle), with its arrow head.
@@ -2361,7 +2434,8 @@ function renderMap(v) {
       const route = routeOf(l, a, b, all, lanes, base);
       const r = {from: l.from, to: l.to, d: route.d, dx: base.left - mr.left, dy: base.top - mr.top};
       routes.push(r);
-      const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
+      const lm = marks.links[`${l.from}>${l.to}`]?.mark;
+      const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}${lm ? " dr-" + lm : ""}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
       drawn.push({link: l, from: l.from, to: l.to, line, head, route: r, at: {left: a.left - mr.left, top: a.top - mr.top}});
     }
   });
@@ -3794,9 +3868,11 @@ async function load() {
   try {
     commonGlossary = await (await fetch("/glossary.json?token=" + encodeURIComponent(token))).json();
   } catch {}
+  await fetchDraft();
   await fetchPlan();
   const events = new EventSource("/api/events?token=" + encodeURIComponent(token));
   events.onopen = async () => {
+    await fetchDraft();
     await fetchPlan();
     const r = await fetch("/api/thread?token=" + encodeURIComponent(token));
     if (r.ok) ({items: thread, waiting} = await r.json());
@@ -3808,6 +3884,7 @@ async function load() {
   };
   events.onerror = () => setConn(false);
   events.addEventListener("plan", fetchPlan);
+  events.addEventListener("draft", fetchDraft);
   const on = (name, fn) => events.addEventListener(name, (e) => { fn(JSON.parse(e.data)); refreshThreads(); });
   // Turn bars say "sent, waiting" as soon as you answer, and drop that once the agent replies.
   const turns = () => keepFocus(() => {

@@ -291,7 +291,8 @@ export function describeDraft(plan, draft, viewId) {
   const nodes = isObj(drawn?.nodes) ? drawn.nodes : {};
   const added = Object.fromEntries(ops.filter((o) => o?.op === "addNode").map((o) => [o.node, o.name]));
   const named = (n) => {
-    const name = nodes[n]?.name ?? added[n];
+    // The name the plan knows it by (a renamed box is still the one the agent knows).
+    const name = plan?.nodes?.[n]?.name ?? nodes[n]?.name ?? added[n];
     return name && name !== n ? `${name} (${n})` : n;
   };
   // Box ids get their names; zones are already words, and a new box's own id stays bare (its name is beside it).

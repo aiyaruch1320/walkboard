@@ -55,7 +55,7 @@ export function snapshot(dir, plan, {code = true, chat = false} = {}) {
   const json = (x) => JSON.stringify(x).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
   // The file may only run what it carries: no requests anywhere, whatever a plan says.
   const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' data:; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">\n`;
-  const head = `<script>window.__walkboardModules = ${json({schema: module("schema.mjs"), icons: module("icons.mjs")})};</script>\n<script id="wb-snapshot" type="application/json">${json(data)}</script>\n`;
+  const head = `<script>window.__walkboardModules = ${json({schema: module("schema.mjs"), icons: module("icons.mjs"), draft: module("draft.mjs")})};</script>\n<script id="wb-snapshot" type="application/json">${json(data)}</script>\n`;
   const html = pageHtml()
     .replace('<meta name="referrer" content="no-referrer">', (m) => csp + m)
     .replace("<title>Walkboard</title>", () => `<title>${String(plan.title || "Walkboard").replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))} · Walkboard</title>`)

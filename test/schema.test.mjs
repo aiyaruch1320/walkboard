@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import {validate} from "../skills/walkboard/lib/schema.mjs";
+import {validate, lint} from "../skills/walkboard/lib/schema.mjs";
 
 const base = () => ({
   title: "t",
@@ -270,4 +270,13 @@ test("a step's moves and show name boxes that exist", () => {
   assert.match(out, /every move needs "from" and "to"/);
   assert.match(out, /show needs a box that exists/);
   assert.equal((validate({...base(), steps: [{id: "s1", title: "one", moves: "a"}]}).join("\n").match(/moves must be a list/) || []).length, 1);
+});
+
+test("standby links and judgment scores are accepted, and untitled tabs get a warning", () => {
+  const p = {...base(), views: [{id: "m", kind: "map", zones: [{label: "z", nodes: ["a", "b"]}], links: [{from: "a", to: "b", state: "standby"}]}, {id: "f", kind: "flow", title: "Flow", lanes: [{nodes: ["a"]}]}]};
+  assert.deepEqual(validate(p), []);
+  assert.match(lint(p).join("\n"), /view "m" has no title/);
+  assert.doesNotMatch(lint(p).join("\n"), /view "f"/);
+  const d = {...base(), mode: "design", steps: undefined, options: [{id: "o", title: "O", view: "f"}], criteria: [{id: "c", label: "C", weight: 1}], scores: {o: {c: {rating: 3, basis: "judgment", note: "n"}}}, views: [{id: "f", kind: "flow", title: "F", lanes: [{nodes: ["a"]}]}]};
+  assert.doesNotMatch(lint(d).join("\n"), /cites no source/);
 });

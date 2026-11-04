@@ -1,6 +1,6 @@
 # Views
 
-Every box is a node id, so a click opens the same details and chat. Wide pictures scroll sideways.
+Every view has `id`, `kind` and `title`; the `title` is its tab, so give it words a reader knows, not an id. Every box is a node id, so a click opens the same details and chat.
 
 ## Which picture
 
@@ -42,7 +42,7 @@ Lanes of boxes, left to right. `"arrows": false` makes a lane a checklist.
   {"from":"cronjob","to":"internet","state":"blocked"}]}
 ```
 
-`outside`: left column (Git → ArgoCD). `configs`: lines to the workloads that `uses` them. `policy`: dashed frame around the workloads. `targets`: right column. `links[].state`: `ok` solid green, `todo` dashed orange, `blocked` dotted red; `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
+`outside`: left column (Git → ArgoCD). `configs`: lines to the workloads that `uses` them. `policy`: dashed frame around the workloads. `targets`: right column. `links[].state`: `standby` dotted blue for a backup path, `ok` solid green, `todo` dashed orange, `blocked` dotted red; `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
 
 ## sequence
 
@@ -78,7 +78,7 @@ Each stage has `columns` + `rows` (rows as long as `columns`) or `text`. Empty a
  "links":[{"from":"ec2a","to":"pcx","state":"ok","label":"route 10.1.0.0/16"},{"from":"pcx","to":"ec2b"}]}
 ```
 
-Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `"stack": true` stacks what a zone holds top to bottom instead of side by side. For a whole system (over 12 boxes the page uses smaller ones and keeps top-level zones in one row), read left to right: outside, then network zones as columns, then shared services; 2-3 top-level zones. `links` as in `k8s`.
+Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. `"stack": true` stacks what a zone holds top to bottom (`false` keeps it side by side). A whole system (over 12 boxes, or 4+ top-level zones) gets smaller boxes, top-level zones in one row and zones of only boxes stacked: read left to right, outside first, one column per site or provider, at most 5. A shared box with no line reads as floating: put such boxes in a zone named for it ("Shared"). `links` as in `k8s`.
 
 ## journey
 

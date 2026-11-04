@@ -1,6 +1,6 @@
 export const NODE_STATUS = {done: "done", new: "new", todo: "todo", ext: "ext"};
 export const STEP_STATUS = {done: "done", doing: "doing", review: "review", todo: "todo"};
-export const LINK_STATE = {ok: "ok", todo: "todo", blocked: "blocked"};
+export const LINK_STATE = {ok: "ok", todo: "todo", blocked: "blocked", standby: "standby"};
 export const LANGS = ["en", "th"];
 export const teachBackOn = (p) => p?.settings?.teachBack !== false;
 export const MODES = ["build", "explain", "design"];
@@ -125,7 +125,7 @@ export const KINDS = {
   k8s: {
     refs: (v) => [...list(v.outside), ...list(v.configs), ...list(v.targets), ...(v.policy ? [v.policy] : []),
       ...list(v.workloads).flatMap((w) => [w?.node, ...list(w?.uses)]), ...list(v.links).flatMap((l) => [l?.from, l?.to])],
-    check: (v) => list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked)`),
+    check: (v) => list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked, standby)`),
   },
   sequence: {
     refs: (v) => [...list(v.actors), ...list(v.messages).flatMap((m) => (m?.node ? [m.node] : []))],
@@ -140,7 +140,7 @@ export const KINDS = {
     refs: (v) => [...zoneNodes(list(v.zones)), ...list(v.links).flatMap((l) => [l?.from, l?.to])],
     check: (v) => [
       ...(!list(v.zones).length ? ["map needs zones: [{\"label\", \"zones\", \"nodes\"}]"] : []),
-      ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked)`),
+      ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked, standby)`),
     ],
   },
   // One piece of data travelling stop by stop, with what it looks like at each stop.
@@ -348,6 +348,8 @@ export function lint(p) {
   if (!isObj(p) || !isObj(p.nodes)) return [];
   const out = [];
   const shown = new Set(viewsOf(p).flatMap((v) => (isObj(v) && has(KINDS, v.kind) ? KINDS[v.kind].refs(v) : [])));
+  // With several pictures, the tab shows the title, or else the bare id.
+  if (Array.isArray(p.views) && p.views.length > 1) for (const v of p.views) if (isObj(v) && v.id && !v.title) out.push(`view "${v.id}" has no title (its tab shows the id)`);
   for (const [id, n] of Object.entries(p.nodes)) {
     if (!isObj(n)) continue;
     if (!shown.has(id)) out.push(`node "${id}" is in no picture`);
@@ -360,7 +362,7 @@ export function lint(p) {
   for (const st of list(p.steps)) if (isObj(st) && !st.detail) out.push(`step "${st.id}" has no detail (what the step does)`);
   if (list(p.steps).length > 10) out.push(`${list(p.steps).length} steps, more than 10: merge some or split the plan`);
   if (p.mode === "design") {
-    for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) for (const [c, cell] of Object.entries(isObj(row) ? row : {})) if (cell?.rating !== "na" && !list(cell?.sources).length) out.push(`scores.${o}.${c} cites no source`);
+    for (const [o, row] of Object.entries(isObj(p.scores) ? p.scores : {})) for (const [c, cell] of Object.entries(isObj(row) ? row : {})) if (cell?.rating !== "na" && cell?.basis !== "judgment" && !list(cell?.sources).length) out.push(`scores.${o}.${c} cites no source`);
     if (!list(p.options).some((o) => o?.recommended)) out.push("no option is marked recommended");
     for (const o of list(p.options)) for (const c of list(p.criteria)) if (o?.id && c?.id && !isObj(p.scores?.[o.id]?.[c.id])) out.push(`scores.${o.id}.${c.id} is missing (counts as 0; use "na" if it does not apply)`);
     for (const o of list(p.options)) if (o?.recommended && failsMust(p, o.id).length) out.push(`recommended option "${o.id}" fails a must: ${failsMust(p, o.id).join(", ")}`);

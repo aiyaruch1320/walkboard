@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Pictures for cloud architects.** Icons for Huawei Cloud and on-prem (data center, VMware, F5, Oracle, NAS, AD), for ExpressRoute, Direct Connect, Cloud Interconnect, VPN and firewalls. A `standby` line for a backup path. A big map keeps its zones in a row: over 12 boxes or 4+ top-level zones it uses smaller boxes, uses the whole window, and wraps only when it still does not fit. Lines also leave or enter a box from the side when another box is in the way.
+- **PDF fixes.** A picture with lines stays whole on one page, scaled to fit: before, tall ones lost their boxes to the next page. Lines now meet their boxes on paper. A diff prints its change list with the first picture.
+- A wide diff shows Before or After at a time, swapped in place. Sequences with 6+ actors and impact pictures fit without scrolling sideways. The line a move travels on is solid, so it never looks like a "not ready" dashed line, and its label no longer hides the box it reaches.
+- When most boxes are guesses, each gets a small ❓ and the picture says it once. A score can be `"basis": "judgment"` when there is no document to cite. `check` warns when a tab would show a bare id, and the guide says to `title` each view; boxes that are not code need no `file`.
 - **Stories in pictures.** A step can say what travels: `moves` sends a label along the line between two boxes each time the step opens, `keep` leaves it on the box it reached, `show` puts a few lines inside a box. Play holds each step long enough to read it, and moves wait, travel slowly and rest so you can follow them. On paper, moves print under their step.
 - Big map pictures: `"stack": true` stacks what a zone holds, over 12 boxes the page uses smaller ones and keeps top-level zones in one row, and lines look for the nearest gap first.
 - Kubernetes pictures: a line that would run through a box, or between workloads stacked one above the other, now goes around.

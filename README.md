@@ -85,7 +85,7 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **⋮** holds export, the theme and a short tour.
 4. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
 
-Boxes carry icons for what they are, with AWS, Google Cloud, Azure and Kubernetes parts in their own colours.
+Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours.
 
 More screens, FAQ and reference: **[docs/GUIDE.md](docs/GUIDE.md)**.
 

@@ -353,10 +353,18 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 /* A zone can stack what it holds; a big picture uses smaller boxes and keeps its zones in one row. */
 .zbody.stack{flex-direction:column;flex-wrap:nowrap}
 .map.dense{flex-wrap:nowrap;gap:30px;justify-content:flex-start}
+.map.dense .zbody.zones:not(.stack){flex-wrap:nowrap}
 .map.dense .zbody>.node{width:158px}
 .map.dense .node .name{font-size:13px}
 .map.dense .node .what{font-size:11.5px;line-height:1.3}
 .map.dense .node{padding:7px 9px}
+.map.denser{gap:16px}
+.map.dense.wrapped,.map.dense.wrapped .zbody.zones:not(.stack){flex-wrap:wrap}
+body.pic-wide main{max-width:min(1560px,100%)}
+.map.denser .zbody>.node{width:132px}
+.map.denser.linked .zbody{gap:20px 22px}
+.map.denser.linked .zone{padding:6px 7px 22px}
+.map.denser .node .what{font-size:11px}
 /* Room for lines to run around boxes instead of over them. */
 .map.linked{gap:44px 64px}
 .map.linked .zone{padding-bottom:46px}
@@ -436,6 +444,7 @@ svg.links text.ercard{font-size:12px;font-weight:700;fill:var(--text);paint-orde
 .via-ok{border-color:var(--done-bd);color:var(--done-tx)}
 .via-todo{border-color:var(--new-bd);color:var(--new-tx);border-style:dashed}
 .via-blocked{border-color:var(--warn-bd);color:var(--warn-tx);border-style:dashed}
+.via-standby{border-color:var(--ext-bd);color:var(--ext-tx);border-style:dotted}
 .done{background:var(--done-bg);border-color:var(--done-bd);color:var(--done-tx)}
 .new,.doing{background:var(--new-bg);border-color:var(--new-bd);color:var(--new-tx)}
 .node.new{box-shadow:0 0 0 3px color-mix(in srgb,var(--new-bd) 35%,transparent)}
@@ -627,6 +636,7 @@ svg.links path{fill:none;stroke-width:1.8}
 .l-todo{stroke:var(--new-bd);stroke-dasharray:6 4}
 .l-blocked{stroke:var(--warn-bd);stroke-dasharray:1.5 5;stroke-linecap:round}
 .l-blocked.head{stroke-width:2.6!important}
+.l-standby{stroke:var(--ext-bd);stroke-dasharray:2 5;stroke-linecap:round}
 .k8s{display:grid;grid-template-columns:minmax(130px,170px) 1fr minmax(150px,210px);gap:44px 84px;min-width:920px;align-items:start;padding:12px 8px}
 .col{display:flex;flex-direction:column;gap:18px}
 .col .node{flex:none;min-width:0}
@@ -725,9 +735,6 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
   .pstep p{margin:2px 0;line-height:1.45}
   .pchip{font-size:10px;font-weight:600;border:1px solid var(--line);border-radius:999px;padding:0 7px;color:var(--muted);white-space:nowrap}
   .pmeta{color:var(--muted);font-size:11px}
-  .pview{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin:0 0 12px;break-inside:avoid}
-  .pcap{font-size:12.5px;font-weight:600;margin:0 0 10px}
-  .pcap+.pmeta{margin:-6px 0 10px}
   .pview .lane{background:transparent}
   .pnodes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .pnode{border:1px solid var(--line);border-radius:8px;padding:8px 10px;break-inside:avoid;font-size:11px;line-height:1.45}
@@ -777,15 +784,23 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
 .mv-packet.cut{background:var(--warn-bd);color:#fff;box-shadow:0 2px 12px color-mix(in srgb,var(--warn-bd) 60%,transparent)}
 .mv-layer{position:fixed;inset:0;width:100vw;height:100vh;z-index:29;pointer-events:none;overflow:visible}
 .mv-layer path{fill:none;stroke:var(--new-bd)}
-path.mv-on{stroke:var(--new-bd)!important;stroke-width:2.5!important;stroke-dasharray:7 7;opacity:1!important;animation:mvflow .6s linear infinite}
-@keyframes mvflow{to{stroke-dashoffset:-28}}
+/* Solid, so a line being travelled never looks like a "not ready yet" dashed line. */
+path.mv-on{stroke:var(--new-bd)!important;stroke-width:3.2!important;stroke-dasharray:none;opacity:1!important;filter:drop-shadow(0 0 3px color-mix(in srgb,var(--new-bd) 70%,transparent))}
 .mv-hit{box-shadow:0 0 0 4px color-mix(in srgb,var(--new-bd) 55%,transparent)!important}
 .mv-kept{align-self:flex-start;display:inline-block;margin-top:6px;font-size:11px;font-weight:600;color:var(--new-tx);background:var(--new-bg);border:1px solid var(--new-bd);border-radius:999px;padding:0 8px}
 .mv-show{margin:6px 0 0;padding:5px 7px;font-size:11px;line-height:1.45;background:var(--code);color:var(--text);border-radius:6px;white-space:pre-wrap;animation:mvin .3s ease-out}
 @keyframes mvin{from{opacity:0}}
 .mv-again{margin-left:8px}
+.bmark.short{padding:0 2px;background:transparent;border-color:transparent}
+.assumednote{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.cjudge{margin-left:3px;color:var(--muted);cursor:help}
+.diffseg{margin:0 0 10px}
+.dhalf.off{display:none}
+.seq.compact .seq-head .node .what{display:none}
+.seq.compact .seq-head .node{padding:6px 7px}
+.seq.compact .seq-head .node .name{font-size:12.5px}
 #view [data-id]{scroll-margin:80px 20px 40px}
-@media (prefers-reduced-motion:reduce){path.mv-on,.mv-show{animation:none}}
+@media (prefers-reduced-motion:reduce){.mv-show{animation:none}}
 @media print{.mv-packet,.mv-layer{display:none!important}}
 .cmp th.whead{font-size:12px;font-weight:400;color:var(--muted);text-align:left;vertical-align:bottom;white-space:nowrap}
 .cmp .cval{font-size:11.5px;color:var(--muted);margin-top:2px}

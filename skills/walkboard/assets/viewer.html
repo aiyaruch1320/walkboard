@@ -172,6 +172,17 @@ function msgBody(text) {
 const MARK = {done: "✓", new: "●", todo: "", ext: "↗"}, EXPLAIN_MARK = {done: "", new: "★", todo: "", ext: "↗"};
 const statusLabel = (st) => t((plan?.mode === "explain" ? "ex_" : "st_") + (NODE_STATUS[st] ? st : plan?.mode === "explain" ? "done" : "todo"));
 
+// Most boxes on a guess: a small ❓ on each and the words once, so the picture does not look like an error.
+function tidyGuesses(root) {
+  const marks = [...root.querySelectorAll(".basis-assumed > .bmark")];
+  if (marks.length < 4) return;
+  for (const m of marks) {
+    m.textContent = "❓";
+    m.classList.add("short");
+  }
+  root.prepend(el("p", "assumednote", t("assumedMany", marks.length)));
+}
+
 function renderLegend() {
   document.getElementById("legendSum").textContent = t("legendSum");
   if (plan.mode === "design") {
@@ -301,7 +312,7 @@ document.addEventListener("keydown", (e) => {
   d.click();
 });
 
-const LINK_STATE_KEYS = ["ok", "todo", "blocked"];
+const LINK_STATE_KEYS = ["ok", "todo", "blocked", "standby"];
 const unread = () => thread.filter((m) => m.from === "agent" && !seen.has(m.id));
 
 // 💬 on every box that has a conversation, in whatever picture is drawn: a conversation belongs to the box, not to one picture.
@@ -1024,6 +1035,11 @@ function renderCompare() {
       const td = el("td", (o.id === cur ? "sel" : "") + (out[o.id] ? " out" : ""));
       td.append(ratingEl(x?.rating));
       for (const s of x?.sources || []) if (sourceNo(s)) td.append(el("sup", null, `[${sourceNo(s)}]`));
+      if (x?.basis === "judgment") {
+        const j = el("sup", "cjudge", "✎");
+        j.title = t("judgment");
+        td.append(j);
+      }
       if (x?.value) td.append(el("div", "cval", String(x.value)));
       td.onclick = () => openSide({kind: "cell", option: o.id, criterion: c.id});
       tr.append(td);
@@ -1558,7 +1574,7 @@ function linkLegend(states, uses) {
   const lg = el("div", "linklegend");
   if (uses) lg.append(el("span", null, t("usesLegend")));
   lg.append(el("span", null, t("viaLegend")));
-  const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)"};
+  const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)", standby: "var(--ext-bd)"};
   for (const st of states) {
     const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + t("lk_" + st));
     sp.style.color = color[st];
@@ -1633,10 +1649,13 @@ function renderSequence(v) {
   const actors = v.actors || [];
   // Wide enough for the longest word of a name, so names never break in the middle of a word.
   const word = Math.max(0, ...actors.flatMap((id) => String(plan.nodes[id]?.name || id).match(/[\w./-]+/g) || []).map((w) => w.length));
-  const cols = `repeat(${actors.length}, minmax(${Math.min(260, Math.max(130, word * 8 + 64))}px, 1fr))`;
+  // Many actors: narrower columns and names only, so the whole exchange fits without scrolling sideways.
+  const compact = actors.length >= 6;
+  const colMin = compact ? Math.min(180, Math.max(96, word * 7 + 34)) : Math.min(260, Math.max(130, word * 8 + 64));
+  const cols = `repeat(${actors.length}, minmax(${colMin}px, 1fr))`;
   const scroll = el("div", "scroll");
-  const seq = el("div", "seq");
-  seq.style.minWidth = actors.length * 150 + "px";
+  const seq = el("div", "seq" + (compact ? " compact" : ""));
+  seq.style.minWidth = actors.length * (compact ? colMin : 150) + "px";
   const head = el("div", "seq-head");
   head.style.gridTemplateColumns = cols;
   actors.forEach((id) => head.append(nodeBox(id)));
@@ -1747,15 +1766,17 @@ function renderTransform(v) {
 }
 
 // ---------- map: zones inside zones, links routed between boxes on whichever sides face each other
-function zoneEl(z, depth) {
+function zoneEl(z, depth, dense = false) {
   const box = el("div", `zone z${Math.min(depth, 3)}`);
   const head = el("div", "zhead");
   const ic = iconEl({name: z.label, icon: z.icon}, "", null);
   if (ic) head.append(ic);
   head.append(richEl("span", null, z.label || ""));
   if (z.note) head.append(el("small", null, z.note));
-  const body = el("div", "zbody" + (z.stack ? " stack" : ""));
-  for (const c of (z.zones || []).filter((x) => x && typeof x === "object")) body.append(zoneEl(c, depth + 1));
+  // In a big picture a zone that only holds boxes stacks them, so the zones stay side by side as columns.
+  const stack = z.stack ?? (dense && !(z.zones || []).length);
+  const body = el("div", "zbody" + (stack ? " stack" : "") + ((z.zones || []).length ? " zones" : ""));
+  for (const c of (z.zones || []).filter((x) => x && typeof x === "object")) body.append(zoneEl(c, depth + 1, dense));
   for (const id of z.nodes || []) body.append(anchored(id));
   box.append(head, body);
   return box;
@@ -1818,6 +1839,22 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   candidates.push({kind: "near-over", d: elbow([px, a.top], [px, nearOver], [qx, nearOver], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
   candidates.push({kind: "near-right", d: elbow([a.right, py], [nearRight, py], [nearRight, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
   candidates.push({kind: "near-left", d: elbow([a.left, py], [nearLeft, py], [nearLeft, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
+  // Around the top or bottom and in from the side, or out of the side and round: for a box stacked under or over another.
+  const round = (pts, rad = 8) => {
+    const toward = (u, v) => {
+      const d = Math.hypot(v[0] - u[0], v[1] - u[1]) || 1, k = Math.min(rad, d / 2) / d;
+      return [u[0] + (v[0] - u[0]) * k, u[1] + (v[1] - u[1]) * k];
+    };
+    let d = `M${o(...pts[0])}`;
+    for (let i = 1; i < pts.length - 1; i++) d += ` L${o(...toward(pts[i], pts[i - 1]))} Q${o(...pts[i])} ${o(...toward(pts[i], pts[i + 1]))}`;
+    return d + ` L${o(...pts.at(-1))}`;
+  };
+  const gapIn = bx > ax ? b.left - step("in") : b.right + step("in"), inEnd = bx > ax ? b.left - 4 : b.right + 4, inAng = bx > ax ? 0 : Math.PI;
+  const outX = bx > ax ? a.right + step("out") : a.left - step("out"), outFrom = bx > ax ? a.right : a.left;
+  candidates.push({kind: "over", d: round([[px, a.top], [px, over], [gapIn, over], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "under", d: round([[px, a.bottom], [px, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "over", d: round([[outFrom, ay], [outX, ay], [outX, over], [qx, over], [qx, b.top - 4]]), tip: [qx, b.top - 4], ang: Math.PI / 2});
+  candidates.push({kind: "under", d: round([[outFrom, ay], [outX, ay], [outX, under], [qx, under], [qx, b.bottom + 4]]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
   const across = (kind, xOrY, build) => candidates.push({kind, ...build(xOrY)});
   if (b.right < a.left) for (const [kind, x] of [["z-a", a.left - step("z-a")], ["z-b", b.right + step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.left, py], [v, py], [v, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI}));
   if (b.left > a.right) for (const [kind, x] of [["z-a", a.right + step("z-a")], ["z-b", b.left - step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.right, py], [v, py], [v, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0}));
@@ -1838,14 +1875,26 @@ function renderMap(v) {
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
   if (states.length) scroll.append(linkLegend(states, false));
-  // Many boxes: smaller ones, and zones stay side by side, so the whole system fits in one look.
-  const many = new Set(KINDS.map.refs(v)).size > 12;
+  // Many boxes or many zones: smaller boxes and zones side by side, so the whole system fits in one look.
+  const tops = (v.zones || []).filter((x) => x && typeof x === "object");
+  const many = new Set(KINDS.map.refs(v)).size > 12 || tops.length >= 4;
   const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : "") + (many ? " dense" : ""));
-  for (const z of (v.zones || []).filter((x) => x && typeof x === "object")) map.append(zoneEl(z, 0));
+  for (const z of tops) map.append(zoneEl(z, 0, many));
   scroll.append(map);
   viaChips(map, v.links);
   const svg = linkLayer(map);
+  // Still too wide for the column: smaller again, then zones wrap, instead of scrolling sideways.
+  let fitted = null;
+  const fit = () => {
+    if (!many || fitted === map.clientWidth) return;
+    fitted = map.clientWidth;
+    map.classList.remove("denser", "wrapped");
+    if (map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
+    // Wrapping gives the room back: no need for boxes so small that long names break.
+    if (map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
+  };
   const draw = () => {
+    fit();
     const base = svg.clear();
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     const rects = {}, lanes = {};
@@ -2145,7 +2194,7 @@ function renderImpact(v) {
   const edges = v.edges || [];
   const wrap = el("div");
   const banner = el("div", "impbar", t("impHint"));
-  wrap.append(banner, renderGraph(v, {ids: [...new Set([...(v.nodes || []), ...edges.flatMap((x) => [x.from, x.to])])], edges, starts: v.start ? [v.start] : []}));
+  wrap.append(banner, renderGraph(v, {ids: [...new Set([...(v.nodes || []), ...edges.flatMap((x) => [x.from, x.to])])], edges, starts: v.start ? [v.start] : [], wrap: true}));
   const walk = (from, next) => {
     const seen = new Set(), todo = [from];
     while (todo.length) for (const x of next(todo.shift())) if (!seen.has(x)) {
@@ -2489,6 +2538,7 @@ function renderDataModel(v) {
 }
 
 // ---------- before / after: two pictures side by side, with what was added, removed or changed marked
+const diffSide = {};
 function renderDiff(v) {
   const before = plan.views.find((x) => x.id === v.before), after = plan.views.find((x) => x.id === v.after);
   // Wide pictures read better one above the other than squeezed side by side.
@@ -2513,7 +2563,25 @@ function renderDiff(v) {
     });
     return h;
   };
-  wrap.append(half(before, t("before"), (id) => !b.has(id)), half(after, t("after"), (id) => !a.has(id)));
+  const halves = [half(before, t("before"), (id) => !b.has(id)), half(after, t("after"), (id) => !a.has(id))];
+  wrap.append(...halves);
+  // Wide pictures: one at a time on screen, swapped in place, instead of a page twice as long. Paper shows both.
+  if (wrap.classList.contains("stack") && !printState) {
+    const seg = el("div", "modes diffseg");
+    const show = (i) => {
+      diffSide[v.id] = i;
+      halves.forEach((h, k) => h.classList.toggle("off", k !== i));
+      seg.querySelectorAll("button").forEach((x, k) => x.setAttribute("aria-pressed", String(k === i)));
+      requestAnimationFrame(() => linkDrawer?.());
+    };
+    [t("before"), t("after")].forEach((label, i) => {
+      const x = el("button", null, label);
+      x.onclick = () => show(i);
+      seg.append(x);
+    });
+    wrap.prepend(seg);
+    show(diffSide[v.id] ?? 1);
+  }
   // Links that exist on one side only: what stops talking to what, and what starts.
   const name = (x) => plan.nodes[x]?.name || x;
   const ea = edgesOf(before), eb = edgesOf(after);
@@ -2614,6 +2682,9 @@ function renderView() {
     pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
   }
   document.getElementById("view").replaceChildren(pic);
+  tidyGuesses(document.getElementById("view"));
+  // A big picture may use the whole window.
+  document.body.classList.toggle("pic-wide", !!pic.querySelector?.(".map.dense"));
   try {
     kind?.after?.();
   } catch {}
@@ -2941,7 +3012,6 @@ function runMove(m, token) {
       // A blocked line lights only as far as the label gets.
       if (isCut()) {
         const len = line.path.getTotalLength();
-        line.path.style.animation = "none";
         line.path.style.strokeDasharray = line.back ? `0 ${len * (1 - cutAt)} ${len * cutAt} ${len}` : `${len * cutAt} ${len}`;
       }
       // The same speed on every line: a short hop is quick, a long one takes its time.
@@ -2952,12 +3022,12 @@ function runMove(m, token) {
       packet.remove();
       line.layer?.remove();
       line.path.classList.remove("mv-on");
-      line.path.style.animation = line.path.style.strokeDasharray = "";
+      line.path.style.strokeDasharray = "";
       done();
     };
     const place = (e) => {
       const len = line.path.getTotalLength(), p = line.path.getPointAtLength((line.back ? 1 - e : e) * len), c = line.path.getScreenCTM();
-      packet.style.transform = `translate(${c.a * p.x + c.c * p.y + c.e}px,${c.b * p.x + c.d * p.y + c.f}px) translate(-50%,-50%)`;
+      packet.style.transform = `translate(${c.a * p.x + c.c * p.y + c.e}px,${c.b * p.x + c.d * p.y + c.f}px) translate(-50%,calc(-50% - 15px))`;
     };
     const frame = async (now) => {
       if (story.token !== token) return finish();
@@ -2971,7 +3041,9 @@ function runMove(m, token) {
       const k = Math.min(1, (now - start) / ms);
       // A blocked line never gets there: the label stops partway and turns red.
       const cut = isCut();
-      place((k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2) * (cut ? cutAt : 1));
+      // It rests just short of the box, so the box's name stays readable.
+      const end = cut ? cutAt : Math.max(0.5, 1 - 34 / line.path.getTotalLength());
+      place((k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2) * end);
       if (k < 1) return requestAnimationFrame(frame);
       if (cut) {
         packet.classList.add("cut");

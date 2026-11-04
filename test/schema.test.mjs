@@ -122,7 +122,7 @@ test("a plan without views gets a flow from its steps", async () => {
   const p = base();
   delete p.views;
   assert.deepEqual(validate(p), []);
-  assert.deepEqual(viewsOf(p)[0].lanes, [{title: "one", nodes: ["a"]}]);
+  assert.deepEqual(viewsOf(p)[0].lanes, [{title: "one", nodes: ["a"], step: p.steps[0].id}]);
   p.steps[0].nodes = [];
   assert.match(validate(p).join("\n"), /no views/);
 });

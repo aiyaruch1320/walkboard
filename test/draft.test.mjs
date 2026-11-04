@@ -153,7 +153,12 @@ test("flows: boxes added and moved between lanes, lanes added, renamed and moved
   assert.deepEqual(r.marks.nodes.b, {mark: "move", from: "One"});
   assert.equal(r.marks.nodes.a.mark, "remove");
   assert.equal(r.pending.length, 6);
-  assert.equal(draftLine(describeDraft(p, d, "flow").changes[1]), "↦ box B (b) → lane 2");
+  const words = describeDraft(p, d, "flow");
+  assert.equal(draftLine(words.changes[1]), '↦ box B (b) → lane 2 "Two" (step s2)');
+  assert.deepEqual(words.lanesAfter, ["Three", "s1: First", "s2: Two"]);
+  // Named by title, a lane is found even after another page moved it.
+  const moved = applyDraft(p, {version: 1, views: {flow: {ops: [{id: "m", op: "moveLane", lane: 1, to: 0}, {id: "b", op: "addBox", node: "new:y", name: "Y", lane: 1, laneTitle: "Two"}]}}}, "flow");
+  assert.deepEqual(moved.view.lanes.map((l) => l.nodes), [["c", "new:y"], ["a", "b"]]);
 });
 
 test("state, decision and impact pictures: boxes and lines; k8s: lines like a map's, new boxes on the right", () => {

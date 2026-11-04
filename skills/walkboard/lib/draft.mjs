@@ -20,7 +20,7 @@ export const DRAFT_OPS = {
 // A plan without views is drawn as one flow of its steps (as in lib/schema.mjs, kept here so this file imports nothing).
 export function viewList(p) {
   if (Array.isArray(p?.views) && p.views.length) return p.views;
-  const lanes = (Array.isArray(p?.steps) ? p.steps : []).filter((s) => Array.isArray(s?.nodes) && s.nodes.length).map((s) => ({title: s.title, nodes: s.nodes}));
+  const lanes = (Array.isArray(p?.steps) ? p.steps : []).filter((s) => Array.isArray(s?.nodes) && s.nodes.length).map((s) => ({title: s.title, nodes: s.nodes, step: s.id}));
   return lanes.length ? [{id: "flow", kind: "flow", title: p?.lang === "th" ? "ภาพรวม" : "Overview", lanes}] : [];
 }
 export const draftable = (view) => !!DRAFT_OPS[view?.kind];
@@ -56,23 +56,24 @@ const SHAPES = {
   move: {node: id, to: label, from: (x) => x == null || label(x), at},
   moveZone: {zone: label, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x), at},
   addTable: {node: isNewId, name: text, group: (x) => x == null || label(x), at},
-  addColumn: {table: id, column: colName, type: (x) => optText(x, 40), key: (x) => optText(x, 12), at},
+  addColumn: {table: id, column: colName, type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x), at},
   editColumn: {table: id, column: colName, name: (x) => x == null || colName(x), type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x)},
   removeColumn: {table: id, column: colName},
   moveTable: {node: id, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x)},
   addGroup: {group: label, tables: (x) => Array.isArray(x) && x.length > 0 && x.length <= 50 && x.every(id)},
   editGroup: {group: label, label},
   removeGroup: {group: label},
-  addBox: {node: isNewId, name: text, lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), at},
-  moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, at},
+  // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
+  addBox: {node: isNewId, name: text, lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
+  moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, at},
   addLane: {title: text, at},
-  editLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, title: text},
-  moveLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, to: (x) => Number.isInteger(x) && x >= 0 && x < 200},
+  editLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, title: text},
+  moveLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, to: (x) => Number.isInteger(x) && x >= 0 && x < 200},
   addEdge: {from: id, to: id, label: (x) => optText(x, 60)},
   editEdge: {from: id, to: id, label: (x) => typeof x === "string" && x.length <= 60 && plain(x)},
   removeEdge: {from: id, to: id},
 };
-const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref"]);
+const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle"]);
 
 // Problems with a draft (an empty list: fine). Shapes only; whether a change still fits the plan is applyDraft's job.
 export function validateDraft(d) {
@@ -383,9 +384,11 @@ function applyTables(v, nodes, ops, result) {
         const tb = table(n);
         if (!tb) stale(op, `no table ${op.table}`);
         else if (col(n, op.column)) done(op);
+        else if (op.ref && !col(...op.ref.split("."))) stale(op, `points at ${op.ref}, which is not there`);
         else {
-          insert(tb.columns, {name: op.column, ...(op.type ? {type: op.type} : {}), ...(op.key ? {key: op.key} : {})}, op.at);
+          insert(tb.columns, {name: op.column, ...(op.type ? {type: op.type} : {}), ...(op.key ? {key: op.key} : {}), ...(op.ref ? {ref: op.ref} : {})}, op.at);
           marks.columns[`${n}.${op.column}`] = {mark: "add"};
+          if (op.ref) marks.links[`${n}.${op.column}>${op.ref}`] = {mark: "add"};
         }
         break;
       }
@@ -398,6 +401,10 @@ function applyTables(v, nodes, ops, result) {
         const changed = ["name", "type", "key", "ref"].filter((k) => op[k] != null && op[k] !== (k === "name" ? c.name : c[k] ?? ""));
         if (!changed.length) {
           done(op);
+          break;
+        }
+        if (op.ref && !col(...op.ref.split("."))) {
+          stale(op, `points at ${op.ref}, which is not there`);
           break;
         }
         const k0 = `${n}.${c.name}`, m = marks.columns[k0];
@@ -550,12 +557,27 @@ function applyFlow(v, nodes, ops, result) {
   v.lanes = (Array.isArray(v.lanes) ? v.lanes : []).filter(isObj).map((l) => ({...l, nodes: Array.isArray(l.nodes) ? [...l.nodes] : []}));
   const laneOf = (n) => v.lanes.findIndex((l) => l.nodes.includes(n));
   const has = (n) => laneOf(n) >= 0;
+  // The lane meant: by its title when the change names one and a lane still has it, else by its number.
+  const laneIx = (op) => {
+    if (op.laneTitle) {
+      const i = v.lanes.findIndex((l) => (l.title ?? "") === op.laneTitle);
+      if (i >= 0) return i;
+    }
+    return op.lane ?? 0;
+  };
+  result.lanes = {};
   for (const op of ops) {
     if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS.flow.includes(op.op)) continue;
+    // Which lane (and step) each change is about, in words: numbers alone shift as lanes come and go.
+    if (["addBox", "moveBox", "editLane", "moveLane"].includes(op.op)) {
+      const lane = v.lanes[laneIx(op)];
+      if (lane) result.lanes[op.id] = {laneTitle: lane.title ?? "", ...(lane.step ? {step: lane.step} : {})};
+      if (op.op === "moveLane" && v.lanes[op.to] && v.lanes[op.to] !== lane) result.lanes[op.id].before = v.lanes[op.to].title ?? "";
+    }
     t.track(op, () => {
       switch (op.op) {
         case "addBox": {
-          const lane = v.lanes[op.lane ?? 0];
+          const lane = v.lanes[laneIx(op)];
           if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
           if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
           nodes[op.node] = {name: op.name.trim()};
@@ -564,11 +586,11 @@ function applyFlow(v, nodes, ops, result) {
           return;
         }
         case "moveBox": {
-          const from = laneOf(op.node), lane = v.lanes[op.lane];
+          const li = laneIx(op), from = laneOf(op.node), lane = v.lanes[li];
           if (from < 0) return t.stale(op, `no box ${op.node}`);
           if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
           const at0 = v.lanes[from].nodes.indexOf(op.node);
-          if (from === op.lane && (op.at == null || op.at === at0)) return t.done(op);
+          if (from === li && (op.at == null || op.at === at0)) return t.done(op);
           v.lanes[from].nodes.splice(at0, 1);
           insert(lane.nodes, op.node, op.at);
           if (marks.nodes[op.node]?.mark !== "add") marks.nodes[op.node] ||= {mark: "move", from: v.lanes[from].title ?? String(from + 1)};
@@ -578,7 +600,7 @@ function applyFlow(v, nodes, ops, result) {
           insert(v.lanes, {title: op.title, nodes: [], draft: true}, op.at);
           return;
         case "editLane": {
-          const lane = v.lanes[op.lane];
+          const lane = v.lanes[laneIx(op)];
           if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
           if (lane.title === op.title) return t.done(op);
           if (!lane.draft) lane.was ??= lane.title ?? "";
@@ -586,9 +608,10 @@ function applyFlow(v, nodes, ops, result) {
           return;
         }
         case "moveLane": {
-          if (!v.lanes[op.lane] || op.to >= v.lanes.length) return t.stale(op, `no lane ${op.lane + 1}`);
-          if (op.lane === op.to) return t.done(op);
-          const [lane] = v.lanes.splice(op.lane, 1);
+          const li = laneIx(op);
+          if (!v.lanes[li] || op.to >= v.lanes.length) return t.stale(op, `no lane ${op.lane + 1}`);
+          if (li === op.to) return t.done(op);
+          const [lane] = v.lanes.splice(li, 1);
           v.lanes.splice(op.to, 0, lane);
           lane.moved = true;
           return;
@@ -607,6 +630,7 @@ function applyFlow(v, nodes, ops, result) {
       }
     });
   }
+  result.order = v.lanes.map((l) => (l.step ? `${l.step}: ${l.title ?? ""}` : l.title ?? ""));
   // Lanes in the order drawn: added, renamed or moved.
   v.lanes.forEach((l, i) => {
     if (l.draft) marks.lanes[i] = {mark: "add"};
@@ -743,7 +767,7 @@ function applyK8s(v, nodes, ops, result) {
 
 // The draft in words the agent can act on without opening plan.json: names next to ids, zones by label.
 export function describeDraft(plan, draft, viewId) {
-  const {stale, pending, plan: drawn} = applyDraft(plan, draft, viewId);
+  const applied = applyDraft(plan, draft, viewId), {stale, pending, plan: drawn} = applied;
   const ops = draft?.views?.[viewId]?.ops || [];
   const nodes = isObj(drawn?.nodes) ? drawn.nodes : {};
   const added = Object.fromEntries(ops.filter((o) => o?.op === "addNode").map((o) => [o.node, o.name]));
@@ -761,13 +785,22 @@ export function describeDraft(plan, draft, viewId) {
   // Taking out a box takes its lines too: say which, so the agent need not look them up.
   const real = viewList(plan).find((x) => x?.id === viewId);
   const linesOf = (n) => (Array.isArray(real?.links) ? real.links : []).filter((l) => l?.from === n || l?.to === n).map((l) => `${named(l.from)} → ${named(l.to)}${l.label ? ` ${l.label}` : ""}`);
-  const changes = ops.filter((o) => pending.includes(o.id)).map(words).map((c, i, all) => {
+  // Columns elsewhere that keep a copy of a column taken out.
+  const copiesOf = (k) => (Array.isArray(real?.tables) ? real.tables : []).flatMap((tb) => (tb?.columns || []).filter((c) => c?.copy === k).map((c) => `${tb.node}.${c.name}`));
+  const changes = ops.filter((o) => pending.includes(o.id)).map(words).map((c) => {
     const o = ops.find((x) => x.id === c.id);
-    return o.op === "remove" && linesOf(o.node).length ? {...c, lines: linesOf(o.node)} : c;
+    if (o.op === "remove" && linesOf(o.node).length) return {...c, lines: linesOf(o.node)};
+    if (o.op === "removeColumn" && copiesOf(`${o.table}.${o.column}`).length) return {...c, copies: copiesOf(`${o.table}.${o.column}`)};
+    return applied.lanes?.[o.id] ? {...c, ...applied.lanes[o.id], laneTitle: applied.lanes[o.id].laneTitle} : c;
   });
   const staleOut = stale.map((s) => ({...words(ops.find((o) => o.id === s.id)), why: s.why}));
-  return {view: viewId, changes, ...(staleOut.length ? {stale: staleOut} : {})};
+  // A flow's lanes in their order after the draft (for a plan of steps: "step id: title"), so numbers need no counting.
+  const order = applied.order && changes.some((c) => ["addBox", "moveBox", "addLane", "editLane", "moveLane"].includes(c.op)) ? {lanesAfter: applied.order} : {};
+  return {view: viewId, changes, ...order, ...(staleOut.length ? {stale: staleOut} : {})};
 }
+
+// "lane 2 "Build"" (step build): numbers count from 1 here, from 0 in the JSON.
+const laneWords = (c) => `lane ${(c.lane ?? 0) + 1}${c.laneTitle ? ` "${c.laneTitle}"` : ""}${c.step ? ` (step ${c.step})` : ""}`;
 
 // One line per change, for `walkboard draft` and the page's list.
 export function draftLine(c) {
@@ -787,16 +820,16 @@ export function draftLine(c) {
     case "addTable": return `+ table ${c.name} (${c.node})${c.group ? ` in group "${c.group}"` : ""}`;
     case "addColumn": return `+ column ${c.table}: ${c.column}${c.type ? ` ${c.type}` : ""}${c.key ? ` [${c.key}]` : ""}`;
     case "editColumn": return `~ column ${c.table}: ${c.column} ${["name", "type", "key", "ref"].filter((k) => c[k] != null).map((k) => (k === "ref" ? (c.ref ? `→ ${c.ref} (foreign key)` : "foreign key taken out") : `${k} ${JSON.stringify(c[k])}`)).join(", ")}`;
-    case "removeColumn": return `− column ${c.table}: ${c.column}`;
+    case "removeColumn": return `− column ${c.table}: ${c.column}${c.copies?.length ? ` (copies kept in ${c.copies.join(", ")})` : ""}`;
     case "moveTable": return `↦ table ${c.node} → ${c.to ? `group "${c.to}"` : "no group"}`;
     case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}`;
     case "editGroup": return `~ group "${c.group}" → "${c.label}"`;
     case "removeGroup": return `− group "${c.group}"`;
-    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in lane ${c.lane + 1}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}`;
-    case "moveBox": return `↦ box ${c.node} → lane ${c.lane + 1}${c.at != null ? `, place ${c.at + 1}` : ""}`;
-    case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at ${c.at + 1}` : ""}`;
-    case "editLane": return `~ lane ${c.lane + 1} → "${c.title}"`;
-    case "moveLane": return `↦ lane ${c.lane + 1} → place ${c.to + 1}`;
+    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}`;
+    case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}`;
+    case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at place ${c.at + 1}` : ""}`;
+    case "editLane": return `~ ${laneWords(c)} → "${c.title}"`;
+    case "moveLane": return `↦ ${laneWords(c)} → place ${c.to + 1}${c.before != null ? ` (before "${c.before}")` : ""}`;
     case "addEdge": return `+ line ${c.from} → ${c.to}${c.label ? ` "${c.label}"` : ""}`;
     case "editEdge": return `~ line ${c.from} → ${c.to}: label ${JSON.stringify(c.label)}`;
     case "removeEdge": return `− line ${c.from} → ${c.to}`;

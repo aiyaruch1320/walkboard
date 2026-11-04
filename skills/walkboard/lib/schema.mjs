@@ -209,7 +209,8 @@ const dupes = (ids) => ids.filter((id, i) => id && ids.indexOf(id) !== i);
 // A plan may leave out views: each step becomes a lane of the boxes it touches.
 export function viewsOf(p) {
   if (list(p?.views).length) return p.views;
-  const lanes = list(p?.steps).filter((s) => list(s?.nodes).length).map((s) => ({title: s.title, nodes: s.nodes}));
+  // Each lane is a step (its id goes with it, so the page can number it and a draft can name it).
+  const lanes = list(p?.steps).filter((s) => list(s?.nodes).length).map((s) => ({title: s.title, nodes: s.nodes, step: s.id}));
   return lanes.length ? [{id: "flow", kind: "flow", title: langOf(p) === "th" ? "ภาพรวม" : "Overview", lanes}] : [];
 }
 

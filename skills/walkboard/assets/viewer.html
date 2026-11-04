@@ -75,7 +75,7 @@ const snapshot = (() => {
 const served = !snapshot && location.protocol !== "file:" && token;
 const moduleUrl = (name) => window.__walkboardModules?.[name] || `/${name}.mjs?token=${encodeURIComponent(token)}`;
 const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
-const {GLYPHS, FAMILIES, iconOf} = served || snapshot ? await import(moduleUrl("icons")) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null};
+const {GLYPHS, FAMILIES, iconOf, iconNames} = served || snapshot ? await import(moduleUrl("icons")) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null, iconNames: () => []};
 const {applyDraft, describeDraft, draftable, isNewId} = served || snapshot ? await import(moduleUrl("draft")) : {applyDraft: (p, d, id) => ({plan: p, view: p.views.find((x) => x.id === id), marks: {nodes: {}, zones: {}, links: {}}, pending: [], stale: [], done: []}), describeDraft: () => ({changes: []}), draftable: () => false, isNewId: () => false};
 
 let lang = /^th\b/i.test(navigator.language) ? "th" : "en";
@@ -1356,6 +1356,7 @@ function renderSide() {
   const p = document.getElementById("panel");
   if (side.kind === "node") return renderNodePanel(side.id);
   if (side.kind === "props") return renderPropsPanel();
+  if (side.kind === "draft") return renderDraftPanel();
   if (side.kind === "option" || side.kind === "decide" || side.kind === "cell" || side.kind === "constraints") return renderDesignPanel();
   if (side.kind === "step") {
     const step = steps().find((s) => s.id === side.id);
@@ -1982,6 +1983,7 @@ async function fetchDraft() {
     if (JSON.stringify(d) === JSON.stringify(draft)) return;
     draft = d;
     if (plan) keepFocus(() => renderView());
+    if (side?.kind === "draft") renderSide();
   } catch {}
 }
 const showProblem = (msg) => {
@@ -2015,7 +2017,17 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   redo.title = `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`;
   undo.setAttribute("aria-label", t("undo"));
   redo.setAttribute("aria-label", t("redo"));
-  row.append(undo, redo, reset, ask);
+  const pencil = el("button", "lsketch");
+  pencil.append(svgIcon("pencil"), t("sketch"));
+  pencil.title = t("sketchTip");
+  pencil.hidden = !drafts;
+  pencil.onclick = () => {
+    sketching = v.id;
+    sketchTool = "select";
+    sketchSel = null;
+    apply();
+  };
+  row.append(undo, redo, reset, ask, pencil);
   // Dragging and sketching never wake the agent; this does, with where everything is on screen and what was sketched.
   ask.onclick = async () => {
     ask.disabled = true;
@@ -2038,13 +2050,17 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   };
   const snap = () => ({layout: v.layout || null, ops: drafts ? draftOps(v.id) : null});
   const refresh = () => {
-    const any = !!Object.keys(v.layout || {}).length || (drafts && !!draftOps(v.id).length);
-    row.hidden = !canMove() || !(any || hist.back.length || hist.fwd.length);
+    const any = !!Object.keys(v.layout || {}).length || (drafts && !!draftOps(v.id).length), history = hist.back.length || hist.fwd.length;
+    // A picture that takes a draft always offers the pencil; while sketching, the toolbar holds all of this.
+    row.hidden = !canMove() || sketching === v.id || !(any || history || drafts);
+    for (const b of [undo, redo]) b.hidden = drafts && !history;
     reset.hidden = !any;
     ask.hidden = !review || !any;
     undo.disabled = !hist.back.length;
     redo.disabled = !hist.fwd.length;
+    onToolsChange?.();
   };
+  let onToolsChange = null;
   // Put both back; save only what changed.
   const put = (state) => {
     if (JSON.stringify(state.layout ?? null) !== JSON.stringify(v.layout ?? null)) {
@@ -2077,6 +2093,13 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   return {
     row,
     snap,
+    undo: () => walk(hist.back, hist.fwd),
+    redo: () => walk(hist.fwd, hist.back),
+    ask: () => ask.onclick(),
+    history: () => ({back: hist.back.length, fwd: hist.fwd.length}),
+    set onChange(fn) {
+      onToolsChange = fn;
+    },
     // An offset moved (the layout before, the layout now).
     done(before, positions) {
       hist.back.push({layout: before || null, ops: drafts ? draftOps(v.id) : null});
@@ -2094,6 +2117,169 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     },
   };
 }
+// ---------- sketching: draft mode on a picture. Tools, not text: an icon for each, the words in the tooltip.
+let sketching = null, sketchTool = "select", sketchSel = null;
+// The picture being sketched hands the side panel and the keyboard what they need (set by renderMap).
+let sketchApi = null;
+const ICON_PATHS = {
+  pencil: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
+  select: ["M6 3l12 9-5.5 1.2L9.5 19z"],
+  box: ["M3 7h12v12H3z", "M19 3v6", "M16 6h6"],
+  zone: [{d: "M3 7h12v12H3z", dash: "2.6 2.2"}, "M19 3v6", "M16 6h6"],
+  connect: ["M4 20a2 2 0 1 1 0.01 0", "M20 4a2 2 0 1 1 0.01 0", "M6 18L18 6", "M13 5.5h5.5V11"],
+  rename: ["M5 6h10", "M10 6v12", "M7.5 18h5", "M18 9v10", "M16.5 9h3", "M16.5 19h3"],
+  remove: ["M4 7h16", "M9.5 7V4.5h5V7", "M6.5 7l1 13h9l1-13", "M10.5 11v5.5", "M13.5 11v5.5"],
+  close: ["M6 6l12 12", "M18 6L6 18"],
+  undo: ["M9 14 4 9l5-5", "M4 9h10.5a5.5 5.5 0 0 1 0 11H11"],
+  redo: ["M15 14l5-5-5-5", "M20 9H9.5a5.5 5.5 0 0 0 0 11H13"],
+  list: ["M9 6h11", "M9 12h11", "M9 18h11", "M4.5 6h.01", "M4.5 12h.01", "M4.5 18h.01"],
+};
+function svgIcon(name) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("ticon");
+  for (const x of ICON_PATHS[name] || []) {
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", typeof x === "string" ? x : x.d);
+    if (x.dash) path.setAttribute("stroke-dasharray", x.dash);
+    svg.append(path);
+  }
+  return svg;
+}
+const SKETCH_TOOLS = [["select", "V"], ["box", "B"], ["zone", "Z"], ["connect", "L"], ["rename", "R"], ["remove", "D"]];
+// A small text field over a box's name or a zone's title; Enter keeps it, Escape (or nothing typed) drops it.
+function editText(over, initial, placeholder, {onInput, onDone}) {
+  const host = over.closest(".map") || document.body, r = over.getBoundingClientRect(), h = host.getBoundingClientRect();
+  const input = el("input", "dedit");
+  input.value = initial;
+  input.placeholder = placeholder;
+  input.maxLength = 80;
+  input.style.left = r.left - h.left + "px";
+  input.style.top = r.top - h.top + "px";
+  input.style.width = Math.max(120, r.width) + "px";
+  host.append(input);
+  let over_ = false;
+  const finish = (keep) => {
+    if (over_) return;
+    over_ = true;
+    const val = input.value.trim();
+    input.remove();
+    onDone(keep && val ? val : null);
+  };
+  input.oninput = () => onInput?.(input.value);
+  input.onkeydown = (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") finish(true);
+    else if (e.key === "Escape") finish(false);
+  };
+  input.onblur = () => finish(true);
+  requestAnimationFrame(() => {
+    input.focus();
+    input.select();
+  });
+  return input;
+}
+// A floating card next to a point, closed by Escape or a click elsewhere.
+function popover(x, y, parts) {
+  document.querySelector(".dpop")?.remove();
+  const box = el("div", "dpop");
+  box.append(...parts);
+  document.body.append(box);
+  const w = box.offsetWidth, hgt = box.offsetHeight;
+  box.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + "px";
+  box.style.top = Math.max(8, Math.min(innerHeight - hgt - 8, y)) + "px";
+  const away = (e) => {
+    if (box.contains(e.target)) return;
+    close();
+  };
+  const esc = (e) => e.key === "Escape" && close();
+  const close = () => {
+    box.remove();
+    removeEventListener("pointerdown", away, true);
+    removeEventListener("keydown", esc, true);
+  };
+  setTimeout(() => {
+    addEventListener("pointerdown", away, true);
+    addEventListener("keydown", esc, true);
+  });
+  box.close = close;
+  return box;
+}
+// The changes of one picture as rows for the side panel: a sign, the names, and where.
+function draftRows(viewId) {
+  const real = plan.views.find((x) => x.id === viewId);
+  if (!real) return [];
+  const drafted = applyDraft(plan, draft, viewId), names = drafted.plan.nodes;
+  const nm = (id) => names[id]?.name ?? plan.nodes[id]?.name ?? id;
+  const old = (id) => plan.nodes[id]?.name ?? id;
+  const top = (z) => z || t("topLevel");
+  const stale = Object.fromEntries(drafted.stale.map((x) => [x.id, x.why]));
+  return draftOps(viewId).filter((o) => !drafted.done.includes(o.id)).map((o) => {
+    const [sign, main, sub] = {
+      addNode: ["+", o.name, top(o.zone)],
+      addZone: ["+", o.zone, top(o.parent)],
+      addLink: ["+", `${nm(o.from)} → ${nm(o.to)}`, [o.label, o.state && o.state !== "ok" ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
+      editLink: ["~", `${nm(o.from)} → ${nm(o.to)}`, [o.label != null ? o.label || "—" : "", o.state ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
+      removeLink: ["−", `${nm(o.from)} → ${nm(o.to)}`, ""],
+      editNode: ["~", o.name != null ? `${old(o.node)} → ${o.name}` : nm(o.node), [o.what != null ? o.what : "", o.icon ? "icon" : ""].filter(Boolean).join(" · ")],
+      editZone: ["~", `${o.zone} → ${o.label}`, ""],
+      remove: ["−", old(o.node), ""],
+      removeZone: ["−", o.zone, ""],
+      move: ["↦", nm(o.node), `→ ${top(o.to)}`],
+      moveZone: ["↦", o.zone, `→ ${top(o.to)}`],
+    }[o.op] || ["?", o.op, ""];
+    return {op: o, sign, main, sub, stale: stale[o.id]};
+  });
+}
+function renderDraftPanel() {
+  const title = document.getElementById("sideTitle"), p = document.getElementById("panel");
+  const rows = draftRows(side.view || sketchApi?.view || viewId);
+  title.textContent = t("draftTitle", rows.length);
+  const list = el("ul", "dlist");
+  for (const r of rows) {
+    const li = el("li", "drow" + (r.stale ? " stale" : ""));
+    const sign = el("span", "dsign s-" + ({"+": "add", "~": "change", "−": "remove", "↦": "move"}[r.sign] || "x"), r.stale ? "!" : r.sign);
+    const text = el("button", "dtext");
+    text.append(el("span", "dmain", r.main), ...(r.sub ? [el("span", "dsub", r.sub)] : []));
+    text.title = r.stale ? t("staleWhy", r.stale) : "";
+    text.onclick = () => sketchApi?.show(r.op);
+    const x = el("button", "dx", "×");
+    x.title = t("dropChange");
+    x.setAttribute("aria-label", t("dropChange"));
+    x.onclick = () => sketchApi?.drop(r.op.id);
+    li.append(sign, text, x);
+    list.append(li);
+  }
+  const parts = [rows.length ? list : el("p", "dempty", t("draftEmpty"))];
+  if (rows.length) {
+    const foot = el("div", "dfoot");
+    const review = el("button", "primary", t("reviewPic"));
+    review.onclick = () => sketchApi?.review();
+    const discard = el("button", "talklink", t("discardAll"));
+    discard.onclick = () => confirm(t("discardAsk", rows.length)) && sketchApi?.discard();
+    foot.append(review, discard);
+    parts.push(foot);
+  }
+  p.replaceChildren(...parts);
+}
+// Typing letters picks a tool; Delete takes out what is selected; Escape steps back (tool, then the mode).
+addEventListener("keydown", (e) => {
+  if (!sketching || !sketchApi || e.metaKey || e.ctrlKey || e.altKey) return;
+  const a = document.activeElement;
+  if (/^(TEXTAREA|INPUT|SELECT)$/.test(a?.tagName) || a?.isContentEditable) return;
+  const tool = SKETCH_TOOLS.find(([, k]) => k.toLowerCase() === e.key.toLowerCase());
+  if (tool) sketchApi.tool(tool[0]);
+  else if ((e.key === "Delete" || e.key === "Backspace") && sketchSel) sketchApi.remove(sketchSel);
+  else if (e.key === "Enter" && sketchSel) sketchApi.rename(sketchSel);
+  else if (e.key === "Escape") {
+    if (document.querySelector(".dpop, .dedit")) return;
+    if (sketchTool !== "select" || sketchSel) sketchApi.tool("select");
+    else sketchApi.exit();
+  } else return;
+  e.preventDefault();
+});
+
 addEventListener("keydown", (e) => {
   const a = document.activeElement;
   if (!(e.metaKey || e.ctrlKey) || e.altKey || !layoutKeys || /^(TEXTAREA|INPUT|SELECT)$/.test(a?.tagName) || a?.isContentEditable) return;
@@ -2149,7 +2335,8 @@ const timed = (fn) => (...a) => {
 
 function renderMap(real) {
   // The picture drawn is the plan with this view's draft in it; arranging (layout) stays on the real view.
-  const drafted = applyDraft(plan, draft, real.id), v = drafted.view, marks = drafted.marks, lv = real;
+  // Paper shows the plan as it is: a draft is not part of it yet.
+  const drafted = applyDraft(plan, printState ? null : draft, real.id), v = drafted.view, marks = drafted.marks, lv = real;
   drawnNodes = drafted.plan.nodes;
   const scroll = el("div", "scroll");
   const states = [...new Set((v.links || []).map((l) => l.state || "ok"))];
@@ -2304,14 +2491,32 @@ function renderMap(real) {
     return [...rest, {id: newOpId(rest), op: isZone ? "moveZone" : "move", [isZone ? "zone" : "node"]: k, to: to.dataset.zone, from: it.dataset.plan, at}];
   };
   let mapDragged = false;
-  // The click that ends a drag does not open the box.
+  // The click that ends a drag does not open the box; while sketching a click selects instead.
   map.addEventListener("click", (e) => {
+    if (isSketch && !e.target.closest(".dedit")) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (mapDragged || sketchTool !== "select") return;
+      const hit = e.target.closest?.(".dhit");
+      if (hit) return editLink(hit.dataset.from, hit.dataset.to, e.clientX, e.clientY);
+      const it = e.target.closest?.(".zhead") ? e.target.closest(".zhead").parentElement : e.target.closest?.("[data-anchor]");
+      const was = sketchSel && JSON.stringify(sketchSel);
+      select(selOf(it));
+      if (e.target.closest(".icon") && sketchSel?.kind === "node" && was === JSON.stringify(sketchSel)) iconPicker(sketchSel.id, e.clientX, e.clientY);
+      return;
+    }
     if (!mapDragged) return;
     e.stopPropagation();
     e.preventDefault();
   }, true);
+  map.addEventListener("dblclick", (e) => {
+    if (!isSketch || sketchTool !== "select") return;
+    const it = e.target.closest?.(".zhead") ? e.target.closest(".zhead").parentElement : e.target.closest?.("[data-anchor]");
+    if (it) rename(selOf(it));
+  });
   map.addEventListener("pointerdown", (e) => {
     if (!canMoveMap() || e.button !== 0) return;
+    if (isSketch && sketchTool !== "select") return sketchDown(e);
     const head = e.target.closest?.(".zhead");
     const it = head ? head.parentElement : e.target.closest?.("[data-anchor]");
     if (!it || !map.contains(it) || e.target.closest("a, button, .term")) return;
@@ -2439,7 +2644,7 @@ function renderMap(real) {
     for (const e of map.querySelectorAll("[data-anchor]")) rects[e.dataset.anchor] = e.getBoundingClientRect();
     // The page asks for a redraw from several places at once (the render, the resize observer, the next frame):
     // when no box has moved since the last one, the lines are already right.
-    const sig = `${curStep()?.id ?? ""}|${Math.round(mr.width)}|` + Object.entries(rects).map(([k, r]) => `${k}:${Math.round(r.left - mr.left)},${Math.round(r.top - mr.top)},${Math.round(r.width)},${Math.round(r.height)}`).join(";");
+    const sig = `${isSketch ? "s" : ""}|${curStep()?.id ?? ""}|${Math.round(mr.width)}|` + Object.entries(rects).map(([k, r]) => `${k}:${Math.round(r.left - mr.left)},${Math.round(r.top - mr.top)},${Math.round(r.width)},${Math.round(r.height)}`).join(";");
     if (sig === drawnSig && svg.childElementCount) return;
     drawnSig = sig;
     const base = svg.clear();
@@ -2455,8 +2660,348 @@ function renderMap(real) {
       const lm = marks.links[`${l.from}>${l.to}`]?.mark;
       const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}${lm ? " dr-" + lm : ""}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
       drawn.push({link: l, from: l.from, to: l.to, line, head, route: r, at: {left: a.left - mr.left, top: a.top - mr.top}});
+      if (isSketch) {
+        const hit = document.createElementNS(svg.namespaceURI, "path");
+        hit.setAttribute("d", route.d);
+        hit.setAttribute("class", "dhit");
+        [hit.dataset.from, hit.dataset.to] = [l.from, l.to];
+        svg.append(hit);
+      }
     }
   });
+  // ---- sketching (draft mode): the tools act here; every change is a draft change, undone like a drag.
+  if (sketching && sketching !== lv.id) sketching = null;
+  const isSketch = sketching === lv.id && canMoveMap();
+  map.classList.toggle("sketch", isSketch);
+  map.dataset.tool = isSketch ? sketchTool : "";
+  const ops = () => draftOps(lv.id);
+  const setOps = (next) => {
+    const before = tools.snap();
+    tools.change(before, {layout: before.layout, ops: next});
+    keepFocus(() => renderView());
+    if (side?.kind === "draft") renderSide();
+  };
+  const nextId = (list = ops()) => newOpId(list);
+  const newNode = () => {
+    const used = new Set([...Object.keys(plan.nodes), ...ops().filter((o) => o.op === "addNode").map((o) => o.node)]);
+    let i = 1;
+    while (used.has("new:" + i)) i++;
+    return "new:" + i;
+  };
+  const selOf = (e) => (!e ? null : e.classList.contains("zone") ? {kind: "zone", id: e.dataset.zone} : e.dataset.anchor ? {kind: "node", id: e.dataset.anchor} : null);
+  const elOf = (x) => (x?.kind === "zone" ? zoneNamed(x.id) : x ? map.querySelector(`[data-anchor="${CSS.escape(x.id)}"]`) : null);
+  const addOp = (kind, k) => ops().find((o) => (kind === "node" ? o.op === "addNode" && o.node === k : o.op === "addZone" && o.zone === k));
+  const select = (x) => {
+    sketchSel = x;
+    map.querySelectorAll(".dsel").forEach((e) => e.classList.remove("dsel"));
+    elOf(x)?.classList.add("dsel");
+  };
+  // Changes that only make sense with a box or zone the draft added go with it.
+  const without = (list, kind, k) => list.filter((o) => (kind === "node"
+    ? !(o.op === "addNode" && o.node === k) && o.node !== k && o.from !== k && o.to !== k
+    : !(o.op === "addZone" && o.zone === k) && o.zone !== k && o.parent !== k && o.to !== k));
+  const remove = (x) => {
+    if (!x) return;
+    const list = ops(), added = addOp(x.kind, x.id);
+    const gone = x.kind === "node" ? (o) => o.op === "remove" && o.node === x.id : (o) => o.op === "removeZone" && o.zone === x.id;
+    if (added) setOps(without(list, x.kind, x.id));
+    else if (list.some(gone)) setOps(list.filter((o) => !gone(o)));
+    else setOps([...list, {id: nextId(list), op: x.kind === "node" ? "remove" : "removeZone", [x.kind === "node" ? "node" : "zone"]: x.id}]);
+    sketchSel = null;
+  };
+  const renameTo = (x, val) => {
+    const list = ops(), added = addOp(x.kind, x.id);
+    if (x.kind === "node") {
+      if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)));
+      const orig = plan.nodes[x.id]?.name ?? "", ed = list.find((o) => o.op === "editNode" && o.node === x.id);
+      const next = ed ? list.map((o) => (o === ed ? {...o, name: val} : o)) : [...list, {id: nextId(list), op: "editNode", node: x.id, name: val}];
+      return setOps(next.flatMap((o) => (o.op === "editNode" && o.node === x.id && o.name === orig ? (({name: _, ...r}) => (r.what != null || r.icon != null ? [r] : []))(o) : [o])));
+    }
+    if (val !== x.id && zoneNamed(val)) return showProblem(t("zoneTaken", val));
+    const fix = (o) => Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val : w]));
+    if (added) return setOps(list.map((o) => (o === added ? {...o, zone: val} : fix(o))));
+    const ed = list.find((o) => o.op === "editZone" && o.label === x.id);
+    if (ed) return setOps(ed.zone === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)));
+    setOps([...list, {id: nextId(list), op: "editZone", zone: x.id, label: val}]);
+  };
+  const rename = (x) => {
+    const e = elOf(x);
+    if (!e) return;
+    const over = x.kind === "zone" ? e.querySelector(":scope > .zhead") : e.querySelector(".name") || e;
+    const initial = x.kind === "zone" ? x.id : drafted.plan.nodes[x.id]?.name ?? "";
+    editText(over, initial, t(x.kind === "zone" ? "zoneName" : "boxName"), {onDone: (val) => val && val !== initial && renameTo(x, val)});
+  };
+  const setIcon = (id, icon) => {
+    const list = ops(), added = addOp("node", id);
+    if (added) return setOps(list.map((o) => (o === added ? {...o, icon} : o)));
+    const ed = list.find((o) => o.op === "editNode" && o.node === id);
+    setOps(ed ? list.map((o) => (o === ed ? {...o, icon} : o)) : [...list, {id: nextId(list), op: "editNode", node: id, icon}]);
+  };
+  // Every icon, searchable; built once, then reused.
+  const iconPicker = (id, x, y) => {
+    const search = el("input", "dsearch");
+    search.placeholder = t("iconSearch");
+    const grid = el("div", "dicons");
+    for (const name of iconNames()) {
+      const ic = iconEl({icon: name}, "", null);
+      if (!ic) continue;
+      const b = el("button", "dicon");
+      b.title = name;
+      b.dataset.name = name;
+      b.append(ic);
+      b.onclick = () => {
+        pop.close();
+        setIcon(id, name);
+      };
+      grid.append(b);
+    }
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      for (const b of grid.children) b.hidden = q && !b.dataset.name.toLowerCase().includes(q);
+    };
+    const pop = popover(x + 12, y + 12, [search, grid]);
+    search.focus();
+  };
+  // A line's label and kind (drawn as the line looks), or take it out.
+  const linkOps = (from, to, change) => {
+    const list = ops(), added = list.find((o) => o.op === "addLink" && o.from === from && o.to === to);
+    if (change === "remove") {
+      if (added) return setOps(list.filter((o) => o !== added));
+      const gone = list.find((o) => o.op === "removeLink" && o.from === from && o.to === to);
+      return setOps(gone ? list.filter((o) => o !== gone) : [...list.filter((o) => !(o.op === "editLink" && o.from === from && o.to === to)), {id: nextId(list), op: "removeLink", from, to}]);
+    }
+    if (added) return setOps(list.map((o) => (o === added ? Object.fromEntries(Object.entries({...o, ...change}).filter(([k, w]) => !((k === "label" && !w) || (k === "state" && (!w || w === "ok"))))) : o)));
+    const orig = (lv.links || []).find((l) => l?.from === from && l?.to === to) || {};
+    const ed = list.find((o) => o.op === "editLink" && o.from === from && o.to === to);
+    const merged = {...(ed || {id: nextId(list), op: "editLink", from, to}), ...change};
+    if (merged.label != null && merged.label === (orig.label ?? "")) delete merged.label;
+    if (merged.state != null && merged.state === (orig.state ?? "ok")) delete merged.state;
+    const keep = merged.label != null || merged.state != null;
+    setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list);
+  };
+  const editLink = (from, to, x, y) => {
+    const l = (v.links || []).find((k) => k?.from === from && k?.to === to);
+    if (!l) return;
+    const label = el("input", "dsearch");
+    label.placeholder = t("linkLabel");
+    label.value = l.label || "";
+    label.maxLength = 40;
+    label.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") {
+        pop.close();
+        linkOps(from, to, {label: label.value.trim()});
+      }
+    };
+    const chips = el("div", "dstates");
+    for (const st of LINK_STATE_KEYS) {
+      const b = el("button", "dstate" + ((l.state || "ok") === st ? " on" : ""));
+      const svgL = document.createElementNS("http://www.w3.org/2000/svg", "svg"), pl = document.createElementNS(svgL.namespaceURI, "path");
+      svgL.setAttribute("viewBox", "0 0 40 10");
+      pl.setAttribute("d", "M2 5H38");
+      pl.setAttribute("class", "l-" + st);
+      svgL.append(pl);
+      b.append(svgL);
+      b.title = t("lk_" + st);
+      b.setAttribute("aria-label", t("lk_" + st));
+      b.onclick = () => {
+        pop.close();
+        linkOps(from, to, {state: st, ...(label.value.trim() !== (l.label || "") ? {label: label.value.trim()} : {})});
+      };
+      chips.append(b);
+    }
+    const removed = marks.links[`${from}>${to}`]?.mark === "remove";
+    const del = el("button", "dlinkx");
+    del.append(svgIcon("remove"), removed ? t("keepLink") : t("removeLink"));
+    del.onclick = () => {
+      pop.close();
+      linkOps(from, to, "remove");
+    };
+    const head = el("div", "dphead", `${drafted.plan.nodes[from]?.name ?? from} → ${drafted.plan.nodes[to]?.name ?? to}`);
+    const pop = popover(x + 10, y + 10, [head, label, chips, del]);
+    label.focus();
+  };
+  // Where in a zone a point falls: before the first box (or zone) that comes after it in reading order.
+  const indexAt = (body, x, y, zones) => [...body.children].filter((c) => (zones ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]"))).filter((c) => {
+    const b = c.getBoundingClientRect();
+    return b.bottom < y - b.height / 2 || (Math.abs(b.top + b.height / 2 - y) <= b.height / 2 && b.left + b.width / 2 < x);
+  }).length;
+  const zoneAt = (x, y) => zoneEls().map((z) => [z, z.getBoundingClientRect()]).filter(([, b]) => x >= b.left && x <= b.right && y >= b.top && y <= b.bottom)
+    .sort((p, q) => p[1].width * p[1].height - q[1].width * q[1].height)[0]?.[0] || null;
+  const sketchDown = (e) => {
+    e.preventDefault();
+    const x = e.clientX, y = e.clientY;
+    const it = e.target.closest?.(".zhead") ? e.target.closest(".zhead").parentElement : e.target.closest?.("[data-anchor]");
+    if (sketchTool === "remove") return it && remove(selOf(it));
+    if (sketchTool === "rename") return it && rename(selOf(it));
+    if (sketchTool === "box") {
+      const z = zoneAt(x, y);
+      if (!z) return;
+      const body = z.querySelector(":scope > .zbody"), at = indexAt(body, x, y, false);
+      const tmp = el("div", "node todo dr-add dtemp"), head = el("div", "nhead"), name = el("div", "name", " ");
+      head.append(el("span", "icon"), name);
+      tmp.append(head);
+      body.insertBefore(tmp, [...body.children].filter((c) => c.matches("[data-anchor]"))[at] ?? null);
+      editText(name, "", t("boxName"), {
+        onInput: (val) => {
+          const ic = iconEl({name: val}, "", null);
+          head.firstChild.replaceWith(ic || el("span", "icon"));
+        },
+        onDone: (val) => {
+          tmp.remove();
+          sketchTool = "select";
+          if (!val) return refreshBar();
+          const list = ops();
+          setOps([...list, {id: nextId(list), op: "addNode", node: newNode(), name: val, zone: z.dataset.zone, at}]);
+        },
+      });
+      return;
+    }
+    if (sketchTool === "zone") {
+      const z = zoneAt(x, y), body = z ? z.querySelector(":scope > .zbody") : map, at = indexAt(body, x, y, true);
+      const tmp = el("div", "zone z" + Math.min(z ? Number((z.className.match(/\bz(\d)/) || [0, 0])[1]) + 1 : 0, 3) + " dr-add dtemp"), head = el("div", "zhead"), lbl = el("span", null, " ");
+      head.append(lbl);
+      tmp.append(head, el("div", "zbody"));
+      body.insertBefore(tmp, [...body.children].filter((c) => c.matches(".zone:not(.ghost)"))[at] ?? (z ? body.querySelector(":scope > [data-anchor]") : body.querySelector(":scope > svg")));
+      editText(lbl, "", t("zoneName"), {
+        onDone: (val) => {
+          tmp.remove();
+          sketchTool = "select";
+          if (!val) return refreshBar();
+          if (zoneNamed(val)) return showProblem(t("zoneTaken", val));
+          const list = ops();
+          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at}]);
+        },
+      });
+      return;
+    }
+    if (sketchTool === "connect") {
+      const from = e.target.closest?.("[data-anchor]");
+      if (!from) return;
+      const m = map.getBoundingClientRect(), a = from.getBoundingClientRect();
+      const ax = a.left + a.width / 2 - m.left, ay = a.top + a.height / 2 - m.top;
+      const line = document.createElementNS(svg.namespaceURI, "path");
+      line.setAttribute("class", "dr-add dtmp");
+      svg.append(line);
+      let over = null;
+      const move = (ev) => {
+        line.setAttribute("d", `M${ax} ${ay} L${ev.clientX - m.left} ${ev.clientY - m.top}`);
+        const t2 = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-anchor]");
+        const next = t2 && t2 !== from && map.contains(t2) ? t2 : null;
+        if (next !== over) {
+          over?.classList.remove("dtarget");
+          next?.classList.add("dtarget");
+          over = next;
+        }
+      };
+      const up = (ev) => {
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", up);
+        line.remove();
+        over?.classList.remove("dtarget");
+        if (!over) return;
+        const f = from.dataset.anchor, to = over.dataset.anchor;
+        if ((v.links || []).some((l) => l?.from === f && l?.to === to)) return editLink(f, to, ev.clientX, ev.clientY);
+        const list = ops();
+        setOps([...list, {id: nextId(list), op: "addLink", from: f, to}]);
+        // Straight on to its label and kind; nothing typed keeps a plain line.
+        requestAnimationFrame(() => sketchApi?.editLink(f, to, ev.clientX, ev.clientY));
+      };
+      addEventListener("pointermove", move);
+      addEventListener("pointerup", up);
+    }
+  };
+  // The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
+  let bar = null;
+  const refreshBar = () => {
+    if (!bar) return;
+    map.dataset.tool = sketchTool;
+    bar.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === sketchTool)));
+    const h = tools.history();
+    bar.querySelector(".du").disabled = !h.back;
+    bar.querySelector(".dr").disabled = !h.fwd;
+    const n = draftRows(lv.id).length;
+    bar.querySelector(".dcount").lastChild.textContent = String(n);
+    bar.querySelector(".dsend").disabled = !n && !Object.keys(lv.layout || {}).length;
+  };
+  if (isSketch) {
+    document.body.classList.add("sketching");
+    bar = el("div", "dtools");
+    bar.setAttribute("role", "toolbar");
+    bar.setAttribute("aria-label", t("sketch"));
+    const btn = (icon, title, cls = "") => {
+      const b = el("button", "dtool " + cls);
+      b.append(svgIcon(icon));
+      b.title = title;
+      b.setAttribute("aria-label", title);
+      return b;
+    };
+    for (const [name, key] of SKETCH_TOOLS) {
+      const b = btn(name, `${t("tool_" + name)} (${key})`);
+      b.dataset.tool = name;
+      b.onclick = () => sketchApi.tool(name);
+      bar.append(b);
+    }
+    bar.append(el("span", "dsep"));
+    const mac = /Mac|iP(hone|ad)/.test(navigator.platform);
+    const u = btn("undo", `${t("undo")} (${mac ? "⌘Z" : "Ctrl+Z"})`, "du"), r = btn("redo", `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`, "dr");
+    u.onclick = tools.undo;
+    r.onclick = tools.redo;
+    bar.append(u, r, el("span", "dsep"));
+    const count = el("button", "dcount");
+    count.append(svgIcon("list"), el("span", null, "0"));
+    count.title = t("draftList");
+    count.onclick = () => (side?.kind === "draft" ? closeSide() : openSide({kind: "draft", view: lv.id}));
+    const send = el("button", "primary dsend", t("reviewPic"));
+    send.onclick = () => tools.ask();
+    const exit = btn("close", `${t("exitSketch")} (Esc)`, "dexit");
+    exit.onclick = () => sketchApi.exit();
+    bar.append(count, send, exit);
+    document.body.append(bar);
+    tools.onChange = refreshBar;
+    refreshBar();
+    if (sketchSel) requestAnimationFrame(() => select(sketchSel));
+  }
+  if (isSketch) sketchApi = {
+    view: lv.id,
+    tool(name) {
+      sketchTool = name;
+      if (name !== "select") select(null);
+      refreshBar();
+    },
+    exit() {
+      sketching = null;
+      sketchSel = null;
+      sketchTool = "select";
+      renderView();
+    },
+    remove,
+    rename,
+    editLink,
+    review: () => tools.ask(),
+    discard: () => setOps([]),
+    drop(id) {
+      const list = ops(), o = list.find((x) => x.id === id);
+      if (!o) return;
+      setOps(o.op === "addNode" ? without(list, "node", o.node) : o.op === "addZone" ? without(list, "zone", o.zone) : list.filter((x) => x !== o));
+    },
+    show(o) {
+      const targets = [o.node, o.from, o.to].filter(Boolean).map((k) => map.querySelector(`[data-anchor="${CSS.escape(k)}"]`)).concat([o.op.includes("Zone") ? zoneNamed(o.label || o.zone) : null]).filter(Boolean);
+      targets[0]?.scrollIntoView({block: "center", behavior: "smooth"});
+      for (const e of targets) {
+        e.classList.remove("dflash");
+        void e.offsetWidth;
+        e.classList.add("dflash");
+      }
+    },
+  };
+  else if (!sketchApi && draftOps(lv.id).length) sketchApi = {view: lv.id, show() {}, drop(id) {
+    saveDraft(lv.id, draftOps(lv.id).filter((x) => x.id !== id));
+    renderView();
+  }, review: () => tools.ask(), discard() {
+    saveDraft(lv.id, []);
+    renderView();
+  }};
   addDrawer(draw, map);
   scroll.prepend(tools.row);
   return scroll;
@@ -3190,7 +3735,17 @@ function scrollHints() {
   }
 }
 
+// scripts/perf.mjs sets window.__wbRender to an array: each time a picture is built again adds how long it took (ms).
 function renderView() {
+  const t0 = performance.now();
+  renderViewNow();
+  window.__wbRender?.push(performance.now() - t0);
+}
+function renderViewNow() {
+  document.querySelector(".dtools")?.remove();
+  document.querySelector(".dpop")?.remove();
+  document.body.classList.remove("sketching");
+  sketchApi = null;
   if (isDesign() && !viewId) viewId = curOption()?.view;
   const v = plan.views.find((x) => x.id === viewId) || plan.views[0];
   const tabs = document.getElementById("tabs");
@@ -3439,6 +3994,8 @@ function codeBox(id) {
 
 // Clicking the box whose panel is open closes it again.
 function selectNode(id, toggle = true) {
+  // A box only the draft has: its place is the draft's list.
+  if (isNewId(id) && !plan.nodes[id]) return openSide({kind: "draft", view: viewId});
   if (toggle && side?.kind === "node" && side.id === id) return closeSide();
   nodeId = id;
   openSide({kind: "node", id});

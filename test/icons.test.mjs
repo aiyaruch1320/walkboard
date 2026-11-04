@@ -37,3 +37,9 @@ test("Huawei Cloud, on-prem and network parts have icons", () => {
   assert.equal(iconOf({name: "ExpressRoute circuit"}).glyph, "circuit");
   assert.equal(iconOf({name: "Site-to-Site VPN"}).glyph, "vpn");
 });
+
+test("a product in the name beats a word beside it", async () => {
+  const {iconOf} = await import("../skills/walkboard/lib/icons.mjs");
+  assert.equal(iconOf({name: "Redis sessions"}).glyph, "cache");
+  assert.equal(iconOf({name: "Session service"}).glyph, "login");
+});

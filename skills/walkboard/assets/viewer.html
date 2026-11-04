@@ -1489,6 +1489,9 @@ function linkLayer(container) {
   svg.classList.add("links");
   container.append(svg);
   svg.clear = () => {
+    // Out of the way first: the layer must not hold the picture at the size of its last drawing.
+    svg.setAttribute("width", 0);
+    svg.setAttribute("height", 0);
     svg.setAttribute("width", container.scrollWidth);
     svg.setAttribute("height", container.scrollHeight);
     svg.replaceChildren();
@@ -1768,6 +1771,7 @@ function renderTransform(v) {
 // ---------- map: zones inside zones, links routed between boxes on whichever sides face each other
 function zoneEl(z, depth, dense = false) {
   const box = el("div", `zone z${Math.min(depth, 3)}`);
+  box.dataset.zone = z.label || "";
   const head = el("div", "zhead");
   const ic = iconEl({name: z.label, icon: z.icon}, "", null);
   if (ic) head.append(ic);
@@ -1886,15 +1890,99 @@ function renderMap(v) {
   // Still too wide for the column: smaller again, then zones wrap, instead of scrolling sideways.
   let fitted = null;
   const fit = () => {
-    if (!many || fitted === map.clientWidth) return;
     fitted = map.clientWidth;
+    // The lines' layer must not count as the picture's width.
+    svg.style.display = "none";
     map.classList.remove("denser", "wrapped");
     if (map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
     // Wrapping gives the room back: no need for boxes so small that long names break.
-    if (map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
+    // Paper scales the picture instead, so its zones stay in a row.
+    if (!printState && map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
+    svg.style.display = "";
   };
+  // Moving boxes or whole zones: each keeps an offset from its place, saved in plan.json; the lines follow.
+  const layout = () => (v.layout && typeof v.layout === "object" ? v.layout : {});
+  const place = (e, q) => (e.style.transform = q && (q.x || q.y) ? `translate(${q.x}px,${q.y}px)` : "");
+  const keyOf = (e) => (e.classList.contains("zone") ? `z:${e.dataset.zone}` : e.dataset.anchor);
+  const movers = () => [...map.querySelectorAll(".zone, [data-anchor]")];
+  movers().forEach((e) => place(e, layout()[keyOf(e)]));
+  const canMoveMap = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
+  const resetMap = el("button", "talklink erreset", "↺ " + t("autoLayout"));
+  const postLayout = (positions) => fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
+  const saveMap = (e, q) => {
+    v.layout = {...layout(), [keyOf(e)]: q};
+    resetMap.hidden = false;
+    postLayout(v.layout);
+  };
+  resetMap.hidden = !Object.keys(layout()).length || !canMoveMap();
+  resetMap.onclick = () => {
+    delete v.layout;
+    postLayout(null);
+    renderView();
+  };
+  let mapDragged = false;
+  // The click that ends a drag does not open the box.
+  map.addEventListener("click", (e) => {
+    if (!mapDragged) return;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+  map.addEventListener("pointerdown", (e) => {
+    if (!canMoveMap() || e.button !== 0) return;
+    const head = e.target.closest?.(".zhead");
+    const it = head ? head.parentElement : e.target.closest?.("[data-anchor]");
+    if (!it || !map.contains(it) || e.target.closest("a, button, .term")) return;
+    const sx = e.clientX, sy = e.clientY, from = layout()[keyOf(it)] || {x: 0, y: 0};
+    let moved = null;
+    const move = (ev) => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+      if (!moved) {
+        it.setPointerCapture?.(e.pointerId);
+        map.classList.add("dragging");
+      }
+      moved = {x: Math.round(from.x + dx), y: Math.round(from.y + dy)};
+      place(it, moved);
+      draw();
+    };
+    const up = () => {
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      removeEventListener("pointercancel", up);
+      map.classList.remove("dragging");
+      if (!moved) return;
+      mapDragged = true;
+      setTimeout(() => (mapDragged = false));
+      saveMap(it, moved);
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+    addEventListener("pointercancel", up);
+  });
+  // Arrow keys move a focused box (Shift: further); Enter still opens it.
+  let mapKeySave = null;
+  map.addEventListener("keydown", (e) => {
+    const d = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[e.key];
+    const it = e.target.closest?.("[data-anchor]");
+    if (!d || !it || !canMoveMap() || e.altKey || e.metaKey || e.ctrlKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const k = e.shiftKey ? 40 : 10, was = layout()[keyOf(it)] || {x: 0, y: 0}, q = {x: was.x + d[0] * k, y: was.y + d[1] * k};
+    v.layout = {...layout(), [keyOf(it)]: q};
+    place(it, q);
+    draw();
+    clearTimeout(mapKeySave);
+    mapKeySave = setTimeout(() => saveMap(it, q), 500);
+  });
   const draw = () => {
-    fit();
+    // Changing a class here would resize the picture inside its own ResizeObserver: on screen, wait for the next frame. On paper, now.
+    if (many && fitted !== map.clientWidth) {
+      if (printState) fit();
+      else requestAnimationFrame(() => {
+        fit();
+        linkDrawer?.();
+      });
+    }
     const base = svg.clear();
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     const rects = {}, lanes = {};
@@ -1914,6 +2002,7 @@ function renderMap(v) {
     }
   };
   addDrawer(draw, map);
+  scroll.prepend(resetMap);
   return scroll;
 }
 
@@ -3678,16 +3767,34 @@ addEventListener("beforeprint", () => {
   linkObserver?.disconnect();
   // Lines are one layer over the whole picture and cannot follow its boxes onto the next page, so a picture with lines
   // is scaled to fit one page. Without lines a tall picture breaks between its rows.
+  // What would come out too small takes a landscape page of its own: first choose (the lines redraw for the new width), then scale.
+  const scaleOf = (pic, wide, room) => Math.min(1, wide / Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth)), pic.querySelector("svg.links") ? room / pic.getBoundingClientRect().height : 1);
+  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [box.lastElementChild]);
+  const worst = (box, wide, room) => Math.min(...partsOf(box).map((pic) => scaleOf(pic, wide, room)));
+  const small = pics.filter((box) => partsOf(box).some((pic) => pic.querySelector("svg.links")) && worst(box, 676, 880) < 0.8).map((box) => [box, worst(box, 676, 880)]);
+  small.forEach(([box]) => box.classList.add("landscape"));
+  if (small.length) {
+    linkDrawer?.();
+    // Landscape only where it really comes out larger: a tall picture is better off upright.
+    const back = small.filter(([box, upright]) => worst(box, 1000, 590) < upright * 1.1);
+    back.forEach(([box]) => box.classList.remove("landscape"));
+    if (back.length) linkDrawer?.();
+  }
   for (const box of pics) {
     const diff = box.querySelector(".diffview");
     box.classList.toggle("ppage", !!diff);
-    const parts = diff ? [...box.querySelectorAll(".dhalf")] : [box.lastElementChild];
+    const parts = partsOf(box), flat = box.classList.contains("landscape"), pageH = flat ? 590 : 880, pageW = flat ? 1000 : 676;
     for (const pic of parts) {
       const w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
       // A diff's list of changes shares the first page with its first picture.
-      const room = 880 - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0);
+      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0);
+      // Unless that would make it too small: then the list keeps its page and the picture takes the next.
+      if (diff && pic === parts[0] && room / pic.getBoundingClientRect().height < 0.6) {
+        room = pageH;
+        pic.classList.add("ppagebreak");
+      }
       const tall = pic.querySelector("svg.links") ? Math.max(0.3, room / pic.getBoundingClientRect().height) : 1;
-      const scale = Math.min(1, 676 / w, tall);
+      const scale = Math.min(1, pageW / w, tall);
       if (scale < 1) {
         // The width stays what it was when the lines were drawn: zoom alone would let the boxes reflow under them.
         pic.style.width = w + "px";

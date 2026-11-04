@@ -2096,10 +2096,16 @@ async function fetchDraft() {
     if (changed) redrawDraft();
   } catch {}
 }
+// A note about something just tried (a name already taken): it goes by itself after a few seconds, or with a click.
+let problemTimer = 0;
 const showProblem = (msg) => {
   const box = document.getElementById("problems");
   box.hidden = false;
+  box.dataset.brief = "1";
   box.replaceChildren(el("div", null, msg));
+  box.onclick = () => box.dataset.brief && (box.hidden = true);
+  clearTimeout(problemTimer);
+  problemTimer = setTimeout(() => box.dataset.brief && (box.hidden = true), 4000);
 };
 
 // Undo, redo and back to the plan, for a picture arranged by hand (and its draft, where it takes one).
@@ -2280,8 +2286,11 @@ function svgIcon(name) {
 const SKETCH_TOOLS = [["select", "V"], ["box", "B"], ["zone", "Z"], ["connect", "L"], ["rename", "R"], ["remove", "D"]];
 const MODEL_TOOLS = [["select", "V"], ["table", "B"], ["column", "C"], ["connect", "L"], ["group", "Z"], ["rename", "R"], ["remove", "D"]];
 // What the draft does to a thing, in one sign; the words in its tooltip. small: inline, for a column.
+const DRAFT_SIGNS = {add: "+", change: "~", remove: "−", move: "↦"};
+// The sign and a word ("+ new"): a sign alone did not say what it meant.
+const signText = (mark) => `${DRAFT_SIGNS[mark]} ${t("dt_" + mark)}`;
 function draftSign(m, small = false) {
-  const tag = el("span", "ptag" + (small ? " small" : ""), {add: "+", change: "~", remove: "−", move: "↦"}[m.mark]);
+  const tag = el("span", "ptag" + (small ? " small" : ""), small ? DRAFT_SIGNS[m.mark] : signText(m.mark));
   const was = m.was ? (typeof m.was === "string" ? m.was : m.was.name ?? Object.values(m.was)[0]) : "";
   tag.title = m.mark === "move" ? t("d_move", m.from || t("noGroup")) : m.mark === "change" ? t("d_change", was) : t("d_" + m.mark);
   return tag;
@@ -2320,7 +2329,8 @@ function editText(over, initial, placeholder, {onInput, onDone}) {
 }
 // A floating card next to a point, closed by Escape or a click elsewhere.
 // beside: a rectangle to stand next to (right of it, else left), so the card never hides what it is about.
-function popover(x, y, parts, {beside = null, onClose = null} = {}) {
+// escape: called first on Escape; true when the card used it (closing something inside it).
+function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {}) {
   document.querySelector(".dpop")?.close?.("replaced");
   document.querySelector(".dpop")?.remove();
   const box = el("div", "dpop");
@@ -2340,6 +2350,7 @@ function popover(x, y, parts, {beside = null, onClose = null} = {}) {
   const esc = (e) => {
     if (e.key !== "Escape") return;
     e.stopPropagation();
+    if (escape?.()) return e.preventDefault();
     close("escape");
   };
   let closed = false;
@@ -2357,6 +2368,102 @@ function popover(x, y, parts, {beside = null, onClose = null} = {}) {
   });
   box.close = close;
   return box;
+}
+// A box's name, note and icon in one card, for a new box or one being edited; the box shows each change as it is typed.
+// The icon follows the name until one is picked. Enter, the button or a click elsewhere keeps it; Escape drops it.
+// preview(values) draws them on the box; onDone(values, or null when dropped or left without a name).
+function boxCard(beside, initial, {title, preview, onDone}) {
+  let picked = initial.icon || "";
+  const nameIn = el("input", "dsearch dname");
+  nameIn.placeholder = t("boxNameHint");
+  nameIn.value = initial.name || "";
+  nameIn.maxLength = 80;
+  const iconBtn = el("button", "dpick");
+  iconBtn.type = "button";
+  const row = el("div", "dnamerow");
+  row.append(iconBtn, nameIn);
+  const whatIn = el("textarea", "dsearch dwhat");
+  whatIn.placeholder = t("boxWhat");
+  whatIn.value = initial.what || "";
+  whatIn.maxLength = 300;
+  whatIn.rows = 3;
+  const picker = el("div", "dpicker");
+  picker.hidden = true;
+  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked});
+  const update = () => {
+    const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value}, "", null);
+    iconBtn.replaceChildren(ic || el("span", "icon dnoicon"));
+    iconBtn.title = picked ? t("iconPicked") : t("iconAuto");
+    iconBtn.setAttribute("aria-label", iconBtn.title);
+    preview?.(values());
+  };
+  const pick = (name) => {
+    picked = name;
+    picker.hidden = true;
+    update();
+    nameIn.focus();
+  };
+  const buildPicker = () => {
+    const search = el("input", "dsearch");
+    search.placeholder = t("iconSearch");
+    const auto = el("button", "talklink dauto", t("iconFollow"));
+    auto.onclick = () => pick("");
+    const grid = el("div", "dicons");
+    for (const name of iconNames()) {
+      const ic = iconEl({icon: name}, "", null);
+      if (!ic) continue;
+      const b = el("button", "dicon");
+      b.title = name;
+      b.dataset.name = name;
+      b.append(ic);
+      b.onclick = () => pick(name);
+      grid.append(b);
+    }
+    search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      for (const b of grid.children) b.hidden = q && !b.dataset.name.toLowerCase().includes(q);
+    };
+    picker.append(search, auto, grid);
+  };
+  iconBtn.onclick = () => {
+    if (!picker.childElementCount) buildPicker();
+    picker.hidden = !picker.hidden;
+    // Taller now: keep the card on screen.
+    const r = pop.getBoundingClientRect();
+    if (r.bottom > innerHeight - 90) pop.style.top = Math.max(8, innerHeight - 90 - r.height) + "px";
+    (picker.hidden ? nameIn : picker.querySelector("input")).focus();
+  };
+  nameIn.oninput = whatIn.oninput = update;
+  for (const f of [nameIn, whatIn]) f.onkeydown = (e) => {
+    e.stopPropagation();
+    // Shift+Enter: a new line in the note.
+    if (e.key === "Enter" && !(f === whatIn && e.shiftKey) && !e.isComposing) {
+      e.preventDefault();
+      pop.close("done");
+    }
+  };
+  const keep = el("button", "primary", t("keep")), cancel = el("button", "talklink", t("cancel"));
+  keep.onclick = () => pop.close("done");
+  cancel.onclick = () => pop.close("escape");
+  const foot = el("div", "dpfoot");
+  foot.append(keep, cancel, el("span", "dhint", t("boxHint")));
+  const pop = popover(0, 0, [el("div", "dphead", title), row, whatIn, picker, foot], {
+    beside,
+    escape: () => {
+      if (picker.hidden) return false;
+      picker.hidden = true;
+      nameIn.focus();
+      return true;
+    },
+    onClose: (why) => onDone(why === "escape" || why === "replaced" || !values().name ? null : values()),
+  });
+  pop.classList.add("dboxcard");
+  update();
+  requestAnimationFrame(() => {
+    nameIn.focus();
+    nameIn.select();
+  });
+  return pop;
 }
 // The changes of one picture as rows for the side panel: a sign, the names, and where.
 function draftRows(viewId) {
@@ -2404,7 +2511,8 @@ function draftRows(viewId) {
 }
 // The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
 // picture: where the tool shows as the cursor; toolList: [name, key] for this kind of picture.
-function sketchBar(lv, tools, picture, toolList) {
+// hints: {tool: what to do with it}, shown over the toolbar while that tool is on.
+function sketchBar(lv, tools, picture, toolList, hints = {}) {
   document.body.classList.add("sketching");
   const bar = el("div", "dtools");
   bar.setAttribute("role", "toolbar");
@@ -2448,9 +2556,13 @@ function sketchBar(lv, tools, picture, toolList) {
   const exit = btn("close", `${t("exitSketch")} (Esc)`, "dexit");
   exit.onclick = () => sketchApi.exit();
   bar.append(count, send, exit);
-  document.body.append(bar);
+  const tip = el("div", "dtip");
+  tip.setAttribute("role", "status");
+  document.body.append(bar, tip);
   const refresh = () => {
     picture.dataset.tool = sketchTool;
+    tip.textContent = hints[sketchTool] || "";
+    tip.hidden = !tip.textContent;
     bar.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === sketchTool)));
     const h = tools.history();
     u.disabled = !h.back;
@@ -2646,7 +2758,7 @@ function renderMap(real) {
     const m = markOf(e);
     if (!m) continue;
     e.classList.add("dr-" + m.mark);
-    const tag = el("span", "ptag", {add: "+", change: "~", remove: "−", move: "↦"}[m.mark]);
+    const tag = el("span", "ptag", signText(m.mark));
     const was = m.was ? (typeof m.was === "string" ? m.was : m.was.name ?? Object.values(m.was)[0]) : "";
     tag.title = m.mark === "move" ? t("d_move", m.from || "—") : m.mark === "change" ? t("d_change", was) : t("d_" + m.mark);
     (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(tag);
@@ -2727,11 +2839,7 @@ function renderMap(real) {
   // Dropped into another zone: a change of plan, so a draft change (a box or zone the draft added just changes where it goes).
   const dropOps = (it, {to, x, y}) => {
     const isZone = it.classList.contains("zone"), k = isZone ? it.dataset.zone : it.dataset.anchor, m = markOf(it);
-    const kids = [...to.querySelector(":scope > .zbody").children].filter((c) => c !== it && (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
-    const at = kids.filter((c) => {
-      const b = c.getBoundingClientRect();
-      return b.bottom < y - b.height / 2 || (Math.abs(b.top + b.height / 2 - y) <= b.height / 2 && b.left + b.width / 2 < x);
-    }).length;
+    const at = indexAt(to.querySelector(":scope > .zbody"), x, y, isZone, it);
     const ops = draftOps(lv.id);
     if (m?.mark === "add") return ops.map((o) => (isZone ? o.op === "addZone" && o.zone === k ? {...o, parent: to.dataset.zone, at} : o : o.op === "addNode" && o.node === k ? {...o, zone: to.dataset.zone, at} : o));
     const rest = ops.filter((o) => !(isZone ? o.op === "moveZone" && o.zone === k : o.op === "move" && o.node === k));
@@ -2979,14 +3087,35 @@ function renderMap(real) {
     else setOps([...list, {id: nextId(list), op: x.kind === "node" ? "remove" : "removeZone", [x.kind === "node" ? "node" : "zone"]: x.id}]);
     sketchSel = null;
   };
-  const renameTo = (x, val, focusId) => {
-    const list = ops(), added = addOp(x.kind, x.id);
-    if (x.kind === "node") {
-      if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)), focusId);
-      const orig = plan.nodes[x.id]?.name ?? "", ed = list.find((o) => o.op === "editNode" && o.node === x.id);
-      const next = ed ? list.map((o) => (o === ed ? {...o, name: val} : o)) : [...list, {id: nextId(list), op: "editNode", node: x.id, name: val}];
-      return setOps(next.flatMap((o) => (o.op === "editNode" && o.node === x.id && o.name === orig ? (({name: _, ...r}) => (r.what != null || r.icon != null ? [r] : []))(o) : [o])), focusId);
+  // A box's name, note and icon as the card left them: a box the draft added just changes; another gets one
+  // editNode with what differs from the plan ("" takes a note or a picked icon away).
+  const editTo = (id, val) => {
+    const list = ops(), added = addOp("node", id);
+    let next;
+    if (added) {
+      const {what: _w, icon: _i, ...base} = added;
+      next = list.map((o) => (o === added ? {...base, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {})} : o));
+    } else {
+      const orig = plan.nodes[id] || {}, ed = list.find((o) => o.op === "editNode" && o.node === id);
+      const fields = Object.fromEntries(["name", "what", "icon"].filter((k) => (val[k] || "") !== (orig[k] ?? "")).map((k) => [k, val[k] || ""]));
+      if (fields.name === "") delete fields.name;
+      const op = Object.keys(fields).length ? {id: ed?.id ?? nextId(list), op: "editNode", node: id, ...fields} : null;
+      next = ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list;
     }
+    if (JSON.stringify(next) === JSON.stringify(list)) return keepFocus(() => renderView());
+    setOps(next, id);
+  };
+  const editBox = (id, e) => {
+    const n = drafted.plan.nodes[id] || {};
+    boxCard(e.getBoundingClientRect(), {name: n.name, what: n.what, icon: n.icon}, {
+      title: t("boxEditTitle"),
+      preview: (val) => showBox(e, val),
+      // Dropped: the box is drawn again as it was.
+      onDone: (val) => (val ? editTo(id, val) : keepFocus(() => renderView())),
+    });
+  };
+  const renameTo = (x, val) => {
+    const list = ops(), added = addOp(x.kind, x.id);
     if (val !== x.id && zoneNamed(val)) return showProblem(t("zoneTaken", val));
     const fix = (o) => Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val : w]));
     if (added) return setOps(list.map((o) => (o === added ? {...o, zone: val} : fix(o))));
@@ -2997,13 +3126,8 @@ function renderMap(real) {
   const rename = (x) => {
     const e = elOf(x);
     if (!e) return;
-    const over = x.kind === "zone" ? e.querySelector(":scope > .zhead") : e.querySelector(".name") || e;
-    const initial = x.kind === "zone" ? x.id : drafted.plan.nodes[x.id]?.name ?? "";
-    const back = x.kind === "node" ? x.id : null;
-    editText(over, initial, t(x.kind === "zone" ? "zoneName" : "boxName"), {onDone: (val) => {
-      if (val && val !== initial) renameTo(x, val, back);
-      else if (back) document.querySelector(`#view .map [data-anchor="${CSS.escape(back)}"]`)?.focus({preventScroll: true});
-    }});
+    if (x.kind === "node") return editBox(x.id, e);
+    editText(e.querySelector(":scope > .zhead"), x.id, t("zoneName"), {onDone: (val) => val && val !== x.id && renameTo(x, val)});
   };
   const setIcon = (id, icon) => {
     const list = ops(), added = addOp("node", id);
@@ -3127,12 +3251,51 @@ function renderMap(real) {
     label.select();
   };
   // Where in a zone a point falls: before the first box (or zone) that comes after it in reading order.
-  const indexAt = (body, x, y, zones) => [...body.children].filter((c) => (zones ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]"))).filter((c) => {
-    const b = c.getBoundingClientRect();
-    return b.bottom < y - b.height / 2 || (Math.abs(b.top + b.height / 2 - y) <= b.height / 2 && b.left + b.width / 2 < x);
-  }).length;
+  // Rows by their top (boxes in a row start level, however tall each is): rows above come first, then what is left of it.
+  const indexAt = (body, x, y, zones, skip = null) => {
+    const kids = [...body.children].filter((c) => c !== skip && (zones ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]"))).map((c) => c.getBoundingClientRect());
+    const row = Math.max(-Infinity, ...kids.filter((b) => b.top <= y).map((b) => b.top));
+    return kids.filter((b) => b.top < row - 2 || (Math.abs(b.top - row) <= 2 && b.left + b.width / 2 < x)).length;
+  };
   const zoneAt = (x, y) => zoneEls().map((z) => [z, z.getBoundingClientRect()]).filter(([, b]) => x >= b.left && x <= b.right && y >= b.top && y <= b.bottom)
     .sort((p, q) => p[1].width * p[1].height - q[1].width * q[1].height)[0]?.[0] || null;
+  // Box and zone tools: the zone a click would put it in lights up (the whole picture: a new outer zone);
+  // where nothing can go, the cursor says so.
+  let hovered = null, hoverFrame = 0;
+  const hover = (target) => {
+    if (target === hovered) return;
+    hovered?.classList.remove("dhover");
+    target?.classList.add("dhover");
+    hovered = target;
+  };
+  map.addEventListener("pointermove", (e) => {
+    if (!isSketch || (sketchTool !== "box" && sketchTool !== "zone") || document.querySelector(".dedit, .dboxcard")) return hover(null);
+    const x = e.clientX, y = e.clientY;
+    hoverFrame ||= requestAnimationFrame(() => {
+      hoverFrame = 0;
+      const z = zoneAt(x, y);
+      hover(z || (sketchTool === "zone" ? map : null));
+      map.classList.toggle("dnoplace", !z && sketchTool === "box");
+    });
+  });
+  map.addEventListener("pointerleave", () => {
+    hover(null);
+    map.classList.remove("dnoplace");
+  });
+  // A box drawn with these values (name, note, icon), as the card types them.
+  const showBox = (box, val, empty = "") => {
+    const head = box.querySelector(".nhead"), ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, "", null);
+    head.querySelector(".icon")?.remove();
+    head.prepend(ic || el("span", "icon"));
+    head.querySelector(".name").textContent = val.name || empty;
+    let what = box.querySelector(":scope > .what");
+    if (!what && val.what) head.after((what = el("div", "what")));
+    if (what) {
+      what.textContent = val.what;
+      what.hidden = !val.what;
+    }
+    draw();
+  };
   const sketchDown = (e) => {
     e.preventDefault();
     const x = e.clientX, y = e.clientY;
@@ -3142,22 +3305,27 @@ function renderMap(real) {
     if (sketchTool === "box") {
       const z = zoneAt(x, y);
       if (!z) return;
+      hover(null);
       const body = z.querySelector(":scope > .zbody"), at = indexAt(body, x, y, false);
-      const tmp = el("div", "node todo dr-add dtemp"), head = el("div", "nhead"), name = el("div", "name", " ");
+      const tmp = el("div", "node todo dr-add dtemp"), head = el("div", "nhead"), name = el("div", "name", t("boxNew")), what = el("div", "what");
       head.append(el("span", "icon"), name);
-      tmp.append(head);
+      what.hidden = true;
+      tmp.append(head, what);
       body.insertBefore(tmp, [...body.children].filter((c) => c.matches("[data-anchor]"))[at] ?? null);
-      editText(name, "", t("boxName"), {
-        onInput: (val) => {
-          const ic = iconEl({name: val}, "", null);
-          head.firstChild.replaceWith(ic || el("span", "icon"));
-        },
+      // The box takes room: the zones around move, and the lines with them.
+      draw();
+      boxCard(tmp.getBoundingClientRect(), {}, {
+        title: t("boxNewTitle", z.dataset.zone),
+        preview: (val) => showBox(tmp, val, t("boxNew")),
         onDone: (val) => {
           tmp.remove();
           sketchTool = "select";
-          if (!val) return refreshBar();
+          if (!val) {
+            draw();
+            return refreshBar();
+          }
           const list = ops();
-          setOps([...list, {id: nextId(list), op: "addNode", node: newNode(), name: val, zone: z.dataset.zone, at}]);
+          setOps([...list, {id: nextId(list), op: "addNode", node: newNode(), name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), zone: z.dataset.zone, at}]);
         },
       });
       return;
@@ -3167,11 +3335,14 @@ function renderMap(real) {
       const tmp = el("div", "zone z" + Math.min(z ? Number((z.className.match(/\bz(\d)/) || [0, 0])[1]) + 1 : 0, 3) + " dr-add dtemp"), head = el("div", "zhead"), lbl = el("span", null, " ");
       head.append(lbl);
       tmp.append(head, el("div", "zbody"));
+      hover(null);
       body.insertBefore(tmp, [...body.children].filter((c) => c.matches(".zone:not(.ghost)"))[at] ?? (z ? body.querySelector(":scope > [data-anchor]") : body.querySelector(":scope > svg")));
+      draw();
       editText(lbl, "", t("zoneName"), {
         onDone: (val) => {
           tmp.remove();
           sketchTool = "select";
+          if (!val || zoneNamed(val)) draw();
           if (!val) return refreshBar();
           if (zoneNamed(val)) {
             refreshBar();
@@ -3230,7 +3401,7 @@ function renderMap(real) {
   };
   let bar = null, refreshBar = () => {};
   if (isSketch) {
-    ({bar, refresh: refreshBar} = sketchBar(lv, tools, map, SKETCH_TOOLS));
+    ({bar, refresh: refreshBar} = sketchBar(lv, tools, map, SKETCH_TOOLS, Object.fromEntries(SKETCH_TOOLS.map(([k]) => [k, t("hint_" + k)]))));
     if (sketchSel) requestAnimationFrame(() => select(sketchSel));
   }
   if (isSketch) sketchApi = {
@@ -4751,7 +4922,7 @@ function renderView() {
   window.__wbRender?.push(performance.now() - t0);
 }
 function renderViewNow() {
-  document.querySelector(".dtools")?.remove();
+  document.querySelectorAll(".dtools, .dtip").forEach((e) => e.remove());
   document.querySelector(".dpop")?.remove();
   document.body.classList.remove("sketching");
   sketchApi = null;
@@ -5344,6 +5515,7 @@ function draw(p) {
   document.getElementById("goal").replaceChildren(rich(plan.goal || ""));
   const problems = validate(plan);
   const box = document.getElementById("problems");
+  delete box.dataset.brief;
   box.hidden = !problems.length;
   if (problems.length) {
     const ul = el("ul");
@@ -5405,6 +5577,7 @@ async function fetchPlan() {
   const r = await fetch("/api/plan?token=" + encodeURIComponent(token));
   const box = document.getElementById("problems");
   if (!r.ok) {
+    delete box.dataset.brief;
     box.hidden = false;
     box.textContent = t("loadFail", r.status) + (await r.text());
     return;

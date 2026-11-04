@@ -31,6 +31,7 @@ The user arranged or sketched on a map and asks whether it still matches the pla
 
 - `boxes` and `zones`: `x`, `y`, `w`, `h`; `zone` = where the plan puts it, `inside` = the smallest zone its centre is in on screen (`null`: none). `outOfZone` lists where the two differ (zones as `z:<label>`); `moved` = what the user dragged.
 - `overlaps`: boxes lying on each other. `linesOverBoxes`: links drawn across other boxes.
+- In `changes`, a new box (`addNode`) or an edit (`editNode`) can carry `what`, a note the user wrote for whoever reads the plan: put it in the node's `what`. `icon` is one they picked by hand (`""`: back to the icon from the name).
 
 A data model's review has `changes` only (no `geometry`): `addTable`, `addColumn` (`type`, `key`), `editColumn` (`name`, `type`, `key`, `ref` = the column it points at, `""` = the foreign key taken out), `removeColumn` (`copies`: columns elsewhere that keep a copy of it), `moveTable` (to a group, `""` = none), `addGroup`, `editGroup`, `removeGroup`, `editNode` (rename a table), `remove` (a table). Say what each means for the schema: migrations, data to move, foreign keys across groups (services), what reads the column.
 

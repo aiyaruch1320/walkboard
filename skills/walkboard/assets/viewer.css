@@ -323,7 +323,7 @@ body.sketching{padding-bottom:84px}
 .dtools .dsep{width:1px;height:22px;background:var(--line);margin:0 4px}
 .dtools .dcount{padding:0 10px;font-variant-numeric:tabular-nums;font-weight:600}
 .dtools .dsend{padding:0 14px;background:var(--you-bd);color:#fff;border-color:var(--you-bd);font-weight:600}
-.dtools .dmode{display:inline-flex;align-items:center;gap:5px;padding:0 10px 0 6px;font-size:12.5px;font-weight:700;color:var(--you-tx);cursor:help}
+.dtools .dmode{display:inline-flex;align-items:center;gap:5px;padding:0 10px 0 6px;font-size:12.5px;font-weight:700;color:var(--you-tx);cursor:default}
 .dtools .dcount.unsaved::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--warn-bd);margin-left:2px}
 .dstatename{font-size:12px;color:var(--muted);margin-top:-4px}
 .dhint{font-size:11.5px;color:var(--muted)}
@@ -332,6 +332,30 @@ button.danger{background:var(--warn-bd);color:#fff;border-color:var(--warn-bd)}
 .ldraft span{font-weight:700}
 .dtools .dsend:disabled{opacity:.4;cursor:default}
 .map.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
+/* Room for the frame: the picture's scroll box would cut its sides off. */
+.scroll:has(>.map.sketch){padding:10px}
+/* Where the box or zone tool would put it; nowhere: the cursor says so. */
+.map .zone.dhover{outline:2px dashed var(--you-bd);outline-offset:2px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+.map.sketch.dhover{outline-style:dashed;background:color-mix(in srgb,var(--you-bg) 25%,transparent)}
+.map.sketch.dnoplace,.map.sketch.dnoplace *{cursor:not-allowed!important}
+/* What the tool does, over the toolbar. */
+.dtip{position:fixed;left:12px;right:12px;margin:0 auto;width:max-content;max-width:calc(100vw - 24px);bottom:70px;z-index:60;padding:5px 14px;border-radius:999px;border:1px solid var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none}
+.dtip[hidden]{display:none}
+body.side-open .dtip{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var(--side-w) - 24px)}
+/* A box's name, note and icon. */
+.dboxcard{width:330px}
+.dnamerow{display:flex;gap:6px;align-items:center}
+.dname{flex:1;min-width:0;font-weight:600}
+.dpick{width:36px;height:34px;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
+.dnoicon{display:inline-block;width:20px;height:20px;border:1.5px dashed var(--line);border-radius:6px}
+.dwhat{resize:vertical;min-height:58px;font-size:12.5px;line-height:1.45}
+.dpicker{display:flex;flex-direction:column;gap:6px}
+.dpicker[hidden]{display:none}
+.dpicker .dicons{max-height:150px}
+.dauto{align-self:flex-start;font-size:12px;padding:0}
+.dpfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dpfoot .dhint{flex-basis:100%}
+.node .what[hidden]{display:none}
 .map.sketch[data-tool="box"],.map.sketch[data-tool="zone"]{cursor:crosshair}
 .map.sketch[data-tool="box"] *,.map.sketch[data-tool="zone"] *{cursor:crosshair}
 .map.sketch[data-tool="connect"] [data-anchor]{cursor:alias}
@@ -471,7 +495,7 @@ svg.links path.dr-remove{stroke:var(--warn-bd)!important;opacity:.55}
 svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .map .ghost{pointer-events:none;background:repeating-linear-gradient(135deg,transparent 0 6px,color-mix(in srgb,var(--copy-tx) 10%,transparent) 6px 8px)!important;border:2px dashed color-mix(in srgb,var(--copy-tx) 65%,transparent)!important;outline:none!important;box-shadow:none!important;opacity:1!important}
 .map .ghost>*{visibility:hidden}
-.ptag{position:absolute;top:-10px;right:-10px;display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 5px;font-size:14px;font-weight:800;line-height:1;border-radius:999px;background:var(--you-bd);color:#fff;box-shadow:0 0 0 2px var(--card);z-index:2;cursor:help}
+.ptag{position:absolute;top:-10px;right:-10px;display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:20px;padding:0 7px;font-size:11.5px;font-weight:700;line-height:1;white-space:nowrap;border-radius:999px;background:var(--you-bd);color:#fff;box-shadow:0 0 0 2px var(--card);z-index:2;cursor:default}
 .dr-change>.ptag,.dr-change>.zhead>.ptag{background:#14a3b8}
 .dr-remove>.ptag,.dr-remove>.zhead>.ptag{background:var(--warn-bd)}
 .dr-move>.ptag,.dr-move>.zhead>.ptag{background:var(--copy-tx)}

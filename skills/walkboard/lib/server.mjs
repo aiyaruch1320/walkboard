@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
 import {pageHtml, snapshot} from "./export.mjs";
+import {validateDraft, emptyDraft, draftable} from "./draft.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".walkboard");
@@ -16,6 +17,7 @@ export const paths = (dir) => {
     feedback: path.join(state, "feedback.jsonl"),
     delivered: path.join(state, "delivered"),
     replies: path.join(state, "replies.jsonl"),
+    draft: path.join(state, "draft.json"),
     lock: path.join(state, "server.lock"),
   };
 };
@@ -62,6 +64,27 @@ function readPlan(file) {
   } catch (e) {
     return {error: `plan.json cannot be read: ${e.message}`};
   }
+}
+
+// The draft sketched on the pictures (lib/draft.mjs); a missing or broken file is an empty draft.
+export function readDraft(dir) {
+  try {
+    const d = JSON.parse(fs.readFileSync(paths(dir).draft, "utf8"));
+    return validateDraft(d).length ? emptyDraft() : d;
+  } catch {
+    return emptyDraft();
+  }
+}
+
+// Views with no changes left are dropped; nothing left, no file.
+export function writeDraft(dir, d) {
+  const p = paths(dir);
+  for (const [k, v] of Object.entries(d.views)) if (!v.ops.length) delete d.views[k];
+  fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
+  if (!Object.keys(d.views).length) return fs.rmSync(p.draft, {force: true});
+  const tmp = `${p.draft}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(d), {mode: 0o600});
+  fs.renameSync(tmp, p.draft);
 }
 
 // Text that is only spaces or invisible characters is no message.
@@ -317,6 +340,26 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         }
         res.writeHead(200, {"content-type": "application/json"}).end("{}");
       }));
+    } else if (route === "GET /api/draft") {
+      res.writeHead(200, {"content-type": "application/json; charset=utf-8", "cache-control": "no-store"}).end(JSON.stringify(readDraft(dir)));
+    } else if (route === "POST /api/draft") {
+      // One picture's changes, all of them: {view, ops}. Sketching never wakes the agent; the review button does.
+      readBody(req, safe(res, (err, v) => {
+        if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
+        if (err || typeof v?.view !== "string" || !Array.isArray(v.ops)) return res.writeHead(400).end('need {"view": id, "ops": [...]}');
+        const {plan, error} = readPlan(p.plan);
+        if (error) return res.writeHead(409, {"content-type": "text/plain; charset=utf-8"}).end(error);
+        const view = Array.isArray(plan.views) ? plan.views.find((x) => x?.id === v.view) : null;
+        if (!draftable(view)) return res.writeHead(400).end(`no picture "${v.view}" that takes a draft`);
+        const d = readDraft(dir);
+        d.views[v.view] = {ops: v.ops};
+        const problems = validateDraft(d);
+        if (problems.length) return res.writeHead(400, {"content-type": "text/plain; charset=utf-8"}).end(problems.slice(0, 5).join("\n"));
+        writeDraft(dir, d);
+        draftSeen = fs.existsSync(p.draft) ? fs.statSync(p.draft).mtimeMs : 0;
+        broadcast("draft", {view: v.view});
+        res.writeHead(200, {"content-type": "application/json"}).end("{}");
+      }));
     } else if (route === "GET /api/poll") {
       let timer;
       const send = (items) => {
@@ -371,6 +414,14 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } catch {}
   }, 1000);
 
+  // `walkboard draft … clear` writes the file itself: open pages hear about it here.
+  let draftSeen = fs.existsSync(p.draft) ? fs.statSync(p.draft).mtimeMs : 0;
+  fs.watchFile(p.draft, {interval: 300}, (cur) => {
+    if (cur.mtimeMs !== draftSeen) {
+      draftSeen = cur.mtimeMs;
+      broadcast("draft", {});
+    }
+  });
   let last = fs.existsSync(p.plan) ? fs.statSync(p.plan).mtimeMs : 0;
   fs.watchFile(p.plan, {interval: 300}, (cur) => {
     if (cur.mtimeMs !== last) {
@@ -386,6 +437,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         clearInterval(heartbeat);
         clearInterval(stateCheck);
         fs.unwatchFile(p.plan);
+        fs.unwatchFile(p.draft);
         fs.rmSync(p.lock, {force: true});
         return reject(e);
       }
@@ -407,6 +459,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             if (inflight) clearTimeout(inflight.timer);
             info = null;
             fs.unwatchFile(p.plan);
+            fs.unwatchFile(p.draft);
             // Tell waiting polls the server is going away on purpose, so they exit instead of retrying.
             for (const r of polls) if (!r.headersSent) r.writeHead(410, {"content-type": "text/plain"}).end("stopped");
             for (const s of streams) s.end();

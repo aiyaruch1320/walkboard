@@ -365,3 +365,22 @@ test("a box dropped into another zone is saved with that zone; only maps take on
   assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {zone: "Cloud", x: 1}}})).status, 400);
   assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {zone: "Cloud"}}})).status, 400);
 });
+
+test("a draft is saved per picture, checked, announced, and never wakes the agent", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "Cloud", nodes: ["a"]}]}, {id: "f", kind: "flow"}], nodes: {a: {name: "A"}}};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  assert.deepEqual(await (await call(s, "/api/draft")).json(), {version: 1, views: {}});
+  const ops = [{id: "op1", op: "addNode", node: "new:1", name: "Redis", zone: "Cloud"}];
+  const ev = nextEvent(s, "draft", () => post(s, "/api/draft", {view: "m", ops}));
+  assert.deepEqual(await ev, {view: "m"});
+  assert.deepEqual((await (await call(s, "/api/draft")).json()).views.m.ops, ops);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).nodes["new:1"], undefined, "plan.json untouched");
+  assert.equal((await (await call(s, "/api/status")).json()).pending, 0);
+  assert.equal((await post(s, "/api/draft", {view: "f", ops})).status, 400, "a flow takes no draft yet");
+  assert.equal((await post(s, "/api/draft", {view: "m", ops: [{id: "x", op: "addNode", node: "redis", name: "R", zone: "Cloud"}]})).status, 400);
+  assert.equal((await post(s, "/api/draft", {view: "m", ops: []})).status, 200);
+  assert.equal(fs.existsSync(path.join(dir, ".walkboard", "draft.json")), false, "an empty draft leaves no file");
+});

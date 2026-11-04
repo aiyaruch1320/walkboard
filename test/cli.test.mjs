@@ -76,3 +76,20 @@ test("export never writes over the plan or into .walkboard, and needs an .html n
   assert.equal(r.code ?? 0, 0, r.stderr);
   assert.ok(fs.readdirSync(dir).some((f) => /^my-plan-v2\.html$/i.test(f)), fs.readdirSync(dir).join(" "));
 });
+
+test("draft prints the sketch in words and clears it by picture or change", async () => {
+  const dir = planDir();
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify({title: "t", nodes: {a: {name: "API"}}, views: [{id: "m", kind: "map", zones: [{label: "Cloud", nodes: ["a"]}, {label: "DC", nodes: []}]}]}));
+  assert.equal((await run("draft", dir)).stdout.trim(), "no draft");
+  fs.mkdirSync(path.join(dir, ".walkboard"), {recursive: true});
+  fs.writeFileSync(path.join(dir, ".walkboard", "draft.json"), JSON.stringify({version: 1, views: {m: {ops: [
+    {id: "op1", op: "addNode", node: "new:1", name: "Redis", zone: "Cloud"}, {id: "op2", op: "addLink", from: "a", to: "new:1"}, {id: "op3", op: "move", node: "a", to: "Gone"}]}}}));
+  const out = (await run("draft", dir)).stdout;
+  assert.match(out, /op1 {2}\+ box Redis \(new:1\) in "Cloud"/);
+  assert.match(out, /op2 {2}\+ line API \(a\) → Redis \(new:1\)/);
+  assert.match(out, /op3 .*no longer fits: no zone "Gone"/);
+  assert.equal((await run("draft", dir, "clear", "m", "op1", "op3")).stdout.trim(), "cleared");
+  assert.doesNotMatch((await run("draft", dir)).stdout, /op1|op3/);
+  await run("draft", dir, "clear");
+  assert.equal(fs.existsSync(path.join(dir, ".walkboard", "draft.json")), false);
+});

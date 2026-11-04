@@ -3,7 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
-import {startServer, paths, exportName} from "../lib/server.mjs";
+import {startServer, paths, exportName, readDraft, writeDraft} from "../lib/server.mjs";
+import {describeDraft, draftLine} from "../lib/draft.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
 import {knownIcon, iconNames} from "../lib/icons.mjs";
@@ -23,6 +24,7 @@ const USAGE = `walkboard <command> [options]
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
   export [dir] [--html file] [--no-code] [--with-chat]   write a read-only copy of the plan as one HTML file
+  draft  [dir] [clear [view] [change …]]   print what the user sketched on the pictures, or clear it once it is in the plan
   icons                         list the icon names for "icon"
 
 dir defaults to the current directory and must contain plan.json.`;
@@ -48,7 +50,7 @@ const [cmd, ...args] = process.argv.slice(2);
 const {flags, rest} = parse(args);
 // reply takes free text, so its first word is a dir only when that dir holds a plan.
 // set and reply take words after the folder, so the first word is the folder only when it holds a plan or looks like a path.
-const dirFirst = rest[0] && (!["reply", "set"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")) || (/^[./~]|\//.test(rest[0]) && !/[=\s]/.test(rest[0])));
+const dirFirst = rest[0] && (!["reply", "set", "draft"].includes(cmd) || fs.existsSync(path.join(rest[0], "plan.json")) || (/^[./~]|\//.test(rest[0]) && !/[=\s]/.test(rest[0])));
 const dir = path.resolve(flags.dir ?? (dirFirst ? rest[0] : "."));
 const words = !flags.dir && dirFirst ? rest.slice(1) : rest;
 const p = paths(dir);
@@ -272,7 +274,36 @@ function exportPlan() {
   for (const m of missing) console.log(`left out: ${m}`);
 }
 
-const commands = {check, set, open, poll, reply, status, stop, serve, icons, export: exportPlan};
+// What the user sketched, in words, or clear it: all of it, one picture's, or some changes by id.
+function draft() {
+  if (!fs.existsSync(p.plan)) fail(`no plan.json in ${dir}`);
+  const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  const d = readDraft(dir);
+  if (words[0] === "clear") {
+    const [, view, ...ids] = words;
+    if (view && !d.views[view]) fail(`no draft on picture "${view}"; pictures with one: ${Object.keys(d.views).join(", ") || "none"}`);
+    for (const [k, v] of Object.entries(d.views)) {
+      if (view && k !== view) continue;
+      const unknown = ids.filter((id) => !v.ops.some((o) => o.id === id));
+      if (unknown.length) fail(`no change ${unknown.join(", ")} on "${k}"; ids: ${v.ops.map((o) => o.id).join(", ")}`);
+      v.ops = ids.length ? v.ops.filter((o) => !ids.includes(o.id)) : [];
+    }
+    writeDraft(dir, d);
+    return console.log("cleared");
+  }
+  if (words.length) fail(`draft takes "clear [view] [change …]", not "${words.join(" ")}"`);
+  const views = Object.keys(d.views);
+  if (!views.length) return console.log("no draft");
+  for (const view of views) {
+    const {changes, stale = []} = describeDraft(plan, d, view);
+    console.log(`${view}:`);
+    for (const c of changes) console.log(`  ${c.id}  ${draftLine(c)}`);
+    for (const c of stale) console.log(`  ${c.id}  ${draftLine(c)}  (no longer fits: ${c.why})`);
+    if (!changes.length && !stale.length) console.log("  (all in the plan already: clear it)");
+  }
+}
+
+const commands = {check, set, open, poll, reply, status, stop, serve, icons, draft, export: exportPlan};
 if (!commands[cmd]) {
   console.error(USAGE);
   process.exit(cmd ? 2 : 0);

@@ -339,3 +339,16 @@ test("boxes and zones moved on a map are saved as offsets, only for what the map
   assert.equal((await post(s, "/api/layout", {view: "m", positions: null})).status, 200);
   assert.equal(read(), undefined);
 });
+
+test("a map offset keeps the zone it was dragged in; a table's does not", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "Cloud", nodes: ["a"]}]}, {id: "d", kind: "datamodel", tables: [{node: "a"}]}], nodes: {a: {name: "A"}}};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const read = (i) => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[i].layout;
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {x: 5, y: 6, in: "Cloud"}, "z:Cloud": {x: 1, y: 1, in: 7}}})).status, 200);
+  assert.deepEqual(read(0), {a: {x: 5, y: 6, in: "Cloud"}, "z:Cloud": {x: 1, y: 1}});
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: 5, y: 6, in: "Cloud"}}})).status, 200);
+  assert.deepEqual(read(1), {a: {x: 5, y: 6}});
+});

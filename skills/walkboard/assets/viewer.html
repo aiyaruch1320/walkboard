@@ -2032,13 +2032,22 @@ function renderMap(v) {
   };
   // Moving boxes or whole zones: each keeps an offset from its place, saved in plan.json; the lines follow.
   // left/top and not a transform: a transform would make the zone its own layer, and its boxes could end up behind another zone.
-  const layout = () => (v.layout && typeof v.layout === "object" ? v.layout : {});
+  // Each offset remembers the zone it was dragged in ("in"): once the plan puts the box in another zone, the old offset
+  // no longer applies, so the box is not pushed again from its new place. It drops out with the next save.
+  const keyOf = (e) => (e.classList.contains("zone") ? `z:${e.dataset.zone}` : e.dataset.anchor);
+  const movers = () => [...map.querySelectorAll(".zone, [data-anchor]")];
+  const homeOf = (e) => e.parentElement.closest(".zone")?.dataset.zone ?? "";
+  const homes = Object.fromEntries(movers().map((e) => [keyOf(e), homeOf(e)]));
+  const layout = () => Object.fromEntries(Object.entries(v.layout && typeof v.layout === "object" ? v.layout : {}).filter(([k, q]) => q?.in == null || q.in === homes[k]));
+  // Forget them on the page now too, so undo, the buttons and the next save see only what still applies.
+  if (v.layout && Object.keys(layout()).length !== Object.keys(v.layout).length) {
+    if (Object.keys(layout()).length) v.layout = layout();
+    else delete v.layout;
+  }
   const place = (e, q) => {
     e.style.left = q?.x ? q.x + "px" : "";
     e.style.top = q?.y ? q.y + "px" : "";
   };
-  const keyOf = (e) => (e.classList.contains("zone") ? `z:${e.dataset.zone}` : e.dataset.anchor);
-  const movers = () => [...map.querySelectorAll(".zone, [data-anchor]")];
   // Whatever was moved last lies on top: the layout keeps its keys in that order.
   const stackUp = () => {
     const boxes = [...map.querySelectorAll("[data-anchor]")];
@@ -2060,7 +2069,7 @@ function renderMap(v) {
   });
   const movedTo = (e, q) => {
     const {[keyOf(e)]: _, ...rest} = layout();
-    return {...rest, [keyOf(e)]: q};
+    return Object.fromEntries(Object.entries({...rest, [keyOf(e)]: q}).map(([k, p]) => [k, {x: p.x, y: p.y, ...(k in homes ? {in: homes[k]} : {})}]));
   };
   let mapDragged = false;
   // The click that ends a drag does not open the box.

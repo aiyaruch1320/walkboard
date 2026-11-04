@@ -281,7 +281,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       }));
     } else if (route === "POST /api/layout") {
       // What was dragged on a picture: {view, positions: {id: {x, y}}}, or positions null to lay it out again.
-      // Data model: where each table sits. Map: how far a box or a zone ("z:label") moved from its place.
+      // Data model: where each table sits. Map: how far a box or a zone ("z:label") moved from its place,
+      // and "in", the zone it was in then: the page drops an offset once the plan moves the box to another zone.
       // Saved in plan.json so exports and other browsers keep it; the agent is not told, it is only arrangement.
       readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
@@ -297,7 +298,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             const zoneLabels = (zs) => (Array.isArray(zs) ? zs : []).flatMap((z) => [`z:${z?.label}`, ...(z?.nodes || []), ...zoneLabels(z?.zones)]);
             const known = new Set(view.kind === "map" ? zoneLabels(view.zones) : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
             if (pos === null) delete view.layout;
-            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => known.has(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y)}]));
+            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => known.has(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y), ...(view.kind === "map" && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {})}]));
             return plan;
           });
         } catch (e) {

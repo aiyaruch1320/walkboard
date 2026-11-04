@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A map offset in `layout` remembers the zone it was dragged in (`"in"`). When the plan moves the box to another zone, the old offset is dropped instead of pushing the box away from its new place.
+
 ## 0.8.0
 
 - **Much faster pages.** Lines were recalculated with a slow browser call: a big map redrew at about 2 frames a second while dragging, and now keeps up with the screen. The page no longer redraws when nothing changed, and a new box pulses three times instead of forever.

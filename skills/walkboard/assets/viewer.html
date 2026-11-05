@@ -2380,8 +2380,8 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     ask.disabled = true;
     let ok = false;
     try {
-      const {changes, stale} = drafts ? describeDraft(plan, draft, v.id) : {changes: []};
-      await send({}, "review", t(changes.length ? "reviewDraftAsk" : "reviewAsk"), {view: v.id, ...review(), ...(changes.length ? {changes} : {}), ...(stale?.length ? {stale} : {})});
+      const {changes, stale, warnings} = drafts ? describeDraft(plan, draft, v.id, PROF) : {changes: []};
+      await send({}, "review", t(changes.length ? "reviewDraftAsk" : "reviewAsk"), {view: v.id, ...review(), ...(changes.length ? {changes} : {}), ...(stale?.length ? {stale} : {}), ...(warnings?.length ? {warnings} : {})});
       ask.textContent = t("reviewSent");
       ok = true;
       openSide({kind: "plan"});
@@ -3179,14 +3179,15 @@ function mapGeometry(v, map, routes, layout) {
     const hit = zones.filter((z) => !(self && self.contains(z.e)) && x >= z.b.left && x <= z.b.right && y >= z.b.top && y <= z.b.bottom);
     return hit.sort((p, q) => p.b.width * p.b.height - q.b.width * q.b.height)[0]?.e.dataset.zone ?? null;
   };
-  const out = {view: v.id, map: {w: Math.round(m.width), h: Math.round(m.height)}, zones: {}, boxes: {}, moved: Object.keys(layout), outOfZone: [], overlaps: [], linesOverBoxes: []};
+  const out = {view: v.id, map: {w: Math.round(m.width), h: Math.round(m.height)}, zones: {}, boxes: {}, moved: Object.keys(layout).filter((k) => !k.startsWith("@")), outOfZone: [], overlaps: [], linesOverBoxes: []};
   for (const {e, b} of zones) {
     const z = (out.zones[e.dataset.zone] = {...rect(b), zone: home(e), inside: inside(b, e)});
     if (z.zone !== z.inside) out.outOfZone.push("z:" + e.dataset.zone);
   }
   const boxes = [...map.querySelectorAll("[data-anchor]")].map((e) => ({id: e.dataset.anchor, e, b: e.getBoundingClientRect()}));
   for (const {id, e, b} of boxes) {
-    const x = (out.boxes[id] = {...rect(b), zone: home(e), inside: inside(b)});
+    // A box only sketched has no name in the plan yet: it goes with it.
+    const x = (out.boxes[id] = {...(id.startsWith("new:") ? {name: e.querySelector(".name")?.textContent ?? ""} : {}), ...rect(b), zone: home(e), inside: inside(b)});
     if (x.zone !== x.inside) out.outOfZone.push(id);
   }
   // More than a hair of overlap, so boxes that only touch do not count.
@@ -4469,7 +4470,7 @@ function renderMap(real) {
     const [pf, pt] = planEnds(from, to);
     const rest = list.filter((o) => !(["editLink", "reverseLink", "removeLink"].includes(o.op) && o.from === pf && o.to === pt));
     const out = [...rest, {id: nextId(rest), op: "removeLink", from: pf, to: pt}];
-    setOps([...out, {id: nextId(out), op: "addLink", from: nf, to: nt, ...(l.label ? {label: l.label} : {}), ...(l.state && l.state !== "ok" ? {state: l.state} : {}), ...(l.kind ? {kind: l.kind} : {})}], undefined, nextLayout);
+    setOps([...out, {id: nextId(out), op: "addLink", from: nf, to: nt, ...(l.label ? {label: l.label} : {}), ...(l.state && l.state !== "ok" ? {state: l.state} : {}), ...(l.kind ? {kind: l.kind} : {}), replaces: {from: pf, to: pt}}], undefined, nextLayout);
   };
   // What a card's kind search looks at: the kinds of the zones around (nearest first), and the platforms in the picture.
   const kindContext = (e) => {

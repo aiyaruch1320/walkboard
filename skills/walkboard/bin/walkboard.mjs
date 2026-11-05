@@ -5,6 +5,7 @@ import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths, exportName, readDraft, writeDraft} from "../lib/server.mjs";
 import {describeDraft, draftLine} from "../lib/draft.mjs";
+import * as profiles from "../lib/profiles.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
 import {knownIcon, iconNames} from "../lib/icons.mjs";
@@ -294,7 +295,7 @@ function draft() {
     // What is left, so there is no need to ask again.
     const left = Object.keys(d.views).filter((k) => d.views[k].ops.length);
     for (const view of left) {
-      const {changes, stale = []} = describeDraft(plan, d, view);
+      const {changes, stale = []} = describeDraft(plan, d, view, profiles);
       console.log(`${view}:`);
       for (const c of changes) console.log(`  ${c.id}  ${draftLine(c)}`);
       for (const c of stale) console.log(`  ${c.id}  ${draftLine(c)}  (no longer fits: ${c.why})`);
@@ -305,10 +306,11 @@ function draft() {
   const views = Object.keys(d.views);
   if (!views.length) return console.log("no draft");
   for (const view of views) {
-    const {changes, stale = []} = describeDraft(plan, d, view);
+    const {changes, stale = [], warnings = []} = describeDraft(plan, d, view, profiles);
     console.log(`${view}:`);
     for (const c of changes) console.log(`  ${c.id}  ${draftLine(c)}`);
     for (const c of stale) console.log(`  ${c.id}  ${draftLine(c)}  (no longer fits: ${c.why})`);
+    for (const w of warnings) console.log(`  ! ${w.node ? `box ${w.node}` : `zone "${w.zone}"`}: ${w.kind} in ${w.in}, usually in ${w.usuallyIn.join(", ")}`);
     if (!changes.length && !stale.length) console.log("  (all in the plan already: clear it)");
   }
 }

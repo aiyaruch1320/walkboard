@@ -331,3 +331,35 @@ test("state, decision and impact pictures: boxes and lines", () => {
   assert.equal(im.marks.links["a>b"].mark, "remove");
 });
 
+
+test("a review says what an edit changes from, the names of kinds, which line a moved end replaces, and new warnings", async () => {
+  const profiles = await import("../skills/walkboard/lib/profiles.mjs");
+  const p = plan();
+  p.nodes.db.kind = "aws:aurora";
+  p.views[0].zones[0].kind = "aws:vpc";
+  p.views[0].zones[0].zones[1].kind = "aws:subnet";
+  const d = describeDraft(p, draft(
+    {op: "editNode", node: "api", name: "Gateway", kind: "aws:lambda"},
+    {op: "editLink", from: "api", to: "nat", label: "out", kind: "aws:event"},
+    {op: "removeLink", from: "api", to: "db"},
+    {op: "addLink", from: "nat", to: "db", replaces: {from: "api", to: "db"}},
+    {op: "addNode", node: "new:b", name: "Bucket", zone: "Data", kind: "aws:s3"},
+  ), "m", profiles);
+  const [edit, line, , moved, added] = d.changes;
+  assert.deepEqual(edit.was, {name: "API", kind: null});
+  assert.equal(edit.kindName, "Lambda (AWS)");
+  assert.match(draftLine(edit), /name "Gateway" \(was "API"\)/);
+  assert.deepEqual(line.was, {label: "egress", kind: null});
+  assert.match(line.kindName, /Event/);
+  assert.equal(moved.replaces, "API (api) → Aurora (db)");
+  assert.match(draftLine(moved), /instead of API \(api\) → Aurora \(db\)/);
+  assert.match(draftLine(added), /S3 bucket \(AWS\), aws:s3/);
+  // The bucket in a subnet is new; nothing the plan already had is said again.
+  assert.deepEqual(d.warnings.map((w) => w.node), ["Bucket (new:b)"]);
+  assert.match(d.warnings[0].in, /Subnet/);
+  // Without profiles: the same changes, no names or warnings.
+  const bare = describeDraft(p, draft({op: "addNode", node: "new:b", name: "Bucket", zone: "Data", kind: "aws:s3"}), "m");
+  assert.equal(bare.changes[0].kindName, undefined);
+  assert.equal(bare.warnings, undefined);
+  assert.match(validateDraft(draft({op: "addLink", from: "nat", to: "db", replaces: "api>db"})).join(), /bad replaces/);
+});

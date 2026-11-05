@@ -54,7 +54,8 @@ const SHAPES = {
   // kind: what it is on a platform ("aws:rds", lib/profiles.mjs; "" = none, drawn freely), props: that kind's fields.
   addNode: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), zone: label, at, kind: kindName, props: propsOk},
   addZone: {zone: label, parent: (x) => x === "" || label(x), at, icon: (x) => optText(x, 60), note: (x) => optText(x, 120), kind: kindName, props: propsOk},
-  addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName},
+  // replaces: the line it was before an end was dragged to another box (a removeLink of that line goes with it).
+  addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName, replaces: (x) => isObj(x) && id(x.from) && id(x.to) && Object.keys(x).length === 2},
   editLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName},
   removeLink: {from: id, to: id},
   // The line from → to points the other way (to → from), keeping its label and kind.
@@ -95,7 +96,7 @@ const SHAPES = {
   removeEdge: {from: id, to: id},
   reverseEdge: {from: id, to: id},
 };
-const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "fromLane", "fromLaneTitle", "note", "kind", "props"]);
+const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "fromLane", "fromLaneTitle", "note", "kind", "props", "replaces"]);
 
 // Problems with a draft (an empty list: fine). Shapes only; whether a change still fits the plan is applyDraft's job.
 export function validateDraft(d) {
@@ -895,8 +896,10 @@ function applyGraph(v, nodes, ops, result) {
 }
 
 
-// The draft in words the agent can act on without opening plan.json: names next to ids, zones by label.
-export function describeDraft(plan, draft, viewId) {
+// The draft in words the agent can act on without opening plan.json: names next to ids, zones by label, what an
+// edit changes from (`was`), and with profiles (lib/profiles.mjs, passed in: this module imports nothing) the name of
+// each kind and the places the draft puts something where its kind does not usually go (`warnings`).
+export function describeDraft(plan, draft, viewId, profiles = null) {
   const applied = applyDraft(plan, draft, viewId), {stale, pending, plan: drawn} = applied;
   const ops = draft?.views?.[viewId]?.ops || [];
   const nodes = isObj(drawn?.nodes) ? drawn.nodes : {};
@@ -917,8 +920,36 @@ export function describeDraft(plan, draft, viewId) {
   const linesOf = (n) => (Array.isArray(real?.links) ? real.links : []).filter((l) => l?.from === n || l?.to === n).map((l) => `${named(l.from)} → ${named(l.to)}${l.label ? ` ${l.label}` : ""}`);
   // Columns elsewhere that keep a copy of a column taken out.
   const copiesOf = (k) => (Array.isArray(real?.tables) ? real.tables : []).flatMap((tb) => (tb?.columns || []).filter((c) => c?.copy === k).map((c) => `${tb.node}.${c.name}`));
+  // A zone of the plan by its label, anywhere in the tree.
+  const zoneOf = (label, zs, depth = 0) => {
+    for (const z of Array.isArray(zs) && depth < 9 ? zs : []) {
+      if (!isObj(z)) continue;
+      if (z.label === label) return z;
+      const inner = zoneOf(label, z.zones, depth + 1);
+      if (inner) return inner;
+    }
+    return null;
+  };
+  // What an edit changes, as the plan has it now (null: not set).
+  const wasOf = (o) => {
+    const keys = {editNode: ["name", "what", "icon", "kind", "props"], editLink: ["label", "state", "kind"], editZone: ["label", "note", "icon", "kind", "props"]}[o.op];
+    const before = o.op === "editNode" ? plan?.nodes?.[o.node] : o.op === "editLink" ? (Array.isArray(real?.links) ? real.links : []).find((l) => l?.from === o.from && l?.to === o.to) : zoneOf(o.zone, real?.zones);
+    if (!keys || !isObj(before)) return null;
+    const out = Object.fromEntries(keys.filter((k) => o[k] != null && !(o.op === "editZone" && k === "label")).map((k) => [k, before[k] ?? null]));
+    return Object.keys(out).length ? out : null;
+  };
+  // "Lambda function (AWS)": the kind's name, for a box, zone or line.
+  const kindLabel = (o) => {
+    if (!profiles || !o.kind) return null;
+    const k = (o.op === "addLink" || o.op === "editLink" ? profiles.lineKindOf : profiles.kindOf)(o.kind);
+    return k ? `${k.def.name} (${profiles.PROFILES[k.profile].label})` : null;
+  };
   const changes = ops.filter((o) => pending.includes(o.id)).map(words).map((c) => {
     const o = ops.find((x) => x.id === c.id);
+    const was = wasOf(o), kindName = kindLabel(o);
+    if (was) c.was = was;
+    if (kindName) c.kindName = kindName;
+    if (o.replaces) c.replaces = `${named(o.replaces.from)} → ${named(o.replaces.to)}`;
     if (o.op === "remove" && linesOf(o.node).length) return {...c, lines: linesOf(o.node)};
     if (o.op === "removeColumn" && copiesOf(`${o.table}.${o.column}`).length) return {...c, copies: copiesOf(`${o.table}.${o.column}`)};
     // The lane a box left is said only when it changed lanes, as the draft stands now.
@@ -928,11 +959,21 @@ export function describeDraft(plan, draft, viewId) {
   const staleOut = stale.map((s) => ({...words(ops.find((o) => o.id === s.id)), why: s.why}));
   // A flow's lanes in their order after the draft (for a plan of steps: "step id: title"), so numbers need no counting.
   const order = applied.order && changes.some((c) => ["addBox", "moveBox", "addLane", "editLane", "moveLane"].includes(c.op)) ? {lanesAfter: applied.order} : {};
-  return {view: viewId, changes, ...order, ...(staleOut.length ? {stale: staleOut} : {})};
+  // Places the draft puts a box or zone where its kind does not usually sit (those the plan already has are left out).
+  let warnings = [];
+  if (profiles?.mapWarnings && real?.kind === "map" && changes.length) {
+    const said = (w) => JSON.stringify([w.node ?? null, w.zone ?? null, w.kind, w.there]);
+    const before = new Set(profiles.mapWarnings(real, plan?.nodes).map(said));
+    warnings = profiles.mapWarnings(applied.view, nodes).filter((w) => !before.has(said(w)))
+      .map((w) => ({...(w.node ? {node: named(w.node)} : {zone: w.zone}), kind: w.kind, in: w.there, usuallyIn: w.usual}));
+  }
+  return {view: viewId, changes, ...order, ...(staleOut.length ? {stale: staleOut} : {}), ...(warnings.length ? {warnings} : {})};
 }
 
 // " (aws:rds, engine postgres)": a kind and its fields in a change's words.
-const kindWords = (c) => (c.kind ? ` (${[c.kind, ...Object.entries(c.props || {}).map(([k, w]) => `${k} ${w}`)].join(", ")})` : "");
+const kindWords = (c) => (c.kind ? ` (${[c.kindName ? `${c.kindName}, ${c.kind}` : c.kind, ...Object.entries(c.props || {}).map(([k, w]) => `${k} ${w}`)].join(", ")})` : "");
+// " (was "Old name")": what an edit changes from.
+const wasWords = (c, k) => (c.was && k in c.was ? ` (was ${JSON.stringify(c.was[k])})` : "");
 // "lane 2 "Build"" (step build): numbers count from 1 here, from 0 in the JSON.
 const laneWords = (c) => `lane ${(c.lane ?? 0) + 1}${c.laneTitle ? ` "${c.laneTitle}"` : ""}${c.step ? ` (step ${c.step})` : ""}`;
 
@@ -942,11 +983,11 @@ export function draftLine(c) {
   switch (c.op) {
     case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${kindWords(c)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addZone": return `+ zone ${z(c.zone)} in ${z(c.parent)}${kindWords(c)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
-    case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}${c.kind ? ` kind ${c.kind}` : ""}`;
+    case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}${c.kind ? ` kind ${c.kindName ? `${c.kindName}, ${c.kind}` : c.kind}` : ""}${c.replaces ? ` (instead of ${c.replaces})` : ""}`;
     case "reverseLink": return `⇄ line ${c.from} → ${c.to} turned round: now ${c.to} → ${c.from}`;
-    case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}` : ""}${c.state ? ` [${c.state}]` : ""}${c.kind != null ? ` kind ${JSON.stringify(c.kind)}` : ""}`;
+    case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}${wasWords(c, "label")}` : ""}${c.state ? ` [${c.state}]${wasWords(c, "state")}` : ""}${c.kind != null ? ` kind ${JSON.stringify(c.kind)}${c.kindName ? ` ${c.kindName}` : ""}${wasWords(c, "kind")}` : ""}`;
     case "removeLink": return `− line ${c.from} → ${c.to}`;
-    case "editNode": return `~ box ${c.node}: ${["name", "what", "icon", "kind", "props"].filter((k) => c[k] != null).map((k) => `${k} ${JSON.stringify(c[k])}`).join(", ")}`;
+    case "editNode": return `~ box ${c.node}: ${["name", "what", "icon", "kind", "props"].filter((k) => c[k] != null).map((k) => `${k} ${JSON.stringify(c[k])}${k === "kind" && c.kindName ? ` ${c.kindName}` : ""}${wasWords(c, k)}`).join(", ")}`;
     case "editZone": return `~ zone ${z(c.zone)}${c.label != null ? ` → ${z(c.label)}` : ""}${c.note != null ? `, note ${JSON.stringify(c.note)}` : ""}${c.icon != null ? `, icon ${JSON.stringify(c.icon)}` : ""}${c.kind != null ? `, kind ${JSON.stringify(c.kind)}` : ""}${c.props != null ? `, props ${JSON.stringify(c.props)}` : ""}`;
     case "remove": return `− box ${c.node}${c.lines?.length ? ` (and its lines: ${c.lines.join("; ")})` : ""}`;
     case "removeZone": return `− zone ${z(c.zone)}`;

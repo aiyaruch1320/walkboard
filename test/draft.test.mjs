@@ -18,7 +18,7 @@ test("a draft's shape is checked: change kinds, fields, ids, size", () => {
   assert.match(validateDraft(draft({op: "addNode", node: "new:1", name: "  ", zone: "Data"})).join(), /bad name/);
   assert.match(validateDraft(draft({op: "remove", node: "__proto__"})).join(), /bad node/);
   assert.match(validateDraft(draft({op: "addLink", from: "api", to: "api"})).join(), /two different/);
-  assert.match(validateDraft(draft({op: "editZone", zone: "App"})).join(), /bad label/);
+  assert.match(validateDraft(draft({op: "editZone", zone: "App"})).join(), /needs a label, an icon or a note/);
   assert.match(validateDraft(draft({op: "remove", node: "api", color: "red"})).join(), /unknown field/);
   assert.match(validateDraft({version: 1, views: {m: {ops: [{id: "a", op: "remove", node: "api"}, {id: "a", op: "remove", node: "db"}]}}}).join(), /unique id/);
   assert.match(validateDraft(draft(...Array.from({length: 301}, () => ({op: "remove", node: "api"})))).join(), /at most 300/);
@@ -50,6 +50,19 @@ test("a new box dropped into a zone sketched after it waits for the zone, and so
   assert.deepEqual(r.pending.sort(), ["op1", "op2", "op3", "op4"]);
   assert.deepEqual(validateDraft(draft({op: "addNode", node: "new:1", name: "Gateway", zone: "App", what: "x".repeat(300)})), []);
   assert.match(validateDraft(draft({op: "addNode", node: "new:1", name: "Gateway", zone: "App", what: "x".repeat(301)})).join(), /bad what/);
+});
+
+test("a zone's icon and note are drafted with it or on their own", () => {
+  const r = applyDraft(plan(), draft({op: "addZone", zone: "Edge", parent: "", icon: "cloudfront", note: "CDN"}, {op: "editZone", zone: "App", icon: "kubernetes", note: "EKS"}, {op: "editZone", zone: "Data", label: "Storage", note: ""}), "m");
+  assert.deepEqual(r.view.zones.at(-1), {label: "Edge", icon: "cloudfront", note: "CDN", nodes: []});
+  const aws = r.view.zones[0].zones;
+  assert.equal(aws[0].icon, "kubernetes");
+  assert.equal(aws[0].note, "EKS");
+  assert.equal(aws[1].label, "Storage");
+  assert.equal(r.marks.zones.App.mark, "change");
+  assert.equal(r.marks.zones.Storage.was, "Data");
+  assert.deepEqual(applyDraft(plan(), draft({op: "editZone", zone: "App", note: ""}), "m").done, ["op1"]);
+  assert.match(draftLine({op: "editZone", zone: "App", icon: "kubernetes"}), /zone "App", icon "kubernetes"/);
 });
 
 test("moves leave where they came from; edits keep what was there; removals stay drawn", () => {

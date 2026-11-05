@@ -47,12 +47,13 @@ const colName = (x) => text(x, 60) && !x.includes(".");
 const colRef = (x) => typeof x === "string" && /^[^.\s]+\.[^.\s]+$/.test(x) && x.length <= 120 && !x.split(".").some((k) => BAD_KEYS.has(k));
 const SHAPES = {
   addNode: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), zone: label, at},
-  addZone: {zone: label, parent: (x) => x === "" || label(x), at},
+  addZone: {zone: label, parent: (x) => x === "" || label(x), at, icon: (x) => optText(x, 60), note: (x) => optText(x, 120)},
   addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x)},
   editLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x)},
   removeLink: {from: id, to: id},
   editNode: {node: id, name: (x) => x == null || text(x), what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60)},
-  editZone: {zone: label, label},
+  // A zone's new name (label), icon or note ("" takes an icon or a note away); at least one of them.
+  editZone: {zone: label, label: (x) => x == null || label(x), icon: (x) => optText(x, 60), note: (x) => optText(x, 120)},
   remove: {node: id},
   removeZone: {zone: label},
   move: {node: id, to: label, from: (x) => x == null || label(x), at},
@@ -75,7 +76,7 @@ const SHAPES = {
   editEdge: {from: id, to: id, label: (x) => typeof x === "string" && x.length <= 60 && plain(x)},
   removeEdge: {from: id, to: id},
 };
-const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle"]);
+const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "note"]);
 
 // Problems with a draft (an empty list: fine). Shapes only; whether a change still fits the plan is applyDraft's job.
 export function validateDraft(d) {
@@ -98,11 +99,12 @@ export function validateDraft(d) {
       seen.add(op.id);
       const shape = SHAPES[op.op];
       for (const [k, ok] of Object.entries(shape)) {
-        if (op[k] == null && OPTIONAL.has(k) && !((op.op === "editZone" || op.op === "editGroup") && k === "label")) continue;
+        if (op[k] == null && OPTIONAL.has(k) && !(op.op === "editGroup" && k === "label")) continue;
         if (!ok(op[k])) out.push(`${at} (${op.op}): bad ${k}`);
       }
       for (const k of Object.keys(op)) if (k !== "id" && k !== "op" && !(k in shape)) out.push(`${at} (${op.op}): unknown field ${k}`);
       if ((op.op === "addLink" || op.op === "editLink" || op.op === "removeLink") && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
+      if (op.op === "editZone" && op.label == null && op.icon == null && op.note == null) out.push(`${at} (editZone): needs a label, an icon or a note`);
     });
   }
   if (count > DRAFT_MAX_OPS) out.push(`a draft holds at most ${DRAFT_MAX_OPS} changes`);
@@ -216,7 +218,7 @@ export function applyDraft(plan, draft, viewId) {
         if (op.parent && !p) stale(op, `no zone "${op.parent}"`);
         else if (there) (there.parent?.label ?? "") === (op.parent || "") && !marks.zones[op.zone] ? done(op) : stale(op, `a zone is already called "${op.zone}"`);
         else {
-          insert(p ? (p.z.zones ||= []) : v.zones, {label: op.zone, nodes: []}, op.at);
+          insert(p ? (p.z.zones ||= []) : v.zones, {label: op.zone, ...(op.icon ? {icon: op.icon} : {}), ...(op.note ? {note: op.note} : {}), nodes: []}, op.at);
           marks.zones[op.zone] = {mark: "add"};
           finished.add(op.id);
           wake("z:" + op.zone);
@@ -284,17 +286,29 @@ export function applyDraft(plan, draft, viewId) {
         break;
       }
       case "editZone": {
-        const w = zone(op.zone);
+        const w = zone(op.zone), renaming = op.label != null && op.label !== op.zone;
         if (!w && need(op, ["z:" + op.zone])) return;
-        if (!w) stale(op, `no zone "${op.zone}"`);
-        else if (op.label === op.zone) done(op);
-        else if (zone(op.label)) stale(op, `a zone is already called "${op.label}"`);
+        // The agent renamed it already.
+        if (!w && renaming && zone(op.label)) done(op);
+        else if (!w) stale(op, `no zone "${op.zone}"`);
+        else if (renaming && zone(op.label)) stale(op, `a zone is already called "${op.label}"`);
         else {
-          w.z.label = op.label;
-          const m = marks.zones[op.zone];
-          delete marks.zones[op.zone];
-          marks.zones[op.label] = m?.mark === "add" ? m : {...(m || {mark: "change"}), was: m?.was ?? op.zone};
-          if (marks.zones[op.label].mark === "move") marks.zones[op.label].renamedFrom = op.zone;
+          const changed = ["icon", "note"].filter((k) => op[k] != null && op[k] !== (w.z[k] ?? ""));
+          if (!renaming && !changed.length) {
+            done(op);
+            break;
+          }
+          for (const k of changed) {
+            if (op[k] === "") delete w.z[k];
+            else w.z[k] = op[k];
+          }
+          const now = renaming ? op.label : op.zone, m = marks.zones[op.zone];
+          if (renaming) {
+            w.z.label = op.label;
+            delete marks.zones[op.zone];
+          }
+          marks.zones[now] = m?.mark === "add" ? m : {...(m || {mark: "change"}), was: m?.was ?? op.zone};
+          if (renaming && marks.zones[now].mark === "move") marks.zones[now].renamedFrom = op.zone;
         }
         break;
       }
@@ -844,12 +858,12 @@ export function draftLine(c) {
   const z = (x) => (x ? `"${x}"` : "the top");
   switch (c.op) {
     case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
-    case "addZone": return `+ zone ${z(c.zone)} in ${z(c.parent)}`;
+    case "addZone": return `+ zone ${z(c.zone)} in ${z(c.parent)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}`;
     case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}` : ""}${c.state ? ` [${c.state}]` : ""}`;
     case "removeLink": return `− line ${c.from} → ${c.to}`;
     case "editNode": return `~ box ${c.node}: ${["name", "what", "icon"].filter((k) => c[k] != null).map((k) => `${k} ${JSON.stringify(c[k])}`).join(", ")}`;
-    case "editZone": return `~ zone ${z(c.zone)} → ${z(c.label)}`;
+    case "editZone": return `~ zone ${z(c.zone)}${c.label != null ? ` → ${z(c.label)}` : ""}${c.note != null ? `, note ${JSON.stringify(c.note)}` : ""}${c.icon != null ? `, icon ${JSON.stringify(c.icon)}` : ""}`;
     case "remove": return `− box ${c.node}${c.lines?.length ? ` (and its lines: ${c.lines.join("; ")})` : ""}`;
     case "removeZone": return `− zone ${z(c.zone)}`;
     case "move": return `↦ box ${c.node} → ${z(c.to)}`;

@@ -2356,6 +2356,14 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
       save(positions);
       refresh();
     },
+    // Back to the plan's picture: no draft, no places. One undo brings both back.
+    startOver() {
+      hist.back.push(snap());
+      hist.fwd.length = 0;
+      put({layout: null, ops: []});
+      refresh();
+      apply();
+    },
     // Anything else: the state before (from snap()) and the state now ({layout, ops}).
     change(before, next) {
       hist.back.push(before);
@@ -2372,6 +2380,7 @@ const draftShown = () => !printState && !drawingDiff;
 // The picture being sketched hands the side panel and the keyboard what they need (set by renderMap).
 let sketchApi = null;
 const ICON_PATHS = {
+  restart: ["M4 12a8 8 0 1 0 2.6-5.9", "M4 4.5V9h4.5"],
   pencil: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
   select: ["M6 3l12 9-5.5 1.2L9.5 19z"],
   box: ["M3 7h12v12H3z", "M19 3v6", "M16 6h6"],
@@ -2710,7 +2719,20 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
   const u = btn("undo", `${t("undo")} (${mac ? "⌘Z" : "Ctrl+Z"})`, "du"), r = btn("redo", `${t("redo")} (${mac ? "⇧⌘Z" : "Ctrl+Y"})`, "dr");
   u.onclick = tools.undo;
   r.onclick = tools.redo;
-  bar.append(u, r, el("span", "dsep"));
+  // One click from anywhere in draft mode: it asks first, in a card beside it.
+  const again = btn("restart", t("restart"), "dagain");
+  again.onclick = () => {
+    const yes = el("button", "danger", t("restartYes")), no = el("button", "talklink", t("cancel")), row = el("div", "dfoot");
+    row.append(yes, no);
+    const pop = popover(0, 0, [el("div", "dphead", t("restartAsk", draftRows(lv.id).length)), el("div", "dhint", t("restartTip")), row], {beside: again.getBoundingClientRect()});
+    yes.onclick = () => {
+      pop.close("done");
+      sketchApi?.discard();
+    };
+    no.onclick = () => pop.close("escape");
+    no.focus();
+  };
+  bar.append(u, r, again, el("span", "dsep"));
   const count = el("button", "dcount");
   count.append(svgIcon("list"), el("span", null, "0"));
   count.title = t("draftList");
@@ -2738,6 +2760,7 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
     const h = tools.history();
     u.disabled = !h.back;
     r.disabled = !h.fwd;
+    again.disabled = !draftOps(lv.id).length && !Object.keys(lv.layout || {}).length;
     const n = draftRows(lv.id).length;
     count.lastChild.textContent = String(n);
     count.classList.toggle("unsaved", unsaved.has(lv.id));
@@ -2769,20 +2792,22 @@ function renderDraftPanel() {
     list.append(li);
   }
   const parts = [rows.length ? list : el("p", "dempty", t("draftEmpty"))];
-  if (rows.length) {
+  const shown = plan.views.find((x) => x.id === (side.view || sketchApi?.view || viewId));
+  if (rows.length || Object.keys(shown?.layout || {}).length) {
     const foot = el("div", "dfoot");
     const review = el("button", "primary", t("reviewPic"));
     review.onclick = () => sketchApi?.review();
-    const discard = el("button", "talklink", t("discardAll"));
+    const again = el("button", "talklink", t("restart"));
+    again.title = t("restartTip");
     // Asked here, not in a browser dialog.
-    discard.onclick = () => {
-      const yes = el("button", "danger", t("discardYes")), no = el("button", "talklink", t("cancel"));
+    again.onclick = () => {
+      const yes = el("button", "danger", t("restartYes")), no = el("button", "talklink", t("cancel"));
       yes.onclick = () => sketchApi?.discard();
       no.onclick = () => renderSide();
-      foot.replaceChildren(el("span", "dask", t("discardAsk", rows.length)), yes, no);
+      foot.replaceChildren(el("span", "dask", t("restartAsk", rows.length)), yes, no);
       no.focus();
     };
-    foot.append(review, discard);
+    foot.append(...(rows.length ? [review] : []), again);
     parts.push(foot);
   }
   p.replaceChildren(...parts);
@@ -3989,7 +4014,7 @@ function renderMap(real) {
     rename,
     editLink,
     review: () => tools.ask(),
-    discard: () => setOps([]),
+    discard: () => tools.startOver(),
     drop(id) {
       const list = ops(), o = list.find((x) => x.id === id);
       if (!o) return;
@@ -4009,8 +4034,7 @@ function renderMap(real) {
     saveDraft(lv.id, draftOps(lv.id).filter((x) => x.id !== id));
     renderView();
   }, review: () => tools.ask(), discard() {
-    saveDraft(lv.id, []);
-    renderView();
+    tools.startOver();
   }};
   addDrawer(draw, map);
   scroll.prepend(tools.row);
@@ -4840,7 +4864,7 @@ function renderDataModel(real) {
   };
   addDrawer(draw, grid);
   if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, placeTable, positionsNow, roomFor});
-  else if (draftOps(real.id).length) sketchApi = {view: real.id, show() {}, drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()), review: () => tools.ask(), discard: () => (saveDraft(real.id, []), renderView())};
+  else if (draftOps(real.id).length) sketchApi = {view: real.id, show() {}, drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()), review: () => tools.ask(), discard: () => tools.startOver()};
   const scroll = el("div", "scroll");
   scroll.append(readLine("datamodel"), grid);
   const n = Object.values(groups).reduce((a, x) => a + x.length, 0);
@@ -5334,7 +5358,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     rename,
     saved: refresh,
     review: () => tools.ask(),
-    discard: () => setOps([]),
+    discard: () => tools.startOver(),
     drop(id) {
       const list = ops(), o = list.find((x) => x.id === id);
       if (!o) return;
@@ -5360,7 +5384,7 @@ const passiveApi = (real, tools) => ({
   show() {},
   drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()),
   review: () => tools.ask(),
-  discard: () => (saveDraft(real.id, []), renderView()),
+  discard: () => tools.startOver(),
 });
 // What every sketched picture shares: changing its draft (one undo each), finding its boxes, selecting one.
 function sketchKit(real, tools, container) {
@@ -5463,7 +5487,7 @@ function sketchKit(real, tools, container) {
         remove: (x) => x?.kind === "node" && kit.remove(x.id),
         rename: (x) => x?.kind === "node" && kit.rename(x.id),
         review: () => tools.ask(),
-        discard: () => kit.setOps([]),
+        discard: () => tools.startOver(),
         drop(id) {
           const list = ops(), o = list.find((x) => x.id === id);
           if (!o) return;

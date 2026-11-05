@@ -2801,12 +2801,36 @@ function renderMap(real) {
     if (dx || dy) place(e, at);
     return at;
   };
+  // Lying over a zone it is not part of: a zone over another zone or its boxes, a box over another zone.
+  const covers = (e) => {
+    const r = e.getBoundingClientRect();
+    const over = (q) => Math.min(r.right, q.right) - Math.max(r.left, q.left) > 4 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 4;
+    const others = e.classList.contains("zone") ? [...zoneEls(), ...map.querySelectorAll("[data-anchor]")] : zoneEls();
+    return others.some((z) => z !== e && !z.contains(e) && !e.contains(z) && over(z.getBoundingClientRect()));
+  };
+  // The picture reflows when the draft adds or drops a zone, or on a window of another width: what was moved by hand
+  // can land on another zone. It goes back to its place in the plan (oldest first: what was moved last keeps its place).
+  const uncover = () => {
+    const gone = Object.keys(layout()).filter((k) => {
+      const e = movers().find((x) => keyOf(x) === k);
+      if (!e || !covers(e)) return false;
+      place(e, null);
+      return true;
+    });
+    if (!gone.length) return;
+    const rest = Object.fromEntries(Object.entries(layout()).filter(([k]) => !gone.includes(k)));
+    if (Object.keys(rest).length) lv.layout = rest;
+    else delete lv.layout;
+  };
   // Zones first (document order), so the boxes inside one are checked where the zone ends up.
-  const placeAll = () => movers().forEach((e) => {
-    const q = layout()[keyOf(e)];
-    if (q?.x || q?.y) keepIn(e, q);
-    else place(e, q);
-  });
+  const placeAll = () => {
+    movers().forEach((e) => {
+      const q = layout()[keyOf(e)];
+      if (q?.x || q?.y) keepIn(e, q);
+      else place(e, q);
+    });
+    if (map.isConnected) uncover();
+  };
   // Whatever was moved last lies on top: the layout keeps its keys in that order.
   const stackUp = () => {
     const boxes = [...map.querySelectorAll("[data-anchor]")];
@@ -2930,6 +2954,11 @@ function renderMap(real) {
         const before = tools.snap(), {[keyOf(it)]: _, ...rest} = layout();
         tools.change(before, {layout: Object.keys(rest).length ? rest : null, ops: dropOps(it, drop)});
         return renderView();
+      }
+      // Let go over another zone (but not into it): it slides back to where it was.
+      if (covers(it)) {
+        place(it, from);
+        return draw();
       }
       tools.done(lv.layout, movedTo(it, moved));
       stackUp();

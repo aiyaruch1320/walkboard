@@ -337,7 +337,7 @@ try {
 
   // restate.gif: a finished step waits for the user, who says it back; the agent confirms.
   recording = "restate";
-  pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:netpol", "status=done", "node:cm", "status=done");
+  pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:cm", "status=done");
   caption = CAPTIONS[6];
   await pageAt(`${url}&theme=dark&step=manifests`, shortUrl);
   await snap(1400);

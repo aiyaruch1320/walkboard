@@ -4401,9 +4401,46 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     let arcs = 0;
     const lanes = [];
+    // Which side of each box a line leaves and reaches: for a box straight below, above or to the left with nothing
+    // between, the sides that face each other. Otherwise the usual way.
+    const ends = new Map();
+    for (const e of edges) {
+      if (e.from === e.to) continue;
+      const a = box(e.from), b = box(e.to);
+      if (!a || !b) continue;
+      let fa = null, fb = null, span = null;
+      {
+        const clear = (l, r, t, bt) => !ids.some((x) => x !== e.from && x !== e.to && (() => {
+          const q = box(x);
+          return q && q.left < r && q.right > l && q.top < bt && q.bottom > t;
+        })());
+        const ox0 = Math.max(a.left, b.left), ox1 = Math.min(a.right, b.right), oy0 = Math.max(a.top, b.top), oy1 = Math.min(a.bottom, b.bottom);
+        if (ox1 - ox0 > 20 && b.top > a.bottom + 8 && clear(ox0, ox1, a.bottom, b.top)) [fa, fb, span] = ["bottom", "top", [ox0, ox1]];
+        else if (ox1 - ox0 > 20 && a.top > b.bottom + 8 && clear(ox0, ox1, b.bottom, a.top)) [fa, fb, span] = ["top", "bottom", [ox0, ox1]];
+        else if (oy1 - oy0 > 16 && b.right < a.left - 8 && clear(b.right, a.left, oy0, oy1)) [fa, fb, span] = ["left", "right", [oy0, oy1]];
+      }
+      if (fa) ends.set(e, {from: fa, to: fb, span});
+    }
+    // Where on its side each end sits: alone in the middle (of the part two boxes share, when they face), several spread
+    // in the order of what is at their other ends.
+    const port = new Map(), groups = {};
+    for (const [e, s] of ends) for (const [end, id, other] of [["from", e.from, e.to], ["to", e.to, e.from]]) (groups[`${id}|${s[end]}`] ||= []).push({e, end, other});
+    for (const [g, list] of Object.entries(groups)) {
+      const side = g.slice(g.lastIndexOf("|") + 1), r = box(list[0].e[list[0].end]), across = side === "top" || side === "bottom";
+      const mid = (q) => (across ? q.left + q.width / 2 : q.top + q.height / 2);
+      list.sort((x, y) => mid(box(x.other)) - mid(box(y.other)));
+      list.forEach((it, i) => {
+        const span = list.length === 1 && ends.get(it.e).span;
+        const [lo, hi] = span || (across ? [r.left, r.right] : [r.top, r.bottom]);
+        const at = lo + ((hi - lo) * (i + 1)) / (list.length + 1);
+        const out = it.end === "to" ? 4 : 0;
+        port.set(`${it.end}|${it.e.from}>${it.e.to}`, side === "top" ? [at, r.top - out] : side === "bottom" ? [at, r.bottom + out] : side === "left" ? [r.left - out, at] : [r.right + out, at]);
+      });
+    }
+    const NORMAL = {left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1]};
     // Edges leaving or entering the same box spread along its side instead of sharing one point.
     const outs = {}, ins = {};
-    for (const e of edges) if (e.from !== e.to) {
+    for (const e of edges) if (e.from !== e.to && !ends.has(e)) {
       (outs[e.from] ||= []).push(e);
       (ins[e.to] ||= []).push(e);
     }
@@ -4434,13 +4471,19 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       if (!a || !b) continue;
       const P = (x, y) => [x - base.left, y - base.top];
       let p0, p1, p2, p3, row = null;
-      if (free && e.from !== e.to && b.top > a.bottom + 24 && b.left <= a.right) {
+      if (free && e.from !== e.to && !ends.has(e) && b.top > a.bottom + 24 && b.left <= a.right) {
         const q0 = P(a.right, spread(outs[e.from], e, a)), q3 = P(b.left - 4, spread(ins[e.to], e, b));
         const xr = q0[0] + 22 + 6 * arcs, xl = Math.max(4, q3[0] - 26 - 6 * arcs);
         const y = gapAbove(a, b, xl, xr, [e.from, e.to]);
         if (y != null) row = {q0, q3, xr, xl, y: Math.min(y + 6 * arcs++, q3[1] - 12)};
       }
-      if (e.from === e.to) {
+      if (ends.has(e)) {
+        // Out of one side, into the other, leaving and arriving square to each.
+        const s = ends.get(e), q0 = port.get(`from|${e.from}>${e.to}`), q3 = port.get(`to|${e.from}>${e.to}`);
+        p0 = P(q0[0], q0[1]); p3 = P(q3[0], q3[1]);
+        const k = Math.max(24, Math.hypot(p3[0] - p0[0], p3[1] - p0[1]) * 0.4), n0 = NORMAL[s.from], n3 = NORMAL[s.to];
+        p1 = [p0[0] + n0[0] * k, p0[1] + n0[1] * k]; p2 = [p3[0] + n3[0] * k, p3[1] + n3[1] * k];
+      } else if (e.from === e.to) {
         p0 = P(a.right - 22, a.bottom); p3 = P(a.right, a.bottom - 14); p1 = [p0[0] + 4, p0[1] + 34]; p2 = [p3[0] + 38, p3[1] + 6];
       } else if (!free && band(e.to) > band(e.from) && !back.has(e)) {
         // On to the next row: out to the right, along the gap between the rows, in from the left.

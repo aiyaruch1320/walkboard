@@ -5,7 +5,7 @@ import {knownIcon} from "../skills/walkboard/lib/icons.mjs";
 
 test("every profile is whole: names, icons that exist, rules that name kinds of the same profile", () => {
   for (const [p, pr] of Object.entries(PROFILES)) {
-    assert.ok(pr.label && pr.family, `${p} needs a label and a family`);
+    assert.ok(pr.label && "family" in pr, `${p} needs a label and a family (null: drawn plain)`);
     for (const [k, d] of Object.entries(pr.kinds)) {
       assert.ok(/^[a-z0-9]+$/.test(k), `${p}:${k}: keys are lower case letters and digits`);
       assert.ok(d.name, `${p}:${k} needs a name`);

@@ -65,6 +65,24 @@ test("a zone's icon and note are drafted with it or on their own", () => {
   assert.match(draftLine({op: "editZone", zone: "App", icon: "kubernetes"}), /zone "App", icon "kubernetes"/);
 });
 
+test("a line turned round keeps its label and kind, and later edits still find it", () => {
+  const r = applyDraft(plan(), draft({op: "reverseLink", from: "api", to: "nat"}, {op: "editLink", from: "api", to: "nat", state: "blocked"}), "m");
+  const l = r.view.links.find((x) => x.from === "nat" && x.to === "api");
+  assert.deepEqual(l, {from: "nat", to: "api", label: "egress", state: "blocked"});
+  assert.equal(r.marks.links["nat>api"].reversed, true);
+  assert.equal(r.marks.links["api>nat"], undefined);
+  assert.deepEqual(r.pending, ["op1", "op2"]);
+  // Done once the plan has it the other way; stale when both ways exist or the line is gone.
+  const p2 = plan();
+  p2.views[0].links[1] = {from: "nat", to: "api"};
+  assert.deepEqual(applyDraft(p2, draft({op: "reverseLink", from: "api", to: "nat"}), "m").done, ["op1"]);
+  const p3 = plan();
+  p3.views[0].links.push({from: "db", to: "api"});
+  assert.match(applyDraft(p3, draft({op: "reverseLink", from: "api", to: "db"}), "m").stale[0].why, /other way/);
+  assert.match(validateDraft(draft({op: "reverseLink", from: "api", to: "api"})).join(), /two different/);
+  assert.match(draftLine({op: "reverseLink", from: "api", to: "nat"}), /now nat → api/);
+});
+
 test("moves leave where they came from; edits keep what was there; removals stay drawn", () => {
   const r = applyDraft(plan(), draft({op: "move", node: "erp", to: "App", from: "On-prem"}, {op: "editNode", node: "db", name: "Aurora v2"}, {op: "remove", node: "nat"}, {op: "editLink", from: "api", to: "nat", state: "blocked"}), "m");
   assert.deepEqual(r.marks.nodes.erp, {mark: "move", from: "On-prem", fromAt: 0});

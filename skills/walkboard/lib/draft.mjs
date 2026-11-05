@@ -11,7 +11,7 @@ const LINK_STATES = ["ok", "todo", "blocked", "standby"];
 
 // What can be sketched on each kind of picture.
 export const DRAFT_OPS = {
-  map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
+  map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
   datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove"],
   flow: ["addBox", "moveBox", "addLane", "editLane", "moveLane", "editNode", "remove"],
   state: ["addBox", "addEdge", "editEdge", "removeEdge", "editNode", "remove"],
@@ -51,6 +51,8 @@ const SHAPES = {
   addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x)},
   editLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x)},
   removeLink: {from: id, to: id},
+  // The line from → to points the other way (to → from), keeping its label and kind.
+  reverseLink: {from: id, to: id},
   editNode: {node: id, name: (x) => x == null || text(x), what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60)},
   // A zone's new name (label), icon or note ("" takes an icon or a note away); at least one of them.
   editZone: {zone: label, label: (x) => x == null || label(x), icon: (x) => optText(x, 60), note: (x) => optText(x, 120)},
@@ -103,7 +105,7 @@ export function validateDraft(d) {
         if (!ok(op[k])) out.push(`${at} (${op.op}): bad ${k}`);
       }
       for (const k of Object.keys(op)) if (k !== "id" && k !== "op" && !(k in shape)) out.push(`${at} (${op.op}): unknown field ${k}`);
-      if ((op.op === "addLink" || op.op === "editLink" || op.op === "removeLink") && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
+      if (["addLink", "editLink", "removeLink", "reverseLink"].includes(op.op) && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
       if (op.op === "editZone" && op.label == null && op.icon == null && op.note == null) out.push(`${at} (editZone): needs a label, an icon or a note`);
     });
   }
@@ -167,6 +169,9 @@ export function applyDraft(plan, draft, viewId) {
   const zone = (lbl) => walk(v).find((w) => w.z.label === lbl);
   const home = (nid) => walk(v).find((w) => Array.isArray(w.z.nodes) && w.z.nodes.includes(nid));
   const link = (from, to) => v.links.find((l) => isObj(l) && l.from === from && l.to === to);
+  // A line the draft turned round is still found by the ends it had in the plan.
+  const flipped = new Set();
+  const lineOf = (from, to) => link(from, to) || (flipped.has(key(from, to)) ? link(to, from) : undefined);
   const stale = (op, why) => result.stale.push({id: op.id, why});
   const done = (op) => result.done.push(op.id);
   const nameOf = (n) => String(nodes[n]?.name ?? "").trim().toLowerCase();
@@ -237,7 +242,7 @@ export function applyDraft(plan, draft, viewId) {
         break;
       }
       case "editLink": {
-        const from = r(op.from), to = r(op.to), l = link(from, to);
+        const from = r(op.from), to = r(op.to), l = lineOf(from, to);
         if (!l && need(op, [from, to].filter((n) => !home(n)).map((n) => "n:" + n))) return;
         if (!l) {
           stale(op, "no such line");
@@ -253,16 +258,33 @@ export function applyDraft(plan, draft, viewId) {
           if (op[k] === "" || (k === "state" && op[k] === "ok")) delete l[k];
           else l[k] = op[k];
         }
-        marks.links[key(from, to)] ||= {mark: "change", was};
+        marks.links[key(l.from, l.to)] ||= {mark: "change", was};
         break;
       }
       case "removeLink": {
-        const from = r(op.from), to = r(op.to), l = link(from, to);
+        const from = r(op.from), to = r(op.to), l = lineOf(from, to), k = l && key(l.from, l.to);
         if (!l) done(op);
-        else if (marks.links[key(from, to)]?.mark === "add") {
+        else if (marks.links[k]?.mark === "add") {
           v.links.splice(v.links.indexOf(l), 1);
+          delete marks.links[k];
+        } else marks.links[k] = {mark: "remove"};
+        break;
+      }
+      case "reverseLink": {
+        const from = r(op.from), to = r(op.to), l = link(from, to);
+        if (!l && need(op, [from, to].filter((n) => !home(n)).map((n) => "n:" + n))) return;
+        // The agent turned it round already.
+        if (!l && link(to, from)) done(op);
+        else if (!l) stale(op, "no such line");
+        else if (link(to, from)) stale(op, "a line already goes the other way");
+        else {
+          l.from = to;
+          l.to = from;
+          flipped.add(key(from, to));
+          const m = marks.links[key(from, to)];
           delete marks.links[key(from, to)];
-        } else marks.links[key(from, to)] = {mark: "remove"};
+          marks.links[key(to, from)] = m?.mark === "add" ? m : {...(m || {mark: "change"}), reversed: true};
+        }
         break;
       }
       case "editNode": {
@@ -860,6 +882,7 @@ export function draftLine(c) {
     case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addZone": return `+ zone ${z(c.zone)} in ${z(c.parent)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}`;
+    case "reverseLink": return `⇄ line ${c.from} → ${c.to} turned round: now ${c.to} → ${c.from}`;
     case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}` : ""}${c.state ? ` [${c.state}]` : ""}`;
     case "removeLink": return `− line ${c.from} → ${c.to}`;
     case "editNode": return `~ box ${c.node}: ${["name", "what", "icon"].filter((k) => c[k] != null).map((k) => `${k} ${JSON.stringify(c[k])}`).join(", ")}`;

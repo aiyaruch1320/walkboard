@@ -4448,7 +4448,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         port.set(`${it.end}|${it.e.from}>${it.e.to}`, side === "top" ? [at, r.top - out] : side === "bottom" ? [at, r.bottom + out] : side === "left" ? [r.left - out, at] : [r.right + out, at]);
       });
     }
-    const NORMAL = {left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1]};
+    const NORMAL = {left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1]}, endAt = {};
     // Edges leaving or entering the same box spread along its side instead of sharing one point.
     const outs = {}, ins = {};
     for (const e of edges) if (e.from !== e.to && !ends.has(e)) {
@@ -4551,8 +4551,16 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         [hit.dataset.from, hit.dataset.to] = [e.from, e.to];
         svg.append(hit);
       }
+      endAt[`${e.from}>${e.to}`] = {from: p0, to: p3};
       // Handles at both ends, shown while the line is pointed at: drag one to another side of its box.
-      if (hold?.canMove() && e.from !== e.to) for (const [end, [hx, hy]] of [["from", p0], ["to", p3]]) {
+      // A little way along the line, clear of the box: boxes are drawn over the lines.
+      const off = (q, along) => {
+        const n = along.find((x) => x && Math.hypot(x[0] - q[0], x[1] - q[1]) > 1);
+        if (!n) return q;
+        const d = Math.hypot(n[0] - q[0], n[1] - q[1]);
+        return [q[0] + ((n[0] - q[0]) / d) * 9, q[1] + ((n[1] - q[1]) / d) * 9];
+      };
+      if (hold?.canMove() && e.from !== e.to) for (const [end, [hx, hy]] of [["from", off(p0, [p1, p2, p3])], ["to", off(p3, [p2, p1, p0])]]) {
         const h = document.createElementNS(svg.namespaceURI, "circle");
         h.setAttribute("cx", hx);
         h.setAttribute("cy", hy);
@@ -4572,8 +4580,16 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         labels.append(lab);
       }
     }
+    // An end dragged onto another box while drafting: a line from the end that stays to the pointer.
+    const sd = grid.sideDrag, kept = sd?.reach && endAt[sd.key]?.[sd.end === "from" ? "to" : "from"];
+    if (kept) {
+      const g = document.createElementNS(svg.namespaceURI, "path");
+      g.setAttribute("class", "dr-add dtmp");
+      g.setAttribute("d", `M${kept[0]} ${kept[1]} L${sd.x - base.left} ${sd.y - base.top}`);
+      svg.append(g);
+    }
     // While an end is dragged: the middle of each side of its box, the one it would go to lit.
-    if (grid.sideDrag) {
+    if (grid.sideDrag && !grid.sideDrag.reach) {
       const r = box(grid.sideDrag.id);
       if (r) for (const [side, x, y] of [["left", r.left, r.top + r.height / 2], ["top", r.left + r.width / 2, r.top], ["right", r.right, r.top + r.height / 2], ["bottom", r.left + r.width / 2, r.bottom]]) {
         const d = document.createElementNS(svg.namespaceURI, "circle");
@@ -4677,7 +4693,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       const was = {from: sideNow(from, k), to: sideNow(to, k)};
       const sx = e.clientX, sy = e.clientY;
       grid.endsShown = k;
-      let moved = false, side = null, elsewhere = false;
+      let moved = false, side = null, elsewhere = false, reach = null;
       const nearest = (x, y) => {
         const r = box(id);
         const d = {left: Math.abs(x - r.left) + Math.max(0, r.top - y, y - r.bottom), right: Math.abs(x - r.right) + Math.max(0, r.top - y, y - r.bottom),
@@ -4692,8 +4708,15 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         const over = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest?.("[data-anchor]")).find((x) => x && grid.contains(x));
         elsewhere = !!over && over.dataset.anchor !== id;
         side = elsewhere ? null : nearest(ev.clientX, ev.clientY);
-        document.body.classList.toggle("dnoplace", elsewhere);
-        grid.sideDrag = {key: k, id, side};
+        // While drafting, another box takes the line (a change to the plan, in the draft); otherwise it cannot.
+        const next = elsewhere && sketch ? over : null;
+        if (next !== reach) {
+          reach?.classList.remove("dtarget");
+          next?.classList.add("dtarget");
+          reach = next;
+        }
+        document.body.classList.toggle("dnoplace", elsewhere && !sketch);
+        grid.sideDrag = {key: k, id, side, end, reach: reach?.dataset.anchor ?? null, x: ev.clientX, y: ev.clientY};
         grid.sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side ? {[end]: side} : {})};
         draw();
       };
@@ -4703,6 +4726,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         removeEventListener("pointercancel", up);
         grid.classList.remove("dragging");
         document.body.classList.remove("dnoplace");
+        reach?.classList.remove("dtarget");
         grid.sideDrag = null;
         grid.sidePreview = null;
         if (!moved) return draw();
@@ -4710,6 +4734,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         setTimeout(() => (dragged = false));
         if (elsewhere) {
           draw();
+          if (reach && grid.reconnect?.(from, to, end, reach.dataset.anchor)) return;
           return showProblem(t("sideOtherBox"));
         }
         if (side && keepSides(from, to, {...was, [end]: side})) keepFocus(() => renderView());
@@ -5991,6 +6016,21 @@ function sketchLinks({real, v, drafted, container, tools}) {
     if (merged.state != null && merged.state === (orig.state ?? "ok")) delete merged.state;
     const keep = merged.label != null || merged.state != null;
     kit.setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list);
+  };
+  // An end of a line let go on another box: the line now joins that box. One the draft drew just changes; one in the
+  // plan is taken out and a new one drawn, with its words. Its other changes (words, turned round) go with it.
+  if (!k8s) container.reconnect = (from, to, end, other) => {
+    const nf = end === "from" ? other : from, nt = end === "to" ? other : to;
+    if (nf === nt && v.kind !== "state") return showProblem(t("lineSelf")), true;
+    if (lines(v).some((l) => l?.from === nf && l?.to === nt)) return showProblem(t("lineThere")), true;
+    const l = lines(v).find((x) => x?.from === from && x?.to === to) || {};
+    const list = kit.ops(), added = list.find((o) => o.op === OPS.add && o.from === from && o.to === to);
+    if (added) return kit.setOps(list.map((o) => (o === added ? {...o, from: nf, to: nt} : o))), true;
+    const [pf, pt] = planEnds(from, to);
+    const rest = list.filter((o) => !([OPS.edit, OPS.reverse, OPS.remove].includes(o.op) && o.from === pf && o.to === pt));
+    const out = [...rest, {id: newOpId(rest), op: OPS.remove, from: pf, to: pt}];
+    kit.setOps([...out, {id: newOpId(out), op: OPS.add, from: nf, to: nt, ...(labelled && l.label ? {label: l.label} : {})}]);
+    return true;
   };
   // A line's card: its label (and for k8s its kind), or take it out. A line just drawn is saved when the card closes.
   const card = (from, to, x, y, fresh = false) => {

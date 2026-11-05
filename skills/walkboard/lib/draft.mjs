@@ -60,7 +60,7 @@ const SHAPES = {
   removeZone: {zone: label},
   move: {node: id, to: label, from: (x) => x == null || label(x), at},
   moveZone: {zone: label, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x), at},
-  addTable: {node: isNewId, name: text, group: (x) => x == null || label(x), at},
+  addTable: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), group: (x) => x == null || label(x), at},
   addColumn: {table: id, column: colName, type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x), at},
   editColumn: {table: id, column: colName, name: (x) => x == null || colName(x), type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x)},
   removeColumn: {table: id, column: colName},
@@ -447,7 +447,7 @@ function applyTables(v, nodes, ops, result) {
           done(op);
         } else if (op.group && !group(op.group)) stale(op, `no group "${op.group}"`);
         else {
-          nodes[op.node] = {name: op.name.trim()};
+          nodes[op.node] = {name: op.name.trim(), ...(op.what ? {what: op.what} : {}), ...(op.icon ? {icon: op.icon} : {})};
           insert(v.tables, {node: op.node, columns: []}, op.at);
           if (op.group) group(op.group).tables.push(op.node);
           marks.nodes[op.node] = {mark: "add"};
@@ -570,13 +570,7 @@ function applyTables(v, nodes, ops, result) {
           stale(op, `no table ${op.node}`);
           break;
         }
-        const cur = nodes[n] || {};
-        if (op.name == null || op.name === (cur.name ?? n)) {
-          done(op);
-          break;
-        }
-        nodes[n] = {...cur, name: op.name};
-        if (!marks.nodes[n]) marks.nodes[n] = {mark: "change", was: {name: cur.name ?? n}};
+        editNodeIn(() => true, nodes, {...op, node: n}, marks, {stale, done});
         break;
       }
       case "remove": {
@@ -918,7 +912,7 @@ export function draftLine(c) {
     case "removeZone": return `− zone ${z(c.zone)}`;
     case "move": return `↦ box ${c.node} → ${z(c.to)}`;
     case "moveZone": return `↦ zone ${z(c.zone)} → ${z(c.to)}`;
-    case "addTable": return `+ table ${c.name} (${c.node})${c.group ? ` in group "${c.group}"` : ""}`;
+    case "addTable": return `+ table ${c.name} (${c.node})${c.group ? ` in group "${c.group}"` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addColumn": return `+ column ${c.table}: ${c.column}${c.type ? ` ${c.type}` : ""}${c.key ? ` [${c.key}]` : ""}`;
     case "editColumn": return `~ column ${c.table}: ${c.column} ${["name", "type", "key", "ref"].filter((k) => c[k] != null).map((k) => (k === "ref" ? (c.ref ? `→ ${c.ref} (foreign key)` : "foreign key taken out") : `${k} ${JSON.stringify(c[k])}`)).join(", ")}`;
     case "removeColumn": return `− column ${c.table}: ${c.column}${c.copies?.length ? ` (copies kept in ${c.copies.join(", ")})` : ""}`;

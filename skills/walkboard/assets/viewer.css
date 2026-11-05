@@ -364,7 +364,7 @@ body.side-open .dtip{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var
 .map.sketch[data-tool="remove"] [data-anchor],.map.sketch[data-tool="remove"] .zhead{cursor:pointer}
 .map .dsel{outline:2px solid var(--you-bd)!important;outline-offset:3px}
 .map [data-anchor].dtarget{outline:2px solid var(--you-bd)!important;outline-offset:3px}
-.map .dtemp{opacity:.85}
+.map .dtemp,.er .dtemp{opacity:.85}
 .map .dtemp.zone{min-width:150px;min-height:70px}
 .map svg.links .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke;cursor:pointer}
 /* The line pointed at, and its label on the box it reaches. */
@@ -407,6 +407,8 @@ svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important
 .ertable.active{outline:2px solid var(--text);outline-offset:2px}
 .g-q.active{border-color:var(--text);background:var(--you-bg)}
 .erhead{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:7px 10px;background:var(--code);border-bottom:1px solid var(--line)}
+/* A note wraps at the table's width; it does not make the table wider. */
+.erwhat{width:0;min-width:100%;font-size:12px;line-height:1.45;color:var(--muted);padding:6px 10px 2px;white-space:normal;overflow-wrap:anywhere}
 .ertable ul{list-style:none;margin:0;padding:4px 0}
 .ertable li{display:grid;grid-template-columns:30px 1fr auto;gap:8px;padding:2px 10px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}
 .erkey{font-size:10px;font-weight:700;color:var(--muted)}
@@ -548,7 +550,6 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er .dsel{outline:2px solid var(--you-bd)!important;outline-offset:2px}
 .er li.dtarget{outline:2px solid var(--you-bd);outline-offset:-2px}
 .er .erframe.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 40%,transparent)}
-.er .dspot{position:absolute;width:160px;height:24px}
 .flowview,.graph,.k8s{position:relative}
 .flowview .dspot,.graph .dspot,.k8s .dspot{position:absolute;width:160px;height:24px}
 .graph [data-anchor],.k8s [data-anchor],.lane .node{position:relative}

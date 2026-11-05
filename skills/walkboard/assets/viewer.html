@@ -2495,10 +2495,11 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
 // The icon follows the name until one is picked. Enter, the button or a click elsewhere keeps it; Escape drops it.
 // preview(values) draws them on the box; onDone(values, or null when dropped or left without a name).
 // A zone uses it too: its note is the short line by its name (zone: true).
-function boxCard(beside, initial, {title, preview, onDone, zone = false}) {
+// nameHint, whatHint: the words in its fields, where it is not a box or a zone. iconId: what the icon is also guessed from.
+function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = ""}) {
   let picked = initial.icon || "";
   const nameIn = el("input", "dsearch dname");
-  nameIn.placeholder = t(zone ? "zoneNameHint" : "boxNameHint");
+  nameIn.placeholder = nameHint || t(zone ? "zoneNameHint" : "boxNameHint");
   nameIn.value = initial.name || "";
   nameIn.maxLength = 80;
   const iconBtn = el("button", "dpick");
@@ -2506,7 +2507,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false}) {
   const row = el("div", "dnamerow");
   row.append(iconBtn, nameIn);
   const whatIn = el("textarea", "dsearch dwhat");
-  whatIn.placeholder = t(zone ? "zoneNote" : "boxWhat");
+  whatIn.placeholder = whatHint || t(zone ? "zoneNote" : "boxWhat");
   whatIn.value = initial.what || "";
   whatIn.maxLength = zone ? 120 : 300;
   whatIn.rows = zone ? 1 : 3;
@@ -2515,7 +2516,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false}) {
   picker.hidden = true;
   const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked});
   const update = () => {
-    const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value}, "", null);
+    const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value}, iconId, null);
     iconBtn.replaceChildren(ic || el("span", "icon dnoicon"));
     iconBtn.title = picked ? t("iconPicked") : t("iconAuto");
     iconBtn.setAttribute("aria-label", iconBtn.title);
@@ -4463,7 +4464,7 @@ function renderDataModel(real) {
   if (frameDefs.length) grid.classList.add("grouped");
 
   // Moving tables: the automatic layout until the first drag, then every table at its own x, y, saved in plan.json.
-  const cards = () => [...grid.querySelectorAll(":scope > .ertable")];
+  const cards = () => [...grid.querySelectorAll(":scope > .ertable:not(.dtemp)")];
   const canMove = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
   const tools = layoutTools(real, canMove, renderView, () => ({}), draftShown());
   if (sketching && sketching !== real.id && !drawingDiff) sketching = null;
@@ -4566,16 +4567,18 @@ function renderDataModel(real) {
     freeze();
     return save(v.layout, false);
   };
-  // The layout with a new table at a point of the picture, in a group (its label) or not.
-  const placeTable = (id, x, y, group) => {
-    freeze();
-    const ref = cards()[0], was = ref && [ref.offsetLeft, ref.offsetTop], pos = save(v.layout, false);
-    const home = group == null ? null : frameDefs.findIndex((g) => g.label === group);
-    // Inside what is on screen: a table past the right edge would make the picture scroll sideways.
+  // Where a new table lands for a click at a point of the picture, in a group (its label) or not: inside what is on
+  // screen (a table past the right edge would make the picture scroll sideways), on free ground. h: its height.
+  const spotFor = (x, y, group, h = 52) => {
     const holder = grid.parentElement, pad = getComputedStyle(holder);
     const room = holder.clientWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight) - 260;
-    const at = {x: Math.min(x + (ref ? ref.offsetLeft - was[0] : 0), Math.max(0, room)), y: y + (ref ? ref.offsetTop - was[1] : 0)};
-    const {x: px, y: py} = fitTable({...at, w: 220, h: 52}, home);
+    return fitTable({x: Math.min(x, Math.max(0, room)), y, w: 220, h}, group == null ? null : frameDefs.findIndex((g) => g.label === group));
+  };
+  // The layout with a new table where spotFor puts it.
+  const placeTable = (id, x, y, group, h) => {
+    freeze();
+    const ref = cards()[0], was = ref && [ref.offsetLeft, ref.offsetTop], pos = save(v.layout, false);
+    const {x: px, y: py} = spotFor(x + (ref ? ref.offsetLeft - was[0] : 0), y + (ref ? ref.offsetTop - was[1] : 0), group, h);
     return {...pos, [id]: {x: px, y: py}};
   };
   // The layout with a table taller by dh: what it would reach moves down, and what that reaches in turn.
@@ -4699,7 +4702,7 @@ function renderDataModel(real) {
     const tn = drafted.plan.nodes[tb.node];
     const ic = iconEl(tn || {}, tb.node);
     if (ic) head.append(ic);
-    head.append(tn?.name || tb.node);
+    head.append(el("span", "ertitle", tn?.name || tb.node));
     const tm = marks.nodes[tb.node];
     if (tm) {
       card.classList.add("dr-" + tm.mark);
@@ -4721,7 +4724,7 @@ function renderDataModel(real) {
       if (c.note || c.copy || was) li.title = [was, c.copy && t("erCopyOf", c.copy), c.note].filter(Boolean).join("\n");
       ul.append(li);
     }
-    card.append(head, ul);
+    card.append(head, ...(tn?.what ? [el("div", "erwhat", tn.what)] : []), ul);
     movable(card, head, () => [card]);
     card.style.gridColumn = String(level[tb.node] + 1);
     card.style.gridRow = String((rows[level[tb.node]] = (rows[level[tb.node]] || 0) + 1));
@@ -4782,7 +4785,7 @@ function renderDataModel(real) {
     }
   };
   addDrawer(draw, grid);
-  if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, positionsNow, roomFor});
+  if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, placeTable, positionsNow, roomFor});
   else if (draftOps(real.id).length) sketchApi = {view: real.id, show() {}, drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()), review: () => tools.ask(), discard: () => (saveDraft(real.id, []), renderView())};
   const scroll = el("div", "scroll");
   scroll.append(readLine("datamodel"), grid);
@@ -4808,7 +4811,7 @@ function renderDataModel(real) {
 }
 
 // ---------- sketching a data model: tables, columns, foreign keys (drag a column onto another), groups
-function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, positionsNow, roomFor}) {
+function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, placeTable, positionsNow, roomFor}) {
   const marks = drafted.marks;
   const ops = () => draftOps(real.id);
   // A change never moves what is already on the picture: the layout goes with it, one undo. A place the draft no longer has drops out.
@@ -4838,6 +4841,19 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
   const same = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
   const tableTaken = (name, except) => v.tables.some((tb) => tb.node !== except && same(drafted.plan.nodes[tb.node]?.name ?? tb.node, name));
   const columnTaken = (table, name, except) => v.tables.find((tb) => tb.node === table)?.columns?.some((c) => c.name !== except && same(c.name, name));
+  // A table drawn with these values as the card types them.
+  const showTable = (card, val, id, empty = "") => {
+    const head = card.querySelector(".erhead"), ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, id);
+    head.querySelector(":scope > .icon")?.remove();
+    if (ic) head.prepend(ic);
+    head.querySelector(".ertitle").textContent = val.name || empty;
+    let what = card.querySelector(":scope > .erwhat");
+    if (!what && val.what) head.after((what = el("div", "erwhat")));
+    if (what) {
+      what.textContent = val.what;
+      what.hidden = !val.what;
+    }
+  };
   const newNode = () => {
     const used = new Set([...Object.keys(plan.nodes), ...ops().filter((o) => o.op === "addTable").map((o) => o.node)]);
     let id;
@@ -4889,16 +4905,35 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
     const e = elOf(x);
     if (!e) return;
     if (x.kind === "node") {
-      const initial = drafted.plan.nodes[x.id]?.name ?? x.id;
-      return editText(e.querySelector(".erhead"), initial, t("tableName"), {onDone: (val) => {
-        if (!val || val === initial) return;
-        if (tableTaken(val, x.id)) return showProblem(t("tableTaken", val));
-        const list = ops(), added = addedTable(x.id);
-        if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)));
-        const ed = list.find((o) => o.op === "editNode" && o.node === x.id), orig = plan.nodes[x.id]?.name ?? x.id;
-        if (val === orig) return setOps(list.filter((o) => o !== ed));
-        setOps(ed ? list.map((o) => (o === ed ? {...o, name: val} : o)) : [...list, {id: newOpId(list), op: "editNode", node: x.id, name: val}]);
-      }});
+      const n = drafted.plan.nodes[x.id] || {};
+      return boxCard(e.getBoundingClientRect(), {name: n.name ?? x.id, what: n.what, icon: n.icon}, {
+        title: t("tableEditTitle"),
+        nameHint: t("tableNameHint"),
+        whatHint: t("tableWhat"),
+        iconId: x.id,
+        preview: (val) => showTable(e, val, x.id),
+        onDone: (val) => {
+          if (!val) return keepFocus(() => renderView());
+          if (tableTaken(val.name, x.id)) {
+            keepFocus(() => renderView());
+            return showProblem(t("tableTaken", val.name));
+          }
+          const list = ops(), added = addedTable(x.id);
+          let next;
+          if (added) {
+            const {what: _w, icon: _i, ...base} = added;
+            next = list.map((o) => (o === added ? {...base, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {})} : o));
+          } else {
+            const orig = plan.nodes[x.id] || {}, ed = list.find((o) => o.op === "editNode" && o.node === x.id);
+            const fields = Object.fromEntries(["name", "what", "icon"].filter((k) => (val[k] || "") !== (orig[k] ?? (k === "name" ? x.id : ""))).map((k) => [k, val[k] || ""]));
+            const op = Object.keys(fields).length ? {id: ed?.id ?? newOpId(list), op: "editNode", node: x.id, ...fields} : null;
+            next = ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list;
+          }
+          if (JSON.stringify(next) === JSON.stringify(list)) return keepFocus(() => renderView());
+          // The table is already as tall as its note makes it: what that reaches moves down.
+          setOps(next, roomFor(x.id, 0));
+        },
+      });
     }
     if (x.kind === "column") {
       const [table, column] = split(x.id), col = v.tables.find((tb) => tb.node === table)?.columns.find((c) => c.name === column) || {};
@@ -4923,14 +4958,6 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
       if (ed) return setOps(ed.group === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)));
       setOps([...list, {id: newOpId(list), op: "editGroup", group: x.id, label: val}]);
     }});
-  };
-  // A text field at a point of the picture, for a new table.
-  const fieldAt = (x, y) => {
-    const g = grid.getBoundingClientRect(), spot = el("div", "dspot");
-    spot.style.left = x - g.left + "px";
-    spot.style.top = y - g.top + "px";
-    grid.append(spot);
-    return spot;
   };
   // A foreign key: drag from a column onto the column it points at; the same pair again takes it out.
   const connect = (e) => {
@@ -5046,19 +5073,34 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
     if (sketchTool === "table") {
       if (e.target.closest(".ertable")) return;
       e.preventDefault();
-      const f = frameAt(e.clientX, e.clientY, null), spot = fieldAt(e.clientX, e.clientY);
+      const f = frameAt(e.clientX, e.clientY, null), group = f?.dataset.group ?? null;
       const g = grid.getBoundingClientRect(), x = e.clientX - g.left - grid.clientLeft, y = e.clientY - g.top - grid.clientTop;
-      return editText(spot, "", t("tableName"), {onDone: (val) => {
-        spot.remove();
-        sketchTool = "select";
-        if (!val) return refresh();
-        if (tableTaken(val)) {
-          refresh();
-          return showProblem(t("tableTaken", val));
-        }
-        const list = ops(), node = newNode();
-        setOps([...list, {id: newOpId(list), op: "addTable", node, name: val, ...(f ? {group: f.dataset.group} : {})}], placeTable(node, x, y, f?.dataset.group ?? null));
-      }});
+      grid.querySelectorAll(".erframe").forEach((z) => z.classList.remove("dhover"));
+      // The table to be, where it will land, as the card types it.
+      const tmp = el("div", "ertable dr-add dtemp"), head = el("div", "erhead");
+      head.append(el("span", "ertitle", t("tableNew")));
+      tmp.append(head, el("ul"));
+      const at = spotFor(x, y, group);
+      Object.assign(tmp.style, {position: "absolute", left: at.x + "px", top: at.y + "px", zIndex: 9999, margin: 0});
+      grid.append(tmp);
+      return boxCard(tmp.getBoundingClientRect(), {}, {
+        title: group ? t("tableNewIn", group) : t("tableNew"),
+        nameHint: t("tableNameHint"),
+        whatHint: t("tableWhat"),
+        preview: (val) => showTable(tmp, val, "", t("tableNew")),
+        onDone: (val) => {
+          const h = tmp.offsetHeight;
+          tmp.remove();
+          sketchTool = "select";
+          if (!val) return refresh();
+          if (tableTaken(val.name)) {
+            refresh();
+            return showProblem(t("tableTaken", val.name));
+          }
+          const list = ops(), node = newNode();
+          setOps([...list, {id: newOpId(list), op: "addTable", node, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...(group ? {group} : {})}], placeTable(node, x, y, group, h));
+        },
+      });
     }
   }, true);
   grid.addEventListener("click", (e) => {
@@ -5070,7 +5112,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
   grid.addEventListener("dblclick", (e) => sketchTool === "select" && rename(selOf(e.target)));
   // The table tool: the group frame a click would put it in lights up.
   grid.addEventListener("pointermove", (e) => {
-    const f = sketchTool === "table" && !e.target.closest?.(".ertable") ? frameAt(e.clientX, e.clientY, null) : null;
+    const f = sketchTool === "table" && !document.querySelector(".dboxcard") && !e.target.closest?.(".ertable") ? frameAt(e.clientX, e.clientY, null) : null;
     grid.querySelectorAll(".erframe").forEach((x) => x.classList.toggle("dhover", x === f));
   });
   grid.addEventListener("pointerleave", () => grid.querySelectorAll(".erframe").forEach((x) => x.classList.remove("dhover")));

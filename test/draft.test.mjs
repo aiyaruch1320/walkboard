@@ -172,6 +172,12 @@ const dm = (...ops) => ({version: 1, views: {d: {ops: ops.map((o, i) => ({id: "o
 
 test("data models: tables, columns, keys and groups are drafted, marked, and the plan untouched", () => {
   const p = model(), before = JSON.stringify(p);
+  assert.deepEqual(validateDraft(dm({op: "addTable", node: "new:n", name: "notes", what: "free text", icon: "database"})), []);
+  const noted = applyDraft(model(), dm({op: "addTable", node: "new:n", name: "notes", what: "free text", icon: "database"}, {op: "editNode", node: "users", what: "who signs in", icon: "user"}), "d");
+  assert.deepEqual(noted.plan.nodes["new:n"], {name: "notes", what: "free text", icon: "database"});
+  assert.equal(noted.plan.nodes.users.what, "who signs in");
+  assert.equal(noted.marks.nodes.users.mark, "change");
+  assert.match(draftLine({op: "addTable", node: "new:n", name: "notes", what: "free text", icon: "database"}), /notes \(new:n\): "free text" icon "database"/);
   const r = applyDraft(p, dm(
     {op: "addTable", node: "new:p", name: "payments", group: "Shop"},
     {op: "addColumn", table: "new:p", column: "order_id", type: "uuid"},

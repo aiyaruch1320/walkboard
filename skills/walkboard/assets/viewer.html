@@ -5941,17 +5941,18 @@ function scrollHints() {
 }
 
 // scripts/perf.mjs sets window.__wbRender to an array: each time a picture is built again adds how long it took (ms).
-// A picture that takes no draft has the pencil in the same place all the same: it says why, and where to go instead.
-function pencilAnyway(v) {
-  if (snapshot || !served || printState || innerWidth < 820 || !matchMedia("(pointer: fine)").matches) return null;
-  const row = el("div", "ltools"), pencil = el("button", "lsketch" + (v.kind === "diff" ? "" : " lsketchoff"));
+// Before / after looks like the pictures it compares, so it has their pencil in the same place: it leads to one of them.
+// A kind of picture that takes no draft has no pencil at all.
+function diffPencil(v) {
+  if (v.kind !== "diff" || snapshot || !served || printState || innerWidth < 820 || !matchMedia("(pointer: fine)").matches) return null;
+  const sides = [v.before, v.after].map((id) => plan.views.find((x) => x.id === id));
+  if (!sides.some((x) => draftable(x))) return null;
+  const row = el("div", "ltools"), pencil = el("button", "lsketch");
   pencil.append(svgIcon("pencil"), t("sketch"));
-  pencil.title = t(v.kind === "diff" ? "sketchDiffTip" : "sketchNoTip");
+  pencil.title = t("sketchDiffTip");
   pencil.onclick = () => {
-    const parts = [el("div", "dphead", t(v.kind === "diff" ? "sketchDiffHead" : "sketchNoHead"))];
-    if (v.kind !== "diff") parts.push(el("div", "dhint", t("sketchNoHint")));
-    else for (const [word, id] of [["editBefore", v.before], ["editAfter", v.after]]) {
-      const to = plan.views.find((x) => x.id === id);
+    const parts = [el("div", "dphead", t("sketchDiffHead"))];
+    for (const [word, to] of [["editBefore", sides[0]], ["editAfter", sides[1]]]) {
       if (!to) continue;
       const go = el("button", "dgo", `${t(word)}: ${to.title || to.id}`);
       go.disabled = !draftable(to);
@@ -6039,8 +6040,8 @@ function renderViewNow() {
   } catch (e) {
     pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
   }
-  const noDraft = !draftable?.(v) && pencilAnyway(v);
-  document.getElementById("view").replaceChildren(...(noDraft ? [noDraft] : []), pic);
+  const toDraft = diffPencil(v);
+  document.getElementById("view").replaceChildren(...(toDraft ? [toDraft] : []), pic);
   tidyGuesses(document.getElementById("view"));
   // A big picture may use the whole window.
   document.body.classList.toggle("pic-wide", !!pic.querySelector?.(".map.dense"));

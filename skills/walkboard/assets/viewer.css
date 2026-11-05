@@ -312,8 +312,6 @@ body.side-open .side-inner{opacity:1;transform:none}
 .ltools{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 6px}
 .ltools[hidden],.ltools [hidden]{display:none}
 .ltools .talklink{margin:0 0 0 4px}
-.lsketch.lsketchoff{opacity:.5}
-.lsketch.lsketchoff:hover{opacity:.8}
 .dpop .dgo{align-self:stretch;text-align:left;white-space:normal;line-height:1.35}
 .dpop .dgo:disabled{opacity:.5;cursor:not-allowed}
 .lsketch{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:12.5px;padding:3px 12px 3px 9px;border-radius:999px}

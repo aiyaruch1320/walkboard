@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
 import {pageHtml, snapshot, moduleText} from "./export.mjs";
-import {validateDraft, emptyDraft, draftable, viewList, isNewId} from "./draft.mjs";
+import {validateDraft, emptyDraft, draftable, viewList, isNewId, k8sAsMap} from "./draft.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".walkboard");
@@ -326,12 +326,14 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
           updatePlan(p.plan, (plan) => {
             const view = Array.isArray(plan?.views) ? plan.views.find((x) => x?.id === v.view) : null;
             const boxed = ["state", "decision", "impact"].includes(view?.kind);
-            if (view?.kind !== "datamodel" && view?.kind !== "map" && !boxed) throw Object.assign(new Error(`no picture that can be arranged called "${v.view}"`), {status: 400});
+            // A Kubernetes picture is arranged as a map of its zones (outside, namespaces, targets).
+            const mapped = view?.kind === "k8s" ? k8sAsMap(view) : view?.kind === "map" ? view : null;
+            if (view?.kind !== "datamodel" && !mapped && !boxed) throw Object.assign(new Error(`no picture that can be arranged called "${v.view}"`), {status: 400});
             if ((view.kind === "datamodel" || boxed) && pos && Object.values(pos).some((q) => q.x < 0 || q.y < 0)) throw Object.assign(new Error("a position cannot be negative"), {status: 400});
             const zoneLabels = (zs) => (Array.isArray(zs) ? zs : []).flatMap((z) => [`z:${z?.label}`, ...(z?.nodes || []), ...zoneLabels(z?.zones)]);
             const lineEnds = (l) => (Array.isArray(l) ? l : []).flatMap((e) => [e?.from, e?.to]);
-            const known = new Set(view.kind === "map" ? ["@fixed", ...zoneLabels(view.zones)] : boxed ? [...(Array.isArray(view.states) ? view.states : []), ...(Array.isArray(view.nodes) ? view.nodes : []), ...lineEnds(view.transitions), ...lineEnds(view.edges)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
-            const keep = (id) => known.has(id) || isNewId(id) || (view.kind === "map" && id.startsWith("z:") && id.length <= 201);
+            const known = new Set(mapped ? ["@fixed", ...zoneLabels(mapped.zones)] : boxed ? [...(Array.isArray(view.states) ? view.states : []), ...(Array.isArray(view.nodes) ? view.nodes : []), ...lineEnds(view.transitions), ...lineEnds(view.edges)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
+            const keep = (id) => known.has(id) || isNewId(id) || (mapped && id.startsWith("z:") && id.length <= 201);
             const size = (n) => Number.isFinite(n) && n > 0 && n <= 20000;
             // Only lines that touch the box, a known side each, a few dozen at most.
             const sidesOf = (id, q) => {
@@ -341,8 +343,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             };
             if (pos === null) delete view.layout;
             else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => keep(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y),
-              ...(view.kind === "map" && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {}),
-              ...(view.kind === "map" && size(q.w) ? {w: Math.round(q.w)} : {}), ...(view.kind === "map" && size(q.h) ? {h: Math.round(q.h)} : {}), ...sidesOf(id, q)}]));
+              ...(mapped && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {}),
+              ...(mapped && size(q.w) ? {w: Math.round(q.w)} : {}), ...(mapped && size(q.h) ? {h: Math.round(q.h)} : {}), ...sidesOf(id, q)}]));
             return plan;
           });
         } catch (e) {

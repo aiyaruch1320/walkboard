@@ -17,8 +17,51 @@ export const DRAFT_OPS = {
   state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setEnd"],
   decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setShape"],
   impact: ["addBox", "addEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
-  k8s: ["addBox", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "remove"],
+  // A Kubernetes picture is sketched as a map (see k8sAsMap): its zones are outside, the cluster's namespaces and targets.
+  k8s: ["addNode", "addZone", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
 };
+
+// A Kubernetes picture as a map: what is outside the cluster, the cluster with a zone per namespace (its configs,
+// workloads and network policies), and the targets it reaches. A plan with one namespace (namespace, workloads,
+// configs, policy) is one zone; namespaces: [{name, workloads, configs, policies: [{node, pods}]}] makes several.
+// k8s holds what a map has no place for: containers per workload, the policies over each pod, and roles of zones.
+// A config a workload uses, and the way from outside into the cluster, are lines of their own ("uses").
+export function k8sAsMap(v) {
+  const list = (x) => (Array.isArray(x) ? x : []);
+  const spaces = list(v.namespaces).filter(isObj).length
+    ? list(v.namespaces).filter(isObj)
+    : [{name: v.namespace, workloads: v.workloads, configs: v.configs, policies: v.policy ? [{node: v.policy}] : []}];
+  const containers = {}, policies = {}, links = [], used = new Set();
+  const label = (base) => {
+    let l = base, i = 2;
+    while (used.has(l)) l = `${base} (${i++})`;
+    used.add(l);
+    return l;
+  };
+  const outside = list(v.outside).filter((x) => typeof x === "string");
+  const nsZones = spaces.map((ns) => {
+    const pods = list(ns.workloads).filter((w) => isObj(w) && typeof w.node === "string");
+    for (const w of pods) {
+      if (list(w.containers).length) containers[w.node] = list(w.containers).map(String);
+      for (const u of list(w.uses)) if (typeof u === "string") links.push({from: u, to: w.node, state: "uses"});
+    }
+    const pols = list(ns.policies).filter((x) => isObj(x) && typeof x.node === "string");
+    for (const pl of pols) for (const pod of Array.isArray(pl.pods) ? pl.pods : pods.map((w) => w.node)) (policies[pod] ||= []).push(pl.node);
+    return {label: label(ns.name ? `namespace ${ns.name}` : "namespace"), role: "namespace", family: "k8s", stack: true, nodes: [...list(ns.configs).filter((x) => typeof x === "string"), ...pods.map((w) => w.node), ...pols.map((x) => x.node)]};
+  });
+  outside.forEach((id, i) => i && links.push({from: outside[i - 1], to: id, state: "uses"}));
+  // The last of them (a deploy tool) reaches into the cluster: drawn to the first workload of each namespace.
+  if (outside.length) for (const ns of spaces) {
+    const first = list(ns.workloads).find((w) => isObj(w) && typeof w.node === "string");
+    if (first) links.push({from: outside[outside.length - 1], to: first.node, state: "uses"});
+  }
+  const zones = [
+    {label: label("Outside"), role: "outside", family: "k8s", stack: true, nodes: outside},
+    {label: label(v.cluster ? `cluster ${v.cluster}` : "cluster"), role: "cluster", family: "k8s", stack: true, zones: nsZones, nodes: []},
+    {label: label("Targets"), role: "targets", family: "k8s", stack: true, nodes: list(v.targets).filter((x) => typeof x === "string")},
+  ];
+  return {...v, kind: "map", of: "k8s", zones, links: [...links, ...list(v.links).filter(isObj).map((l) => ({...l}))], k8s: {containers, policies}};
+}
 // A plan without views is drawn as one flow of its steps (as in lib/schema.mjs, kept here so this file imports nothing).
 export function viewList(p) {
   if (Array.isArray(p?.views) && p.views.length) return p.views;
@@ -161,16 +204,18 @@ export function applyDraft(plan, draft, viewId) {
   const marks = {nodes: {}, zones: {}, links: {}};
   const result = {plan, view: null, marks, done: [], stale: [], pending: []};
   const views = viewList(plan);
-  const real = views.find((x) => x?.id === viewId) || null;
+  const found = views.find((x) => x?.id === viewId) || null;
+  // A Kubernetes picture is drawn and sketched as a map.
+  const real = found?.kind === "k8s" ? k8sAsMap(found) : found;
   result.view = real;
   const ops = Array.isArray(draft?.views?.[viewId]?.ops) ? draft.views[viewId].ops : [];
-  if (!real || !ops.length || !draftable(real)) return result;
+  if (!real || !ops.length || !draftable(found)) return result;
   const v = structuredClone(real);
   const nodes = {...(isObj(plan.nodes) ? plan.nodes : {})};
-  const others = {datamodel: applyTables, flow: applyFlow, state: applyGraph, decision: applyGraph, impact: applyGraph, k8s: applyK8s};
+  const others = {datamodel: applyTables, flow: applyFlow, state: applyGraph, decision: applyGraph, impact: applyGraph};
   if (others[v.kind]) {
     others[v.kind](v, nodes, ops, result);
-    result.plan = {...plan, nodes, views: views.map((x) => (x === real ? v : x))};
+    result.plan = {...plan, nodes, views: views.map((x) => (x === found ? v : x))};
     result.view = v;
     return result;
   }
@@ -421,7 +466,7 @@ export function applyDraft(plan, draft, viewId) {
   for (const q of Object.values(waiting)) q.forEach(run);
   // A line to a box the draft takes out is drawn as going too.
   for (const l of v.links) if (isObj(l) && (marks.nodes[l.from]?.mark === "remove" || marks.nodes[l.to]?.mark === "remove")) marks.links[key(l.from, l.to)] ||= {mark: "remove"};
-  result.plan = {...plan, nodes, views: views.map((x) => (x === real ? v : x))};
+  result.plan = {...plan, nodes, views: views.map((x) => (x === found ? v : x))};
   result.view = v;
   return result;
 }
@@ -885,72 +930,6 @@ function applyGraph(v, nodes, ops, result) {
   for (const e of v[edgeKey]) if (marks.nodes[e.from]?.mark === "remove" || marks.nodes[e.to]?.mark === "remove") marks.links[key(e.from, e.to)] ||= {mark: "remove"};
 }
 
-// A Kubernetes picture: its lines are like a map's; a new box joins the targets on the right.
-function applyK8s(v, nodes, ops, result) {
-  const marks = result.marks, t = tally(result);
-  v.targets = Array.isArray(v.targets) ? [...v.targets] : [];
-  v.links = (Array.isArray(v.links) ? v.links : []).filter(isObj).map((l) => ({...l}));
-  const ids = () => new Set([...(v.outside || []), ...(v.configs || []), ...v.targets, ...(v.policy ? [v.policy] : []), ...(v.workloads || []).map((w) => w?.node)]);
-  const has = (n) => ids().has(n);
-  const link0 = (f, to) => v.links.find((l) => l.from === f && l.to === to);
-  const key = (f, to) => `${f}>${to}`;
-  const flipped = new Set();
-  const link = (f, to) => link0(f, to) || (flipped.has(key(f, to)) ? link0(to, f) : undefined);
-  for (const op of ops) {
-    if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS.k8s.includes(op.op)) continue;
-    t.track(op, () => {
-      switch (op.op) {
-        case "addBox":
-          if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
-          nodes[op.node] = boxOf(op);
-          v.targets.push(op.node);
-          marks.nodes[op.node] = {mark: "add"};
-          return;
-        case "addLink":
-          if (!has(op.from) || !has(op.to)) return t.stale(op, "a box on this line is not in the picture");
-          if (link0(op.from, op.to)) return t.done(op);
-          v.links.push({from: op.from, to: op.to, ...(op.label ? {label: op.label} : {}), ...(op.state ? {state: op.state} : {})});
-          marks.links[key(op.from, op.to)] = {mark: "add"};
-          return;
-        case "editLink": {
-          const l = link(op.from, op.to);
-          if (!l) return t.stale(op, "no such line");
-          const was = {label: l.label ?? "", state: l.state ?? "ok"};
-          const changed = ["label", "state"].filter((k) => op[k] != null && (op[k] || (k === "state" ? "ok" : "")) !== was[k]);
-          if (!changed.length) return t.done(op);
-          for (const k of changed) {
-            if (op[k] === "" || (k === "state" && op[k] === "ok")) delete l[k];
-            else l[k] = op[k];
-          }
-          marks.links[key(l.from, l.to)] ||= {mark: "change", was};
-          return;
-        }
-        case "removeLink": {
-          const l = link(op.from, op.to), k = l && key(l.from, l.to);
-          if (!l) return t.done(op);
-          if (marks.links[k]?.mark === "add") {
-            v.links.splice(v.links.indexOf(l), 1);
-            delete marks.links[k];
-          } else marks.links[k] = {mark: "remove"};
-          return;
-        }
-        case "reverseLink":
-          return turn(link0, op, t, () => flipped.add(key(op.from, op.to)), marks);
-        case "editNode":
-          return editNodeIn(has, nodes, op, marks, t);
-        case "remove":
-          if (!has(op.node)) return t.done(op);
-          if (marks.nodes[op.node]?.mark === "add") {
-            v.targets = v.targets.filter((x) => x !== op.node);
-            v.links = v.links.filter((l) => l.from !== op.node && l.to !== op.node);
-            delete nodes[op.node];
-            delete marks.nodes[op.node];
-          } else marks.nodes[op.node] = {...marks.nodes[op.node], mark: "remove"};
-      }
-    });
-  }
-  for (const l of v.links) if (marks.nodes[l.from]?.mark === "remove" || marks.nodes[l.to]?.mark === "remove") marks.links[key(l.from, l.to)] ||= {mark: "remove"};
-}
 
 // The draft in words the agent can act on without opening plan.json: names next to ids, zones by label.
 export function describeDraft(plan, draft, viewId) {

@@ -371,7 +371,7 @@ test("a map keeps zone sizes, placed-by-hand mode, and places for boxes and zone
   assert.deepEqual(read(1), {a: {x: 5, y: 6}});
 });
 
-test("boxes on state, decision and impact pictures keep places; a picture with fixed columns has none", async (t) => {
+test("boxes on state, decision, impact and Kubernetes pictures keep places", async (t) => {
   const dir = planDir();
   const plan = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}}, views: [
     {id: "s", kind: "state", states: ["a"], transitions: [{from: "a", to: "b"}]},
@@ -391,7 +391,9 @@ test("boxes on state, decision and impact pictures keep places; a picture with f
   assert.equal((await post(s, "/api/layout", {view: "s", positions: sides})).status, 200);
   assert.deepEqual(read(0), {a: {x: 1, y: 2, sides: {"a>b": "bottom", "a>new:k3x9": "left"}}, b: {x: 3, y: 4, sides: {"a>b": "top"}}, "new:k3x9": {x: 5, y: 6}});
   assert.equal((await post(s, "/api/layout", {view: "s", positions: {a: {x: -1, y: 0}}})).status, 400);
-  assert.equal((await post(s, "/api/layout", {view: "k", positions: {a: {x: 1, y: 1}}})).status, 400);
+  // A Kubernetes picture is arranged as a map: places by box and zone, offsets may be negative.
+  assert.equal((await post(s, "/api/layout", {view: "k", positions: {a: {x: -4, y: 1}, "z:Targets": {x: 5, y: 0, w: 300}, ghost: {x: 1, y: 1}}})).status, 200);
+  assert.deepEqual(read(3), {a: {x: -4, y: 1}, "z:Targets": {x: 5, y: 0, w: 300}});
   assert.equal((await post(s, "/api/layout", {view: "s", positions: null})).status, 200);
   assert.equal(read(0), undefined);
 });

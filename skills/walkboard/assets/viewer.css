@@ -937,6 +937,10 @@ svg.links path{fill:none;stroke-width:1.8}
 .plabel .icon svg{width:13px;height:13px}
 .plabel.active{outline:2px solid var(--text);outline-offset:2px}
 .containers{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.kpols{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.kpol{font:inherit;font-size:10.5px;font-weight:600;padding:0 7px;border-radius:999px;border:1px dashed var(--you-bd);background:transparent;color:var(--you-tx);cursor:pointer}
+.kpol:hover,.kpol.on{border-style:solid;background:color-mix(in srgb,var(--you-bg) 60%,var(--card))}
+.map [data-anchor].kpolon{outline:2px dashed var(--you-bd);outline-offset:3px}
 .containers span{font-size:11px;border:1px solid currentColor;border-radius:6px;padding:0 6px}
 .seq{padding:8px 4px 4px}
 .seq-head,.seq-row{display:grid;column-gap:12px}

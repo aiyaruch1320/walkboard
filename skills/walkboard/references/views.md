@@ -42,7 +42,7 @@ Lanes of boxes, left to right. `"arrows": false` makes a lane a checklist.
   {"from":"cronjob","to":"internet","state":"blocked"}]}
 ```
 
-`outside`: left column (Git → ArgoCD). `configs`: lines to the workloads that `uses` them. `policy`: dashed frame around the workloads. `targets`: right column. `links[].state`: `standby` dotted blue for a backup path, `ok` solid green, `todo` dashed orange, `blocked` dotted red; `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
+`outside`: left column (Git → ArgoCD). `configs`: lines to the workloads that `uses` them. `policy`: a network policy over every workload (a tag on each pod). `targets`: right column. More than one namespace: `"namespaces":[{"name":"web","workloads":[…],"configs":[…],"policies":[{"node":"np","pods":["api"]}]}]` instead of `namespace` / `workloads` / `configs` / `policy` (`pods` left out: every workload of that namespace). The page draws it as a map (zones: outside the cluster, the cluster with a zone per namespace, the targets), so the user drags and sketches it like one. `links[].state`: `standby` dotted blue for a backup path, `ok` solid green, `todo` dashed orange, `blocked` dotted red; `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
 
 ## sequence
 

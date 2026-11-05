@@ -1963,7 +1963,9 @@ function zoneEl(z, depth, dense = false) {
   // A zone of a kind says which, with its props: "Subnet · private · 10.0.1.0/24".
   if (PROF.kindOf(z.kind)) {
     box.dataset.kind = z.kind;
-    head.append(el("span", "zkind", kindWords(z.kind, z.props)));
+    const tag = el("span", "zkind", kindWords(z.kind, z.props));
+    tag.title = tag.textContent;
+    head.append(tag);
   }
   if (z.note) head.append(el("small", null, z.note));
   // In a big picture a zone that only holds boxes stacks them, so the zones stay side by side as columns.

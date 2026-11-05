@@ -38,6 +38,7 @@
 - **Draft mode is where changes happen.** **Ask the agent to review** is only in draft mode. Outside it a drag only arranges: a box or table let go over another zone or group goes back and says to use draft mode, undo only moves boxes back, and **Reset to the plan** is now **Arrange again**, which is what it does: the page arranges the picture from the plan as it is now, and the draft stays. It is not offered on before / after, where it cleared the positions of another tab. **✎ Draft changes** is also on before / after, in the same place: it offers to edit either picture and opens it in draft mode. A kind of picture with no draft has no button.
 - Dragging a table for the first time on a page scrolled down no longer jumps the page to the top.
 - **Start over from the plan.** A button on draft mode's toolbar and in its list drops the draft and the positions of the picture, after asking; undo brings both back. It takes the place of **Drop the whole draft**, which left the positions and was two menus away.
+- Drawing a line on any picture scrolls it when held near an edge of the window, not only on a data model.
 
 ## 0.8.0
 

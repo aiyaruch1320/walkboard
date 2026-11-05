@@ -2688,6 +2688,28 @@ function draftRows(viewId) {
 // The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
 // picture: where the tool shows as the cursor; toolList: [name, key] for this kind of picture.
 // hints: {tool: what to do with it}, shown over the toolbar while that tool is on.
+// While a line is dragged: held near an edge of what can be seen, the picture scrolls, so its other end can be a screen away.
+// at: where the pointer is now; moved: called after a scroll. Returns what stops it.
+function rollNearEdges(picture, at, moved) {
+  const EDGE = 56, speed = (past) => Math.min(24, Math.ceil(past / 3));
+  const scroller = picture.closest(".scroll");
+  let frame = 0;
+  const roll = () => {
+    const {x, y} = at(), nav = document.querySelector(".stepnav"), top = Math.max(document.querySelector(".bar")?.offsetHeight || 0, nav ? 44 + nav.offsetHeight : 0);
+    const bottom = document.querySelector(".dtools")?.getBoundingClientRect().top ?? innerHeight;
+    const dy = y < top + EDGE ? -speed(top + EDGE - y) : y > bottom - EDGE ? speed(y - bottom + EDGE) : 0;
+    const box = scroller?.getBoundingClientRect();
+    const dx = !box || scroller.scrollWidth <= scroller.clientWidth ? 0 : x < box.left + EDGE ? -speed(box.left + EDGE - x) : x > box.right - EDGE ? speed(x - box.right + EDGE) : 0;
+    if (dy || dx) {
+      if (dy) window.scrollBy(0, dy);
+      if (dx) scroller.scrollLeft += dx;
+      moved();
+    }
+    frame = requestAnimationFrame(roll);
+  };
+  frame = requestAnimationFrame(roll);
+  return () => cancelAnimationFrame(frame);
+}
 // Leaving draft mode: its list goes too, as asking the agent belongs to draft mode.
 function leaveSketch() {
   if (side?.kind === "draft") closeSide();
@@ -3947,15 +3969,16 @@ function renderMap(real) {
     if (sketchTool === "connect") {
       const from = e.target.closest?.("[data-anchor]");
       if (!from) return;
-      const m = map.getBoundingClientRect(), a = from.getBoundingClientRect();
-      const ax = a.left + a.width / 2 - m.left, ay = a.top + a.height / 2 - m.top;
+      const m0 = map.getBoundingClientRect(), a = from.getBoundingClientRect();
+      const ax = a.left + a.width / 2 - m0.left, ay = a.top + a.height / 2 - m0.top;
       const line = document.createElementNS(svg.namespaceURI, "path");
       line.setAttribute("class", "dr-add dtmp");
       svg.append(line);
-      let over = null;
-      const move = (ev) => {
-        line.setAttribute("d", `M${ax} ${ay} L${ev.clientX - m.left} ${ev.clientY - m.top}`);
-        const t2 = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-anchor]");
+      let over = null, at = {x: e.clientX, y: e.clientY};
+      const track = () => {
+        const m = map.getBoundingClientRect();
+        line.setAttribute("d", `M${ax} ${ay} L${at.x - m.left} ${at.y - m.top}`);
+        const t2 = document.elementFromPoint(at.x, at.y)?.closest?.("[data-anchor]");
         const next = t2 && t2 !== from && map.contains(t2) ? t2 : null;
         if (next !== over) {
           over?.classList.remove("dtarget");
@@ -3963,7 +3986,13 @@ function renderMap(real) {
           over = next;
         }
       };
+      const move = (ev) => {
+        at = {x: ev.clientX, y: ev.clientY};
+        track();
+      };
+      const stopRoll = rollNearEdges(map, () => at, track);
       const up = (ev) => {
+        stopRoll();
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         line.remove();
@@ -5161,7 +5190,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     const line = document.createElementNS(svg.namespaceURI, "path");
     line.setAttribute("class", "dr-add dtmp");
     svg.append(line);
-    let over = null, at = {x: e.clientX, y: e.clientY}, frame = 0;
+    let over = null, at = {x: e.clientX, y: e.clientY};
     const track = () => {
       const m = grid.getBoundingClientRect();
       line.setAttribute("d", `M${ax} ${ay} L${at.x - m.left} ${at.y - m.top}`);
@@ -5177,25 +5206,9 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
       at = {x: ev.clientX, y: ev.clientY};
       track();
     };
-    // The column it points at may be a long way off: held near an edge of what can be seen, the picture scrolls.
-    const EDGE = 56, speed = (past) => Math.min(24, Math.ceil(past / 3));
-    const scroller = grid.closest(".scroll");
-    const roll = () => {
-      const nav = document.querySelector(".stepnav"), top = Math.max(document.querySelector(".bar")?.offsetHeight || 0, nav ? 44 + nav.offsetHeight : 0);
-      const bottom = document.querySelector(".dtools")?.getBoundingClientRect().top ?? innerHeight;
-      const dy = at.y < top + EDGE ? -speed(top + EDGE - at.y) : at.y > bottom - EDGE ? speed(at.y - bottom + EDGE) : 0;
-      const box = scroller?.getBoundingClientRect();
-      const dx = !box || scroller.scrollWidth <= scroller.clientWidth ? 0 : at.x < box.left + EDGE ? -speed(box.left + EDGE - at.x) : at.x > box.right - EDGE ? speed(at.x - box.right + EDGE) : 0;
-      if (dy || dx) {
-        if (dy) window.scrollBy(0, dy);
-        if (dx) scroller.scrollLeft += dx;
-        track();
-      }
-      frame = requestAnimationFrame(roll);
-    };
-    frame = requestAnimationFrame(roll);
+    const stopRoll = rollNearEdges(grid, () => at, track);
     const up = () => {
-      cancelAnimationFrame(frame);
+      stopRoll();
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       line.remove();
@@ -5658,15 +5671,16 @@ function sketchLinks({real, v, drafted, container, tools}) {
     }
     if (sketchTool === "connect" && b) {
       e.preventDefault();
-      const svg = container.querySelector("svg.links"), m = container.getBoundingClientRect(), a = b.getBoundingClientRect();
-      const ax = a.left + a.width / 2 - m.left, ay = a.top + a.height / 2 - m.top;
+      const svg = container.querySelector("svg.links"), m0 = container.getBoundingClientRect(), a = b.getBoundingClientRect();
+      const ax = a.left + a.width / 2 - m0.left, ay = a.top + a.height / 2 - m0.top;
       const line = document.createElementNS(svg.namespaceURI, "path");
       line.setAttribute("class", "dr-add dtmp");
       svg.append(line);
-      let over = null;
-      const move = (ev) => {
-        line.setAttribute("d", `M${ax} ${ay} L${ev.clientX - m.left} ${ev.clientY - m.top}`);
-        const t2 = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-anchor]");
+      let over = null, at = {x: e.clientX, y: e.clientY};
+      const track = () => {
+        const m = container.getBoundingClientRect();
+        line.setAttribute("d", `M${ax} ${ay} L${at.x - m.left} ${at.y - m.top}`);
+        const t2 = document.elementFromPoint(at.x, at.y)?.closest?.("[data-anchor]");
         const next = t2 && t2 !== b && t2.dataset.anchor !== "#namespace" && container.contains(t2) ? t2 : null;
         if (next !== over) {
           over?.classList.remove("dtarget");
@@ -5674,7 +5688,13 @@ function sketchLinks({real, v, drafted, container, tools}) {
           over = next;
         }
       };
+      const move = (ev) => {
+        at = {x: ev.clientX, y: ev.clientY};
+        track();
+      };
+      const stopRoll = rollNearEdges(container, () => at, track);
       const up = (ev) => {
+        stopRoll();
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         line.remove();

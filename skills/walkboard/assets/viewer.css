@@ -368,8 +368,8 @@ body.side-open .dtip{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var
 .map .dtemp.zone{min-width:150px;min-height:70px}
 .map svg.links .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke;cursor:pointer}
 /* The line pointed at, and its label on the box it reaches. */
-.map svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important}
-.map .via.dlhover{outline:2px solid var(--you-bd);outline-offset:1px}
+svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important}
+.via.dlhover,.elabel.dlhover{outline:2px solid var(--you-bd);outline-offset:1px}
 .map.sketch[data-tool="remove"] svg.links .dhit,.map.sketch[data-tool="rename"] svg.links .dhit{cursor:pointer}
 .map svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .dedit{position:absolute;z-index:70;font:inherit;font-size:13px;font-weight:600;padding:3px 6px;border:1.5px solid var(--you-bd);border-radius:6px;background:var(--card);color:var(--text);outline:none;box-shadow:0 4px 14px rgba(0,0,0,.15)}
@@ -565,6 +565,11 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .elabel.dr-change{border:1px dashed #14a3b8}
 .elabel.dr-remove{text-decoration:line-through;opacity:.6}
 .flowview.sketch,.graph.sketch,.k8s.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
+/* Room for the frame: a scroll box would cut its sides off. */
+.scroll:has(>.sketch){padding:10px}
+/* Where the box or table tool would put it. */
+.lane.dhover{background:color-mix(in srgb,var(--you-bg) 40%,transparent);border-radius:10px;outline:2px dashed var(--you-bd);outline-offset:2px}
+.er .erframe.dhover{border:2px dashed var(--you-bd);background:color-mix(in srgb,var(--you-bg) 35%,transparent)}
 .sketch[data-tool="box"],.sketch[data-tool="lane"]{cursor:crosshair}
 .sketch[data-tool="connect"] [data-anchor]{cursor:alias}
 .sketch[data-tool="rename"] [data-anchor],.sketch[data-tool="rename"] .lane-title{cursor:text}
@@ -923,7 +928,14 @@ svg.links.lsample{position:static;inset:auto;width:48px;height:12px;flex:none;ov
 .lhbox{border:1.5px solid var(--line);border-radius:6px;padding:1px 8px;font-weight:600}
 .lhsub{font-weight:600;color:var(--muted);margin-top:4px}
 .lhcard .via{flex:none}
-@media print{.lhelp{display:none}}
+.rhline{align-items:center;gap:6px}
+.rhword{border:0;background:transparent;padding:0;font-size:12px;color:var(--muted)}
+.rhword:hover{color:var(--text)}
+.lhtext{line-height:1.45}
+.lhsign{flex:none;width:72px}
+.lhsign .ptag{position:static;box-shadow:none}
+.lhsign.dr-change .ptag{background:#14a3b8}.lhsign.dr-remove .ptag{background:var(--warn-bd)}.lhsign.dr-move .ptag{background:var(--copy-tx)}
+@media print{.lhelp,.rhline{display:none}}
 .linklist{margin:0 0 14px;padding-left:18px;font-size:12.5px;color:var(--muted)}
 .scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px;position:sticky;left:0;width:max-content}
 /* A snapshot (an exported file) is read only: nothing that would talk to an agent. */

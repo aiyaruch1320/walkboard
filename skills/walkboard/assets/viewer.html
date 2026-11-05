@@ -1497,13 +1497,18 @@ function renderFlow(real) {
   });
   drawnNodes = null;
   const canMove = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
-  if (!draftShown() || !served || snapshot) return wrap;
+  const help = readLine("flow");
+  if (!draftShown() || !served || snapshot) {
+    const plain = el("div");
+    plain.append(help, wrap);
+    return plain;
+  }
   const tools = layoutTools(real, canMove, renderView, () => ({}), true);
   if (sketching && sketching !== real.id) sketching = null;
   if (sketching === real.id && canMove()) sketchFlow({real, v, drafted, wrap, tools});
   else if (draftOps(real.id).length) sketchApi = passiveApi(real, tools);
   const out = el("div");
-  out.append(tools.row, wrap);
+  out.append(tools.row, help, wrap);
   return out;
 }
 
@@ -1616,9 +1621,10 @@ function drawLinks(container, specs, sketch = false) {
       // The usual line unless it would run through another box; then around it.
       if (!l.down) {
         const others = [...container.querySelectorAll("[data-id]")].filter((e) => e !== box(l.from) && e !== box(l.to) && !e.contains(box(l.from)) && !e.contains(box(l.to))).map((e) => e.getBoundingClientRect());
-        // Boxes one above the other: side to side would cut across both of them.
-        const stacked = a.left < b.right && b.left < a.right;
-        if (stacked || lineHits(d, others, base.left, base.top).hits) {
+        // Boxes one above the other: side to side would cut across both of them. A line going back left
+        // (turned round in a draft) cannot leave from the right either.
+        const stacked = a.left < b.right && b.left < a.right, back = b.right <= a.left;
+        if (stacked || back || lineHits(d, others, base.left, base.top).hits) {
           routeLine.dx = base.left;
           routeLine.dy = base.top;
           // A tenth of a pixel is enough, and shorter paths are quicker to build and read back.
@@ -1664,7 +1670,7 @@ function linkLegend(states, uses) {
   help.setAttribute("aria-label", t("lineHelp"));
   help.onclick = (e) => {
     e.stopPropagation();
-    lineHelp(help);
+    readHelp(help, "lines");
   };
   lg.append(help);
   return lg;
@@ -1684,25 +1690,56 @@ function lineSample(cls, blocked = false) {
   }
   return svg;
 }
-// The card behind "?": which way a line points, its label, its kinds, and what draft mode does to it.
+// A "?" over a picture that has no line legend: how to read this kind of picture.
+function readLine(kind) {
+  const lg = el("div", "linklegend rhline");
+  const help = el("button", "lhelp", "?");
+  help.title = t("readHow");
+  help.setAttribute("aria-label", t("readHow"));
+  const open = (e) => {
+    e.stopPropagation();
+    readHelp(help, kind);
+  };
+  help.onclick = open;
+  const words = el("button", "rhword", t("readHow"));
+  words.onclick = open;
+  lg.append(help, words);
+  return lg;
+}
+// The card behind "?". kind "lines" (maps, Kubernetes): which way a line points, its label, its kinds.
+// Otherwise the picture's own kind (state, decision, impact, flow, datamodel): what its boxes and lines say.
+// Then what draft mode draws, and for pictures with lines, why a line may change its route.
 // It hangs under the button, on the page (not the window), so it scrolls with it.
-function lineHelp(button) {
+const READ_LINES = {state: ["rh_state_label", "rh_state_loop"], decision: ["rh_decision_label"], impact: ["rh_impact_click"], flow: ["rh_flow_lane", "rh_flow_order"], datamodel: ["rh_model_fk", "rh_model_keys", "rh_model_group"]};
+function readHelp(button, kind) {
   const row = (sample, text) => {
     const r = el("div", "lhrow");
     r.append(sample, el("span", null, text));
     return r;
   };
-  const dir = el("div", "lhdir");
-  dir.append(el("span", "lhbox", "A"), lineSample("l-ok"), el("span", "lhbox", "B"), el("span", null, t("lh_dir")));
-  const via = el("div", "lhrow");
-  via.append(el("span", "via via-ok", "← :5432"), el("span", null, t("lh_port")));
-  const parts = [el("div", "dphead", t("lineHelp")), dir, via, el("div", "lhsub", t("lh_kinds"))];
-  for (const st of LINK_STATE_KEYS) parts.push(row(lineSample("l-" + st, st === "blocked"), t("lk_" + st)));
-  if (!snapshot) {
-    parts.push(el("div", "lhsub", t("lh_draft")));
-    for (const m of ["add", "change", "remove"]) parts.push(row(lineSample("l-ok dr-" + m), t("lh_" + m)));
+  const arrows = kind === "lines" || ["state", "decision", "impact"].includes(kind);
+  const parts = [el("div", "dphead", t(kind === "lines" ? "lineHelp" : "readHow"))];
+  if (arrows) {
+    const dir = el("div", "lhdir");
+    dir.append(el("span", "lhbox", "A"), lineSample(kind === "lines" ? "l-ok" : "l-flow"), el("span", "lhbox", "B"), el("span", null, t(kind === "lines" ? "lh_dir" : `rh_${kind}_dir`)));
+    parts.push(dir);
   }
-  parts.push(el("div", "dhint", t("lh_shape")));
+  if (kind === "lines") {
+    const via = el("div", "lhrow");
+    via.append(el("span", "via via-ok", "← :5432"), el("span", null, t("lh_port")));
+    parts.push(via, el("div", "lhsub", t("lh_kinds")));
+    for (const st of LINK_STATE_KEYS) parts.push(row(lineSample("l-" + st, st === "blocked"), t("lk_" + st)));
+  } else for (const k of READ_LINES[kind] || []) parts.push(el("div", "lhtext", t(k)));
+  if (!snapshot) {
+    parts.push(el("div", "lhsub", t(kind === "lines" ? "lh_draft" : "rh_draft")));
+    if (kind !== "lines") for (const m of ["add", "change", "remove", ...(kind === "flow" || kind === "datamodel" ? ["move"] : [])]) {
+      const sign = el("span", "lhsign dr-" + m);
+      sign.append(el("span", "ptag", signText(m)));
+      parts.push(row(sign, t(m === "change" ? "rh_change" : m === "move" ? "rh_move" : "d_" + m)));
+    }
+    if (arrows) for (const m of ["add", "change", "remove"]) parts.push(row(lineSample((kind === "lines" ? "l-ok" : "l-flow") + " dr-" + m), t("lh_" + m)));
+  }
+  if (arrows) parts.push(el("div", "dhint", t("lh_shape")));
   const pop = popover(0, 0, parts);
   pop.classList.add("lhcard");
   const b = button.getBoundingClientRect(), w = pop.offsetWidth;
@@ -2549,6 +2586,36 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false}) {
   });
   return pop;
 }
+// Pointing at a line in draft mode thickens it and lights up its label (on the line, or on the box it reaches).
+function lightLines(container) {
+  const light = (hit, on) => {
+    if (!hit) return;
+    const f = hit.dataset.from, to = hit.dataset.to, k = `${f}>${to}`;
+    const line = [...container.querySelectorAll("svg.links path[data-from]")].find((p) => p.dataset.from === f && p.dataset.to === to);
+    const labels = [...container.querySelectorAll("[data-links]")].filter((x) => x.dataset.links.split(" ").includes(k));
+    for (const e of [line, line?.nextElementSibling, ...labels]) e?.classList.toggle("dlhover", on);
+  };
+  container.addEventListener("pointerover", (e) => light(e.target.closest?.(".dhit"), true));
+  container.addEventListener("pointerout", (e) => light(e.target.closest?.(".dhit"), false));
+}
+// A box drawn with these values (name, note, icon) as the card types them.
+function previewBox(box, val, empty = "") {
+  const head = box.querySelector(".nhead"), name = box.querySelector(".name");
+  if (head) {
+    head.querySelector(":scope > .icon")?.remove();
+    const ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, "", null);
+    head.prepend(ic || el("span", "icon"));
+  }
+  if (name) name.textContent = val.name || empty;
+  let what = box.querySelector(":scope > .what");
+  if (!what && val.what) (head || name)?.after((what = el("div", "what")));
+  if (what) {
+    what.textContent = val.what;
+    what.hidden = !val.what;
+  }
+}
+// What each tool does on this kind of picture, shown over the toolbar ("hint_<picture>_<tool>", else the graph's).
+const hintsFor = (pic, list) => Object.fromEntries(list.map(([k]) => [k, STRINGS.en[`hint_${pic}_${k}`] ? t(`hint_${pic}_${k}`) : t(`hint_graph_${k}`)]));
 // The changes of one picture as rows for the side panel: a sign, the names, and where.
 function draftRows(viewId) {
   const real = plan.views.find((x) => x.id === viewId);
@@ -3747,29 +3814,10 @@ function renderMap(real) {
       e.style.top = (top += 8) + "px";
     }
   };
-  // Pointing at a line (in draft mode) thickens it and lights up its label on the box it reaches.
-  const lightLine = (hit, on) => {
-    if (!hit) return;
-    const f = hit.dataset.from, to = hit.dataset.to, line = svg.querySelector(`path[data-from="${CSS.escape(f)}"][data-to="${CSS.escape(to)}"]`);
-    for (const e of [line, line?.nextElementSibling, ...map.querySelectorAll(".via[data-links]")]) {
-      if (!e || (e.classList.contains("via") && !e.dataset.links.split(" ").includes(`${f}>${to}`))) continue;
-      e.classList.toggle("dlhover", on);
-    }
-  };
-  map.addEventListener("pointerover", (e) => isSketch && lightLine(e.target.closest?.(".dhit"), true));
-  map.addEventListener("pointerout", (e) => isSketch && lightLine(e.target.closest?.(".dhit"), false));
+  lightLines(map);
   // A box drawn with these values (name, note, icon), as the card types them.
   const showBox = (box, val, empty = "") => {
-    const head = box.querySelector(".nhead"), ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, "", null);
-    head.querySelector(".icon")?.remove();
-    head.prepend(ic || el("span", "icon"));
-    head.querySelector(".name").textContent = val.name || empty;
-    let what = box.querySelector(":scope > .what");
-    if (!what && val.what) head.after((what = el("div", "what")));
-    if (what) {
-      what.textContent = val.what;
-      what.hidden = !val.what;
-    }
+    previewBox(box, val, empty);
     draw();
   };
   const sketchDown = (e) => {
@@ -4180,6 +4228,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       if (e.label) {
         const [mx, my] = detour ? detour.mid : bezierMid(p0, p1, p2, p3);
         const lab = el("span", "elabel" + (dim ? " dim" : "") + (lm ? " dr-" + lm : ""));
+        lab.dataset.links = `${e.from}>${e.to}`;
         lab.append(rich(e.label));
         lab.style.left = mx + "px";
         lab.style.top = my + "px";
@@ -4218,6 +4267,7 @@ function graphPicture(real, build) {
   } finally {
     drawnNodes = null;
   }
+  if (["state", "decision", "impact"].includes(v.kind)) pic.prepend(readLine(v.kind));
   if (!on) return pic;
   const tools = layoutTools(real, canMove, renderView, () => ({}), true);
   const box = pic.querySelector(".graph, .k8s") || pic;
@@ -4644,7 +4694,7 @@ function renderDataModel(real) {
   if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt});
   else if (draftOps(real.id).length) sketchApi = {view: real.id, show() {}, drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()), review: () => tools.ask(), discard: () => (saveDraft(real.id, []), renderView())};
   const scroll = el("div", "scroll");
-  scroll.append(grid);
+  scroll.append(readLine("datamodel"), grid);
   const n = Object.values(groups).reduce((a, x) => a + x.length, 0);
   if (!n) {
     const wrap = el("div");
@@ -4886,7 +4936,13 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
     if (sketchTool === "select") select(selOf(e.target));
   }, true);
   grid.addEventListener("dblclick", (e) => sketchTool === "select" && rename(selOf(e.target)));
-  const {refresh} = sketchBar(real, tools, grid, MODEL_TOOLS);
+  // The table tool: the group frame a click would put it in lights up.
+  grid.addEventListener("pointermove", (e) => {
+    const f = sketchTool === "table" && !e.target.closest?.(".ertable") ? frameAt(e.clientX, e.clientY, null) : null;
+    grid.querySelectorAll(".erframe").forEach((x) => x.classList.toggle("dhover", x === f));
+  });
+  grid.addEventListener("pointerleave", () => grid.querySelectorAll(".erframe").forEach((x) => x.classList.remove("dhover")));
+  const {refresh} = sketchBar(real, tools, grid, MODEL_TOOLS, hintsFor("model", MODEL_TOOLS));
   if (sketchSel) requestAnimationFrame(() => select(sketchSel));
   sketchApi = {
     view: real.id,
@@ -4974,18 +5030,47 @@ function sketchKit(real, tools, container) {
       const gone = list.find((o) => o.op === "remove" && o.node === id);
       kit.setOps(gone ? list.filter((o) => o !== gone) : [...list, {id: newOpId(list), op: "remove", node: id}]);
     },
+    // A box's name, note and icon in the card, as on a map: a box the draft added just changes; another gets one
+    // editNode with what differs from the plan.
     rename(id) {
       const e = box(id);
       if (!e) return;
-      const initial = nodeOfDrafted(real, id)?.name ?? id;
-      editText(e.querySelector(".name") || e, initial, t("boxName"), {onDone: (val) => {
-        if (!val || val === initial) return e.focus({preventScroll: true});
-        const list = ops(), added = list.find((o) => o.op === "addBox" && o.node === id);
-        if (added) return kit.setOps(list.map((o) => (o === added ? {...o, name: val} : o)), id);
-        const ed = list.find((o) => o.op === "editNode" && o.node === id), orig = plan.nodes[id]?.name ?? id;
-        if (val === orig) return kit.setOps(list.filter((o) => o !== ed), id);
-        kit.setOps(ed ? list.map((o) => (o === ed ? {...o, name: val} : o)) : [...list, {id: newOpId(list), op: "editNode", node: id, name: val}], id);
-      }});
+      const n = nodeOfDrafted(real, id) || {};
+      boxCard(e.getBoundingClientRect(), {name: n.name ?? id, what: n.what, icon: n.icon}, {
+        title: t("boxEditTitle"),
+        preview: (val) => previewBox(e, val),
+        onDone: (val) => {
+          if (!val) return keepFocus(() => renderView());
+          const list = ops(), added = list.find((o) => o.op === "addBox" && o.node === id);
+          let next;
+          if (added) {
+            const {what: _w, icon: _i, ...base} = added;
+            next = list.map((o) => (o === added ? {...base, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {})} : o));
+          } else {
+            const orig = plan.nodes[id] || {}, ed = list.find((o) => o.op === "editNode" && o.node === id);
+            const fields = Object.fromEntries(["name", "what", "icon"].filter((k) => (val[k] || "") !== (orig[k] ?? "")).map((k) => [k, val[k] || ""]));
+            if (fields.name === "") delete fields.name;
+            const op = Object.keys(fields).length ? {id: ed?.id ?? newOpId(list), op: "editNode", node: id, ...fields} : null;
+            next = ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list;
+          }
+          if (JSON.stringify(next) === JSON.stringify(list)) return keepFocus(() => renderView());
+          kit.setOps(next, id);
+        },
+      });
+    },
+    // A new box from the card: where (lane, place) comes in fields; done(false) when it was dropped.
+    add(beside, fields, {title, preview, done}) {
+      boxCard(beside, {}, {
+        title,
+        preview,
+        onDone: (val) => {
+          sketchTool = "select";
+          done?.(!!val);
+          if (!val) return;
+          const list = ops();
+          kit.setOps([...list, {id: newOpId(list), op: "addBox", node: kit.newNode(), name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...fields}]);
+        },
+      });
     },
     api(extra) {
       return {
@@ -5027,10 +5112,22 @@ const nodeOfDrafted = (real, id) => applyDraft(plan, draft, real.id).plan.nodes[
 
 function sketchLinks({real, v, drafted, container, tools}) {
   const kit = sketchKit(real, tools, container), marks = drafted.marks, k8s = v.kind === "k8s", labelled = v.kind !== "impact";
-  const OPS = k8s ? {add: "addLink", edit: "editLink", remove: "removeLink"} : {add: "addEdge", edit: "editEdge", remove: "removeEdge"};
+  const OPS = k8s ? {add: "addLink", edit: "editLink", remove: "removeLink", reverse: "reverseLink"} : {add: "addEdge", edit: "editEdge", remove: "removeEdge", reverse: "reverseEdge"};
   const lines = (view) => (k8s ? view.links : view.kind === "state" ? view.transitions : view.edges) || [];
   const named = (id) => drafted.plan.nodes[id]?.name ?? id;
-  const lineOps = (from, to, change) => {
+  // The ends a line has in the plan (one the draft turned round is drawn the other way), and turning one round.
+  const planEnds = (f, to) => (kit.ops().some((o) => o.op === OPS.reverse && o.from === to && o.to === f) ? [to, f] : [f, to]);
+  const reverseLine = (from, to) => {
+    const list = kit.ops(), added = list.find((o) => o.op === OPS.add && o.from === from && o.to === to);
+    if (added) return kit.setOps(list.map((o) => (o === added ? {...o, from: to, to: from} : o)));
+    const back = list.find((o) => o.op === OPS.reverse && o.from === to && o.to === from);
+    if (back) return kit.setOps(list.filter((o) => o !== back));
+    if (lines(v).some((l) => l?.from === to && l?.to === from)) return showProblem(t("lineBothWays"));
+    kit.setOps([...list, {id: newOpId(list), op: OPS.reverse, from, to}]);
+  };
+  const lineOps = (shownFrom, shownTo, change) => {
+    const drawnNew = kit.ops().some((o) => o.op === OPS.add && o.from === shownFrom && o.to === shownTo);
+    const [from, to] = drawnNew ? [shownFrom, shownTo] : planEnds(shownFrom, shownTo);
     const list = kit.ops(), added = list.find((o) => o.op === OPS.add && o.from === from && o.to === to);
     if (change === "remove") {
       if (added) return kit.setOps(list.filter((o) => o !== added));
@@ -5056,7 +5153,8 @@ function sketchLinks({real, v, drafted, container, tools}) {
     label.placeholder = t(k8s ? "linkLabel" : "edgeLabel");
     label.value = l.label || "";
     label.maxLength = k8s ? 40 : 60;
-    const parts = [el("div", "dphead", `${named(from)} → ${named(to)}`)];
+    const head = el("div", "dphead", `${named(from)} → ${named(to)}`);
+    const parts = [head];
     if (labelled) parts.push(label);
     if (k8s) {
       const chips = el("div", "dstates"), name = el("div", "dstatename", t("lk_" + state));
@@ -5078,6 +5176,16 @@ function sketchLinks({real, v, drafted, container, tools}) {
       }
       parts.push(chips, name);
     }
+    // The arrow the other way: a line being drawn swaps its ends; one already there becomes a change.
+    const turnBtn = el("button", "dlinkx dturn", t("reverseLine"));
+    turnBtn.title = t("reverseTip");
+    turnBtn.onclick = () => {
+      if (!fresh) return pop.close("reverse");
+      [from, to] = [to, from];
+      head.textContent = `${named(from)} → ${named(to)}`;
+      if (labelled) label.focus();
+    };
+    parts.push(turnBtn);
     if (!fresh) {
       const del = el("button", "dlinkx");
       del.append(svgIcon("remove"), marks.links[`${from}>${to}`]?.mark === "remove" ? t("keepLink") : t("removeLink"));
@@ -5098,6 +5206,13 @@ function sketchLinks({real, v, drafted, container, tools}) {
       onClose: (why) => {
         if (why === "removed" || why === "replaced" || why === "escape") return;
         const lab = cleanText(label.value);
+        if (why === "reverse") {
+          const change = {};
+          if (labelled && lab !== (l.label || "")) change.label = lab;
+          if (k8s && state !== (l.state || "ok")) change.state = state;
+          if (Object.keys(change).length) lineOps(from, to, change);
+          return reverseLine(from, to);
+        }
         if (fresh) {
           const list = kit.ops();
           return kit.setOps([...list, {id: newOpId(list), op: OPS.add, from, to, ...(lab && labelled ? {label: lab} : {}), ...(k8s && state !== "ok" ? {state} : {})}]);
@@ -5112,8 +5227,13 @@ function sketchLinks({real, v, drafted, container, tools}) {
       label.focus();
       label.select();
     }
-    // Without a label to type (impact), a new line is saved straight away.
-    if (fresh && !labelled && !k8s) pop.close("done");
+    // Without a label to type (impact), the card only offers to turn it round: Enter (its Keep button) keeps it.
+    if (!labelled && !k8s) {
+      const keepBtn = el("button", "primary", t("keep"));
+      keepBtn.onclick = () => pop.close("done");
+      pop.insertBefore(keepBtn, pop.querySelector(".dhint"));
+      keepBtn.focus();
+    }
   };
   const target = (e) => {
     const b = e.target.closest?.("[data-anchor]");
@@ -5122,18 +5242,17 @@ function sketchLinks({real, v, drafted, container, tools}) {
   container.classList.add("sketch");
   container.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".dedit")) return;
-    const b = target(e);
+    const b = target(e), line = !b && e.target.closest?.(".dhit");
+    if (line && sketchTool === "remove") return (e.preventDefault(), lineOps(line.dataset.from, line.dataset.to, "remove"));
+    if (line && sketchTool === "rename") return (e.preventDefault(), card(line.dataset.from, line.dataset.to, e.clientX, e.clientY));
     if (sketchTool === "remove" && b) return (e.preventDefault(), kit.remove(b.dataset.anchor));
     if (sketchTool === "rename" && b) return (e.preventDefault(), kit.rename(b.dataset.anchor));
     if (sketchTool === "box" && !b) {
       e.preventDefault();
       const sp = kit.spot(e.clientX, e.clientY);
-      return editText(sp, "", t("boxName"), {onDone: (val) => {
+      return kit.add(sp.getBoundingClientRect(), {}, {title: t("boxNew"), done: (kept) => {
         sp.remove();
-        sketchTool = "select";
-        if (!val) return refresh();
-        const list = kit.ops();
-        kit.setOps([...list, {id: newOpId(list), op: "addBox", node: kit.newNode(), name: val}]);
+        if (!kept) refresh();
       }});
     }
     if (sketchTool === "connect" && b) {
@@ -5178,7 +5297,8 @@ function sketchLinks({real, v, drafted, container, tools}) {
     kit.select(b ? {kind: "node", id: b.dataset.anchor} : null);
   }, true);
   container.addEventListener("dblclick", (e) => sketchTool === "select" && target(e) && kit.rename(target(e).dataset.anchor));
-  const {refresh} = sketchBar(real, tools, container, LINK_TOOLS);
+  lightLines(container);
+  const {refresh} = sketchBar(real, tools, container, LINK_TOOLS, hintsFor(k8s ? "k8s" : v.kind === "impact" ? "impact" : "graph", LINK_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));
   sketchApi = kit.api({toolList: LINK_TOOLS, refresh, saved: refresh});
 }
@@ -5215,16 +5335,20 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       if (!lane) return;
       e.preventDefault();
       const li = Number(lane.dataset.lane), at = indexAt(lane, e.clientX);
-      const tmp = el("div", "node todo dr-add dtemp"), name = el("div", "name", " ");
-      tmp.append(name);
-      lane.querySelector(".row").append(tmp);
-      return editText(name, "", t("boxName"), {onDone: (val) => {
-        tmp.remove();
-        sketchTool = "select";
-        if (!val) return refresh();
-        const list = kit.ops();
-        kit.setOps([...list, {id: newOpId(list), op: "addBox", node: kit.newNode(), name: val, lane: li, ...(v.lanes[li]?.title ? {laneTitle: v.lanes[li].title} : {}), at}]);
-      }});
+      lane.classList.remove("dhover");
+      const tmp = el("div", "node todo dr-add dtemp"), head = el("div", "nhead");
+      head.append(el("span", "icon"), el("div", "name", t("boxNew")));
+      tmp.append(head);
+      const row = lane.querySelector(".row");
+      row.insertBefore(tmp, [...row.querySelectorAll(":scope > [data-anchor]")][at] ?? null);
+      return kit.add(tmp.getBoundingClientRect(), {lane: li, ...(v.lanes[li]?.title ? {laneTitle: v.lanes[li].title} : {}), at}, {
+        title: t("boxNewIn", v.lanes[li]?.title || `${t("laneWord")} ${li + 1}`),
+        preview: (val) => previewBox(tmp, val, t("boxNew")),
+        done: (kept) => {
+          tmp.remove();
+          if (!kept) refresh();
+        },
+      });
     }
     if (sketchTool === "lane") {
       e.preventDefault();
@@ -5285,7 +5409,13 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
     kit.select(b ? {kind: "node", id: b.dataset.anchor} : null);
   }, true);
   wrap.addEventListener("dblclick", (e) => sketchTool === "select" && e.target.closest?.("[data-anchor]") && kit.rename(e.target.closest("[data-anchor]").dataset.anchor));
-  const {refresh} = sketchBar(real, tools, wrap, FLOW_TOOLS);
+  // The box tool: the lane a click would put it in lights up.
+  wrap.addEventListener("pointermove", (e) => {
+    const on = sketchTool === "box" && !document.querySelector(".dboxcard") ? laneAt(e.clientX, e.clientY) : null;
+    laneEls().forEach((l) => l.classList.toggle("dhover", l === on));
+  });
+  wrap.addEventListener("pointerleave", () => laneEls().forEach((l) => l.classList.remove("dhover")));
+  const {refresh} = sketchBar(real, tools, wrap, FLOW_TOOLS, hintsFor("flow", FLOW_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));
   sketchApi = kit.api({toolList: FLOW_TOOLS, refresh, saved: refresh});
 }

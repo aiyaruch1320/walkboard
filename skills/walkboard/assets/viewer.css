@@ -482,6 +482,8 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map .zone>.zhead{position:relative;z-index:1}
 .map [data-anchor].lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
 .map .zone.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+.map.droptop{outline:2px dashed var(--you-bd);outline-offset:6px;border-radius:12px}
+.map [data-anchor].dnodrop{outline:2px dashed var(--warn-bd);outline-offset:3px;opacity:.75}
 .map .dr-add{outline:2px dashed var(--you-bd);outline-offset:3px}
 .map .dr-move{outline:2px dashed var(--copy-tx);outline-offset:3px}
 .map .dr-change{outline:2px dashed #14a3b8;outline-offset:3px}

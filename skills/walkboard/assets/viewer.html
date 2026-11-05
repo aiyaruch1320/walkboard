@@ -2810,10 +2810,17 @@ function renderMap(real) {
   };
   // The picture reflows when the draft adds or drops a zone, or on a window of another width: what was moved by hand
   // can land on another zone. It goes back to its place in the plan (oldest first: what was moved last keeps its place).
+  // Its centre outside the zone that holds it (moved there before letting go outside meant something).
+  const strays = (e) => {
+    const home = e.parentElement.closest(".zone");
+    if (!home) return false;
+    const r = e.getBoundingClientRect(), h = home.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    return x < h.left || x > h.right || y < h.top || y > h.bottom;
+  };
   const uncover = () => {
     const gone = Object.keys(layout()).filter((k) => {
       const e = movers().find((x) => keyOf(x) === k);
-      if (!e || !covers(e)) return false;
+      if (!e || !(covers(e) || strays(e))) return false;
       place(e, null);
       return true;
     });
@@ -2855,20 +2862,26 @@ function renderMap(real) {
   };
   // Dropped with its centre in another zone: put it there, before the first box (or zone) that comes after it.
   // Where the pointer is: a zone is held by its title, far from its middle.
+  // Let go outside every zone: a zone inside another comes out to the top ({to: null}); a box cannot be outside
+  // every zone ({nowhere}), so it goes back.
   const dropZone = (it, x, y) => {
     const hit = zoneEls().filter((z) => !it.contains(z)).map((z) => [z, z.getBoundingClientRect()]).filter(([, b]) => x >= b.left && x <= b.right && y >= b.top && y <= b.bottom);
     const to = hit.sort((p, q) => p[1].width * p[1].height - q[1].width * q[1].height)[0]?.[0];
-    return to && to !== it.parentElement.closest(".zone") ? {to, x, y} : null;
+    const from = it.parentElement.closest(".zone");
+    if (to) return to !== from ? {to, x, y} : null;
+    if (it.classList.contains("zone")) return from ? {to: null, x, y} : null;
+    return {nowhere: true};
   };
   // Dropped into another zone: a change of plan, so a draft change (a box or zone the draft added just changes where it goes).
+  // to: null = the top of the picture (zones only).
   const dropOps = (it, {to, x, y}) => {
     const isZone = it.classList.contains("zone"), k = isZone ? it.dataset.zone : it.dataset.anchor, m = markOf(it);
-    const at = indexAt(to.querySelector(":scope > .zbody"), x, y, isZone, it);
+    const dest = to ? to.dataset.zone : "", at = indexAt(to ? to.querySelector(":scope > .zbody") : map, x, y, isZone, it);
     const ops = draftOps(lv.id);
-    if (m?.mark === "add") return ops.map((o) => (isZone ? o.op === "addZone" && o.zone === k ? {...o, parent: to.dataset.zone, at} : o : o.op === "addNode" && o.node === k ? {...o, zone: to.dataset.zone, at} : o));
+    if (m?.mark === "add") return ops.map((o) => (isZone ? o.op === "addZone" && o.zone === k ? {...o, parent: dest, at} : o : o.op === "addNode" && o.node === k ? {...o, zone: dest, at} : o));
     const rest = ops.filter((o) => !(isZone ? o.op === "moveZone" && o.zone === k : o.op === "move" && o.node === k));
-    if (to.dataset.zone === it.dataset.plan) return rest;
-    return [...rest, {id: newOpId(rest), op: isZone ? "moveZone" : "move", [isZone ? "zone" : "node"]: k, to: to.dataset.zone, from: it.dataset.plan, at}];
+    if (dest === it.dataset.plan) return rest;
+    return [...rest, {id: newOpId(rest), op: isZone ? "moveZone" : "move", [isZone ? "zone" : "node"]: k, to: dest, from: it.dataset.plan, at}];
   };
   let mapDragged = false;
   // The click that ends a drag does not open the box; while sketching a click selects instead.
@@ -2919,6 +2932,8 @@ function renderMap(real) {
         frame = 0;
         const drop = dropZone(it, px, py);
         zoneEls().forEach((z) => z.classList.toggle("droptarget", z === drop?.to));
+        map.classList.toggle("droptop", drop?.to === null);
+        it.classList.toggle("dnodrop", !!drop?.nowhere);
         draw(moving);
       });
     };
@@ -2932,6 +2947,8 @@ function renderMap(real) {
       map.classList.remove("dragging");
       it.classList.remove("lifted");
       zoneEls().forEach((z) => z.classList.remove("droptarget"));
+      map.classList.remove("droptop");
+      it.classList.remove("dnodrop");
     };
     // Escape while dragging puts it back and changes nothing (it does not leave draft mode).
     const esc = (ev) => {
@@ -2950,6 +2967,11 @@ function renderMap(real) {
       mapDragged = true;
       setTimeout(() => (mapDragged = false));
       const drop = dropZone(it, px, py);
+      if (drop?.nowhere) {
+        place(it, from);
+        draw();
+        return showProblem(t("boxNeedsZone"));
+      }
       if (drop) {
         const before = tools.snap(), {[keyOf(it)]: _, ...rest} = layout();
         tools.change(before, {layout: Object.keys(rest).length ? rest : null, ops: dropOps(it, drop)});

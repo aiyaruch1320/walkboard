@@ -4468,7 +4468,7 @@ function renderDataModel(real) {
   const tools = layoutTools(real, canMove, renderView, () => ({}), draftShown());
   if (sketching && sketching !== real.id && !drawingDiff) sketching = null;
   const isSketch = sketching === real.id && canMove() && draftShown();
-  let free = false, dragged = false, keySave = null, keyFrom, lifted = [];
+  let free = false, dragged = false, keySave = null, keyFrom, lifted = [], leaving = null;
   const fit = () => {
     grid.style.width = Math.max(...cards().map((c) => c.offsetLeft + c.offsetWidth)) + 40 + "px";
     // While sketching there is room below the tables for a new one.
@@ -4599,6 +4599,11 @@ function renderDataModel(real) {
       if (!canMove() || e.button !== 0 || (isSketch && sketchTool !== "select")) return;
       const sx = e.clientX, sy = e.clientY;
       let start = null;
+      // While sketching, a table let go outside its group's frame leaves the group. The frame as it was now: it stretches
+      // while its table moves. A table alone in its frame takes the frame along.
+      const own = card && isSketch ? groupOf[card.dataset.id] : null;
+      const ownFrame = own != null && cards().filter((c) => groupOf[c.dataset.id] === own).length > 1 ? frames.find(([, i]) => i === own)?.[0].getBoundingClientRect() : null;
+      const outside = (ev) => !!ownFrame && !(ev.clientX >= ownFrame.left && ev.clientX <= ownFrame.right && ev.clientY >= ownFrame.top && ev.clientY <= ownFrame.bottom);
       handle.setPointerCapture(e.pointerId);
       const move = (ev) => {
         if (!start) {
@@ -4609,8 +4614,9 @@ function renderDataModel(real) {
           lifted.forEach((c) => (c.style.zIndex = 9999));
           grid.classList.add("dragging");
         }
-        shift(start, ev.clientX - sx, ev.clientY - sy);
         const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id);
+        leaving = !to && outside(ev) ? card : null;
+        shift(start, ev.clientX - sx, ev.clientY - sy);
         grid.querySelectorAll(".erframe").forEach((f) => f.classList.toggle("droptarget", f === to));
       };
       const up = (ev) => {
@@ -4621,11 +4627,17 @@ function renderDataModel(real) {
         // The click that ends a drag does not open the table.
         dragged = true;
         setTimeout(() => (dragged = false));
-        // One table let go over another group: it moves to that group (a draft change), and stays where it was dropped.
-        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id);
-        if (to) {
-          const before = tools.snap(), positions = save(v.layout, false);
-          tools.change(before, {layout: positions, ops: moveOps(card.dataset.id, to.dataset.group)});
+        // One table let go over another group, or out of its own: a draft change. It stays where it was dropped, or
+        // as near as it can without lying on another table.
+        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id), left = !to && outside(ev);
+        leaving = null;
+        if (to || left) {
+          const before = tools.snap(), home = to ? frameDefs.findIndex((g) => g.label === to.dataset.group) : null;
+          const spot = fitTable(boxOf(card), home, card.dataset.id);
+          card.style.left = spot.x + "px";
+          card.style.top = spot.y + "px";
+          const positions = save(v.layout, false);
+          tools.change(before, {layout: positions, ops: moveOps(card.dataset.id, to ? to.dataset.group : "")});
           return renderView();
         }
         save();
@@ -4668,7 +4680,7 @@ function renderDataModel(real) {
   });
   const placeFrames = () => {
     for (const [f, i] of frames) {
-      const members = cards().filter((c) => groupOf[c.dataset.id] === i);
+      const members = cards().filter((c) => groupOf[c.dataset.id] === i && c !== leaving);
       f.hidden = !members.length;
       if (!members.length) continue;
       const l = Math.min(...members.map((c) => c.offsetLeft)), tp = Math.min(...members.map((c) => c.offsetTop));

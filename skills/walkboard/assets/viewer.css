@@ -301,8 +301,12 @@ body.side-open .side-inner{opacity:1;transform:none}
 .er.free>.ertable{position:absolute;margin:0}
 .er>.ertable{position:relative;z-index:1}
 .er.grouped{row-gap:64px;padding-top:44px;padding-left:24px}
-.erframe{position:absolute;z-index:0;border:1.5px dashed var(--line);border-radius:14px;background:color-mix(in srgb,var(--code) 45%,transparent)}
-.erframe-label{position:absolute;left:12px;top:7px;font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.erframe{position:absolute;z-index:0;border:1.5px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--bg) 55%,var(--card))}
+.erframe-label{position:absolute;left:12px;right:12px;top:6px;display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden}
+.erframe-label .icon{width:20px;height:20px;border-radius:6px;flex:none}
+.erframe-label .icon svg{width:13px;height:13px}
+.erframe-label small{font-weight:400;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.erframe-label .ptag{flex:none}
 @media (pointer:fine) and (min-width:820px){body:not(.snapshot) .erhead,body:not(.snapshot) .erframe-label{cursor:grab}}
 .er.dragging,.er.dragging .erhead,.er.dragging .erframe-label{cursor:grabbing;user-select:none}
 .ltools{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 6px}

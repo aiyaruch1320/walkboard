@@ -28,6 +28,7 @@
 - Dragging a foreign key on a data model scrolls the picture when held near an edge of the window, so the column it points at can be a screen away.
 - A column renamed in a draft shows only its new name; the old one is in the tooltip, so the table does not grow for it.
 - **A table has the same card as a box.** On a data model, adding or editing a table opens the card a map box has: name, note and icon, with the table on the picture following what you type. `addTable` and `editNode` carry `what` and `icon`, and a table shows its note under its name. Columns are still typed in place (`name type pk`).
+- **A group looks and edits like a zone.** A data model's group has a frame and a title like a map zone's, and a card for its name, note and icon (`groups[].note`, `groups[].icon`; `addGroup` and `editGroup` carry them).
 
 ## 0.8.0
 

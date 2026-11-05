@@ -65,8 +65,9 @@ const SHAPES = {
   editColumn: {table: id, column: colName, name: (x) => x == null || colName(x), type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x)},
   removeColumn: {table: id, column: colName},
   moveTable: {node: id, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x)},
-  addGroup: {group: label, tables: (x) => Array.isArray(x) && x.length > 0 && x.length <= 50 && x.every(id)},
-  editGroup: {group: label, label},
+  addGroup: {group: label, tables: (x) => Array.isArray(x) && x.length > 0 && x.length <= 50 && x.every(id), icon: (x) => optText(x, 60), note: (x) => optText(x, 120)},
+  // As a zone: its new name (label), icon or note ("" takes an icon or a note away); at least one of them.
+  editGroup: {group: label, label: (x) => x == null || label(x), icon: (x) => optText(x, 60), note: (x) => optText(x, 120)},
   removeGroup: {group: label},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
   addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
@@ -102,12 +103,12 @@ export function validateDraft(d) {
       seen.add(op.id);
       const shape = SHAPES[op.op];
       for (const [k, ok] of Object.entries(shape)) {
-        if (op[k] == null && OPTIONAL.has(k) && !(op.op === "editGroup" && k === "label")) continue;
+        if (op[k] == null && OPTIONAL.has(k)) continue;
         if (!ok(op[k])) out.push(`${at} (${op.op}): bad ${k}`);
       }
       for (const k of Object.keys(op)) if (k !== "id" && k !== "op" && !(k in shape)) out.push(`${at} (${op.op}): unknown field ${k}`);
       if (["addLink", "editLink", "removeLink", "reverseLink", "reverseEdge"].includes(op.op) && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
-      if (op.op === "editZone" && op.label == null && op.icon == null && op.note == null) out.push(`${at} (editZone): needs a label, an icon or a note`);
+      if ((op.op === "editZone" || op.op === "editGroup") && op.label == null && op.icon == null && op.note == null) out.push(`${at} (${op.op}): needs a label, an icon or a note`);
     });
   }
   if (count > DRAFT_MAX_OPS) out.push(`a draft holds at most ${DRAFT_MAX_OPS} changes`);
@@ -538,21 +539,31 @@ function applyTables(v, nodes, ops, result) {
             break;
           }
           ids.forEach(out);
-          v.groups.push({label: op.group, tables: ids});
+          v.groups.push({label: op.group, ...(op.icon ? {icon: op.icon} : {}), ...(op.note ? {note: op.note} : {}), tables: ids});
           marks.zones[op.group] = {mark: "add"};
         }
         break;
       }
       case "editGroup": {
-        const g = group(op.group);
+        const g = group(op.group), renaming = op.label != null && op.label !== op.group;
         if (!g) stale(op, `no group "${op.group}"`);
-        else if (op.label === op.group) done(op);
-        else if (group(op.label)) stale(op, `a group is already called "${op.label}"`);
+        else if (renaming && group(op.label)) stale(op, `a group is already called "${op.label}"`);
         else {
-          g.label = op.label;
-          const m = marks.zones[op.group];
-          delete marks.zones[op.group];
-          marks.zones[op.label] = m?.mark === "add" ? m : {mark: "change", was: op.group};
+          const changed = ["icon", "note"].filter((k) => op[k] != null && op[k] !== (g[k] ?? ""));
+          if (!renaming && !changed.length) {
+            done(op);
+            break;
+          }
+          for (const k of changed) {
+            if (op[k] === "") delete g[k];
+            else g[k] = op[k];
+          }
+          const now = renaming ? op.label : op.group, m = marks.zones[op.group];
+          if (renaming) {
+            g.label = op.label;
+            delete marks.zones[op.group];
+          }
+          marks.zones[now] = m?.mark === "add" ? m : {mark: "change", was: m?.was ?? op.group};
         }
         break;
       }
@@ -917,8 +928,8 @@ export function draftLine(c) {
     case "editColumn": return `~ column ${c.table}: ${c.column} ${["name", "type", "key", "ref"].filter((k) => c[k] != null).map((k) => (k === "ref" ? (c.ref ? `→ ${c.ref} (foreign key)` : "foreign key taken out") : `${k} ${JSON.stringify(c[k])}`)).join(", ")}`;
     case "removeColumn": return `− column ${c.table}: ${c.column}${c.copies?.length ? ` (copies kept in ${c.copies.join(", ")})` : ""}`;
     case "moveTable": return `↦ table ${c.node} → ${c.to ? `group "${c.to}"` : "no group"}`;
-    case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}`;
-    case "editGroup": return `~ group "${c.group}" → "${c.label}"`;
+    case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
+    case "editGroup": return `~ group "${c.group}"${c.label != null ? ` → "${c.label}"` : ""}${c.note != null ? `, note ${JSON.stringify(c.note)}` : ""}${c.icon != null ? `, icon ${JSON.stringify(c.icon)}` : ""}`;
     case "removeGroup": return `− group "${c.group}"`;
     case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}`;

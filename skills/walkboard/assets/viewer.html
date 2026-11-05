@@ -2650,7 +2650,7 @@ function draftRows(viewId) {
       editColumn: ["~", `${nm(o.table)}.${o.column}`, o.name ? `→ ${o.name}` : o.ref != null ? (o.ref ? `→ ${o.ref}` : t("fkOff")) : [o.type, o.key].filter((x) => x != null).join(" · ")],
       removeColumn: ["−", `${nm(o.table)}.${o.column}`, ""],
       moveTable: ["↦", nm(o.node), `→ ${o.to || t("noGroup")}`],
-      addGroup: ["+", o.group, (o.tables || []).map(nm).join(", ")],
+      addGroup: ["+", o.group, [(o.tables || []).map(nm).join(", "), o.note || ""].filter(Boolean).join(" · ")],
       addBox: ["+", o.name, o.lane != null ? laneName(o) : ""],
       moveBox: ["↦", nm(o.node), `→ ${laneName(o)}`],
       addLane: ["+", o.title, t("laneWord")],
@@ -2659,7 +2659,7 @@ function draftRows(viewId) {
       addEdge: ["+", `${nm(o.from)} → ${nm(o.to)}`, o.label || ""],
       editEdge: ["~", `${nm(o.from)} → ${nm(o.to)}`, o.label || "—"],
       removeEdge: ["−", `${nm(o.from)} → ${nm(o.to)}`, ""],
-      editGroup: ["~", `${o.group} → ${o.label}`, ""],
+      editGroup: ["~", o.label != null ? `${o.group} → ${o.label}` : o.group, [o.note != null ? o.note : "", o.icon ? "icon" : ""].filter(Boolean).join(" · ")],
       removeGroup: ["−", o.group, ""],
     }[o.op] || ["?", o.op, ""];
     return {op: o, sign, main, sub, stale: stale[o.id]};
@@ -4669,7 +4669,7 @@ function renderDataModel(real) {
     if (canMove()) handle.title = t("dragTip");
   }
   const frames = frameDefs.map((g, i) => {
-    const f = el("div", "erframe"), label = el("span", "erframe-label", g.label);
+    const f = el("div", "erframe"), label = groupHead(g.label, g.note, g.icon);
     f.dataset.group = g.label;
     const gm = marks.zones[g.label];
     if (gm) {
@@ -4810,6 +4810,14 @@ function renderDataModel(real) {
   return wrap;
 }
 
+// A group's title on its frame, as a zone's: icon, name, note.
+function groupHead(name, note, icon) {
+  const label = el("span", "erframe-label"), ic = iconEl({name, icon: icon || undefined}, "", null);
+  if (ic) label.append(ic);
+  label.append(el("span", "ertitle", name));
+  if (note) label.append(el("small", null, note));
+  return label;
+}
 // ---------- sketching a data model: tables, columns, foreign keys (drag a column onto another), groups
 function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, placeTable, positionsNow, roomFor}) {
   const marks = drafted.marks;
@@ -4853,6 +4861,12 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
       what.textContent = val.what;
       what.hidden = !val.what;
     }
+  };
+  // A group's frame with these values as the card types them.
+  const showGroup = (frame, val, empty = "") => {
+    const was = frame.querySelector(".erframe-label"), sign = was.querySelector(".ptag"), now = groupHead(val.name || empty, val.what, val.icon);
+    if (sign) now.append(sign);
+    was.replaceWith(now);
   };
   const newNode = () => {
     const used = new Set([...Object.keys(plan.nodes), ...ops().filter((o) => o.op === "addTable").map((o) => o.node)]);
@@ -4948,16 +4962,37 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
         setOps(editCol(list, x.id, {...(name !== column ? {name} : {}), type, key: key ?? (col.key && !val.toLowerCase().includes(String(col.key).toLowerCase()) ? "" : col.key ?? "")}));
       }});
     }
-    const initial = x.id;
-    editText(e.querySelector(".erframe-label") || e, initial, t("groupName"), {onDone: (val) => {
-      if (!val || val === initial) return;
-      if ((v.groups || []).some((g) => g.label !== x.id && same(g.label, val))) return showProblem(t("groupTaken", val));
-      const list = ops(), added = list.find((o) => o.op === "addGroup" && o.group === x.id);
-      if (added) return setOps(list.map((o) => (o === added ? {...o, group: val} : o.group === x.id ? {...o, group: val} : o.to === x.id ? {...o, to: val} : o)));
-      const ed = list.find((o) => o.op === "editGroup" && o.label === x.id);
-      if (ed) return setOps(ed.group === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)));
-      setOps([...list, {id: newOpId(list), op: "editGroup", group: x.id, label: val}]);
-    }});
+    const g = (v.groups || []).find((z) => z.label === x.id) || {}, label = e.querySelector(".erframe-label") || e;
+    boxCard(label.getBoundingClientRect(), {name: x.id, what: g.note, icon: g.icon}, {
+      zone: true,
+      title: t("groupEditTitle"),
+      nameHint: t("groupNameHint"),
+      whatHint: t("groupNote"),
+      preview: (val) => showGroup(e, val),
+      onDone: (val) => {
+        if (!val) return keepFocus(() => renderView());
+        if ((v.groups || []).some((z) => z.label !== x.id && same(z.label, val.name))) {
+          keepFocus(() => renderView());
+          return showProblem(t("groupTaken", val.name));
+        }
+        const list = ops(), added = list.find((o) => o.op === "addGroup" && o.group === x.id);
+        // What else in the draft says this group by name goes along when it gets another.
+        const follow = (o) => (o.to === x.id ? {...o, to: val.name} : o.group === x.id && o.op !== "editGroup" ? {...o, group: val.name} : o);
+        let next;
+        if (added) {
+          const {icon: _i, note: _n, ...base} = added;
+          next = list.map((o) => (o === added ? {...base, group: val.name, ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {})} : follow(o)));
+        } else {
+          // Against the plan: the name it has there (an edit may have changed it already), its icon and note.
+          const ed = list.find((o) => o.op === "editGroup" && (o.label ?? o.group) === x.id), from = ed?.group ?? x.id, orig = (real.groups || []).find((z) => z.label === from) || {};
+          const fields = {...(val.name !== from ? {label: val.name} : {}), ...((val.icon || "") !== (orig.icon ?? "") ? {icon: val.icon || ""} : {}), ...((val.what || "") !== (orig.note ?? "") ? {note: val.what || ""} : {})};
+          const op = Object.keys(fields).length ? {id: ed?.id ?? newOpId(list), op: "editGroup", group: from, ...fields} : null;
+          next = (ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list).map((o) => (o.op === "editGroup" ? o : follow(o)));
+        }
+        if (JSON.stringify(next) === JSON.stringify(list)) return keepFocus(() => renderView());
+        setOps(next);
+      },
+    });
   };
   // A foreign key: drag from a column onto the column it points at; the same pair again takes it out.
   const connect = (e) => {
@@ -5061,14 +5096,27 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     if (sketchTool === "group") {
       if (x?.kind !== "node") return;
       e.preventDefault();
-      return editText(elOf(x).querySelector(".erhead"), "", t("groupName"), {onDone: (val) => {
-        sketchTool = "select";
-        refresh();
-        if (!val) return;
-        if ((v.groups || []).some((g) => same(g.label, val))) return showProblem(t("groupTaken", val));
-        const list = ops();
-        setOps([...list, {id: newOpId(list), op: "addGroup", group: val, tables: [x.id]}]);
-      }});
+      // The frame to be, around the table, as the card types it.
+      const c = elOf(x), tmp = el("div", "erframe dr-add dtemp");
+      Object.assign(tmp.style, {left: c.offsetLeft - 14 + "px", top: c.offsetTop - 32 + "px", width: c.offsetWidth + 28 + "px", height: c.offsetHeight + 46 + "px"});
+      tmp.append(groupHead(t("groupNew")));
+      grid.append(tmp);
+      return boxCard(tmp.getBoundingClientRect(), {}, {
+        zone: true,
+        title: t("groupNew"),
+        nameHint: t("groupNameHint"),
+        whatHint: t("groupNote"),
+        preview: (val) => showGroup(tmp, val, t("groupNew")),
+        onDone: (val) => {
+          tmp.remove();
+          sketchTool = "select";
+          refresh();
+          if (!val) return;
+          if ((v.groups || []).some((g) => same(g.label, val.name))) return showProblem(t("groupTaken", val.name));
+          const list = ops();
+          setOps([...list, {id: newOpId(list), op: "addGroup", group: val.name, tables: [x.id], ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {})}]);
+        },
+      });
     }
     if (sketchTool === "table") {
       if (e.target.closest(".ertable")) return;

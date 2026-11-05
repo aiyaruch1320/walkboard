@@ -172,6 +172,14 @@ const dm = (...ops) => ({version: 1, views: {d: {ops: ops.map((o, i) => ({id: "o
 
 test("data models: tables, columns, keys and groups are drafted, marked, and the plan untouched", () => {
   const p = model(), before = JSON.stringify(p);
+  assert.match(validateDraft(dm({op: "editGroup", group: "Shop"})).join(), /needs a label, an icon or a note/);
+  assert.deepEqual(validateDraft(dm({op: "addGroup", group: "Ops", tables: ["users"], icon: "user", note: "team"}, {op: "editGroup", group: "Shop", note: "one db"})), []);
+  const framed = applyDraft(model(), dm({op: "addGroup", group: "Ops", tables: ["users"], icon: "user", note: "team"}, {op: "editGroup", group: "Shop", note: "one db"}), "d");
+  assert.equal(framed.view.groups.find((g) => g.label === "Ops").note, "team");
+  assert.equal(framed.view.groups.find((g) => g.label === "Shop").note, "one db");
+  assert.equal(framed.marks.zones.Shop.mark, "change");
+  assert.deepEqual(applyDraft(model(), dm({op: "editGroup", group: "Shop", note: ""}), "d").done, ["op1"]);
+  assert.match(draftLine({op: "editGroup", group: "Shop", note: "one db"}), /group "Shop", note "one db"/);
   assert.deepEqual(validateDraft(dm({op: "addTable", node: "new:n", name: "notes", what: "free text", icon: "database"})), []);
   const noted = applyDraft(model(), dm({op: "addTable", node: "new:n", name: "notes", what: "free text", icon: "database"}, {op: "editNode", node: "users", what: "who signs in", icon: "user"}), "d");
   assert.deepEqual(noted.plan.nodes["new:n"], {name: "notes", what: "free text", icon: "database"});

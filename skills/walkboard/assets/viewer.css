@@ -555,7 +555,9 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er li.dtarget{outline:2px solid var(--you-bd);outline-offset:-2px}
 .er .erframe.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 40%,transparent)}
 .flowview,.graph,.k8s{position:relative}
-.flowview .dspot,.graph .dspot,.k8s .dspot{position:absolute;width:160px;height:24px}
+.graph>.dtemp,.k8s>.dtemp{position:absolute;width:210px;z-index:5;opacity:.85}
+.lane.dtemp{opacity:.85}
+.lane.dtemp .row{min-height:44px}
 .graph [data-anchor],.k8s [data-anchor],.lane .node{position:relative}
 .graph .dr-add,.k8s .dr-add,.lane .dr-add{outline:2px dashed var(--you-bd);outline-offset:3px}
 .graph .dr-change,.k8s .dr-change,.lane .dr-change{outline:2px dashed #14a3b8;outline-offset:3px}

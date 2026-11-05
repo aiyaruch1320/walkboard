@@ -2496,7 +2496,8 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
 // preview(values) draws them on the box; onDone(values, or null when dropped or left without a name).
 // A zone uses it too: its note is the short line by its name (zone: true).
 // nameHint, whatHint: the words in its fields, where it is not a box or a zone. iconId: what the icon is also guessed from.
-function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = ""}) {
+// plain: only a name, for what has no note or icon (a lane).
+function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false}) {
   let picked = initial.icon || "";
   const nameIn = el("input", "dsearch dname");
   nameIn.placeholder = nameHint || t(zone ? "zoneNameHint" : "boxNameHint");
@@ -2505,7 +2506,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   const iconBtn = el("button", "dpick");
   iconBtn.type = "button";
   const row = el("div", "dnamerow");
-  row.append(iconBtn, nameIn);
+  row.append(...(plain ? [] : [iconBtn]), nameIn);
   const whatIn = el("textarea", "dsearch dwhat");
   whatIn.placeholder = whatHint || t(zone ? "zoneNote" : "boxWhat");
   whatIn.value = initial.what || "";
@@ -2571,8 +2572,8 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   keep.onclick = () => pop.close("done");
   cancel.onclick = () => pop.close("escape");
   const foot = el("div", "dpfoot");
-  foot.append(keep, cancel, el("span", "dhint", t("boxHint")));
-  const pop = popover(0, 0, [el("div", "dphead", title), row, whatIn, picker, foot], {
+  foot.append(keep, cancel, el("span", "dhint", t(plain ? "linkHint" : "boxHint")));
+  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), foot], {
     beside,
     escape: () => {
       if (picker.hidden) return false;
@@ -5238,12 +5239,15 @@ function sketchKit(real, tools, container) {
       container.querySelectorAll(".dsel").forEach((e) => e.classList.remove("dsel"));
       if (x?.kind === "node") box(x.id)?.classList.add("dsel");
     },
-    spot(x, y) {
-      const g = container.getBoundingClientRect(), sp = el("div", "dspot");
-      sp.style.left = x - g.left + "px";
-      sp.style.top = y - g.top + "px";
-      container.append(sp);
-      return sp;
+    // The box to be, at a point of the picture, as the card types it (the page places it once it is kept).
+    ghost(x, y) {
+      const g = container.getBoundingClientRect(), tmp = el("div", "node todo dr-add dtemp"), head = el("div", "nhead");
+      head.append(el("span", "icon"), el("div", "name", t("boxNew")));
+      tmp.append(head);
+      container.append(tmp);
+      tmp.style.left = Math.max(0, Math.min(x - g.left, g.width - tmp.offsetWidth)) + "px";
+      tmp.style.top = y - g.top + "px";
+      return tmp;
     },
     // Take a box out (again: put it back); one the draft added goes, with the changes that need it.
     remove(id) {
@@ -5471,9 +5475,9 @@ function sketchLinks({real, v, drafted, container, tools}) {
     if (sketchTool === "rename" && b) return (e.preventDefault(), kit.rename(b.dataset.anchor));
     if (sketchTool === "box" && !b) {
       e.preventDefault();
-      const sp = kit.spot(e.clientX, e.clientY);
-      return kit.add(sp.getBoundingClientRect(), {}, {title: t("boxNew"), done: (kept) => {
-        sp.remove();
+      const tmp = kit.ghost(e.clientX, e.clientY);
+      return kit.add(tmp.getBoundingClientRect(), {}, {title: t("boxNew"), preview: (val) => previewBox(tmp, val, t("boxNew")), done: (kept) => {
+        tmp.remove();
         if (!kept) refresh();
       }});
     }
@@ -5527,6 +5531,18 @@ function sketchLinks({real, v, drafted, container, tools}) {
 
 function sketchFlow({real, v, drafted, wrap, tools}) {
   const kit = sketchKit(real, tools, wrap);
+  // A lane is as wide as the picture: its card goes beside the words of its title, not over them.
+  const wordsRect = (title) => {
+    const range = document.createRange();
+    range.selectNodeContents(title);
+    return range.getBoundingClientRect();
+  };
+  // A lane's title as the card types it; a step's keeps its number (step: which).
+  const showLane = (title, name, step = null) => {
+    const sign = title.querySelector(":scope > .ptag");
+    title.textContent = (step != null ? `${step + 1} · ` : "") + name;
+    if (sign) title.append(sign);
+  };
   const laneEls = () => [...wrap.querySelectorAll(":scope > .lane")];
   const laneAt = (x, y) => laneEls().find((l) => {
     const b = l.getBoundingClientRect();
@@ -5546,11 +5562,18 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
     if (sketchTool === "rename" && title) {
       e.preventDefault();
       const li = Number(title.closest(".lane").dataset.lane), initial = v.lanes[li]?.title ?? "";
-      return editText(title, initial, t("laneName"), {onDone: (val) => {
-        if (!val || val === initial) return;
-        const list = kit.ops(), ed = list.find((o) => o.op === "editLane" && o.lane === li);
-        kit.setOps(ed ? list.map((o) => (o === ed ? {...o, title: val} : o)) : [...list, {id: newOpId(list), op: "editLane", lane: li, ...(initial ? {laneTitle: initial} : {}), title: val}]);
-      }});
+      return boxCard(wordsRect(title), {name: initial}, {
+        plain: true,
+        title: t("laneEditTitle"),
+        nameHint: t("laneNameHint"),
+        preview: (val) => showLane(title, val.name, v.lanes[li]?.step ? li : null),
+        onDone: (got) => {
+          const val = got?.name;
+          if (!val || val === initial) return keepFocus(() => renderView());
+          const list = kit.ops(), ed = list.find((o) => o.op === "editLane" && o.lane === li);
+          kit.setOps(ed ? list.map((o) => (o === ed ? {...o, title: val} : o)) : [...list, {id: newOpId(list), op: "editLane", lane: li, ...(initial ? {laneTitle: initial} : {}), title: val}]);
+        },
+      });
     }
     if (sketchTool === "box") {
       const lane = laneAt(e.clientX, e.clientY);
@@ -5578,14 +5601,23 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
         const r = l.getBoundingClientRect();
         return r.top + r.height / 2 < e.clientY;
       }).length;
-      const sp = kit.spot(e.clientX, e.clientY);
-      return editText(sp, "", t("laneName"), {onDone: (val) => {
-        sp.remove();
-        sketchTool = "select";
-        if (!val) return refresh();
-        const list = kit.ops();
-        kit.setOps([...list, {id: newOpId(list), op: "addLane", title: val, at}]);
-      }});
+      // The lane to be, where it will go, as the card types it.
+      const tmp = el("div", "lane dr-add dtemp"), head = el("div", "lane-title", t("laneNew")), row = el("div", "row");
+      tmp.append(head, row);
+      wrap.insertBefore(tmp, laneEls()[at] ?? null);
+      return boxCard(wordsRect(head), {}, {
+        plain: true,
+        title: t("laneNew"),
+        nameHint: t("laneNameHint"),
+        preview: (val) => showLane(head, val.name || t("laneNew")),
+        onDone: (got) => {
+          tmp.remove();
+          sketchTool = "select";
+          if (!got?.name) return refresh();
+          const list = kit.ops();
+          kit.setOps([...list, {id: newOpId(list), op: "addLane", title: got.name, at}]);
+        },
+      });
     }
     // Select tool: drag a box to another place or lane, or a lane by its title to another place.
     if (sketchTool !== "select" || (!b && !title)) return;

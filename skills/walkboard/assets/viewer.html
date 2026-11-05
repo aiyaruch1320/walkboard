@@ -4713,11 +4713,12 @@ function renderDataModel(real) {
       const m = cmark(li.dataset.col);
       if (m) {
         li.classList.add("dr-" + m.mark);
-        if (m.mark === "change" && m.was?.name) li.querySelector(".ername").prepend(el("s", "erwas", m.was.name), " ");
         li.append(draftSign(m, true));
       }
       if (c.copy) li.classList.add("ercopy", ...(c.keep ? ["keep"] : []));
-      if (c.note || c.copy) li.title = [c.copy && t("erCopyOf", c.copy), c.note].filter(Boolean).join("\n");
+      // What it was goes in the tooltip: on the row it would widen the table.
+      const was = m?.mark === "change" ? li.lastChild.title : null;
+      if (c.note || c.copy || was) li.title = [was, c.copy && t("erCopyOf", c.copy), c.note].filter(Boolean).join("\n");
       ul.append(li);
     }
     card.append(head, ul);

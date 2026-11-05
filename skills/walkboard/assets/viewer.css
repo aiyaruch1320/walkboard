@@ -1070,4 +1070,3 @@ path.mv-on{stroke:var(--new-bd)!important;stroke-width:3.2!important;stroke-dash
 /* A line or a label is marked by its own stroke, never by a box drawn around it. */
 svg .dr-add,svg .dr-change,svg .dr-remove,svg .dr-move{outline:none!important}
 .er li[class*="dr-"]{padding-right:16px}
-.er .erwas{color:var(--muted);font-weight:400}

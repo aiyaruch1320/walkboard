@@ -26,6 +26,7 @@
 - **In and out of a data model's groups.** While sketching, a table let go outside its group's frame leaves the group (`moveTable` with `to: ""`), and the frame stays with the tables left in it; back over the frame, the change drops out. A table let go over a group lands beside the others instead of on one of them, where the frame takes in no table of another group. A table alone in its frame still takes the frame along.
 - A name already in use on a data model (a table, a column of that table, a group; capitals do not count) is said so, instead of the change quietly doing nothing; a new column's field comes back with what was typed.
 - Dragging a foreign key on a data model scrolls the picture when held near an edge of the window, so the column it points at can be a screen away.
+- A column renamed in a draft shows only its new name; the old one is in the tooltip, so the table does not grow for it.
 
 ## 0.8.0
 

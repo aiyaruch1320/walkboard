@@ -4833,6 +4833,10 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
     grid.querySelectorAll(".dsel").forEach((e) => e.classList.remove("dsel"));
     elOf(x)?.classList.add("dsel");
   };
+  // A name in use: the draft would take it as what is already there and nothing would happen, so the page says so.
+  const same = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+  const tableTaken = (name, except) => v.tables.some((tb) => tb.node !== except && same(drafted.plan.nodes[tb.node]?.name ?? tb.node, name));
+  const columnTaken = (table, name, except) => v.tables.find((tb) => tb.node === table)?.columns?.some((c) => c.name !== except && same(c.name, name));
   const newNode = () => {
     const used = new Set([...Object.keys(plan.nodes), ...ops().filter((o) => o.op === "addTable").map((o) => o.node)]);
     let id;
@@ -4887,6 +4891,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
       const initial = drafted.plan.nodes[x.id]?.name ?? x.id;
       return editText(e.querySelector(".erhead"), initial, t("tableName"), {onDone: (val) => {
         if (!val || val === initial) return;
+        if (tableTaken(val, x.id)) return showProblem(t("tableTaken", val));
         const list = ops(), added = addedTable(x.id);
         if (added) return setOps(list.map((o) => (o === added ? {...o, name: val} : o)));
         const ed = list.find((o) => o.op === "editNode" && o.node === x.id), orig = plan.nodes[x.id]?.name ?? x.id;
@@ -4901,6 +4906,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
         if (!val || val === initial) return;
         const {name, type, key} = parseCol(val);
         if (name.includes(".")) return showProblem(t("colDot"));
+        if (columnTaken(table, name, column)) return showProblem(t("colTaken", name));
         const list = ops(), added = addedCol(x.id);
         if (added) return setOps(list.map((o) => (o === added ? {...o, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})} : o.table === table && o.column === column ? {...o, column: name} : o)));
         setOps(editCol(list, x.id, {...(name !== column ? {name} : {}), type, key: key ?? (col.key && !val.toLowerCase().includes(String(col.key).toLowerCase()) ? "" : col.key ?? "")}));
@@ -4909,7 +4915,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
     const initial = x.id;
     editText(e.querySelector(".erframe-label") || e, initial, t("groupName"), {onDone: (val) => {
       if (!val || val === initial) return;
-      if ((v.groups || []).some((g) => g.label === val)) return showProblem(t("zoneTaken", val));
+      if ((v.groups || []).some((g) => g.label !== x.id && same(g.label, val))) return showProblem(t("groupTaken", val));
       const list = ops(), added = list.find((o) => o.op === "addGroup" && o.group === x.id);
       if (added) return setOps(list.map((o) => (o === added ? {...o, group: val} : o.group === x.id ? {...o, group: val} : o.to === x.id ? {...o, to: val} : o)));
       const ed = list.find((o) => o.op === "editGroup" && o.label === x.id);
@@ -4960,12 +4966,12 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
     addEventListener("pointerup", up);
   };
   // Enter adds the column and opens a field for the next one, as when typing a schema; Escape (or nothing typed) stops.
-  const addColumnTo = (table) => {
+  const addColumnTo = (table, typed = "") => {
     const card = grid.querySelector(`.ertable[data-id="${CSS.escape(table)}"]`);
     if (!card) return;
     const li = el("li", "dr-add dtemp", " ");
     card.querySelector("ul").append(li);
-    editText(li, "", t("colPlaceholder"), {onDone: (val) => {
+    editText(li, typed, t("colPlaceholder"), {onDone: (val) => {
       li.remove();
       if (!val) {
         sketchTool = "select";
@@ -4976,6 +4982,11 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
         sketchTool = "select";
         refresh();
         return showProblem(t("colDot"));
+      }
+      // The field comes back with what was typed, to change the name.
+      if (columnTaken(table, name)) {
+        showProblem(t("colTaken", name));
+        return requestAnimationFrame(() => sketchApi?.addColumnTo?.(table, val));
       }
       const list = ops();
       sketchTool = "column";
@@ -5003,7 +5014,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
         sketchTool = "select";
         refresh();
         if (!val) return;
-        if ((v.groups || []).some((g) => g.label === val)) return showProblem(t("zoneTaken", val));
+        if ((v.groups || []).some((g) => same(g.label, val))) return showProblem(t("groupTaken", val));
         const list = ops();
         setOps([...list, {id: newOpId(list), op: "addGroup", group: val, tables: [x.id]}]);
       }});
@@ -5017,6 +5028,10 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
         spot.remove();
         sketchTool = "select";
         if (!val) return refresh();
+        if (tableTaken(val)) {
+          refresh();
+          return showProblem(t("tableTaken", val));
+        }
         const list = ops(), node = newNode();
         setOps([...list, {id: newOpId(list), op: "addTable", node, name: val, ...(f ? {group: f.dataset.group} : {})}], placeTable(node, x, y, f?.dataset.group ?? null));
       }});

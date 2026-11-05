@@ -84,7 +84,7 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
 2. It writes the plan and gives you a link to a page on your machine.
 3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **⋮** holds export, the theme and a short tour.
-4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom (keys V, B, Z, L, R, D; Escape leaves). Your changes are drawn dashed with a sign (+ ~ − ↦) and listed; **Ask the agent to review** sends them. Dragging a box outside draft mode only arranges the picture, unless you drop it into another zone.
+4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom (keys V, B, Z, L, R, D; Escape leaves). Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Dragging a box outside draft mode only arranges the picture, unless you drop it into another zone. On a map, **Auto | By hand** over the picture chooses whether the page lays it out or everything stays where you put it, and the corner of a zone resizes it.
 
    <img src="docs/images/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
 5. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.

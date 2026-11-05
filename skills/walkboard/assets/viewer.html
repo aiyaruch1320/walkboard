@@ -6001,24 +6001,37 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
     const home = b ? b.closest(".lane") : null, fromLi = home ? Number(home.dataset.lane) : -1;
     // A box can be in a lane once: a lane (a step) that already has it is no place for it.
     const takes = (lane) => lane && (!b || lane === home || !lane.querySelector(`[data-anchor="${CSS.escape(b.dataset.anchor)}"]`));
-    let moved = false;
+    let moved = false, float = null;
     const move = (ev) => {
       if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
+      if (!moved) {
+        // What is dragged floats over the page: a lane's own scroll would hide a box taken out of it.
+        const r = it.getBoundingClientRect();
+        float = it.cloneNode(true);
+        float.classList.add("dfloat");
+        // A picture of it only: nothing on the page should find it as the box or lane itself.
+        for (const x of [float, ...float.querySelectorAll("[data-anchor],[data-lane],[id]")]) ["data-anchor", "data-lane", "data-id", "id"].forEach((k) => x.removeAttribute(k));
+        Object.assign(float.style, {left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px"});
+        document.body.append(float);
+        it.classList.add("dleft");
+        wrap.classList.add("dragging");
+        getSelection()?.removeAllRanges();
+      }
       moved = true;
       boxDragging = true;
-      it.classList.add("lifted");
-      it.style.transform = `translate(${ev.clientX - sx}px, ${ev.clientY - sy}px)`;
+      float.style.transform = `translate(${ev.clientX - sx}px, ${ev.clientY - sy}px)`;
       const on = laneAt(ev.clientX, ev.clientY), ok = takes(on);
       laneEls().forEach((l) => l.classList.toggle("droptarget", ok && l === on && (b || l !== it)));
-      it.classList.toggle("dnodrop", !ok);
+      float.classList.toggle("dnodrop", !ok);
       document.body.classList.toggle("dnoplace", !ok);
     };
     const up = (ev) => {
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       setTimeout(() => (boxDragging = false));
-      it.style.transform = "";
-      it.classList.remove("lifted", "dnodrop");
+      float?.remove();
+      it.classList.remove("dleft");
+      wrap.classList.remove("dragging");
       document.body.classList.remove("dnoplace");
       laneEls().forEach((l) => l.classList.remove("droptarget"));
       if (!moved) return;

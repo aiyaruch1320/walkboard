@@ -601,7 +601,10 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .sketch[data-tool="remove"] [data-anchor]{cursor:pointer}
 .sketch .dsel{outline:2px solid var(--you-bd)!important;outline-offset:3px}
 .sketch [data-anchor].dtarget{outline:2px solid var(--you-bd)!important;outline-offset:3px}
-.flowview .lifted{z-index:50;position:relative;opacity:.9}
+.dfloat{position:fixed!important;z-index:10000;margin:0!important;pointer-events:none;opacity:.92;box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.dfloat.dnodrop{outline:2px dashed var(--warn-bd)!important;outline-offset:3px;opacity:.75}
+.flowview .dleft{opacity:.3}
+.flowview.dragging,.flowview.dragging *{cursor:grabbing!important;user-select:none}
 .graph svg.links .dhit,.k8s svg.links .dhit,.er svg.links .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke;cursor:pointer}
 /* Only the tools that do something with a line can click one. */
 .er.sketch:not([data-tool="select"],[data-tool="rename"],[data-tool="remove"]) svg.links .dhit{pointer-events:none}

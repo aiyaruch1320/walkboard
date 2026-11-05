@@ -349,6 +349,7 @@ body.side-open .dtip{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var
 .dpick{width:36px;height:34px;padding:0;flex:none;display:inline-flex;align-items:center;justify-content:center}
 .dnoicon{display:inline-block;width:20px;height:20px;border:1.5px dashed var(--line);border-radius:6px}
 .dwhat{resize:vertical;min-height:58px;font-size:12.5px;line-height:1.45}
+.dwhat.dnote{min-height:0;resize:none}
 .dpicker{display:flex;flex-direction:column;gap:6px}
 .dpicker[hidden]{display:none}
 .dpicker .dicons{max-height:150px}
@@ -491,7 +492,8 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map .zone:hover>.zgrip,.map.resizing .zgrip{opacity:.75}
 .map.resizing,.map.resizing *{cursor:nwse-resize!important;user-select:none}
 .lmode{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.lmode button{border:0;border-radius:0;padding:3px 10px;font-size:12.5px;background:transparent;color:var(--muted)}
+.lmode button{border:0;border-radius:0;padding:4px 8px;background:transparent;color:var(--muted);display:inline-flex;align-items:center}
+.lmode .ticon{width:16px;height:16px}
 .lmode button[aria-pressed="true"]{background:var(--you-bg);color:var(--you-tx);font-weight:600}
 @media print{.zgrip,.lmode{display:none!important}}
 .map.droptop{outline:2px dashed var(--you-bd);outline-offset:6px;border-radius:12px}

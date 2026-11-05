@@ -1618,7 +1618,8 @@ function drawLinks(container, specs, sketch = false) {
         if (stacked || lineHits(d, others, base.left, base.top).hits) {
           routeLine.dx = base.left;
           routeLine.dy = base.top;
-          const o = (x, y) => `${x - base.left} ${y - base.top}`;
+          // A tenth of a pixel is enough, and shorter paths are quicker to build and read back.
+    const o = (x, y) => `${Math.round((x - base.left) * 10) / 10} ${Math.round((y - base.top) * 10) / 10}`;
           const route = routeLine(a, b, others, lanes, o);
           d = route.d;
           const [tx, ty] = route.tip, tip = (k) => o(tx - 7 * Math.cos(route.ang + k), ty - 7 * Math.sin(route.ang + k));
@@ -1871,7 +1872,7 @@ function zoneEl(z, depth, dense = false) {
 // on every redraw, so it walks the path itself: asking an SVG element for each point takes a hundred times longer.
 // limit: stop counting once a path hits more boxes than that (it has already lost to a better way around).
 function lineHits(d, boxes, dx = 0, dy = 0, limit = Infinity) {
-  let hits = 0, len = 0, carry = 0, x = 0, y = 0;
+  let hits = 0, len = 0, x = 0, y = 0;
   // A path never leaves the box around its points (control points included): only the boxes there can be hit.
   const nums = d.match(/-?[\d.]+(?:e-?\d+)?/g)?.map(Number) || [];
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -1882,17 +1883,34 @@ function lineHits(d, boxes, dx = 0, dy = 0, limit = Infinity) {
     if (nums[i + 1] > y1) y1 = nums[i + 1];
   }
   boxes = boxes.filter((r) => x1 + dx > r.left - 3 && x0 + dx < r.right + 3 && y1 + dy > r.top - 3 && y0 + dy < r.bottom + 3);
-  const on = (near, px, py) => {
-    const qx = px + dx, qy = py + dy;
-    for (const r of near) if (qx > r.left - 3 && qx < r.right + 3 && qy > r.top - 3 && qy < r.bottom + 3) return hits++;
+  // How far a stretch runs inside a box (grown by 3 px), clipped exactly (Liang–Barsky) rather than sampled.
+  // One hit is 6 px inside, as when the path was sampled every 6 px.
+  const inside = (ax, ay, bx, by, r) => {
+    const ex = bx - ax, ey = by - ay;
+    let t0 = 0, t1 = 1;
+    for (const [p, q] of [[-ex, ax - r.left + 3], [ex, r.right + 3 - ax], [-ey, ay - r.top + 3], [ey, r.bottom + 3 - ay]]) {
+      if (p === 0) {
+        if (q < 0) return 0;
+        continue;
+      }
+      const t = q / p;
+      if (p < 0) {
+        if (t > t1) return 0;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return 0;
+        if (t < t1) t1 = t;
+      }
+    }
+    return (t1 - t0) * Math.hypot(ex, ey);
   };
   const seg = (x2, y2) => {
     const l = Math.hypot(x2 - x, y2 - y);
-    // Only the boxes this stretch can reach; most stretches reach none.
-    const lo = Math.min(x, x2) + dx, hi = Math.max(x, x2) + dx, up = Math.min(y, y2) + dy, down = Math.max(y, y2) + dy;
-    const near = boxes.filter((r) => hi > r.left - 3 && lo < r.right + 3 && down > r.top - 3 && up < r.bottom + 3);
-    for (; carry <= l && l; carry += 6) if (near.length) on(near, x + ((x2 - x) * carry) / l, y + ((y2 - y) * carry) / l);
-    carry -= l;
+    if (l) {
+      const ax = x + dx, ay = y + dy, bx = x2 + dx, by = y2 + dy;
+      const lo = Math.min(ax, bx), hi = Math.max(ax, bx), up = Math.min(ay, by), down = Math.max(ay, by);
+      for (const r of boxes) if (hi > r.left - 3 && lo < r.right + 3 && down > r.top - 3 && up < r.bottom + 3) hits += inside(ax, ay, bx, by, r) / 6;
+    }
     len += l;
     x = x2;
     y = y2;
@@ -1902,19 +1920,24 @@ function lineHits(d, boxes, dx = 0, dy = 0, limit = Infinity) {
     const n = args.match(/-?[\d.]+(?:e-?\d+)?/g).map(Number);
     if (cmd === "M") {
       [x, y] = n;
-      on(boxes, x, y);
-      carry = 6;
+      const qx = x + dx, qy = y + dy;
+      if (boxes.some((r) => qx > r.left - 3 && qx < r.right + 3 && qy > r.top - 3 && qy < r.bottom + 3)) hits++;
     } else if (cmd === "L") seg(n[0], n[1]);
     else {
-      const x0 = x, y0 = y;
-      for (let i = 1; i <= 16; i++) {
-        const k = i / 16, m = 1 - k;
-        if (cmd === "Q") seg(m * m * x0 + 2 * m * k * n[0] + k * k * n[2], m * m * y0 + 2 * m * k * n[1] + k * k * n[3]);
-        else seg(m * m * m * x0 + 3 * m * m * k * n[0] + 3 * m * k * k * n[2] + k * k * k * n[4], m * m * m * y0 + 3 * m * m * k * n[1] + 3 * m * k * k * n[3] + k * k * k * n[5]);
+      // As many straight pieces as the curve is long (a rounded corner needs two, a long curve sixteen).
+      const sx = x, sy = y, pts = [sx, sy, ...n];
+      let around = 0;
+      for (let i = 2; i < pts.length; i += 2) around += Math.hypot(pts[i] - pts[i - 2], pts[i + 1] - pts[i - 1]);
+      const steps = Math.min(16, Math.max(2, Math.ceil(around / 24)));
+      for (let i = 1; i <= steps; i++) {
+        const k = i / steps, m = 1 - k;
+        if (cmd === "Q") seg(m * m * sx + 2 * m * k * n[0] + k * k * n[2], m * m * sy + 2 * m * k * n[1] + k * k * n[3]);
+        else seg(m * m * m * sx + 3 * m * m * k * n[0] + 3 * m * k * k * n[2] + k * k * k * n[4], m * m * m * sy + 3 * m * m * k * n[1] + 3 * m * k * k * n[3] + k * k * k * n[5]);
       }
     }
   }
-  return {hits, len};
+  // Under 6 px inside is a graze, as before.
+  return {hits: Math.floor(hits), len};
 }
 
 // A line between two boxes that goes around the others: across when the way is clear, else along a lane
@@ -2269,6 +2292,9 @@ const ICON_PATHS = {
   lane: ["M3 6h13", "M3 12h13", {d: "M3 18h13", dash: "2.4 2"}, "M19.5 15v6", "M16.5 18h6"],
   redo: ["M15 14l5-5-5-5", "M20 9H9.5a5.5 5.5 0 0 0 0 11H13"],
   list: ["M9 6h11", "M9 12h11", "M9 18h11", "M4.5 6h.01", "M4.5 12h.01", "M4.5 18h.01"],
+  // Laid out by the page: boxes in a row that flows on; placed by hand: a pin.
+  autolayout: ["M3 4h7v6H3z", "M14 4h7v6h-7z", "M3 14h7v6H3z", "M14 17h6", "M17.5 14.5 20 17l-2.5 2.5"],
+  pin: ["M9 3h6", "M10 3v5.5L7 13h10l-3-4.5V3", "M12 13v8"],
 };
 function svgIcon(name) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -2372,10 +2398,11 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
 // A box's name, note and icon in one card, for a new box or one being edited; the box shows each change as it is typed.
 // The icon follows the name until one is picked. Enter, the button or a click elsewhere keeps it; Escape drops it.
 // preview(values) draws them on the box; onDone(values, or null when dropped or left without a name).
-function boxCard(beside, initial, {title, preview, onDone}) {
+// A zone uses it too: its note is the short line by its name (zone: true).
+function boxCard(beside, initial, {title, preview, onDone, zone = false}) {
   let picked = initial.icon || "";
   const nameIn = el("input", "dsearch dname");
-  nameIn.placeholder = t("boxNameHint");
+  nameIn.placeholder = t(zone ? "zoneNameHint" : "boxNameHint");
   nameIn.value = initial.name || "";
   nameIn.maxLength = 80;
   const iconBtn = el("button", "dpick");
@@ -2383,10 +2410,11 @@ function boxCard(beside, initial, {title, preview, onDone}) {
   const row = el("div", "dnamerow");
   row.append(iconBtn, nameIn);
   const whatIn = el("textarea", "dsearch dwhat");
-  whatIn.placeholder = t("boxWhat");
+  whatIn.placeholder = t(zone ? "zoneNote" : "boxWhat");
   whatIn.value = initial.what || "";
-  whatIn.maxLength = 300;
-  whatIn.rows = 3;
+  whatIn.maxLength = zone ? 120 : 300;
+  whatIn.rows = zone ? 1 : 3;
+  whatIn.classList.toggle("dnote", zone);
   const picker = el("div", "dpicker");
   picker.hidden = true;
   const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked});
@@ -2484,7 +2512,7 @@ function draftRows(viewId) {
       editLink: ["~", `${nm(o.from)} → ${nm(o.to)}`, [o.label != null ? o.label || "—" : "", o.state ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
       removeLink: ["−", `${nm(o.from)} → ${nm(o.to)}`, ""],
       editNode: ["~", o.name != null ? `${old(o.node)} → ${o.name}` : nm(o.node), [o.what != null ? o.what : "", o.icon ? "icon" : ""].filter(Boolean).join(" · ")],
-      editZone: ["~", `${o.zone} → ${o.label}`, ""],
+      editZone: ["~", o.label != null ? `${o.zone} → ${o.label}` : o.zone, [o.note != null ? o.note || "—" : "", o.icon != null ? "icon" : ""].filter(Boolean).join(" · ")],
       remove: ["−", old(o.node), ""],
       removeZone: ["−", o.zone, ""],
       move: ["↦", nm(o.node), `→ ${top(o.to)}`],
@@ -2766,15 +2794,19 @@ function renderMap(real) {
     tag.title = m.mark === "move" ? t("d_move", m.from || "—") : m.mark === "change" ? t("d_change", was) : t("d_" + m.mark);
     (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(tag);
   }
-  for (const e of fixed ? [] : movers()) {
-    const m = markOf(e);
-    if (m?.mark !== "move") continue;
-    const isZone = e.classList.contains("zone"), from = m.from ? zoneNamed(m.from) : null;
-    const body = from ? from.querySelector(":scope > .zbody") : !m.from && isZone ? map : null;
-    if (!body) continue;
-    const kids = [...body.children].filter((c) => (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
-    body.insertBefore(ghostOf(e), kids[m.fromAt] ?? (isZone && body !== map ? body.querySelector(":scope > [data-anchor]") : null));
-  }
+  // Placed by hand, the old zone keeps its size by itself: no copies.
+  const addGhosts = () => {
+    for (const e of movers()) {
+      const m = markOf(e);
+      if (m?.mark !== "move") continue;
+      const isZone = e.classList.contains("zone"), from = m.from ? zoneNamed(m.from) : null;
+      const body = from ? from.querySelector(":scope > .zbody") : !m.from && isZone ? map : null;
+      if (!body) continue;
+      const kids = [...body.children].filter((c) => (isZone ? c.matches(".zone:not(.ghost)") : c.matches("[data-anchor]")));
+      body.insertBefore(ghostOf(e), kids[m.fromAt] ?? (isZone && body !== map ? body.querySelector(":scope > [data-anchor]") : null));
+    }
+  };
+  if (!fixed) addGhosts();
   const raw = lv.layout && typeof lv.layout === "object" ? {...lv.layout} : {};
   // Each offset remembers the zone it was dragged in ("in"): once the plan puts the box in another zone, the old offset
   // no longer applies, so the box is not pushed again from its new place.
@@ -2918,6 +2950,31 @@ function renderMap(real) {
     }
     return out;
   };
+  // Back to laid out by the page, looking the same: each one keeps how far it is from where the page would put it,
+  // and a zone keeps its size where that differs from its own. What changes next makes room as usual.
+  const releaseFixed = () => {
+    const was = new Map(movers().map((e) => [e, relRect(e)]));
+    unfix();
+    // Measured as the page will draw it: with the empty copies where moved boxes were.
+    addGhosts();
+    const out = {};
+    for (const z of zoneEls()) {
+      const r = was.get(z), own = z.getBoundingClientRect();
+      if (Math.abs(r.w - own.width) > 4 || Math.abs(r.h - own.height) > 4) {
+        z.classList.add("zsized");
+        z.style.width = r.w + "px";
+        z.style.minHeight = r.h + "px";
+        out[keyOf(z)] = {x: 0, y: 0, w: r.w, h: r.h, in: homeOf(z)};
+      }
+    }
+    // Document order: a zone's own offset first, then what it holds (measured from the zone, so it does not matter).
+    for (const e of movers()) {
+      const r = was.get(e), n = relRect(e), dx = r.x - n.x, dy = r.y - n.y;
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) continue;
+      out[keyOf(e)] = {...(out[keyOf(e)] || {in: homeOf(e)}), x: dx, y: dy};
+    }
+    return Object.keys(out).length ? out : null;
+  };
   // Zones first (document order), so the boxes inside one are checked where the zone ends up.
   const placeAll = () => {
     if (fixed) return map.isConnected && layoutFixed();
@@ -3029,9 +3086,14 @@ function renderMap(real) {
     const sw = el("div", "lmode");
     sw.setAttribute("role", "group");
     sw.setAttribute("aria-label", t("layoutMode"));
-    const auto = el("button", null, t("modeAuto")), hand = el("button", null, t("modeFixed"));
-    auto.title = t("modeAutoTip");
-    hand.title = t("modeFixedTip");
+    // Icons; the words are in the tooltip.
+    const auto = el("button"), hand = el("button");
+    auto.append(svgIcon("autolayout"));
+    hand.append(svgIcon("pin"));
+    auto.title = `${t("modeAuto")}: ${t("modeAutoTip")}`;
+    hand.title = `${t("modeFixed")}: ${t("modeFixedTip")}`;
+    auto.setAttribute("aria-label", t("modeAuto"));
+    hand.setAttribute("aria-label", t("modeFixed"));
     auto.setAttribute("aria-pressed", String(!fixed));
     hand.setAttribute("aria-pressed", String(fixed));
     const to = (next) => {
@@ -3040,7 +3102,7 @@ function renderMap(real) {
       renderView();
     };
     hand.onclick = () => !fixed && to(captureFixed());
-    auto.onclick = () => fixed && to(null);
+    auto.onclick = () => fixed && to(releaseFixed());
     sw.append(auto, hand);
     tools.row.insertBefore(sw, tools.row.querySelector(".lsketch"));
   }
@@ -3210,7 +3272,8 @@ function renderMap(real) {
   });
   // A line between two boxes, in the coordinates of the lines' layer (base = its rectangle), with its arrow head.
   const routeOf = (l, a, b, all, lanes, base) => {
-    const o = (x, y) => `${x - base.left} ${y - base.top}`;
+    // A tenth of a pixel is enough, and shorter paths are quicker to build and read back.
+    const o = (x, y) => `${Math.round((x - base.left) * 10) / 10} ${Math.round((y - base.top) * 10) / 10}`;
     routeLine.dx = base.left;
     routeLine.dy = base.top;
     const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o);
@@ -3363,22 +3426,76 @@ function renderMap(real) {
       onDone: (val) => (val ? editTo(id, val) : keepFocus(() => renderView())),
     });
   };
-  const renameTo = (x, val) => {
-    const list = ops(), added = addOp(x.kind, x.id);
-    if (val !== x.id && zoneNamed(val)) return showProblem(t("zoneTaken", val));
-    // Its place and size, and what it holds, go with the new name.
-    const lay = Object.keys(layout()).length ? Object.fromEntries(Object.entries(layout()).map(([k, q]) => [k === "z:" + x.id ? "z:" + val : k, q?.in === x.id ? {...q, in: val} : q])) : undefined;
-    const fix = (o) => Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val : w]));
-    if (added) return setOps(list.map((o) => (o === added ? {...o, zone: val} : fix(o))), undefined, lay);
-    const ed = list.find((o) => o.op === "editZone" && o.label === x.id);
-    if (ed) return setOps(ed.zone === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)), undefined, lay);
-    setOps([...list, {id: nextId(list), op: "editZone", zone: x.id, label: val}], undefined, lay);
+  // The zone as the plan has it (before this draft), found by its label.
+  const realZone = (lbl) => {
+    const go = (zs) => {
+      for (const z of Array.isArray(zs) ? zs : []) {
+        if (z?.label === lbl) return z;
+        const f = go(z?.zones);
+        if (f) return f;
+      }
+      return null;
+    };
+    return go(lv.zones);
+  };
+  // A zone's name, note and icon as the card left them. A zone the draft added just changes; another gets one
+  // editZone with what differs from the plan. A new name goes to the changes that name it, and to its place and size.
+  const zoneTo = (x, val) => {
+    const renaming = val.name !== x.id;
+    if (renaming && zoneNamed(val.name)) {
+      showProblem(t("zoneTaken", val.name));
+      return keepFocus(() => renderView());
+    }
+    const list = ops(), added = addOp("zone", x.id);
+    const lay = renaming && Object.keys(layout()).length ? Object.fromEntries(Object.entries(layout()).map(([k, q]) => [k === "z:" + x.id ? "z:" + val.name : k, q?.in === x.id ? {...q, in: val.name} : q])) : undefined;
+    const fix = (o) => (renaming ? Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val.name : w])) : o);
+    let next;
+    if (added) {
+      const {icon: _i, note: _n, ...base} = added;
+      next = list.map((o) => (o === added ? {...base, zone: val.name, ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {})} : fix(o)));
+    } else {
+      const ed = list.find((o) => o.op === "editZone" && (o.label ?? o.zone) === x.id);
+      const from = ed ? ed.zone : x.id, orig = realZone(from) || {}, fields = {};
+      if (val.name !== from) fields.label = val.name;
+      if ((val.icon || "") !== (orig.icon ?? "")) fields.icon = val.icon || "";
+      if ((val.what || "") !== (orig.note ?? "")) fields.note = val.what || "";
+      const op = Object.keys(fields).length ? {id: ed?.id ?? nextId(list), op: "editZone", zone: from, ...fields} : null;
+      const rest = list.map((o) => (o === ed ? o : fix(o)));
+      next = ed ? (op ? rest.map((o) => (o === ed ? op : o)) : rest.filter((o) => o !== ed)) : op ? [...rest, op] : rest;
+    }
+    if (JSON.stringify(next) === JSON.stringify(list)) return keepFocus(() => renderView());
+    setOps(next, undefined, lay);
+  };
+  // A zone's title drawn with these values (name, note, icon), as the card types them.
+  const showZone = (z, val, empty = "") => {
+    const head = z.querySelector(":scope > .zhead"), ic = iconEl({name: val.name, icon: val.icon || undefined}, "", null);
+    head.querySelector(":scope > .icon")?.remove();
+    if (ic) head.prepend(ic);
+    const name = [...head.children].find((c) => c.tagName === "SPAN" && !c.classList.contains("ptag") && !c.classList.contains("icon"));
+    if (name) name.textContent = val.name || empty;
+    let note = head.querySelector(":scope > small");
+    if (!note && val.what) name?.after((note = el("small")));
+    if (note) note.textContent = val.what;
+    draw();
   };
   const rename = (x) => {
     const e = elOf(x);
     if (!e) return;
     if (x.kind === "node") return editBox(x.id, e);
-    editText(e.querySelector(":scope > .zhead"), x.id, t("zoneName"), {onDone: (val) => val && val !== x.id && renameTo(x, val)});
+    const z = drafted.view && (function find(zs) {
+      for (const q of zs || []) {
+        if (q?.label === x.id) return q;
+        const f = find(q?.zones);
+        if (f) return f;
+      }
+      return null;
+    })(drafted.view.zones);
+    boxCard(e.getBoundingClientRect(), {name: x.id, what: z?.note ?? "", icon: z?.icon ?? ""}, {
+      zone: true,
+      title: t("zoneEditTitle"),
+      preview: (val) => showZone(e, val),
+      onDone: (val) => (val ? zoneTo(x, val) : keepFocus(() => renderView())),
+    });
   };
   const setIcon = (id, icon) => {
     const list = ops(), added = addOp("node", id);
@@ -3607,9 +3724,12 @@ function renderMap(real) {
       body.insertBefore(tmp, [...body.children].filter((c) => c.matches(".zone:not(.ghost)"))[at] ?? (z ? body.querySelector(":scope > [data-anchor]") : body.querySelector(":scope > svg")));
       if (fixed) pinAt(tmp, z || map, x, y);
       draw();
-      editText(lbl, "", t("zoneName"), {
-        onDone: (val) => {
-          const spot = fixed ? relRect(tmp, z || map) : null;
+      boxCard(tmp.getBoundingClientRect(), {}, {
+        zone: true,
+        title: t("zoneNewTitle", z ? z.dataset.zone : t("topLevel")),
+        preview: (val) => showZone(tmp, val, t("zoneNew")),
+        onDone: (got) => {
+          const spot = fixed ? relRect(tmp, z || map) : null, val = got?.name;
           tmp.remove();
           sketchTool = "select";
           if (!val || zoneNamed(val)) draw();
@@ -3619,7 +3739,7 @@ function renderMap(real) {
             return showProblem(t("zoneTaken", val));
           }
           const list = ops();
-          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at}], undefined, spot ? {...layout(), ["z:" + val]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
+          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at, ...(got.icon ? {icon: got.icon} : {}), ...(got.what ? {note: got.what} : {})}], undefined, spot ? {...layout(), ["z:" + val]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
         },
       });
       return;
@@ -5187,7 +5307,15 @@ function scrollHints() {
 // scripts/perf.mjs sets window.__wbRender to an array: each time a picture is built again adds how long it took (ms).
 function renderView() {
   const t0 = performance.now();
+  // The picture is built again after every change: the page stays where it was. The new picture may only get its
+  // height when its lines are drawn (a frame later), so the old height holds until then.
+  const box = document.getElementById("view"), x = scrollX, y = scrollY, left = box?.querySelector(".scroll")?.scrollLeft || 0;
+  if (box) box.style.minHeight = box.offsetHeight + "px";
   renderViewNow();
+  if (scrollX !== x || scrollY !== y) scrollTo(x, y);
+  const sc = box?.querySelector(".scroll");
+  if (sc && left) sc.scrollLeft = left;
+  if (box) requestAnimationFrame(() => requestAnimationFrame(() => (box.style.minHeight = "")));
   if (side?.kind === "draft") renderSide();
   window.__wbRender?.push(performance.now() - t0);
 }

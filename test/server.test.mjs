@@ -337,6 +337,12 @@ test("boxes and zones moved on a map are saved as offsets, only for what the map
   const read = () => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[0].layout;
   assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {x: -30, y: 12}, "z:Sub": {x: 5, y: 0}, ghost: {x: 1, y: 1}}})).status, 200);
   assert.deepEqual(read(), {a: {x: -30, y: 12}, "z:Sub": {x: 5, y: 0}});
+  // The sides chosen for a map's lines are kept with its layout; bad ones are refused, null drops them.
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {x: 1, y: 2}, "@sides": {"a>b": {from: "bottom", to: "top"}}}})).status, 200);
+  assert.deepEqual(read(0)["@sides"], {"a>b": {from: "bottom", to: "top"}});
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {"@sides": {"a>b": {from: "middle"}}}})).status, 400);
+  assert.equal((await post(s, "/api/layout", {view: "m", positions: {a: {x: 1, y: 2}, "@sides": null}})).status, 200);
+  assert.equal(read(0)["@sides"], undefined);
   assert.equal((await post(s, "/api/layout", {view: "m", positions: null})).status, 200);
   assert.equal(read(), undefined);
 });

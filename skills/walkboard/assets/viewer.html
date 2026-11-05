@@ -1760,7 +1760,7 @@ function readHelp(button, kind) {
     if (arrows) for (const m of ["add", "change", "remove"]) parts.push(row(lineSample((kind === "lines" ? "l-ok" : "l-flow") + " dr-" + m), t("lh_" + m)));
   }
   // On a picture whose boxes can be arranged, a line can be told which sides to meet.
-  if (["state", "decision", "impact"].includes(kind) && served && !snapshot) parts.push(el("div", "lhtext", t("rh_sides")));
+  if (["state", "decision", "impact", "lines"].includes(kind) && served && !snapshot) parts.push(el("div", "lhtext", t("rh_sides")));
   if (arrows) parts.push(el("div", "dhint", t("lh_shape")));
   const pop = popover(0, 0, parts);
   pop.classList.add("lhcard");
@@ -2099,9 +2099,48 @@ function lineHits(d, boxes, dx = 0, dy = 0, limit = Infinity) {
   return {hits: Math.floor(hits), len};
 }
 
+// Two rows of buttons, Leaves and Arrives: Auto or a side; chosen is changed in place and onPick called.
+function sideChooser(chosen, onPick) {
+  const wrap = el("div", "dsides");
+  for (const end of ["from", "to"]) {
+    const row = el("div", "dsiderow");
+    row.append(el("span", "dsidelabel", t(end === "from" ? "sideFrom" : "sideTo")));
+    for (const side of [null, "left", "top", "right", "bottom"]) {
+      const b = el("button", "dside", side ? {left: "◀", top: "▲", right: "▶", bottom: "▼"}[side] : t("sideAuto"));
+      b.type = "button";
+      b.title = t(side ? "side_" + side : "sideAutoTip");
+      b.setAttribute("aria-pressed", (chosen[end] || null) === side);
+      b.onclick = () => {
+        chosen[end] = side;
+        row.querySelectorAll(".dside").forEach((x) => x.setAttribute("aria-pressed", x === b));
+        onPick();
+      };
+      row.append(b);
+    }
+    wrap.append(row);
+  }
+  return wrap;
+}
+// A line from a chosen side of a to a chosen side of b (the other side faces it), leaving and arriving square to each.
+const SIDE_NORMAL = {left: [-1, 0], right: [1, 0], top: [0, -1], bottom: [0, 1]};
+function facingSide(r, q) {
+  const dx = (q.left + q.width / 2 - (r.left + r.width / 2)) / r.width, dy = (q.top + q.height / 2 - (r.top + r.height / 2)) / r.height;
+  return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? "top" : "bottom") : dx < 0 ? "left" : "right";
+}
+function sidePoint(r, side, out = 0) {
+  return side === "top" ? [r.left + r.width / 2, r.top - out] : side === "bottom" ? [r.left + r.width / 2, r.bottom + out] : side === "left" ? [r.left - out, r.top + r.height / 2] : [r.right + out, r.top + r.height / 2];
+}
+function sideCurve(a, b, want, o) {
+  const fa = want.from || facingSide(a, b), fb = want.to || facingSide(b, a);
+  const p0 = sidePoint(a, fa), p3 = sidePoint(b, fb, 4), n0 = SIDE_NORMAL[fa], n3 = SIDE_NORMAL[fb];
+  const k = Math.max(30, Math.hypot(p3[0] - p0[0], p3[1] - p0[1]) * 0.4);
+  return {kind: "chosen", from: fa, to: fb, d: `M${o(...p0)} C${o(p0[0] + n0[0] * k, p0[1] + n0[1] * k)}, ${o(p3[0] + n3[0] * k, p3[1] + n3[1] * k)}, ${o(...p3)}`, tip: p3, ang: Math.atan2(-n3[1], -n3[0])};
+}
 // A line between two boxes that goes around the others: across when the way is clear, else along a lane
 // below, above or beside them. Lanes are shared per draw (lanes), so lines running the same way stay apart.
-function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
+// want: {from, to}, sides chosen for the line ("top", "right", "bottom", "left"; null: any): only ways that leave and
+// arrive there count, and when none does, a curve from one chosen side to the other.
+function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`, want = null) {
   const ax = a.left + a.width / 2, ay = a.top + a.height / 2, bx = b.left + b.width / 2, by = b.top + b.height / 2;
   const between = (lo, hi, f) => others.filter((r) => f(r, lo, hi));
   const inX = (r, lo, hi) => r.right > lo && r.left < hi, inY = (r, lo, hi) => r.bottom > lo && r.top < hi;
@@ -2114,35 +2153,36 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
     };
     return `M${o(...p)} L${o(...toward(q, p))} Q${o(...q)} ${o(...toward(q, r))} L${o(...toward(r, q))} Q${o(...r)} ${o(...toward(r, s))} L${o(...s)}`;
   };
+  // Each way says the side it leaves a and the side it reaches b.
   const candidates = [];
   if (Math.abs(bx - ax) >= Math.abs(by - ay)) {
     const dir = bx > ax ? 1 : -1, x1 = dir > 0 ? a.right : a.left, x2 = dir > 0 ? b.left - 4 : b.right + 4;
     const dx = Math.max(24, Math.abs(x2 - x1) / 2) * dir;
-    candidates.push({kind: "direct", d: `M${o(x1, ay)} C${o(x1 + dx, ay)}, ${o(x2 - dx, by)}, ${o(x2, by)}`, tip: [x2, by], ang: dir > 0 ? 0 : Math.PI});
+    candidates.push({kind: "direct", from: dir > 0 ? "right" : "left", to: dir > 0 ? "left" : "right", d: `M${o(x1, ay)} C${o(x1 + dx, ay)}, ${o(x2 - dx, by)}, ${o(x2, by)}`, tip: [x2, by], ang: dir > 0 ? 0 : Math.PI});
   } else {
     const dir = by > ay ? 1 : -1, y1 = dir > 0 ? a.bottom : a.top, y2 = dir > 0 ? b.top - 4 : b.bottom + 4;
     const dy = Math.max(20, Math.abs(y2 - y1) / 2) * dir;
-    candidates.push({kind: "direct", d: `M${o(ax, y1)} C${o(ax, y1 + dy)}, ${o(bx, y2 - dy)}, ${o(bx, y2)}`, tip: [bx, y2], ang: dir > 0 ? Math.PI / 2 : -Math.PI / 2});
+    candidates.push({kind: "direct", from: dir > 0 ? "bottom" : "top", to: dir > 0 ? "top" : "bottom", d: `M${o(ax, y1)} C${o(ax, y1 + dy)}, ${o(bx, y2 - dy)}, ${o(bx, y2)}`, tip: [bx, y2], ang: dir > 0 ? Math.PI / 2 : -Math.PI / 2});
   }
   // Leave and arrive off centre, so a line going one way and one coming back do not share a point.
   const sx = bx > ax ? 1 : -1, sy = by > ay ? 1 : -1;
   const px = ax + sx * a.width * 0.22, qx = bx - sx * b.width * 0.22, py = ay + sy * a.height * 0.22, qy = by - sy * b.height * 0.22;
   const under = Math.max(a.bottom, b.bottom, ...between(...xs, inX).map((r) => r.bottom)) + 12 + 9 * (lanes.under || 0);
-  candidates.push({kind: "under", d: elbow([px, a.bottom], [px, under], [qx, under], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
+  candidates.push({kind: "under", from: "bottom", to: "bottom", d: elbow([px, a.bottom], [px, under], [qx, under], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
   const over = Math.min(a.top, b.top, ...between(...xs, inX).map((r) => r.top)) - 12 - 9 * (lanes.over || 0);
-  candidates.push({kind: "over", d: elbow([px, a.top], [px, over], [qx, over], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
+  candidates.push({kind: "over", from: "top", to: "top", d: elbow([px, a.top], [px, over], [qx, over], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
   const right = Math.max(a.right, b.right, ...between(...ys, inY).map((r) => r.right)) + 12 + 9 * (lanes.right || 0);
-  candidates.push({kind: "right", d: elbow([a.right, py], [right, py], [right, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
+  candidates.push({kind: "right", from: "right", to: "right", d: elbow([a.right, py], [right, py], [right, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
   const left = Math.min(a.left, b.left, ...between(...ys, inY).map((r) => r.left)) - 12 - 9 * (lanes.left || 0);
-  candidates.push({kind: "left", d: elbow([a.left, py], [left, py], [left, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
+  candidates.push({kind: "left", from: "left", to: "left", d: elbow([a.left, py], [left, py], [left, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
   // Through the nearest gap: around one side, or out of one side and into the facing side of the other box.
   const step = (kind) => 14 + 9 * (lanes[kind] || 0);
   const nearUnder = Math.max(a.bottom, b.bottom) + step("near-under"), nearOver = Math.min(a.top, b.top) - step("near-over");
   const nearRight = Math.max(a.right, b.right) + step("near-right"), nearLeft = Math.min(a.left, b.left) - step("near-left");
-  candidates.push({kind: "near-under", d: elbow([px, a.bottom], [px, nearUnder], [qx, nearUnder], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
-  candidates.push({kind: "near-over", d: elbow([px, a.top], [px, nearOver], [qx, nearOver], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
-  candidates.push({kind: "near-right", d: elbow([a.right, py], [nearRight, py], [nearRight, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
-  candidates.push({kind: "near-left", d: elbow([a.left, py], [nearLeft, py], [nearLeft, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
+  candidates.push({kind: "near-under", from: "bottom", to: "bottom", d: elbow([px, a.bottom], [px, nearUnder], [qx, nearUnder], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
+  candidates.push({kind: "near-over", from: "top", to: "top", d: elbow([px, a.top], [px, nearOver], [qx, nearOver], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2});
+  candidates.push({kind: "near-right", from: "right", to: "right", d: elbow([a.right, py], [nearRight, py], [nearRight, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI});
+  candidates.push({kind: "near-left", from: "left", to: "left", d: elbow([a.left, py], [nearLeft, py], [nearLeft, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0});
   // Around the top or bottom and in from the side, or out of the side and round: for a box stacked under or over another.
   const round = (pts, rad = 8) => {
     const toward = (u, v) => {
@@ -2155,21 +2195,28 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`) {
   };
   const gapIn = bx > ax ? b.left - step("in") : b.right + step("in"), inEnd = bx > ax ? b.left - 4 : b.right + 4, inAng = bx > ax ? 0 : Math.PI;
   const outX = bx > ax ? a.right + step("out") : a.left - step("out"), outFrom = bx > ax ? a.right : a.left;
-  candidates.push({kind: "over", d: round([[px, a.top], [px, over], [gapIn, over], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
-  candidates.push({kind: "under", d: round([[px, a.bottom], [px, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
-  candidates.push({kind: "over", d: round([[outFrom, ay], [outX, ay], [outX, over], [qx, over], [qx, b.top - 4]]), tip: [qx, b.top - 4], ang: Math.PI / 2});
-  candidates.push({kind: "under", d: round([[outFrom, ay], [outX, ay], [outX, under], [qx, under], [qx, b.bottom + 4]]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
+  const inSide = bx > ax ? "left" : "right", outSide = bx > ax ? "right" : "left";
+  candidates.push({kind: "over", from: "top", to: inSide, d: round([[px, a.top], [px, over], [gapIn, over], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "under", from: "bottom", to: inSide, d: round([[px, a.bottom], [px, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "over", from: outSide, to: "top", d: round([[outFrom, ay], [outX, ay], [outX, over], [qx, over], [qx, b.top - 4]]), tip: [qx, b.top - 4], ang: Math.PI / 2});
+  candidates.push({kind: "under", from: outSide, to: "bottom", d: round([[outFrom, ay], [outX, ay], [outX, under], [qx, under], [qx, b.bottom + 4]]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2});
   // Out of the side, around everything, in from the side: when boxes stand above and below both ends.
-  candidates.push({kind: "over", d: round([[outFrom, ay], [outX, ay], [outX, over], [gapIn, over], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
-  candidates.push({kind: "under", d: round([[outFrom, ay], [outX, ay], [outX, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "over", from: outSide, to: inSide, d: round([[outFrom, ay], [outX, ay], [outX, over], [gapIn, over], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
+  candidates.push({kind: "under", from: outSide, to: inSide, d: round([[outFrom, ay], [outX, ay], [outX, under], [gapIn, under], [gapIn, by], [inEnd, by]]), tip: [inEnd, by], ang: inAng});
   const across = (kind, xOrY, build) => candidates.push({kind, ...build(xOrY)});
-  if (b.right < a.left) for (const [kind, x] of [["z-a", a.left - step("z-a")], ["z-b", b.right + step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.left, py], [v, py], [v, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI}));
-  if (b.left > a.right) for (const [kind, x] of [["z-a", a.right + step("z-a")], ["z-b", b.left - step("z-b")]]) across(kind, x, (v) => ({d: elbow([a.right, py], [v, py], [v, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0}));
-  if (b.top > a.bottom) for (const [kind, y] of [["z-c", a.bottom + step("z-c")], ["z-d", b.top - step("z-d")]]) across(kind, y, (v) => ({d: elbow([px, a.bottom], [px, v], [qx, v], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2}));
-  if (b.bottom < a.top) for (const [kind, y] of [["z-c", a.top - step("z-c")], ["z-d", b.bottom + step("z-d")]]) across(kind, y, (v) => ({d: elbow([px, a.top], [px, v], [qx, v], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2}));
+  if (b.right < a.left) for (const [kind, x] of [["z-a", a.left - step("z-a")], ["z-b", b.right + step("z-b")]]) across(kind, x, (v) => ({from: "left", to: "right", d: elbow([a.left, py], [v, py], [v, qy], [b.right + 4, qy]), tip: [b.right + 4, qy], ang: Math.PI}));
+  if (b.left > a.right) for (const [kind, x] of [["z-a", a.right + step("z-a")], ["z-b", b.left - step("z-b")]]) across(kind, x, (v) => ({from: "right", to: "left", d: elbow([a.right, py], [v, py], [v, qy], [b.left - 4, qy]), tip: [b.left - 4, qy], ang: 0}));
+  if (b.top > a.bottom) for (const [kind, y] of [["z-c", a.bottom + step("z-c")], ["z-d", b.top - step("z-d")]]) across(kind, y, (v) => ({from: "bottom", to: "top", d: elbow([px, a.bottom], [px, v], [qx, v], [qx, b.top - 4]), tip: [qx, b.top - 4], ang: Math.PI / 2}));
+  if (b.bottom < a.top) for (const [kind, y] of [["z-c", a.top - step("z-c")], ["z-d", b.bottom + step("z-d")]]) across(kind, y, (v) => ({from: "top", to: "bottom", d: elbow([px, a.top], [px, v], [qx, v], [qx, b.bottom + 4]), tip: [qx, b.bottom + 4], ang: -Math.PI / 2}));
+  // Sides chosen for this line: only the ways that fit them; none fits, a curve between the two sides.
+  let pool = candidates;
+  if (want?.from || want?.to) {
+    pool = candidates.filter((c) => (!want.from || c.from === want.from) && (!want.to || c.to === want.to));
+    if (!pool.length) return sideCurve(a, b, want, o);
+  }
   // Fewest boxes crossed, then the shortest; the direct line wins whenever it is clear.
   let best = null;
-  for (const c of candidates) {
+  for (const c of pool) {
     const {hits, len} = lineHits(c.d, others, routeLine.dx, routeLine.dy, best ? best.score / 1e5 : Infinity);
     if (!hits && c.kind === "direct") return c;
     const score = hits * 1e5 + len;
@@ -2378,6 +2425,9 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     fetch("/api/layout?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({view: v.id, positions})}).catch(() => {});
   };
   const snap = () => ({layout: v.layout || null, ops: drafts ? draftOps(v.id) : null});
+  // The sides chosen for a map's lines ride along when the layout is written again (a drag, the layout switch);
+  // only a layout that says "@sides" itself, or none at all (arrange again), changes them.
+  const keepSides = (next) => (next && v.layout?.["@sides"] && !("@sides" in next) ? {...next, "@sides": v.layout["@sides"]} : next);
   const refresh = () => {
     const placed = !!Object.keys(v.layout || {}).length, any = placed || (drafts && !!draftOps(v.id).length), history = hist.back.length || hist.fwd.length;
     // A picture that takes a draft always offers the pencil; while sketching, the toolbar holds all of this.
@@ -2440,6 +2490,7 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     done(before, positions) {
       hist.back.push({layout: before || null, ops: drafts ? draftOps(v.id) : null});
       hist.fwd.length = 0;
+      positions = keepSides(positions);
       v.layout = positions;
       save(positions);
       refresh();
@@ -2456,7 +2507,7 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     change(before, next) {
       hist.back.push(before);
       hist.fwd.length = 0;
-      put(next);
+      put({...next, layout: keepSides(next.layout)});
       refresh();
     },
   };
@@ -3274,7 +3325,7 @@ function renderMap(real) {
   // Each offset remembers the zone it was dragged in ("in"): once the plan puts the box in another zone, the old offset
   // no longer applies, so the box is not pushed again from its new place.
   const homes = Object.fromEntries(movers().map((e) => [keyOf(e), homeOf(e)]));
-  for (const [k, q] of Object.entries(raw)) if (!Number.isFinite(q?.x) || !Number.isFinite(q?.y) || (q.in != null && q.in !== homes[k])) delete raw[k];
+  for (const [k, q] of Object.entries(raw)) if (k !== "@sides" && (!Number.isFinite(q?.x) || !Number.isFinite(q?.y) || (q.in != null && q.in !== homes[k]))) delete raw[k];
   // Forget the rest on the page now too, so undo, the buttons and the next save see only what still applies.
   if (lv.layout && JSON.stringify(raw) !== JSON.stringify(lv.layout)) {
     if (Object.keys(raw).length) lv.layout = raw;
@@ -3743,12 +3794,21 @@ function renderMap(real) {
     }, 500);
   });
   // A line between two boxes, in the coordinates of the lines' layer (base = its rectangle), with its arrow head.
+  // The sides a line was given (layout "@sides", kept with where things are), or the ones being tried in its card or by
+  // dragging an end (sidePreview).
+  let sidePreview = null, sideDrag = null, endsShown = null;
+  const sidesNow = () => (lv.layout?.["@sides"] && typeof lv.layout["@sides"] === "object" ? lv.layout["@sides"] : {});
+  const wantOf = (l) => {
+    const k = `${l.from}>${l.to}`, pv = sidePreview?.key === k ? sidePreview : null, s0 = sidesNow()[k] || {};
+    const pick = (end) => (pv && pv[end] !== undefined ? (pv[end] === "auto" ? null : pv[end]) : s0[end] || null);
+    return {from: pick("from"), to: pick("to")};
+  };
   const routeOf = (l, a, b, all, lanes, base) => {
     // A tenth of a pixel is enough, and shorter paths are quicker to build and read back.
     const o = (x, y) => `${Math.round((x - base.left) * 10) / 10} ${Math.round((y - base.top) * 10) / 10}`;
     routeLine.dx = base.left;
     routeLine.dy = base.top;
-    const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o);
+    const route = routeLine(a, b, all.filter((r) => r !== a && r !== b), lanes, o, wantOf(l));
     const [x2, y2] = route.tip, ang = route.ang;
     const tip = (k) => o(x2 - 7 * Math.cos(ang + k), y2 - 7 * Math.sin(ang + k));
     route.headD = l.state === "blocked" ? `M${o(x2 - 6 * Math.sin(ang), y2 + 6 * Math.cos(ang))} L${o(x2 + 6 * Math.sin(ang), y2 - 6 * Math.cos(ang))}` : `M${tip(0.45)} L${o(x2, y2)} L${tip(-0.45)}`;
@@ -3809,7 +3869,7 @@ function renderMap(real) {
     const base = svg.clear();
     routes = [];
     drawn = [];
-    const all = Object.values(rects);
+    const all = Object.values(rects), endAt = {};
     for (const l of v.links || []) {
       const a = rects[l.from], b = rects[l.to];
       if (!a || !b) continue;
@@ -3820,12 +3880,49 @@ function renderMap(real) {
       const lk = PROF.lineKindOf(l.kind);
       const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}${lk ? " lk-" + lk.def.style : ""}${lm ? " dr-" + lm : ""}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
       drawn.push({link: l, from: l.from, to: l.to, line, head, route: r, at: {left: a.left - mr.left, top: a.top - mr.top}});
-      if (isSketch && l.state !== "uses") {
+      if ((isSketch || canMoveMap()) && l.state !== "uses") {
         const hit = document.createElementNS(svg.namespaceURI, "path");
         hit.setAttribute("d", route.d);
         hit.setAttribute("class", "dhit");
         [hit.dataset.from, hit.dataset.to] = [l.from, l.to];
         svg.append(hit);
+      }
+      // Handles at both ends (shown while the line is pointed at): drag one to another side of its box.
+      if (canMoveMap() && l.state !== "uses" && l.from !== l.to) {
+        const nums = route.d.match(/-?[\d.]+/g).map(Number), p0 = [nums[0], nums[1]], p1 = [nums[2], nums[3]];
+        const tipAt = [route.tip[0] - base.left, route.tip[1] - base.top];
+        const dd = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+        const k = `${l.from}>${l.to}`;
+        for (const [end, [hx, hy]] of [["from", [p0[0] + ((p1[0] - p0[0]) / dd) * 9, p0[1] + ((p1[1] - p0[1]) / dd) * 9]], ["to", [tipAt[0] - Math.cos(route.ang) * 9, tipAt[1] - Math.sin(route.ang) * 9]]]) {
+          const h = document.createElementNS(svg.namespaceURI, "circle");
+          h.setAttribute("cx", hx);
+          h.setAttribute("cy", hy);
+          h.setAttribute("r", 6);
+          h.setAttribute("class", "dend" + (endsShown === k || sideDrag?.key === k ? " on" : ""));
+          Object.assign(h.dataset, {from: l.from, to: l.to, end});
+          svg.append(h);
+        }
+        endAt[k] = {from: p0, to: tipAt};
+      }
+    }
+    // An end being dragged: the middle of each side of the box it would meet (the nearest lit), and while drafting, a
+    // guide from the end that stays to the box it would join.
+    if (sideDrag) {
+      const r = rects[sideDrag.id];
+      const kept = sideDrag.reach && endAt[sideDrag.key]?.[sideDrag.end === "from" ? "to" : "from"];
+      if (kept && r) {
+        const g = document.createElementNS(svg.namespaceURI, "path"), m = sidePoint(r, sideDrag.side || "left", 4);
+        g.setAttribute("class", "dr-add dtmp");
+        g.setAttribute("d", `M${kept[0]} ${kept[1]} L${m[0] - base.left} ${m[1] - base.top}`);
+        svg.append(g);
+      }
+      if (r) for (const side of ["left", "top", "right", "bottom"]) {
+        const [x, y] = sidePoint(r, side), d = document.createElementNS(svg.namespaceURI, "circle");
+        d.setAttribute("cx", x - base.left);
+        d.setAttribute("cy", y - base.top);
+        d.setAttribute("r", 5);
+        d.setAttribute("class", "dsidedot" + (sideDrag.side === side ? " on" : ""));
+        svg.append(d);
       }
     }
   });
@@ -4117,7 +4214,9 @@ function renderMap(real) {
       head.textContent = `${drafted.plan.nodes[from]?.name ?? from} → ${drafted.plan.nodes[to]?.name ?? to}`;
       label.focus();
     };
-    const parts = [head, label, chips, name, ...(kindChoices.length ? [kindRow] : []), turn];
+    // Which sides of its boxes it meets (arrangement, not a change of plan).
+    const sd = fresh ? null : sideRows(from, to);
+    const parts = [head, label, chips, name, ...(kindChoices.length ? [kindRow] : []), ...(sd ? [sd.el] : []), turn];
     if (!fresh) {
       const removed = marks.links[`${from}>${to}`]?.mark === "remove";
       const del = el("button", "dlinkx");
@@ -4133,8 +4232,14 @@ function renderMap(real) {
     const pop = popover(x + 10, y + 10, parts, {
       beside: end,
       onClose: (why) => {
+        if (why === "removed" || why === "replaced" || why === "escape" || why === "reverse") sd?.cancel();
         if (why === "removed" || why === "replaced" || why === "escape") return;
-        if (why !== "reverse") return commit();
+        if (why !== "reverse") {
+          const moved = sd?.commit(), before = JSON.stringify(ops());
+          commit();
+          if (moved && JSON.stringify(ops()) === before) keepFocus(() => renderView());
+          return;
+        }
         // Label or kind typed before turning it round: kept, then the line turns.
         const lab = cleanText(label.value), state0 = l.state || "ok";
         if (lab !== (l.label || "") || state !== state0 || lineKind !== (l.kind || "")) commit();
@@ -4192,6 +4297,171 @@ function renderMap(real) {
     }
   };
   lightLines(map);
+  // ---- which sides of its boxes a line meets: chosen in its card or by dragging an end, kept in the layout ("@sides"),
+  // so it is arrangement, not a change of plan. While drafting, an end let go on (or near) another box joins it there.
+  const redraw = () => {
+    drawnSig = "";
+    draw();
+  };
+  const sidesLayout = (k, chosen, base = layout()) => {
+    const all = {...sidesNow()};
+    if (chosen.from || chosen.to) all[k] = {...(chosen.from ? {from: chosen.from} : {}), ...(chosen.to ? {to: chosen.to} : {})};
+    else delete all[k];
+    return {...base, "@sides": Object.keys(all).length ? all : null};
+  };
+  const keepSidesOf = (k, chosen) => tools.done(lv.layout, sidesLayout(k, chosen));
+  const sideRows = (from, to) => {
+    const k = `${from}>${to}`, now = sidesNow()[k] || {};
+    const chosen = {from: now.from || null, to: now.to || null};
+    const box = sideChooser(chosen, () => {
+      sidePreview = {key: k, from: chosen.from ?? "auto", to: chosen.to ?? "auto"};
+      redraw();
+    });
+    return {
+      el: box,
+      cancel() {
+        sidePreview = null;
+        redraw();
+      },
+      commit() {
+        sidePreview = null;
+        if ((chosen.from || null) === (now.from || null) && (chosen.to || null) === (now.to || null)) return redraw(), false;
+        keepSidesOf(k, chosen);
+        return true;
+      },
+    };
+  };
+  const showEnds = (k) => {
+    endsShown = k;
+    svg.querySelectorAll(".dend").forEach((h) => h.classList.toggle("on", `${h.dataset.from}>${h.dataset.to}` === k));
+  };
+  let hideEnds = 0;
+  if (canMoveMap()) {
+    map.addEventListener("pointerover", (e) => {
+      const h = !sideDrag && e.target.closest?.(".dhit, .dend");
+      if (!h) return;
+      clearTimeout(hideEnds);
+      showEnds(`${h.dataset.from}>${h.dataset.to}`);
+    });
+    map.addEventListener("pointerout", (e) => {
+      if (!e.target.closest?.(".dhit, .dend") || sideDrag) return;
+      clearTimeout(hideEnds);
+      hideEnds = setTimeout(() => showEnds(null), 400);
+    });
+    // Outside draft mode a line's card holds only that: which sides it meets.
+    map.addEventListener("click", (e) => {
+      const hit = !isSketch && e.target.closest?.(".dhit");
+      if (!hit || mapDragged) return;
+      const {from, to} = hit.dataset, sd = sideRows(from, to), keep = el("button", "primary", t("keep"));
+      const nm = (id) => drafted.plan.nodes[id]?.name ?? id;
+      const pop = popover(e.clientX + 10, e.clientY + 10, [el("div", "dphead", `${nm(from)} → ${nm(to)}`), sd.el, keep, el("div", "dhint", t("sideHint"))], {
+        beside: map.querySelector(`[data-anchor="${CSS.escape(to)}"]`)?.getBoundingClientRect(),
+        onClose: (why) => (why === "escape" || why === "replaced" ? sd.cancel() : sd.commit() && keepFocus(() => renderView())),
+      });
+      keep.onclick = () => pop.close("done");
+      keep.focus();
+    });
+    // Drag an end: the side of its box nearest the pointer takes it; while drafting, a box under or near the pointer
+    // (nearer than its own) takes the line instead, on the side nearest the pointer.
+    map.addEventListener("pointerdown", (e) => {
+      const h = e.target.closest?.(".dend");
+      if (!h || e.button !== 0) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const {from, to, end} = h.dataset, k = `${from}>${to}`, id = end === "from" ? from : to, other = end === "from" ? to : from;
+      const now = sidesNow()[k] || {}, was = {from: now.from || null, to: now.to || null};
+      const sx = e.clientX, sy = e.clientY;
+      let moved = false, side = null, elsewhere = false, reach = null;
+      endsShown = k;
+      const boxEl = (x) => map.querySelector(`[data-anchor="${CSS.escape(x)}"]`);
+      const gap = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      const nearest = (r, x, y) => {
+        const d = {left: Math.abs(x - r.left) + Math.max(0, r.top - y, y - r.bottom), right: Math.abs(x - r.right) + Math.max(0, r.top - y, y - r.bottom),
+          top: Math.abs(y - r.top) + Math.max(0, r.left - x, x - r.right), bottom: Math.abs(y - r.bottom) + Math.max(0, r.left - x, x - r.right)};
+        return Object.keys(d).sort((a, b) => d[a] - d[b])[0];
+      };
+      const move = (ev) => {
+        if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 4) return;
+        moved = true;
+        map.classList.add("dragging");
+        const x = ev.clientX, y = ev.clientY;
+        const over = document.elementsFromPoint(x, y).map((q) => q.closest?.("[data-anchor]")).find((q) => q && map.contains(q));
+        let near = over && over.dataset.anchor !== id ? over : null;
+        if (!over && isSketch) {
+          let best = gap(boxEl(id).getBoundingClientRect(), x, y);
+          for (const q of map.querySelectorAll("[data-anchor]")) {
+            if (q.dataset.anchor === id || q.dataset.anchor === other || q.classList.contains("ghost")) continue;
+            const d = gap(q.getBoundingClientRect(), x, y);
+            if (d < 40 && d < best) {
+              best = d;
+              near = q;
+            }
+          }
+        }
+        elsewhere = !!near;
+        const own = elsewhere && near.dataset.anchor === other;
+        const next = elsewhere && isSketch && !own ? near : null;
+        if (next !== reach) {
+          reach?.classList.remove("dtarget");
+          next?.classList.add("dtarget");
+          reach = next;
+        }
+        side = next ? nearest(next.getBoundingClientRect(), x, y) : elsewhere ? null : nearest(boxEl(id).getBoundingClientRect(), x, y);
+        document.body.classList.toggle("dnoplace", elsewhere && (!isSketch || own));
+        sideDrag = {key: k, id: reach?.dataset.anchor ?? id, side, end, reach: reach?.dataset.anchor ?? null};
+        sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side && !reach ? {[end]: side} : {})};
+        redraw();
+      };
+      const up = () => {
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+        map.classList.remove("dragging");
+        document.body.classList.remove("dnoplace");
+        reach?.classList.remove("dtarget");
+        sideDrag = null;
+        sidePreview = null;
+        if (!moved) return redraw();
+        mapDragged = true;
+        setTimeout(() => (mapDragged = false));
+        if (elsewhere) {
+          redraw();
+          if (reach) return reconnectLine(from, to, end, reach.dataset.anchor, side);
+          if (isSketch) return showProblem(t("lineSelf"));
+          return showProblem(t("sideOtherBox"), {label: t("sketch"), run: () => enterDraft(lv.id)});
+        }
+        if (side && side !== was[end]) {
+          keepSidesOf(k, {...was, [end]: side});
+          return keepFocus(() => renderView());
+        }
+        redraw();
+      };
+      addEventListener("pointermove", move);
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+    }, true);
+    map.addEventListener("click", (e) => {
+      if (!e.target.closest?.(".dend")) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
+  }
+  // A line moved to another box while drafting: one the draft drew changes its end; one in the plan is taken out and
+  // drawn again with its words, state and kind. The side it was let go by, and the side it kept, go with it.
+  const reconnectLine = (from, to, end, otherBox, side) => {
+    const nf = end === "from" ? otherBox : from, nt = end === "to" ? otherBox : to;
+    if (nf === nt) return showProblem(t("lineSelf"));
+    if ((v.links || []).some((l) => l?.from === nf && l?.to === nt)) return showProblem(t("lineThere"));
+    const l = (v.links || []).find((x) => x?.from === from && x?.to === to) || {};
+    const keptSide = sidesNow()[`${from}>${to}`]?.[end === "from" ? "to" : "from"] || null;
+    const nextLayout = sidesLayout(`${nf}>${nt}`, {from: end === "from" ? side : keptSide, to: end === "to" ? side : keptSide});
+    const list = ops(), added = list.find((o) => o.op === "addLink" && o.from === from && o.to === to);
+    if (added) return setOps(list.map((o) => (o === added ? {...o, from: nf, to: nt} : o)), undefined, nextLayout);
+    const [pf, pt] = planEnds(from, to);
+    const rest = list.filter((o) => !(["editLink", "reverseLink", "removeLink"].includes(o.op) && o.from === pf && o.to === pt));
+    const out = [...rest, {id: nextId(rest), op: "removeLink", from: pf, to: pt}];
+    setOps([...out, {id: nextId(out), op: "addLink", from: nf, to: nt, ...(l.label ? {label: l.label} : {}), ...(l.state && l.state !== "ok" ? {state: l.state} : {}), ...(l.kind ? {kind: l.kind} : {})}], undefined, nextLayout);
+  };
   // A box drawn with these values (name, note, icon), as the card types them.
   const showBox = (box, val, empty = "") => {
     previewBox(box, val, empty);

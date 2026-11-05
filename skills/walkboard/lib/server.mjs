@@ -322,7 +322,10 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         const pos = v?.positions;
         const ok = (q) => q && typeof q === "object" && [q.x, q.y].every((n) => Number.isFinite(n) && Math.abs(n) <= 20000);
-        if (err || typeof v?.view !== "string" || !(pos === null || (pos && typeof pos === "object" && !Array.isArray(pos) && Object.values(pos).every(ok))))
+        // A map's "@sides": the sides chosen for its lines, {"from>to": {from, to}} (null: none left).
+        const SIDES = ["left", "top", "right", "bottom"];
+        const sidesOk = (q) => q === null || (q && typeof q === "object" && !Array.isArray(q) && Object.keys(q).length <= 400 && Object.entries(q).every(([k, w]) => k.length <= 410 && k.split(">").length === 2 && w && typeof w === "object" && Object.entries(w).every(([e, x]) => ["from", "to"].includes(e) && SIDES.includes(x))));
+        if (err || typeof v?.view !== "string" || !(pos === null || (pos && typeof pos === "object" && !Array.isArray(pos) && Object.entries(pos).every(([k, q]) => (k === "@sides" ? sidesOk(q) : ok(q))))))
           return res.writeHead(400).end('need {"view": id, "positions": {table: {"x", "y"}} or null}');
         try {
           updatePlan(p.plan, (plan) => {
@@ -344,7 +347,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
               return ok.length ? {sides: Object.fromEntries(ok)} : {};
             };
             if (pos === null) delete view.layout;
-            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => keep(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y),
+            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id, q]) => (id === "@sides" ? mapped && q : keep(id))).map(([id, q]) => id === "@sides" ? [id, q] : [id, {x: Math.round(q.x), y: Math.round(q.y),
               ...(mapped && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {}),
               ...(mapped && size(q.w) ? {w: Math.round(q.w)} : {}), ...(mapped && size(q.h) ? {h: Math.round(q.h)} : {}), ...sidesOf(id, q)}]));
             return plan;

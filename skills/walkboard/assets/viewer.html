@@ -2220,14 +2220,33 @@ async function fetchDraft() {
 }
 // A note about something just tried (a name already taken): it goes by itself after a few seconds, or with a click.
 let problemTimer = 0;
-const showProblem = (msg) => {
+// A short note at the corner; action {label, run}: a button in it that does what the note asks for.
+const showProblem = (msg, action = null) => {
   const box = document.getElementById("problems");
   box.hidden = false;
   box.dataset.brief = "1";
-  box.replaceChildren(el("div", null, msg));
+  const row = el("div", null, msg);
+  if (action) {
+    const go = el("button", "pact");
+    go.append(svgIcon("pencil"), action.label);
+    go.onclick = (e) => {
+      e.stopPropagation();
+      box.hidden = true;
+      action.run();
+    };
+    row.append(go);
+  }
+  box.replaceChildren(row);
   box.onclick = () => box.dataset.brief && (box.hidden = true);
   clearTimeout(problemTimer);
-  problemTimer = setTimeout(() => box.dataset.brief && (box.hidden = true), 4000);
+  problemTimer = setTimeout(() => box.dataset.brief && (box.hidden = true), action ? 7000 : 4000);
+};
+// Into draft mode on a picture, as its pencil does.
+const enterDraft = (id) => {
+  sketching = id;
+  sketchTool = "select";
+  sketchSel = null;
+  renderView();
 };
 
 // Undo, redo and back to the plan, for a picture arranged by hand (and its draft, where it takes one).
@@ -3477,7 +3496,7 @@ function renderMap(real) {
       if (drop && !isSketch) {
         place(it, from);
         draw();
-        return showProblem(t("moveNeedsDraft"));
+        return showProblem(t("moveNeedsDraft"), {label: t("sketch"), run: () => enterDraft(lv.id)});
       }
       if (drop) {
         // Laid out by the page, it takes its place in the new zone (a zone keeps its size); placed by hand, it stays
@@ -4738,7 +4757,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
           draw();
           if (reach && grid.reconnect?.(from, to, end, reach.dataset.anchor)) return;
           if (sketch) return showProblem(t("lineSelf"));
-          return showProblem(t("sideOtherBox"));
+          return showProblem(t("sideOtherBox"), {label: t("sketch"), run: () => enterDraft(hold.real.id)});
         }
         if (side && keepSides(from, to, {...was, [end]: side})) keepFocus(() => renderView());
         else draw();

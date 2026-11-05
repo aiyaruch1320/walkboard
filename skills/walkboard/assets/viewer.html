@@ -2557,6 +2557,8 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
       b.onclick = () => {
         chosen = o.value;
         choiceRow.querySelectorAll(".dchoose").forEach((x) => x.setAttribute("aria-pressed", x === b));
+        // What to call it depends on what it is (a question is asked, an end is a result).
+        if (o.hint) nameIn.placeholder = o.hint;
         update();
       };
       b.onkeydown = (e) => {
@@ -2593,7 +2595,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     flagRow.append(b);
   }
   const nameIn = el("input", "dsearch dname");
-  nameIn.placeholder = nameHint || t(zone ? "zoneNameHint" : "boxNameHint");
+  nameIn.placeholder = choice?.options.find((o) => o.value === choice.value)?.hint || nameHint || t(zone ? "zoneNameHint" : "boxNameHint");
   nameIn.value = initial.name || "";
   nameIn.maxLength = 80;
   const iconBtn = el("button", "dpick");
@@ -5941,6 +5943,8 @@ const passiveApi = (real, tools) => ({
 function sketchKit(real, tools, container) {
   const ops = () => draftOps(real.id);
   const box = (id) => container.querySelector(`[data-anchor="${CSS.escape(id)}"]`);
+  // What a new box is usually called on this kind of picture.
+  const nameHint = STRINGS.en["boxNameHint_" + real.kind] ? t("boxNameHint_" + real.kind) : undefined;
   const kit = {
     ops,
     box,
@@ -5990,6 +5994,7 @@ function sketchKit(real, tools, container) {
       const n = nodeOfDrafted(real, id) || {};
       boxCard(e.getBoundingClientRect(), {name: n.name ?? id, what: n.what, icon: n.icon}, {
         title: t("boxEditTitle"),
+        nameHint,
         flags: kit.flags?.(id) || [],
         choice: kit.choice?.(id) || null,
         preview: (val) => {
@@ -6021,6 +6026,7 @@ function sketchKit(real, tools, container) {
     add(beside, fields, {title, preview, done, place}) {
       boxCard(beside, {}, {
         title,
+        nameHint,
         flags: kit.flags?.(null) || [],
         choice: kit.choice?.(null) || null,
         preview,
@@ -6238,7 +6244,7 @@ function sketchLinks({real, v, drafted, container, tools}) {
       const n = (v.edges || []).filter((e) => e?.from === id && e.to !== id).length;
       return v.shapes?.[id] || (n > 1 ? "question" : n ? "step" : "end");
     };
-    if (v.kind === "decision") kit.choice = (id) => ({key: "shape", label: t("shapeLabel"), value: id == null ? null : drawnShape(id), options: ["question", "step", "end"].map((x) => ({value: x, label: t("shape_" + x), tip: t("shapeTip_" + x)}))});
+    if (v.kind === "decision") kit.choice = (id) => ({key: "shape", label: t("shapeLabel"), value: id == null ? null : drawnShape(id), options: ["question", "step", "end"].map((x) => ({value: x, label: t("shape_" + x), tip: t("shapeTip_" + x), hint: t("shapeHint_" + x)}))});
     // The changes that make it so, against the plan: one start for the picture, an end per box, a decision box's kind.
     kit.setFlags = (list, id, f) => {
       const start = f.start ? id : v.start === id ? "" : v.start ?? "";
@@ -6369,7 +6375,7 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       return boxCard(wordsRect(title), {name: initial}, {
         plain: true,
         title: t("laneEditTitle"),
-        nameHint: t("laneNameHint"),
+        nameHint: t((v.lanes || []).some((l) => l.step) ? "stepNameHint" : "laneNameHint"),
         preview: (val) => showLane(title, val.name, v.lanes[li]?.step ? li : null),
         onDone: (got) => {
           const val = got?.name;
@@ -6416,7 +6422,7 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       return boxCard(wordsRect(head), {}, {
         plain: true,
         title: t("laneNew"),
-        nameHint: t("laneNameHint"),
+        nameHint: t((v.lanes || []).some((l) => l.step) ? "stepNameHint" : "laneNameHint"),
         preview: (val) => showLane(head, val.name || t("laneNew")),
         onDone: (got) => {
           tmp.remove();

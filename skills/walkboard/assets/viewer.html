@@ -2416,6 +2416,9 @@ function draftSign(m, small = false) {
 }
 // A small text field over a box's name or a zone's title; Enter keeps it, Escape (or nothing typed) drops it.
 function editText(over, initial, placeholder, {onInput, onDone}) {
+  // Above the toolbar, where it can be seen: the field for a table's next column may start under it.
+  const barTop = document.querySelector(".dtools")?.getBoundingClientRect().top;
+  if (barTop && over.getBoundingClientRect().bottom + 56 > barTop) window.scrollBy(0, over.getBoundingClientRect().bottom + 56 - barTop);
   const host = over.closest(".map, .er") || document.body, r = over.getBoundingClientRect(), h = host.getBoundingClientRect();
   const input = el("input", "dedit");
   input.value = initial;
@@ -4450,7 +4453,9 @@ function renderDataModel(real) {
   frameDefs.forEach((g, i) => g.tables.forEach((id) => level[id] != null && groupOf[id] == null && (groupOf[id] = i)));
   frameDefs.forEach((g, i) => {
     const ids = g.tables.filter((id) => groupOf[id] === i);
-    const m = Math.min(...ids.map((id) => level[id]));
+    // A table with no foreign key either way says nothing about where the group belongs.
+    const tied = ids.filter((id) => tables.some((tb) => (tb.columns || []).some((c) => c.ref && (tb.node === id || String(c.ref).split(".")[0] === id))));
+    const m = Math.min(...(tied.length ? tied : ids).map((id) => level[id]));
     ids.forEach((id) => (level[id] = m));
   });
   const ordered = [];
@@ -4466,7 +4471,8 @@ function renderDataModel(real) {
   let free = false, dragged = false, keySave = null, keyFrom, lifted = [];
   const fit = () => {
     grid.style.width = Math.max(...cards().map((c) => c.offsetLeft + c.offsetWidth)) + 40 + "px";
-    grid.style.height = Math.max(...cards().map((c) => c.offsetTop + c.offsetHeight)) + 30 + "px";
+    // While sketching there is room below the tables for a new one.
+    grid.style.height = Math.max(...cards().map((c) => c.offsetTop + c.offsetHeight)) + (isSketch ? 190 : 30) + "px";
   };
   const freeze = () => {
     if (free) return;
@@ -4481,6 +4487,12 @@ function renderDataModel(real) {
       const c = cards().find((x) => x.dataset.id === k);
       if (c) c.style.zIndex = i + 1;
     });
+    // A table the saved places do not know (the agent just added it) starts in its column: not on top of another.
+    if (v.layout) for (const c of cards()) if (!v.layout[c.dataset.id]) {
+      const spot = fitTable(boxOf(c), groupOf[c.dataset.id] ?? null, c.dataset.id);
+      c.style.left = spot.x + "px";
+      c.style.top = spot.y + "px";
+    }
     fit();
   };
   // commit false: only work out the positions (a caller saves them with something else, as one undo).
@@ -4515,6 +4527,72 @@ function renderDataModel(real) {
     }
     fit();
     draw();
+  };
+  const TABLE_GAP = 24;
+  const boxOf = (c) => ({x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight});
+  const hits = (a, b, gap = 0) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+  // The same margins as placeFrames.
+  const frameBox = (list) => {
+    const l = Math.min(...list.map((b) => b.x)), tp = Math.min(...list.map((b) => b.y));
+    return {x: l - 14, y: tp - 32, w: Math.max(...list.map((b) => b.x + b.w)) - l + 28, h: Math.max(...list.map((b) => b.y + b.h)) - tp + 46};
+  };
+  // The nearest spot to box that lies on no other table and in no other group's frame. For a table of group home
+  // (its index), first of all a spot where the frame it stretches takes in nobody else.
+  const fitTable = (box, home, skip) => {
+    const rest = cards().filter((c) => c.dataset.id !== skip).map((c) => ({...boxOf(c), group: groupOf[c.dataset.id] ?? null}));
+    const mine = rest.filter((b) => home != null && b.group === home), others = rest.filter((b) => !mine.includes(b));
+    const foreign = frameDefs.map((_, i) => (i === home ? [] : rest.filter((b) => b.group === i))).filter((l) => l.length).map(frameBox);
+    const minX = frameDefs.length ? 24 : 6, minY = frameDefs.length ? 44 : 10;
+    const start = {x: Math.max(minX, box.x), y: Math.max(minY, box.y)}, near = [...rest, ...foreign];
+    const xs = [start.x, ...near.flatMap((b) => [b.x, b.x - box.w - TABLE_GAP, b.x + b.w + TABLE_GAP])].filter((x) => x >= minX);
+    const ys = [start.y, ...near.flatMap((b) => [b.y, b.y - box.h - TABLE_GAP, b.y + b.h + TABLE_GAP])].filter((y) => y >= minY);
+    const spots = xs.flatMap((x) => ys.map((y) => ({x, y}))).sort((a, b) => Math.hypot(a.x - start.x, a.y - start.y) - Math.hypot(b.x - start.x, b.y - start.y));
+    const clear = ({x, y}) => {
+      const q = {...box, x, y};
+      return !rest.some((b) => hits(q, b, TABLE_GAP - 1)) && !foreign.some((f) => hits(q, f, TABLE_GAP / 2));
+    };
+    const tidy = ({x, y}) => {
+      if (home == null) return true;
+      const f = frameBox([...mine, {...box, x, y}]);
+      return !others.some((b) => hits(f, b)) && !foreign.some((g) => hits(f, g));
+    };
+    const spot = spots.find((p) => clear(p) && tidy(p)) || spots.find(clear) || start;
+    // Sent away from where it was let go, in a group: in line with the table nearest above or below, when that fits too.
+    const line = spot !== start && mine.find((b) => Math.abs(b.x - spot.x) < 150);
+    return line && clear({x: line.x, y: spot.y}) && tidy({x: line.x, y: spot.y}) ? {x: line.x, y: spot.y} : spot;
+  };
+  // Where every table is now, as a layout: sketching keeps the picture still from the first change on.
+  const positionsNow = () => {
+    freeze();
+    return save(v.layout, false);
+  };
+  // The layout with a new table at a point of the picture, in a group (its label) or not.
+  const placeTable = (id, x, y, group) => {
+    freeze();
+    const ref = cards()[0], was = ref && [ref.offsetLeft, ref.offsetTop], pos = save(v.layout, false);
+    const home = group == null ? null : frameDefs.findIndex((g) => g.label === group);
+    // Inside what is on screen: a table past the right edge would make the picture scroll sideways.
+    const holder = grid.parentElement, pad = getComputedStyle(holder);
+    const room = holder.clientWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight) - 260;
+    const at = {x: Math.min(x + (ref ? ref.offsetLeft - was[0] : 0), Math.max(0, room)), y: y + (ref ? ref.offsetTop - was[1] : 0)};
+    const {x: px, y: py} = fitTable({...at, w: 220, h: 52}, home);
+    return {...pos, [id]: {x: px, y: py}};
+  };
+  // The layout with a table taller by dh: what it would reach moves down, and what that reaches in turn.
+  const roomFor = (id, dh) => {
+    const pos = positionsNow(), boxes = cards().map((c) => ({id: c.dataset.id, ...boxOf(c)})), grown = boxes.find((b) => b.id === id);
+    if (!grown) return pos;
+    grown.h += dh;
+    const todo = [grown];
+    while (todo.length) {
+      const a = todo.shift();
+      for (const b of boxes) if (b !== a && b.y > a.y && hits(a, b, 8)) {
+        b.y = a.y + a.h + TABLE_GAP;
+        pos[b.id] = {...pos[b.id], y: b.y};
+        todo.push(b);
+      }
+    }
+    return pos;
   };
   function movable(card, handle, members) {
     handle.addEventListener("pointerdown", (e) => {
@@ -4691,7 +4769,7 @@ function renderDataModel(real) {
     }
   };
   addDrawer(draw, grid);
-  if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt});
+  if (isSketch) sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, positionsNow, roomFor});
   else if (draftOps(real.id).length) sketchApi = {view: real.id, show() {}, drop: (id) => (saveDraft(real.id, draftOps(real.id).filter((x) => x.id !== id)), renderView()), review: () => tools.ask(), discard: () => (saveDraft(real.id, []), renderView())};
   const scroll = el("div", "scroll");
   scroll.append(readLine("datamodel"), grid);
@@ -4717,12 +4795,14 @@ function renderDataModel(real) {
 }
 
 // ---------- sketching a data model: tables, columns, foreign keys (drag a column onto another), groups
-function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
+function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, positionsNow, roomFor}) {
   const marks = drafted.marks;
   const ops = () => draftOps(real.id);
-  const setOps = (next) => {
+  // A change never moves what is already on the picture: the layout goes with it, one undo. A place the draft no longer has drops out.
+  const setOps = (next, layout = positionsNow()) => {
     const before = tools.snap();
-    tools.change(before, {layout: before.layout, ops: next});
+    const kept = Object.entries(layout).filter(([id]) => !id.startsWith("new:") || next.some((o) => o.op === "addTable" && o.node === id));
+    tools.change(before, {layout: Object.fromEntries(kept), ops: next});
     keepFocus(() => renderView());
   };
   const split = (k) => [k.slice(0, k.indexOf(".")), k.slice(k.indexOf(".") + 1)];
@@ -4887,7 +4967,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
       }
       const list = ops();
       sketchTool = "column";
-      setOps([...list, {id: newOpId(list), op: "addColumn", table, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})}]);
+      setOps([...list, {id: newOpId(list), op: "addColumn", table, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})}], roomFor(table, 32));
       requestAnimationFrame(() => sketchApi?.addColumnTo?.(table));
     }});
   };
@@ -4920,12 +5000,13 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt}) {
       if (e.target.closest(".ertable")) return;
       e.preventDefault();
       const f = frameAt(e.clientX, e.clientY, null), spot = fieldAt(e.clientX, e.clientY);
+      const g = grid.getBoundingClientRect(), x = e.clientX - g.left - grid.clientLeft, y = e.clientY - g.top - grid.clientTop;
       return editText(spot, "", t("tableName"), {onDone: (val) => {
         spot.remove();
         sketchTool = "select";
         if (!val) return refresh();
-        const list = ops();
-        setOps([...list, {id: newOpId(list), op: "addTable", node: newNode(), name: val, ...(f ? {group: f.dataset.group} : {})}]);
+        const list = ops(), node = newNode();
+        setOps([...list, {id: newOpId(list), op: "addTable", node, name: val, ...(f ? {group: f.dataset.group} : {})}], placeTable(node, x, y, f?.dataset.group ?? null));
       }});
     }
   }, true);

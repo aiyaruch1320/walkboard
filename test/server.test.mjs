@@ -365,6 +365,9 @@ test("a map keeps zone sizes, placed-by-hand mode, and places for boxes and zone
   assert.equal((await post(s, "/api/layout", {view: "m", positions})).status, 200);
   assert.deepEqual(read(0), {"@fixed": {x: 0, y: 0}, "z:Cloud": {x: 6, y: 10, in: "", w: 300}, a: {x: 10, y: 38, in: "Cloud", w: 50}, "new:k3x9": {x: 20, y: 90, in: "Hub"}, "z:Hub": {x: 400, y: 10, in: ""}});
   assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: 5, y: 6, w: 80}, "new:k3x9": {x: 1, y: 1}}})).status, 200);
+  // A table the draft adds keeps its place too; a ghost does not.
+  assert.deepEqual(read(1), {a: {x: 5, y: 6}, "new:k3x9": {x: 1, y: 1}});
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: 5, y: 6}, ghost: {x: 1, y: 1}}})).status, 200);
   assert.deepEqual(read(1), {a: {x: 5, y: 6}});
 });
 

@@ -538,7 +538,8 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er li.dr-remove .ername,.er li.dr-remove .ertype{text-decoration:line-through;text-decoration-color:var(--warn-bd);opacity:.7}
 .er li.dr-add .ptag,.er li.dr-change .ptag{color:#fff}
 .er li.dr-change .ptag{background:#14a3b8}.er li.dr-remove .ptag{background:var(--warn-bd)}
-.er.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
+.er.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px;min-width:100%}
+.er.sketch:not(.free){padding-bottom:160px}
 .er.sketch[data-tool="table"]{cursor:crosshair}
 .er.sketch[data-tool="column"] .ertable,.er.sketch[data-tool="group"] .ertable{cursor:copy}
 .er.sketch[data-tool="connect"] li[data-col]{cursor:alias}

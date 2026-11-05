@@ -22,6 +22,7 @@
 - A box or zone dragged past the edge of a map stops there, and one saved off screen comes back to the edge.
 - **Smoother big maps.** Dragging redraws only the lines that touch what moves, a redraw is skipped when nothing moved, and routing tests each path only against nearby boxes: on a 52-box map a drag frame went from about 53 ms to 4 ms. `scripts/perf.mjs` measures it.
 - A map offset in `layout` remembers the zone it was dragged in (`"in"`). When the plan moves the box to another zone, the old offset is dropped instead of pushing the box away from its new place.
+- **A data model holds still while you sketch.** A new table stays where you clicked (in a group's frame: in that group), nudged only as far as it takes not to lie on another table, and no change to the draft moves what is already on the picture: the layout is kept from the first change on, one undo with it. A table that grows as you add columns moves what it would reach down. A table with no foreign keys no longer pulls its group to the first column, and one the agent just added starts on free ground.
 
 ## 0.8.0
 

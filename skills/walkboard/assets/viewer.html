@@ -1664,7 +1664,7 @@ function linkLegend(states, uses) {
   help.setAttribute("aria-label", t("lineHelp"));
   help.onclick = (e) => {
     e.stopPropagation();
-    lineHelp(help.getBoundingClientRect());
+    lineHelp(help);
   };
   lg.append(help);
   return lg;
@@ -1685,7 +1685,8 @@ function lineSample(cls, blocked = false) {
   return svg;
 }
 // The card behind "?": which way a line points, its label, its kinds, and what draft mode does to it.
-function lineHelp(beside) {
+// It hangs under the button, on the page (not the window), so it scrolls with it.
+function lineHelp(button) {
   const row = (sample, text) => {
     const r = el("div", "lhrow");
     r.append(sample, el("span", null, text));
@@ -1702,8 +1703,15 @@ function lineHelp(beside) {
     for (const m of ["add", "change", "remove"]) parts.push(row(lineSample("l-ok dr-" + m), t("lh_" + m)));
   }
   parts.push(el("div", "dhint", t("lh_shape")));
-  const pop = popover(beside.left, beside.bottom + 8, parts);
+  const pop = popover(0, 0, parts);
   pop.classList.add("lhcard");
+  const b = button.getBoundingClientRect(), w = pop.offsetWidth;
+  const left = Math.max(8, Math.min(document.documentElement.clientWidth - w - 8, b.left + b.width / 2 - 24));
+  pop.style.position = "absolute";
+  pop.style.left = left + scrollX + "px";
+  pop.style.top = b.bottom + 10 + scrollY + "px";
+  // The little pointer sits under the button, wherever the card had to move to stay on screen.
+  pop.style.setProperty("--tip", b.left + b.width / 2 - left + "px");
 }
 
 function renderK8s(real) {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {PROFILES, kindOf, kindNames, lineKindNames, kindWarning, kindProblems} from "../skills/walkboard/lib/profiles.mjs";
+import {PROFILES, kindOf, kindNames, lineKindNames, kindWarning, kindProblems, searchKinds} from "../skills/walkboard/lib/profiles.mjs";
 import {knownIcon} from "../skills/walkboard/lib/icons.mjs";
 
 test("every profile is whole: names, icons that exist, rules that name kinds of the same profile", () => {
@@ -64,4 +64,17 @@ test("map draft changes carry a kind and its fields; edits change or clear them"
 test("references/profiles.md is written from lib/profiles.mjs", async () => {
   const {execFileSync} = await import("node:child_process");
   execFileSync(process.execPath, [new URL("../scripts/profiles-doc.mjs", import.meta.url).pathname, "--check"]);
+});
+
+test("the kind search puts the platform of where it goes first, then the closest name; aliases count", () => {
+  const top = (q, o) => searchKinds(q, o)[0]?.kind;
+  assert.equal(top("container", {around: ["onprem:vm"]}), "container:container");
+  assert.equal(top("network", {zone: true, around: ["container:compose", "container:host"]}), "container:network");
+  assert.equal(top("database", {around: ["onprem:dmz"]}), "onprem:database");
+  assert.equal(top("vpc", {zone: true, used: ["gcp"]}), "gcp:vpc");
+  assert.equal(top("docker"), "container:container");
+  assert.equal(top("docker", {zone: true}), "container:host");
+  assert.equal(top("redis", {used: ["azure"]}), "azure:redis");
+  assert.equal(top("", {around: ["k8s:namespace"]}).split(":")[0], "k8s");
+  assert.deepEqual(searchKinds("zzzz"), []);
 });

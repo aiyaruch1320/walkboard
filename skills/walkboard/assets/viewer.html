@@ -2607,10 +2607,8 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   kindList.hidden = true;
   const kindIn = el("input", "dsearch dkindin");
   kindIn.placeholder = t("kindFree");
-  const matches = (q) => {
-    q = q.trim().toLowerCase();
-    return PROF.kindNames(kinds?.zone).map((k) => ({k, d: PROF.kindOf(k)})).filter(({k, d}) => !q || k.includes(q) || d.def.name.toLowerCase().includes(q) || PROF.PROFILES[d.profile].label.toLowerCase().includes(q));
-  };
+  // Best first: the platform of where it goes, then of the picture (lib/profiles.mjs searchKinds).
+  const matches = (q) => PROF.searchKinds(q, {zone: !!kinds?.zone, around: kinds?.around || [], used: kinds?.used || []}).map((x) => ({k: x.kind, d: {profile: x.profile, def: x.def}}));
   const pickKind = (k) => {
     kind = k;
     const want = PROF.kindOf(k)?.def.props || {};
@@ -2623,7 +2621,9 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   const showKinds = () => {
     kindList.replaceChildren();
     let group = null;
-    for (const {k, d} of matches(kindIn.value).slice(0, 60)) {
+    const found = matches(kindIn.value);
+    if (!found.length) kindList.append(el("div", "dkindnone", t("kindNone")));
+    for (const {k, d} of found.slice(0, 60)) {
       if (d.profile !== group) kindList.append(el("div", "dkindgroup", PROF.PROFILES[(group = d.profile)].label));
       const b = el("button", "dkindopt");
       b.type = "button";
@@ -2640,9 +2640,10 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     e.stopPropagation();
     if (e.key === "Enter" && !e.isComposing) {
       e.preventDefault();
+      // Enter takes the best match; with nothing found it does nothing (the list says so).
       const first = matches(kindIn.value)[0];
       if (first && kindIn.value.trim()) pickKind(first.k);
-      else pop.close("done");
+      else if (!kindIn.value.trim()) pop.close("done");
     }
   };
   const drawKind = () => {
@@ -3955,7 +3956,7 @@ function renderMap(real) {
   const editBox = (id, e) => {
     const n = drafted.plan.nodes[id] || {};
     boxCard(e.getBoundingClientRect(), {name: n.name, what: n.what, icon: n.icon}, {
-      kinds: {zone: false, value: n.kind, props: n.props},
+      kinds: {zone: false, value: n.kind, props: n.props, ...kindContext(e)},
       title: t("boxEditTitle"),
       preview: (val) => showBox(e, val),
       // Dropped: the box is drawn again as it was.
@@ -4032,7 +4033,7 @@ function renderMap(real) {
     })(drafted.view.zones);
     boxCard(e.getBoundingClientRect(), {name: x.id, what: z?.note ?? "", icon: z?.icon ?? ""}, {
       zone: true,
-      kinds: {zone: true, value: z?.kind, props: z?.props},
+      kinds: {zone: true, value: z?.kind, props: z?.props, ...kindContext(e)},
       title: t("zoneEditTitle"),
       preview: (val) => showZone(e, val),
       onDone: (val) => (val ? zoneTo(x, val) : keepFocus(() => renderView())),
@@ -4426,6 +4427,13 @@ function renderMap(real) {
     const out = [...rest, {id: nextId(rest), op: "removeLink", from: pf, to: pt}];
     setOps([...out, {id: nextId(out), op: "addLink", from: nf, to: nt, ...(l.label ? {label: l.label} : {}), ...(l.state && l.state !== "ok" ? {state: l.state} : {}), ...(l.kind ? {kind: l.kind} : {})}], undefined, nextLayout);
   };
+  // What a card's kind search looks at: the kinds of the zones around (nearest first), and the platforms in the picture.
+  const kindContext = (e) => {
+    const around = [];
+    for (let z = e.parentElement?.closest(".zone"); z; z = z.parentElement?.closest(".zone")) around.push(z.dataset.kind || null);
+    const used = [...new Set([...map.querySelectorAll("[data-kind]")].map((x) => PROF.kindOf(x.dataset.kind)?.profile).filter(Boolean))];
+    return {around, used};
+  };
   // A box drawn with these values (name, note, icon), as the card types them.
   const showBox = (box, val, empty = "") => {
     previewBox(box, val, empty);
@@ -4454,7 +4462,7 @@ function renderMap(real) {
       // The box takes room: the zones around move, and the lines with them.
       draw();
       boxCard(tmp.getBoundingClientRect(), {}, {
-        kinds: {zone: false},
+        kinds: {zone: false, ...kindContext(tmp)},
         title: t("boxNewTitle", zoneWords(z)),
         preview: (val) => showBox(tmp, val, t("boxNew")),
         onDone: (val) => {
@@ -4482,7 +4490,7 @@ function renderMap(real) {
       draw();
       boxCard(tmp.getBoundingClientRect(), {}, {
         zone: true,
-        kinds: {zone: true},
+        kinds: {zone: true, ...kindContext(tmp)},
         title: t("zoneNewTitle", z ? zoneWords(z) : t("topLevel")),
         preview: (val) => showZone(tmp, val, t("zoneNew")),
         onDone: (got) => {

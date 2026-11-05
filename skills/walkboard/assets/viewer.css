@@ -632,6 +632,7 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .dkindrow .dkindin{flex:1}
 .dkindchip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 60%,var(--card))}
 .dkinds{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:0 0 8px;padding:4px}
+.dkindnone{font-size:12px;color:var(--muted);padding:6px}
 .dkindgroup{font-size:11px;font-weight:700;color:var(--muted);padding:4px 6px 2px}
 .dkindopt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;font-size:13px;padding:4px 6px;border:0;border-radius:6px;background:transparent;color:var(--text);cursor:pointer}
 .dkindopt:hover{background:color-mix(in srgb,var(--you-bg) 50%,var(--card))}

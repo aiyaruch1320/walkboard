@@ -1777,10 +1777,13 @@ function readHelp(button, kind) {
 const kindFields = (val) => ({...(val.kind ? {kind: val.kind} : {}), ...(val.kind && val.props && Object.keys(val.props).length ? {props: val.props} : {})});
 // A kind in words, with the values of its props: "RDS · postgres · db.t3.medium".
 // The kind's name is left out when the box's own name already says it ("Route 53", "S3" for an S3 bucket).
+// A field with a list of values shows the value ("postgres"), a free one its name too ("replicas 3", "cidr 10.0.1.0/24").
 const kindWords = (kind, props, name = "") => {
-  const k = PROF.kindOf(kind)?.def.name, a = String(name).toLowerCase().replace(/\s+/g, ""), b = String(k || "").toLowerCase().replace(/\s+/g, "");
-  const said = a && b && (a.includes(b) || b.includes(a) || a.includes(b.split(/[(]/)[0]));
-  const shown = Object.entries(props && typeof props === "object" ? props : {}).filter(([, x]) => typeof x === "string" && x).map(([n, x]) => (["on", "off", "yes", "no"].includes(x) ? `${n} ${x}` : x));
+  const def = PROF.kindOf(kind)?.def, k = def?.short || def?.name;
+  const plainName = (x) => String(x || "").toLowerCase().replace(/[\s()/.-]+/g, "");
+  const a = plainName(name), said = a && [def?.name, def?.short].some((w) => w && (a.includes(plainName(w)) || plainName(w).includes(a)));
+  const shown = Object.entries(props && typeof props === "object" ? props : {}).filter(([, x]) => typeof x === "string" && x)
+    .map(([n, x]) => (Array.isArray(def?.props?.[n]) && !["on", "off", "yes", "no"].includes(x) ? x : `${n} ${x}`));
   return [said ? null : k, ...shown].filter(Boolean).join(" · ");
 };
 // The platforms a map draws (a tag each, in its colours), what its kinds of line look like, and a sign on whatever sits
@@ -1798,7 +1801,7 @@ function profileMarks(map, v) {
     used.add(k.profile);
     const w = PROF.kindWarning(e.dataset.kind, around(e));
     if (!w) continue;
-    const sign = el("span", "g-warn kwarn", t("kindWarn", w.usual.join(", ")));
+    const sign = el("span", "g-warn kwarn", t("kindWarn", w.usual.slice(0, 2).join(", ") + (w.usual.length > 2 ? "…" : "")));
     sign.title = t("kindWarnTip", w.kind, w.there, w.usual.join(", "));
     (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(sign);
   }
@@ -1963,9 +1966,12 @@ function zoneEl(z, depth, dense = false) {
   // A zone of a kind says which, with its props: "Subnet · private · 10.0.1.0/24".
   if (PROF.kindOf(z.kind)) {
     box.dataset.kind = z.kind;
-    const tag = el("span", "zkind", kindWords(z.kind, z.props));
-    tag.title = tag.textContent;
-    head.append(tag);
+    const words = kindWords(z.kind, z.props, z.label);
+    if (words) {
+      const tag = el("span", "zkind", words);
+      tag.title = words;
+      head.append(tag);
+    }
   }
   if (z.note) head.append(el("small", null, z.note));
   // In a big picture a zone that only holds boxes stacks them, so the zones stay side by side as columns.
@@ -2669,7 +2675,10 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     for (const [name, want] of Object.entries(k?.def.props || {})) {
       const f = Array.isArray(want) ? el("select", "dsearch dprop") : el("input", "dsearch dprop");
       if (Array.isArray(want)) for (const o of ["", ...want]) f.append(new Option(o || "—", o));
-      else f.placeholder = name;
+      else {
+        f.placeholder = name;
+        f.maxLength = 80;
+      }
       f.value = props[name] || "";
       f.oninput = f.onchange = () => {
         props[name] = f.value.trim();
@@ -4009,7 +4018,8 @@ function renderMap(real) {
   const showZone = (z, val, empty = "") => {
     const head = z.querySelector(":scope > .zhead"), ic = iconEl({name: val.name, icon: val.icon || undefined, kind: val.kind}, "", null);
     head.querySelector(":scope > .zkind")?.remove();
-    if (val.kind) head.append(el("span", "zkind", kindWords(val.kind, val.props)));
+    const words = val.kind ? kindWords(val.kind, val.props, val.name) : "";
+    if (words) head.append(el("span", "zkind", words));
     head.querySelector(":scope > .icon")?.remove();
     if (ic) head.prepend(ic);
     const name = [...head.children].find((c) => c.tagName === "SPAN" && !c.classList.contains("ptag") && !c.classList.contains("icon"));

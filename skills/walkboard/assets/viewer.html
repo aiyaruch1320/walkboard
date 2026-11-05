@@ -4526,9 +4526,11 @@ function renderDataModel(real) {
   const moveOps = (id, to) => {
     const list = draftOps(real.id), from = (real.groups || []).find((g) => g?.tables?.includes(id))?.label ?? "";
     const added = list.find((o) => o.op === "addTable" && o.node === id);
-    if (added) return list.map((o) => (o === added ? {...o, group: to || undefined} : o));
+    if (added) return dropEmptyGroups(real.id, list.map((o) => (o === added ? {...o, group: to || undefined} : o)));
     const rest = list.filter((o) => !(o.op === "moveTable" && o.node === id));
-    return to === from ? rest : [...rest, {id: newOpId(rest), op: "moveTable", node: id, to, from}];
+    // In a group the draft added, it is there because of that change: back where the plan has it still takes a change.
+    const inNew = list.some((o) => o.op === "addGroup" && o.tables?.includes(id));
+    return dropEmptyGroups(real.id, to === from && !inNew ? rest : [...rest, {id: newOpId(rest), op: "moveTable", node: id, to, from}]);
   };
   const shift = (list, dx, dy) => {
     for (const [c, x, y] of list) {
@@ -4843,6 +4845,12 @@ function renderDataModel(real) {
   return wrap;
 }
 
+// A group the draft added and that has no table left has no frame to see or click: it leaves the draft too.
+function dropEmptyGroups(viewId, ops) {
+  const groups = applyDraft(plan, {version: 1, views: {[viewId]: {ops}}}, viewId).view?.groups || [];
+  const empty = new Set(groups.filter((g) => !g.tables?.length).map((g) => g.label));
+  return empty.size ? ops.filter((o) => !(o.op === "addGroup" && empty.has(o.group))) : ops;
+}
 // A group's title on its frame, as a zone's: icon, name, note.
 function groupHead(name, note, icon) {
   const label = el("span", "erframe-label"), ic = iconEl({name, icon: icon || undefined}, "", null);
@@ -4857,9 +4865,9 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
   const ops = () => draftOps(real.id);
   // A change never moves what is already on the picture: the layout goes with it, one undo. A place the draft no longer has drops out.
   const setOps = (next, layout = positionsNow()) => {
-    const before = tools.snap();
-    const kept = Object.entries(layout).filter(([id]) => !id.startsWith("new:") || next.some((o) => o.op === "addTable" && o.node === id));
-    tools.change(before, {layout: Object.fromEntries(kept), ops: next});
+    const before = tools.snap(), clean = dropEmptyGroups(real.id, next);
+    const kept = Object.entries(layout).filter(([id]) => !id.startsWith("new:") || clean.some((o) => o.op === "addTable" && o.node === id));
+    tools.change(before, {layout: Object.fromEntries(kept), ops: clean});
     keepFocus(() => renderView());
   };
   const split = (k) => [k.slice(0, k.indexOf(".")), k.slice(k.indexOf(".") + 1)];

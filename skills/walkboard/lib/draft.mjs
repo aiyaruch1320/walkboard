@@ -529,7 +529,8 @@ function applyTables(v, nodes, ops, result) {
         if (!tb) stale(op, `no table ${op.node}`);
         else if (op.to && !group(op.to)) stale(op, `no group "${op.to}"`);
         else if (from === op.to) done(op);
-        else if (op.from != null && from !== op.from && marks.nodes[n]?.mark !== "move" && marks.nodes[n]?.mark !== "add") stale(op, `the plan now puts it in "${from || "no group"}"`);
+        // A group the draft itself added is not the plan moving it elsewhere.
+        else if (op.from != null && from !== op.from && marks.nodes[n]?.mark !== "move" && marks.nodes[n]?.mark !== "add" && marks.zones[from]?.mark !== "add") stale(op, `the plan now puts it in "${from || "no group"}"`);
         else {
           out(n);
           if (op.to) group(op.to).tables.push(n);

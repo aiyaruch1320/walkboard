@@ -172,6 +172,13 @@ const dm = (...ops) => ({version: 1, views: {d: {ops: ops.map((o, i) => ({id: "o
 
 test("data models: tables, columns, keys and groups are drafted, marked, and the plan untouched", () => {
   const p = model(), before = JSON.stringify(p);
+  const hopped = applyDraft(model(), dm({op: "addGroup", group: "Ops", tables: ["users"]}, {op: "moveTable", node: "users", to: "Shop", from: ""}), "d");
+  assert.deepEqual(hopped.stale, []);
+  assert.ok(hopped.view.groups.find((g) => g.label === "Shop").tables.includes("users"));
+  assert.deepEqual(hopped.view.groups.find((g) => g.label === "Ops").tables, []);
+  const backOut = applyDraft(model(), dm({op: "addGroup", group: "Ops", tables: ["users", "orders"]}, {op: "moveTable", node: "users", to: "", from: ""}), "d");
+  assert.deepEqual(backOut.stale, []);
+  assert.deepEqual(backOut.view.groups.find((g) => g.label === "Ops").tables, ["orders"]);
   assert.match(validateDraft(dm({op: "editRelation", to: "users.id", kind: "1:1"})).join(), /needs from/);
   assert.match(validateDraft(dm({op: "editRelation", from: "orders.user_id", to: "users.id", kind: "many"})).join(), /bad kind/);
   const oneToOne = applyDraft(model(), dm({op: "editRelation", from: "orders.user_id", to: "users.id", kind: "1:1"}), "d");

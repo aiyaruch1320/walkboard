@@ -1483,7 +1483,8 @@ function renderFlow(real) {
       if (i > 0 && lane.arrows !== false) row.append(arrow());
       else if (i > 0) row.append(el("div", "gap"));
       const b = anchored(id);
-      const m = marks.nodes[id];
+      // A box in several lanes (steps that touch it) is marked moved only in the lane it went to.
+      const m = marks.nodes[id]?.mark === "move" && !lane.movedIn?.includes(id) ? null : marks.nodes[id];
       if (m) {
         b.classList.add("dr-" + m.mark);
         b.append(draftSign(m));
@@ -5997,6 +5998,9 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
     // Select tool: drag a box to another place or lane, or a lane by its title to another place.
     if (sketchTool !== "select" || (!b && !title)) return;
     const it = b || title.closest(".lane"), sx = e.clientX, sy = e.clientY;
+    const home = b ? b.closest(".lane") : null, fromLi = home ? Number(home.dataset.lane) : -1;
+    // A box can be in a lane once: a lane (a step) that already has it is no place for it.
+    const takes = (lane) => lane && (!b || lane === home || !lane.querySelector(`[data-anchor="${CSS.escape(b.dataset.anchor)}"]`));
     let moved = false;
     const move = (ev) => {
       if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
@@ -6004,10 +6008,10 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       boxDragging = true;
       it.classList.add("lifted");
       it.style.transform = `translate(${ev.clientX - sx}px, ${ev.clientY - sy}px)`;
-      const on = laneAt(ev.clientX, ev.clientY);
-      laneEls().forEach((l) => l.classList.toggle("droptarget", l === on && (b || l !== it)));
-      it.classList.toggle("dnodrop", !on);
-      document.body.classList.toggle("dnoplace", !on);
+      const on = laneAt(ev.clientX, ev.clientY), ok = takes(on);
+      laneEls().forEach((l) => l.classList.toggle("droptarget", ok && l === on && (b || l !== it)));
+      it.classList.toggle("dnodrop", !ok);
+      document.body.classList.toggle("dnoplace", !ok);
     };
     const up = (ev) => {
       removeEventListener("pointermove", move);
@@ -6019,13 +6023,14 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       laneEls().forEach((l) => l.classList.remove("droptarget"));
       if (!moved) return;
       const lane = laneAt(ev.clientX, ev.clientY);
-      if (!lane) return;
+      if (!takes(lane)) return;
       const list = kit.ops(), to = Number(lane.dataset.lane);
       if (b) {
         const id = b.dataset.anchor, at = indexAt(lane, ev.clientX, b), added = list.find((o) => o.op === "addBox" && o.node === id);
         const named = v.lanes[to]?.title ? {laneTitle: v.lanes[to].title} : {};
         if (added) return kit.setOps(list.map((o) => (o === added ? {...o, lane: to, ...named, at} : o)));
-        return kit.setOps([...list, {id: newOpId(list), op: "moveBox", node: id, lane: to, ...named, at}]);
+        const out = {fromLane: fromLi, ...(v.lanes[fromLi]?.title ? {fromLaneTitle: v.lanes[fromLi].title} : {})};
+        return kit.setOps([...list, {id: newOpId(list), op: "moveBox", node: id, lane: to, ...named, ...out, at}]);
       }
       const from = Number(it.dataset.lane);
       if (from !== to) kit.setOps([...list, {id: newOpId(list), op: "moveLane", lane: from, ...(v.lanes[from]?.title ? {laneTitle: v.lanes[from].title} : {}), to}]);

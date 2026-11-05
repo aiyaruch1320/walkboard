@@ -280,11 +280,32 @@ test("flows: boxes added and moved between lanes, lanes added, renamed and moved
   assert.equal(r.marks.nodes.a.mark, "remove");
   assert.equal(r.pending.length, 6);
   const words = describeDraft(p, d, "flow");
-  assert.equal(draftLine(words.changes[1]), '↦ box B (b) → lane 2 "Two" (step s2)');
+  assert.equal(draftLine(words.changes[1]), '↦ box B (b) → lane 2 "Two" (step s2), out of "One" (step s1)');
   assert.deepEqual(words.lanesAfter, ["Three", "s1: First", "s2: Two"]);
   // Named by title, a lane is found even after another page moved it.
   const moved = applyDraft(p, {version: 1, views: {flow: {ops: [{id: "m", op: "moveLane", lane: 1, to: 0}, {id: "b", op: "addBox", node: "new:y", name: "Y", lane: 1, laneTitle: "Two"}]}}}, "flow");
   assert.deepEqual(moved.view.lanes.map((l) => l.nodes), [["c", "new:y"], ["a", "b"]]);
+});
+
+test("flows: a box in several lanes (steps touching it) moves out of the lane it was dragged from, never into one that has it", () => {
+  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}, c: {name: "C"}}, steps: [{id: "s1", title: "One", nodes: ["a", "b"]}, {id: "s2", title: "Two", nodes: ["c", "a"]}]};
+  const flow = (...ops) => ({version: 1, views: {flow: {ops: ops.map((o, i) => ({id: `o${i + 1}`, ...o}))}}});
+  // Reordered in its own lane: no copy appears, the other step keeps it, and only that lane marks it moved.
+  const d = flow({op: "moveBox", node: "a", lane: 1, laneTitle: "Two", fromLane: 1, fromLaneTitle: "Two", at: 0});
+  assert.deepEqual(validateDraft(d), []);
+  const r = applyDraft(p, d, "flow");
+  assert.deepEqual(r.view.lanes.map((l) => l.nodes), [["a", "b"], ["a", "c"]]);
+  assert.deepEqual(r.view.lanes.map((l) => l.movedIn ?? []), [[], ["a"]]);
+  assert.equal(draftLine(describeDraft(p, d, "flow").changes[0]), '↦ box A (a) → lane 2 "Two" (step s2), place 1');
+  // Into a lane that already has it: left as it is.
+  const twice = applyDraft(p, flow({op: "moveBox", node: "a", lane: 1, fromLane: 0, at: 0}), "flow");
+  assert.deepEqual(twice.view.lanes.map((l) => l.nodes), [["a", "b"], ["c", "a"]]);
+  assert.match(twice.stale[0].why, /already in lane 2/);
+  // Between lanes, the agent is told which lane (step) it left.
+  const across = flow({op: "moveBox", node: "b", lane: 1, fromLane: 0, fromLaneTitle: "One"});
+  assert.equal(draftLine(describeDraft(p, across, "flow").changes[0]), '↦ box B (b) → lane 2 "Two" (step s2), out of "One" (step s1)');
+  // Without fromLane (older drafts) the first lane that has it is meant, as before.
+  assert.deepEqual(applyDraft(p, flow({op: "moveBox", node: "b", lane: 0, at: 0}), "flow").view.lanes[0].nodes, ["b", "a"]);
 });
 
 test("state, decision and impact pictures: boxes and lines; k8s: lines like a map's, new boxes on the right", () => {

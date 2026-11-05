@@ -77,7 +77,8 @@ const SHAPES = {
   setEnd: {node: id, end: (x) => typeof x === "boolean"},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
   addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
-  moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, at},
+  // fromLane / fromLaneTitle: the lane it is taken from, since a box may sit in several (a plan of steps: several steps touch it).
+  moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, fromLane: (x) => Number.isInteger(x) && x >= 0 && x < 200, fromLaneTitle: optText, at},
   addLane: {title: text, at},
   editLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, title: text},
   moveLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, to: (x) => Number.isInteger(x) && x >= 0 && x < 200},
@@ -86,7 +87,7 @@ const SHAPES = {
   removeEdge: {from: id, to: id},
   reverseEdge: {from: id, to: id},
 };
-const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "note"]);
+const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "fromLane", "fromLaneTitle", "note"]);
 
 // Problems with a draft (an empty list: fine). Shapes only; whether a change still fits the plan is applyDraft's job.
 export function validateDraft(d) {
@@ -676,12 +677,17 @@ function applyFlow(v, nodes, ops, result) {
   const laneOf = (n) => v.lanes.findIndex((l) => l.nodes.includes(n));
   const has = (n) => laneOf(n) >= 0;
   // The lane meant: by its title when the change names one and a lane still has it, else by its number.
-  const laneIx = (op) => {
-    if (op.laneTitle) {
-      const i = v.lanes.findIndex((l) => (l.title ?? "") === op.laneTitle);
+  const laneIx = (op, title = op.laneTitle, n = op.lane) => {
+    if (title) {
+      const i = v.lanes.findIndex((l) => (l.title ?? "") === title);
       if (i >= 0) return i;
     }
-    return op.lane ?? 0;
+    return n ?? 0;
+  };
+  // The lane a box is moved out of: the one the change names while the box is still there, else the first that has it.
+  const fromIx = (op) => {
+    const i = op.fromLane != null || op.fromLaneTitle ? laneIx(op, op.fromLaneTitle, op.fromLane) : -1;
+    return v.lanes[i]?.nodes.includes(op.node) ? i : laneOf(op.node);
   };
   result.lanes = {};
   for (const op of ops) {
@@ -690,6 +696,9 @@ function applyFlow(v, nodes, ops, result) {
     if (["addBox", "moveBox", "editLane", "moveLane"].includes(op.op)) {
       const lane = v.lanes[laneIx(op)];
       if (lane) result.lanes[op.id] = {laneTitle: lane.title ?? "", ...(lane.step ? {step: lane.step} : {})};
+      // Out of which lane, when it changes lanes: the agent then knows which step no longer touches the box.
+      const from = op.op === "moveBox" ? v.lanes[fromIx(op)] : null;
+      if (lane && from && from !== lane) Object.assign(result.lanes[op.id], {fromLaneTitle: from.title ?? "", ...(from.step ? {fromStep: from.step} : {})});
       if (op.op === "moveLane" && v.lanes[op.to] && v.lanes[op.to] !== lane) result.lanes[op.id].before = v.lanes[op.to].title ?? "";
     }
     t.track(op, () => {
@@ -704,13 +713,17 @@ function applyFlow(v, nodes, ops, result) {
           return;
         }
         case "moveBox": {
-          const li = laneIx(op), from = laneOf(op.node), lane = v.lanes[li];
+          const li = laneIx(op), from = fromIx(op), lane = v.lanes[li];
           if (from < 0) return t.stale(op, `no box ${op.node}`);
           if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
+          // A box is in a lane once: a step already touching it is not touched twice.
+          if (from !== li && lane.nodes.includes(op.node)) return t.stale(op, `box ${op.node} is already in lane ${li + 1}`);
           const at0 = v.lanes[from].nodes.indexOf(op.node);
           if (from === li && (op.at == null || op.at === at0)) return t.done(op);
           v.lanes[from].nodes.splice(at0, 1);
           insert(lane.nodes, op.node, op.at);
+          // Which lane it went to: a box in several lanes is marked moved only there.
+          (lane.movedIn ||= []).push(op.node);
           if (marks.nodes[op.node]?.mark !== "add") marks.nodes[op.node] ||= {mark: "move", from: v.lanes[from].title ?? String(from + 1)};
           return;
         }
@@ -952,7 +965,9 @@ export function describeDraft(plan, draft, viewId) {
     const o = ops.find((x) => x.id === c.id);
     if (o.op === "remove" && linesOf(o.node).length) return {...c, lines: linesOf(o.node)};
     if (o.op === "removeColumn" && copiesOf(`${o.table}.${o.column}`).length) return {...c, copies: copiesOf(`${o.table}.${o.column}`)};
-    return applied.lanes?.[o.id] ? {...c, ...applied.lanes[o.id], laneTitle: applied.lanes[o.id].laneTitle} : c;
+    // The lane a box left is said only when it changed lanes, as the draft stands now.
+    const {fromLane, fromLaneTitle, ...rest} = c;
+    return applied.lanes?.[o.id] ? {...rest, ...applied.lanes[o.id], laneTitle: applied.lanes[o.id].laneTitle} : rest;
   });
   const staleOut = stale.map((s) => ({...words(ops.find((o) => o.id === s.id)), why: s.why}));
   // A flow's lanes in their order after the draft (for a plan of steps: "step id: title"), so numbers need no counting.
@@ -992,7 +1007,7 @@ export function draftLine(c) {
     case "editRelation": return `~ line ${c.from} → ${c.to}: ${c.kind}`;
     case "removeRelation": return `− line ${c.from} → ${c.to}`;
     case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
-    case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}`;
+    case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}${c.fromLaneTitle != null ? `, out of "${c.fromLaneTitle}"${c.fromStep ? ` (step ${c.fromStep})` : ""}` : ""}`;
     case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at place ${c.at + 1}` : ""}`;
     case "editLane": return `~ ${laneWords(c)} → "${c.title}"`;
     case "moveLane": return `↦ ${laneWords(c)} → place ${c.to + 1}${c.before != null ? ` (before "${c.before}")` : ""}`;

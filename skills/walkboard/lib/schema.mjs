@@ -154,7 +154,11 @@ export const KINDS = {
   },
   decision: {
     refs: (v) => [...list(v.nodes), ...list(v.edges).flatMap((x) => [x?.from, x?.to])],
-    check: (v) => (!list(v.edges).length ? ["decision needs edges: [{\"from\", \"to\", \"label\"}]"] : []),
+    check: (v) => [
+      ...(!list(v.edges).length ? ["decision needs edges: [{\"from\", \"to\", \"label\"}]"] : []),
+      // shapes: what a box is when the user chose it (question, step, end); otherwise drawn from its lines.
+      ...(v.shapes != null && (!isObj(v.shapes) || !Object.values(v.shapes).every((x) => ["question", "step", "end"].includes(x))) ? ['shapes: {"box id": "question" | "step" | "end"}'] : []),
+    ],
   },
   impact: {
     refs: (v) => [...list(v.nodes), ...list(v.edges).flatMap((x) => [x?.from, x?.to])],

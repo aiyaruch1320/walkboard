@@ -270,6 +270,11 @@ body.side-open .side-inner{opacity:1;transform:none}
 .g-q.ext{--qb:var(--ext-bd);--qf:var(--ext-bg)}
 .g-q.plain{--qb:var(--line);--qf:var(--card)}
 .g-q.active{--qb:var(--you-bd)}
+.node.g-out{border-radius:999px;padding-left:20px;padding-right:20px}
+.g-warn{align-self:flex-start;margin-top:6px;font-size:10.5px;font-weight:600;padding:0 6px;border-radius:5px;color:var(--warn-tx);background:var(--warn-bg);box-shadow:inset 0 0 0 1px var(--warn-bd)}
+.lhshape{display:inline-block;font-size:11px;padding:2px 10px;border:1.5px solid currentColor;border-radius:4px;white-space:nowrap}
+.lhshape.g-out{border-radius:999px}
+.lhshape.g-q{border:none;padding:2px 14px;position:relative}
 .g-q .name::before{content:"◆ ";opacity:.7}
 .g-out{border-radius:14px;border-width:2px}
 .impbar{font-size:13px;margin:0 0 6px;padding:6px 10px;border-radius:8px;background:var(--code);color:var(--text)}
@@ -623,6 +628,10 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .graph svg.links .dtmp,.k8s svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 /* Start and end, on a box under the pointer: only the tools that use them show them. */
 .dflags{display:flex;gap:6px;margin:2px 0 8px}
+.dchoice{display:flex;gap:4px;align-items:center;margin:2px 0 8px;flex-wrap:wrap}
+.dchoose{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.dchoose:hover{border-color:var(--you-bd);color:var(--text)}
+.dchoose[aria-pressed="true"]{border-color:var(--you-bd);background:color-mix(in srgb,var(--you-bg) 60%,var(--card));color:var(--text)}
 .dsides{display:grid;gap:4px;margin:8px 0}
 .dsiderow{display:flex;gap:4px;align-items:center}
 .dsidelabel{font-size:12px;color:var(--muted);min-width:64px}

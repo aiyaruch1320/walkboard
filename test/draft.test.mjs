@@ -183,6 +183,18 @@ test("a state picture's start and ends change in a draft; a decision has only a 
   assert.equal(applyDraft(p, on("q", {op: "setEnd", node: "b", end: true}), "q").view.end, undefined);
   assert.match(draftLine({op: "setStart", node: "b"}), /starts at b/);
   assert.match(draftLine({op: "setEnd", node: "b", end: false}), /no longer an end/);
+  // A decision box's kind: chosen, back to its lines, on a new box too; never on a state picture.
+  assert.deepEqual(validateDraft(on("q", {op: "setShape", node: "a", shape: "question"}, {op: "setShape", node: "b", shape: ""})), []);
+  assert.match(validateDraft(on("q", {op: "setShape", node: "a", shape: "diamond"})).join(), /bad shape/);
+  const q = applyDraft(p, on("q", {op: "setShape", node: "a", shape: "question"}, {op: "addBox", node: "new:c", name: "C"}, {op: "setShape", node: "new:c", shape: "end"}), "q");
+  assert.deepEqual(q.view.shapes, {a: "question", "new:c": "end"});
+  assert.equal(q.marks.nodes.a.mark, "change");
+  const back = applyDraft({...p, views: [p.views[0], {...p.views[1], shapes: {a: "end"}}]}, on("q", {op: "setShape", node: "a", shape: ""}), "q");
+  assert.equal(back.view.shapes, undefined);
+  assert.deepEqual(applyDraft(p, on("q", {op: "setShape", node: "a", shape: ""}), "q").done, ["op1"]);
+  assert.equal(applyDraft(p, on("s", {op: "setShape", node: "a", shape: "end"}), "s").view.shapes, undefined);
+  assert.match(draftLine({op: "setShape", node: "a", shape: "question"}), /a question/);
+  assert.match(draftLine({op: "setShape", node: "a", shape: ""}), /shape from its lines/);
 });
 
 const model = () => ({

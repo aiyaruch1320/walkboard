@@ -203,7 +203,7 @@ test("state, decision, timeline, datamodel, impact and diff views are checked", 
   const nodes = Object.fromEntries(["a", "b", "c", "t1", "t2"].map((k) => [k, {name: k}]));
   const p = {title: "t", settings: {commit: "auto"}, nodes, views: [
     {id: "s", kind: "state", start: "a", states: ["a", "b"], transitions: [{from: "a", to: "b"}, {from: "b", to: "b"}]},
-    {id: "d", kind: "decision", start: "a", edges: [{from: "a", to: "b", label: "yes"}, {from: "a", to: "c", label: "no"}]},
+    {id: "d", kind: "decision", start: "a", shapes: {c: "end"}, edges: [{from: "a", to: "b", label: "yes"}, {from: "a", to: "c", label: "no"}]},
     {id: "tl", kind: "timeline", lanes: [{node: "a", events: [{at: 0, to: 3}, {at: 5}]}]},
     {id: "dm", kind: "datamodel", tables: [{node: "t1", columns: [{name: "id"}]}, {node: "t2", columns: [{name: "id"}, {name: "t1_id", ref: "t1.id"}]}]},
     {id: "i", kind: "impact", edges: [{from: "a", to: "b"}]},
@@ -213,8 +213,9 @@ test("state, decision, timeline, datamodel, impact and diff views are checked", 
   p.views[2].lanes[0].events.push({at: 4, to: 1});
   p.views[3].tables[1].columns[1].ref = "t1.nope";
   p.views[5].after = "ghost";
+  p.views[1].shapes = {c: "diamond"};
   const out = validate(p).join("\n");
-  for (const want of [/start "z" is not in states/, /every event needs/, /no column "t1.nope"/, /no view "ghost"/]) assert.match(out, want);
+  for (const want of [/start "z" is not in states/, /every event needs/, /no column "t1.nope"/, /no view "ghost"/, /shapes: \{"box id"/]) assert.match(out, want);
 });
 
 test("shapes the page iterates must be lists", () => {

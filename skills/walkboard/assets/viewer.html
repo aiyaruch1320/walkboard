@@ -1734,6 +1734,11 @@ function readHelp(button, kind) {
   // The tags on a box: where the picture starts, and (a state) where it can stop.
   if (kind === "state" || kind === "decision") parts.push(row(el("span", "g-start", t("gStart")), t(`rh_${kind}_start`)));
   if (kind === "state") parts.push(row(el("span", "g-endtag", t("gEndTag")), t("rh_state_end")));
+  // A decision's three kinds of box, and how a picture of them is made.
+  if (kind === "decision") {
+    for (const x of ["question", "step", "end"]) parts.push(row(el("span", "lhshape " + GRAPH_SHAPE[x], t("shape_" + x)), t("shapeTip_" + x)));
+    parts.push(el("div", "lhtext", t("rh_decision_how")));
+  }
   if (!snapshot) {
     parts.push(el("div", "lhsub", t(kind === "lines" ? "lh_draft" : "rh_draft")));
     if (kind !== "lines") for (const m of ["add", "change", "remove", ...(kind === "flow" || kind === "datamodel" ? ["move"] : [])]) {
@@ -2537,8 +2542,33 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
 // A zone uses it too: its note is the short line by its name (zone: true).
 // nameHint, whatHint: the words in its fields, where it is not a box or a zone. iconId: what the icon is also guessed from.
 // plain: only a name, for what has no note or icon (a lane).
-function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false, flags = []}) {
+function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false, flags = [], choice = null}) {
   let picked = initial.icon || "";
+  // One of a few kinds (a decision box: question, step, end), shown pressed; none pressed: the picture decides.
+  let chosen = choice?.value ?? null;
+  const choiceRow = el("div", "dchoice");
+  if (choice) {
+    choiceRow.append(el("span", "dsidelabel", choice.label));
+    for (const o of choice.options) {
+      const b = el("button", "dchoose " + o.value, o.label);
+      b.type = "button";
+      b.title = o.tip;
+      b.setAttribute("aria-pressed", chosen === o.value);
+      b.onclick = () => {
+        chosen = o.value;
+        choiceRow.querySelectorAll(".dchoose").forEach((x) => x.setAttribute("aria-pressed", x === b));
+        update();
+      };
+      b.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          pop.close("done");
+        }
+      };
+      choiceRow.append(b);
+    }
+  }
   // Switches for what a box is on its picture (a state picture: the start, an end), pressed or not.
   const on = Object.fromEntries(flags.map((f) => [f.key, !!f.on]));
   const flagRow = el("div", "dflags");
@@ -2578,7 +2608,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   whatIn.classList.toggle("dnote", zone);
   const picker = el("div", "dpicker");
   picker.hidden = true;
-  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length ? {flags: {...on}} : {})});
+  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {})});
   const update = () => {
     const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value}, iconId, null);
     iconBtn.replaceChildren(ic || el("span", "icon dnoicon"));
@@ -2636,7 +2666,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   cancel.onclick = () => pop.close("escape");
   const foot = el("div", "dpfoot");
   foot.append(keep, cancel, el("span", "dhint", t(plain ? "linkHint" : "boxHint")));
-  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), ...(flags.length ? [flagRow] : []), foot], {
+  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), ...(choice ? [choiceRow] : []), ...(flags.length ? [flagRow] : []), foot], {
     beside,
     escape: () => {
       if (picker.hidden) return false;
@@ -2676,10 +2706,16 @@ function previewBox(box, val, empty = "") {
   }
   if (name) name.textContent = val.name || empty;
   if (val.flags) {
+    // A decision box's kind decides whether it is an end; a state box's switch does.
+    const shape = val.flags.shape, end = shape !== undefined ? shape === "end" || (!shape && box.classList.contains("g-out")) : !!val.flags.end;
     box.querySelector(":scope > .g-tags")?.remove();
-    const tags = graphTags(val.flags.start, val.flags.end);
+    const tags = graphTags(val.flags.start, end);
     if (tags) box.prepend(tags);
-    box.classList.toggle("g-end", !!val.flags.end);
+    if (shape) {
+      box.classList.remove(...Object.values(GRAPH_SHAPE));
+      box.classList.add(GRAPH_SHAPE[shape]);
+      box.querySelector(":scope > .g-warn")?.remove();
+    } else if (shape === undefined) box.classList.toggle("g-end", end);
   }
   let what = box.querySelector(":scope > .what");
   if (!what && val.what) (head || name)?.after((what = el("div", "what")));
@@ -2722,6 +2758,7 @@ function draftRows(viewId) {
       editColumn: ["~", `${nm(o.table)}.${o.column}`, o.name ? `→ ${o.name}` : o.ref != null ? (o.ref ? `→ ${colName(o.ref)}` : t("fkOff")) : [o.type, o.key].filter((x) => x != null).join(" · ")],
       setStart: ["~", o.node ? nm(o.node) : t("gStart"), t(o.node ? "gStart" : "gNoStart")],
       setEnd: ["~", nm(o.node), t(o.end ? "gEnd" : "gNoEnd")],
+      setShape: ["~", nm(o.node), o.shape ? t("shape_" + o.shape) : t("shapeAuto")],
       editRelation: ["~", `${colName(o.from)} → ${colName(o.to)}`, o.kind],
       removeRelation: ["−", `${colName(o.from)} → ${colName(o.to)}`, ""],
       removeColumn: ["−", `${nm(o.table)}.${o.column}`, ""],
@@ -4836,6 +4873,8 @@ function graphPicture(real, build) {
   return out;
 }
 
+// A decision box drawn as what it is.
+const GRAPH_SHAPE = {question: "g-q", step: "g-do", end: "g-out"};
 // A state or decision box's tags: where the picture starts, and an end it can stop at.
 function graphTags(start, end) {
   if (!start && !end) return null;
@@ -4870,9 +4909,19 @@ function renderDecision(real) {
     ids: [...new Set([...(v.nodes || []), ...(v.edges || []).flatMap((x) => [x.from, x.to])])],
     edges: v.edges || [],
     starts: v.start ? [v.start] : [],
+    // What a box is: chosen in its card (shapes), else from its lines: two or more ways out ask a question, one is a
+    // step, none is where it ends. A choice its lines do not match yet says so on the box.
     shape: (b, id, outs) => {
-      b.classList.add(outs.length > 1 ? "g-q" : outs.length ? "g-do" : "g-out");
-      if (id === v.start) b.prepend(graphTags(true, false));
+      const auto = outs.length > 1 ? "question" : outs.length ? "step" : "end", shape = v.shapes?.[id] || auto;
+      b.classList.add(GRAPH_SHAPE[shape]);
+      const tags = graphTags(id === v.start, shape === "end");
+      if (tags) b.prepend(tags);
+      const odd = shape === "question" && outs.length < 2 ? t("shapeFewAnswers", outs.length) : shape === "end" && outs.length ? t("shapeEndOut") : "";
+      if (odd) {
+        const w = el("div", "g-warn", odd);
+        w.title = t(shape === "end" ? "shapeEndOutTip" : "shapeFewTip");
+        b.append(w);
+      }
     },
   }));
 }
@@ -5942,6 +5991,7 @@ function sketchKit(real, tools, container) {
       boxCard(e.getBoundingClientRect(), {name: n.name ?? id, what: n.what, icon: n.icon}, {
         title: t("boxEditTitle"),
         flags: kit.flags?.(id) || [],
+        choice: kit.choice?.(id) || null,
         preview: (val) => {
           previewBox(e, val);
           // One start: the box that has it now gives it up while this one takes it.
@@ -5972,6 +6022,7 @@ function sketchKit(real, tools, container) {
       boxCard(beside, {}, {
         title,
         flags: kit.flags?.(null) || [],
+        choice: kit.choice?.(null) || null,
         preview,
         onDone: (val) => {
           sketchTool = "select";
@@ -6182,11 +6233,22 @@ function sketchLinks({real, v, drafted, container, tools}) {
       {key: "start", label: t("cardStart"), tip: t(v.kind === "state" ? "gStartTip" : "gStartTipQ"), on: id != null && v.start === id},
       ...(v.kind === "state" ? [{key: "end", label: t("cardEnd"), tip: t("gEndTip"), on: id != null && (v.end || []).includes(id)}] : []),
     ];
-    // The changes that make it so, against the plan: one start for the picture, an end per box.
+    // A decision box: what it is (question, step, end), as drawn now: chosen, or from its lines.
+    const drawnShape = (id) => {
+      const n = (v.edges || []).filter((e) => e?.from === id && e.to !== id).length;
+      return v.shapes?.[id] || (n > 1 ? "question" : n ? "step" : "end");
+    };
+    if (v.kind === "decision") kit.choice = (id) => ({key: "shape", label: t("shapeLabel"), value: id == null ? null : drawnShape(id), options: ["question", "step", "end"].map((x) => ({value: x, label: t("shape_" + x), tip: t("shapeTip_" + x)}))});
+    // The changes that make it so, against the plan: one start for the picture, an end per box, a decision box's kind.
     kit.setFlags = (list, id, f) => {
       const start = f.start ? id : v.start === id ? "" : v.start ?? "";
       let out = list.filter((o) => o.op !== "setStart");
       if (start !== (real.start ?? "")) out = [...out, {id: newOpId(out), op: "setStart", node: start}];
+      if (v.kind === "decision") {
+        if (f.shape == null || f.shape === drawnShape(id)) return out;
+        out = out.filter((o) => !(o.op === "setShape" && o.node === id));
+        return f.shape === (real.shapes?.[id] ?? "") ? out : [...out, {id: newOpId(out), op: "setShape", node: id, shape: f.shape}];
+      }
       if (v.kind !== "state") return out;
       out = out.filter((o) => !(o.op === "setEnd" && o.node === id));
       return !!f.end === (real.end || []).includes(id) ? out : [...out, {id: newOpId(out), op: "setEnd", node: id, end: !!f.end}];

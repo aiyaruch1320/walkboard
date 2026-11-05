@@ -15,7 +15,7 @@ export const DRAFT_OPS = {
   datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove", "editRelation", "removeRelation"],
   flow: ["addBox", "moveBox", "addLane", "editLane", "moveLane", "editNode", "remove"],
   state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setEnd"],
-  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart"],
+  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setShape"],
   impact: ["addBox", "addEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
   k8s: ["addBox", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "remove"],
 };
@@ -75,6 +75,8 @@ const SHAPES = {
   // Where a state or decision picture starts ("" = nowhere in particular), and whether a state is an end.
   setStart: {node: (x) => x === "" || id(x)},
   setEnd: {node: id, end: (x) => typeof x === "boolean"},
+  // What a decision box is: a question, a step or an end ("" = drawn from its lines again).
+  setShape: {node: id, shape: (x) => ["question", "step", "end", ""].includes(x)},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
   addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
   // fromLane / fromLaneTitle: the lane it is taken from, since a box may sit in several (a plan of steps: several steps touch it).
@@ -848,6 +850,17 @@ function applyGraph(v, nodes, ops, result) {
           for (const n of [was, op.node]) if (n && has(n)) marks.nodes[n] ||= {mark: "change"};
           return;
         }
+        case "setShape": {
+          if (!has(op.node)) return t.stale(op, `no box ${op.node}`);
+          const shapes = isObj(v.shapes) ? {...v.shapes} : {};
+          if ((shapes[op.node] ?? "") === op.shape) return t.done(op);
+          if (op.shape) shapes[op.node] = op.shape;
+          else delete shapes[op.node];
+          if (Object.keys(shapes).length) v.shapes = shapes;
+          else delete v.shapes;
+          marks.nodes[op.node] ||= {mark: "change"};
+          return;
+        }
         case "setEnd": {
           if (!has(op.node)) return t.stale(op, `no box ${op.node}`);
           const ends = Array.isArray(v.end) ? v.end : [];
@@ -1004,6 +1017,7 @@ export function draftLine(c) {
     case "removeGroup": return `− group "${c.group}"`;
     case "setStart": return c.node ? `~ starts at ${c.node}` : "~ no start";
     case "setEnd": return `~ ${c.node}: ${c.end ? "an end state" : "no longer an end state"}`;
+    case "setShape": return `~ ${c.node}: ${c.shape ? `a ${c.shape === "end" ? "way it ends" : c.shape}` : "shape from its lines"}`;
     case "editRelation": return `~ line ${c.from} → ${c.to}: ${c.kind}`;
     case "removeRelation": return `− line ${c.from} → ${c.to}`;
     case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;

@@ -1658,7 +1658,52 @@ function linkLegend(states, uses) {
     sp.style.color = color[st];
     lg.append(sp);
   }
+  // How to read a line, for whoever has not read these pictures before.
+  const help = el("button", "lhelp", "?");
+  help.title = t("lineHelp");
+  help.setAttribute("aria-label", t("lineHelp"));
+  help.onclick = (e) => {
+    e.stopPropagation();
+    lineHelp(help.getBoundingClientRect());
+  };
+  lg.append(help);
   return lg;
+}
+// A line drawn as the picture draws it, short: cls as on the picture ("l-ok", "l-ok dr-add"…).
+function lineSample(cls, blocked = false) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 48 12");
+  svg.setAttribute("aria-hidden", "true");
+  svg.classList.add("links", "lsample");
+  for (const [d, extra] of [["M2 6H41", ""], [blocked ? "M43 1V11" : "M37 2L43 6L37 10", " head"]]) {
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", cls + extra);
+    if (extra) path.style.strokeDasharray = "none";
+    svg.append(path);
+  }
+  return svg;
+}
+// The card behind "?": which way a line points, its label, its kinds, and what draft mode does to it.
+function lineHelp(beside) {
+  const row = (sample, text) => {
+    const r = el("div", "lhrow");
+    r.append(sample, el("span", null, text));
+    return r;
+  };
+  const dir = el("div", "lhdir");
+  dir.append(el("span", "lhbox", "A"), lineSample("l-ok"), el("span", "lhbox", "B"), el("span", null, t("lh_dir")));
+  const via = el("div", "lhrow");
+  via.append(el("span", "via via-ok", "← :5432"), el("span", null, t("lh_port")));
+  const parts = [el("div", "dphead", t("lineHelp")), dir, via, el("div", "lhsub", t("lh_kinds"))];
+  for (const st of LINK_STATE_KEYS) parts.push(row(lineSample("l-" + st, st === "blocked"), t("lk_" + st)));
+  if (!snapshot) {
+    parts.push(el("div", "lhsub", t("lh_draft")));
+    for (const m of ["add", "change", "remove"]) parts.push(row(lineSample("l-ok dr-" + m), t("lh_" + m)));
+  }
+  parts.push(el("div", "dhint", t("lh_shape")));
+  const pop = popover(beside.left, beside.bottom + 8, parts);
+  pop.classList.add("lhcard");
 }
 
 function renderK8s(real) {

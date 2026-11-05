@@ -5202,7 +5202,7 @@ function renderDataModel(real) {
         // Let go where it cannot go: back to where it was, as a box on a map.
         if (blocked) {
           shift(start, 0, 0);
-          return showProblem(t(isSketch ? "tableOnTable" : "moveNeedsDraft"));
+          return isSketch ? showProblem(t("tableOnTable")) : showProblem(t("moveNeedsDraft"), {label: t("sketch"), run: () => enterDraft(real.id)});
         }
         if (to || left) {
           const before = tools.snap(), home = to ? frameDefs.findIndex((g) => g.label === to.dataset.group) : null;

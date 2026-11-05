@@ -555,6 +555,10 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er.sketch[data-tool="column"],.er.sketch[data-tool="column"] *,.er.sketch[data-tool="group"],.er.sketch[data-tool="group"] *{cursor:not-allowed}
 .er.sketch[data-tool="column"] .ertable,.er.sketch[data-tool="column"] .ertable *,.er.sketch[data-tool="group"] .ertable,.er.sketch[data-tool="group"] .ertable *{cursor:copy}
 .er.sketch[data-tool="connect"] li[data-col]{cursor:alias}
+/* The slot before a column's name: what clicking it would do shows under the pointer. */
+.er.sketch[data-tool="select"] .erkey:not(.copy),.er.sketch[data-tool="rename"] .erkey:not(.copy){cursor:pointer;border-radius:4px}
+.er.sketch[data-tool="select"] .erkey:not(.copy):hover,.er.sketch[data-tool="rename"] .erkey:not(.copy):hover{background:var(--you-bg);outline:1px solid var(--you-bd)}
+.er.sketch[data-tool="select"] li:hover>.erkey:not(.copy):not(:has(.pk))::after,.er.sketch[data-tool="rename"] li:hover>.erkey:not(.copy):not(:has(.pk))::after{content:" PK";color:var(--muted);opacity:.65}
 .er.sketch[data-tool="rename"] .ertable,.er.sketch[data-tool="rename"] .erframe-label{cursor:text}
 .er.sketch[data-tool="remove"] .ertable,.er.sketch[data-tool="remove"] .erframe-label{cursor:pointer}
 .er .dsel{outline:2px solid var(--you-bd)!important;outline-offset:3px}

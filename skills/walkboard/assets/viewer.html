@@ -4978,7 +4978,11 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
         if (name.includes(".")) return showProblem(t("colDot"));
         if (columnTaken(table, name, column)) return showProblem(t("colTaken", name));
         const list = ops(), added = addedCol(x.id);
-        if (added) return setOps(list.map((o) => (o === added ? {...o, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})} : o.table === table && o.column === column ? {...o, column: name} : o)));
+        // What the words no longer say goes: the type or the key can be taken away by typing the column without it.
+        if (added) {
+          const {type: _t, key: _k, ...base} = added;
+          return setOps(list.map((o) => (o === added ? {...base, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})} : o.table === table && o.column === column ? {...o, column: name} : o)));
+        }
         setOps(editCol(list, x.id, {...(name !== column ? {name} : {}), type, key: key ?? (col.key && !val.toLowerCase().includes(String(col.key).toLowerCase()) ? "" : col.key ?? "")}));
       }});
     }
@@ -5013,6 +5017,17 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
         setOps(next);
       },
     });
+  };
+  // The slot before a column's name turns its primary key on and off; the rest of what its key says stays.
+  const togglePk = (k) => {
+    const [table, column] = split(k), col = v.tables.find((tb) => tb.node === table)?.columns.find((c) => c.name === column);
+    if (!col) return;
+    const words = String(col.key || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
+    const key = (words.includes("pk") ? words.filter((w) => w !== "pk") : ["pk", ...words]).join(" ");
+    const list = ops(), added = addedCol(k);
+    if (!added) return setOps(editCol(list, k, {key}));
+    const {key: _k, ...base} = added;
+    setOps(list.map((o) => (o === added ? (key ? {...base, key} : base) : o)));
   };
   // A foreign key: drag from a column onto the column it points at; the same pair again takes it out.
   const connect = (e) => {
@@ -5105,6 +5120,11 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     if (e.button !== 0 || e.target.closest(".dedit")) return;
     if (sketchTool === "connect") return connect(e);
     const x = selOf(e.target);
+    const slot = (sketchTool === "select" || sketchTool === "rename") && e.target.closest?.(".erkey:not(.copy)");
+    if (slot) {
+      e.preventDefault();
+      return togglePk(slot.closest("li[data-col]").dataset.col);
+    }
     if (sketchTool === "remove") return x && (e.preventDefault(), remove(x));
     if (sketchTool === "rename") return x && (e.preventDefault(), rename(x));
     if (sketchTool === "column") {
@@ -5177,7 +5197,8 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     e.preventDefault();
     if (sketchTool === "select") select(selOf(e.target));
   }, true);
-  grid.addEventListener("dblclick", (e) => sketchTool === "select" && rename(selOf(e.target)));
+  grid.addEventListener("dblclick", (e) => sketchTool === "select" && !e.target.closest?.(".erkey") && rename(selOf(e.target)));
+  grid.querySelectorAll(".erkey:not(.copy)").forEach((k) => (k.title = t("pkTip")));
   // The table tool: the group frame a click would put it in lights up.
   grid.addEventListener("pointermove", (e) => {
     const f = sketchTool === "table" && !document.querySelector(".dboxcard") && !e.target.closest?.(".ertable") ? frameAt(e.clientX, e.clientY, null) : null;

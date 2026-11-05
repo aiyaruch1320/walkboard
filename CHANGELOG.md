@@ -32,6 +32,7 @@
 - **The same card everywhere.** A lane is added and renamed in a card (only a name: it has no note or icon), and on state, decision, impact and Kubernetes pictures a new box shows where you clicked as you type, as on a map.
 - **The cursor says where nothing can go, on every picture.** The tools that place something show a no-entry cursor over what they cannot use (a table or box under a new one, empty space for the column and group tools, the gap between lanes), as does dragging a box out of every lane or a table onto another. A table let go on another goes back, with a line that says why.
 - Draft mode reads the same across pictures: the tools come in a map's order (what to add, lines, edit, take out), what a click or a drop would land in lights up the same way, a table's sign sits on its corner as a box's does, and where the page places the boxes the first tool no longer says "drag".
+- **Primary keys at a click.** While sketching a data model, the slot before a column's name turns its primary key on and off (a foreign key stays one), and shows **PK** under the pointer. A column the draft added can now lose its type or key by typing it without them.
 
 ## 0.8.0
 

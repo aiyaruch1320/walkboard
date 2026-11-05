@@ -83,6 +83,23 @@ test("a line turned round keeps its label and kind, and later edits still find i
   assert.match(draftLine({op: "reverseLink", from: "api", to: "nat"}), /now nat → api/);
 });
 
+test("graphs and k8s turn lines round too; new boxes there keep a note and an icon", () => {
+  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}}, views: [
+    {id: "s", kind: "state", states: ["a", "b"], transitions: [{from: "a", to: "b", label: "pay"}]},
+    {id: "k", kind: "k8s", workloads: [{node: "a"}], targets: ["b"], links: [{from: "a", to: "b", label: ":443", state: "todo"}]},
+  ]};
+  const d = (view, ...ops) => ({version: 1, views: {[view]: {ops: ops.map((o, i) => ({id: "op" + (i + 1), ...o}))}}});
+  const s = applyDraft(p, d("s", {op: "reverseEdge", from: "a", to: "b"}, {op: "editEdge", from: "a", to: "b", label: "refund"}, {op: "addBox", node: "new:c", name: "C", what: "waits", icon: "clock"}), "s");
+  assert.deepEqual(s.view.transitions, [{from: "b", to: "a", label: "refund"}]);
+  assert.equal(s.marks.links["b>a"].reversed, true);
+  assert.deepEqual(s.plan.nodes["new:c"], {name: "C", what: "waits", icon: "clock"});
+  const k = applyDraft(p, d("k", {op: "reverseLink", from: "a", to: "b"}), "k");
+  assert.deepEqual(k.view.links, [{from: "b", to: "a", label: ":443", state: "todo"}]);
+  assert.deepEqual(applyDraft(p, d("s", {op: "reverseEdge", from: "b", to: "a"}), "s").done, ["op1"]);
+  assert.deepEqual(applyDraft(p, d("s", {op: "reverseEdge", from: "a", to: "zz"}), "s").stale[0].why, "no such line");
+  assert.match(draftLine({op: "reverseEdge", from: "a", to: "b"}), /now b → a/);
+});
+
 test("moves leave where they came from; edits keep what was there; removals stay drawn", () => {
   const r = applyDraft(plan(), draft({op: "move", node: "erp", to: "App", from: "On-prem"}, {op: "editNode", node: "db", name: "Aurora v2"}, {op: "remove", node: "nat"}, {op: "editLink", from: "api", to: "nat", state: "blocked"}), "m");
   assert.deepEqual(r.marks.nodes.erp, {mark: "move", from: "On-prem", fromAt: 0});

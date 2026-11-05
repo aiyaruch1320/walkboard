@@ -14,10 +14,10 @@ export const DRAFT_OPS = {
   map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
   datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove"],
   flow: ["addBox", "moveBox", "addLane", "editLane", "moveLane", "editNode", "remove"],
-  state: ["addBox", "addEdge", "editEdge", "removeEdge", "editNode", "remove"],
-  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "editNode", "remove"],
-  impact: ["addBox", "addEdge", "removeEdge", "editNode", "remove"],
-  k8s: ["addBox", "addLink", "editLink", "removeLink", "editNode", "remove"],
+  state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
+  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
+  impact: ["addBox", "addEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
+  k8s: ["addBox", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "remove"],
 };
 // A plan without views is drawn as one flow of its steps (as in lib/schema.mjs, kept here so this file imports nothing).
 export function viewList(p) {
@@ -69,7 +69,7 @@ const SHAPES = {
   editGroup: {group: label, label},
   removeGroup: {group: label},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
-  addBox: {node: isNewId, name: text, lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
+  addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
   moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, at},
   addLane: {title: text, at},
   editLane: {lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, title: text},
@@ -77,6 +77,7 @@ const SHAPES = {
   addEdge: {from: id, to: id, label: (x) => optText(x, 60)},
   editEdge: {from: id, to: id, label: (x) => typeof x === "string" && x.length <= 60 && plain(x)},
   removeEdge: {from: id, to: id},
+  reverseEdge: {from: id, to: id},
 };
 const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "note"]);
 
@@ -105,7 +106,7 @@ export function validateDraft(d) {
         if (!ok(op[k])) out.push(`${at} (${op.op}): bad ${k}`);
       }
       for (const k of Object.keys(op)) if (k !== "id" && k !== "op" && !(k in shape)) out.push(`${at} (${op.op}): unknown field ${k}`);
-      if (["addLink", "editLink", "removeLink", "reverseLink"].includes(op.op) && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
+      if (["addLink", "editLink", "removeLink", "reverseLink", "reverseEdge"].includes(op.op) && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
       if (op.op === "editZone" && op.label == null && op.icon == null && op.note == null) out.push(`${at} (editZone): needs a label, an icon or a note`);
     });
   }
@@ -602,6 +603,9 @@ function applyTables(v, nodes, ops, result) {
 }
 
 // Shared by the pictures below: a change the plan already has is done, one that no longer fits is stale.
+// A new box as the plan would hold it: its name, and the note and icon it was given.
+const boxOf = (op) => ({name: op.name.trim(), ...(op.what ? {what: op.what} : {}), ...(op.icon ? {icon: op.icon} : {})});
+
 function tally(result) {
   return {
     stale: (op, why) => result.stale.push({id: op.id, why}),
@@ -653,7 +657,7 @@ function applyFlow(v, nodes, ops, result) {
           const lane = v.lanes[laneIx(op)];
           if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
           if (!lane) return t.stale(op, `no lane ${op.lane + 1}`);
-          nodes[op.node] = {name: op.name.trim()};
+          nodes[op.node] = boxOf(op);
           insert(lane.nodes, op.node, op.at);
           marks.nodes[op.node] = {mark: "add"};
           return;
@@ -715,6 +719,20 @@ function applyFlow(v, nodes, ops, result) {
   });
 }
 
+// Turn a line round (graphs and k8s): find(from, to) gives a line as it stands; flip(line) records it.
+function turn(find, op, t, flip, marks) {
+  const l = find(op.from, op.to);
+  if (!l && find(op.to, op.from)) return t.done(op);
+  if (!l) return t.stale(op, "no such line");
+  if (find(op.to, op.from)) return t.stale(op, "a line already goes the other way");
+  l.from = op.to;
+  l.to = op.from;
+  flip(l);
+  const was = `${op.from}>${op.to}`, now = `${op.to}>${op.from}`, m = marks.links[was];
+  delete marks.links[was];
+  marks.links[now] = m?.mark === "add" ? m : {...(m || {mark: "change"}), reversed: true};
+}
+
 // State, decision and impact pictures: boxes and the lines between them, laid out by the page.
 function applyGraph(v, nodes, ops, result) {
   const marks = result.marks, t = tally(result);
@@ -722,21 +740,24 @@ function applyGraph(v, nodes, ops, result) {
   v[listKey] = Array.isArray(v[listKey]) ? [...v[listKey]] : [];
   v[edgeKey] = (Array.isArray(v[edgeKey]) ? v[edgeKey] : []).filter(isObj).map((e) => ({...e}));
   const has = (n) => v[listKey].includes(n) || v[edgeKey].some((e) => e.from === n || e.to === n);
-  const edge = (f, to) => v[edgeKey].find((e) => e.from === f && e.to === to);
+  const edge0 = (f, to) => v[edgeKey].find((e) => e.from === f && e.to === to);
   const key = (f, to) => `${f}>${to}`;
+  // A line the draft turned round is still found by the ends it had in the plan.
+  const flipped = new Set();
+  const edge = (f, to) => edge0(f, to) || (flipped.has(key(f, to)) ? edge0(to, f) : undefined);
   for (const op of ops) {
     if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS[v.kind].includes(op.op)) continue;
     t.track(op, () => {
       switch (op.op) {
         case "addBox":
           if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
-          nodes[op.node] = {name: op.name.trim()};
+          nodes[op.node] = boxOf(op);
           v[listKey].push(op.node);
           marks.nodes[op.node] = {mark: "add"};
           return;
         case "addEdge":
           if (!has(op.from) || !has(op.to)) return t.stale(op, "a box on this line is not in the picture");
-          if (edge(op.from, op.to)) return t.done(op);
+          if (edge0(op.from, op.to)) return t.done(op);
           v[edgeKey].push({from: op.from, to: op.to, ...(op.label ? {label: op.label} : {})});
           marks.links[key(op.from, op.to)] = {mark: "add"};
           return;
@@ -747,18 +768,20 @@ function applyGraph(v, nodes, ops, result) {
           const was = e.label ?? "";
           if (op.label) e.label = op.label;
           else delete e.label;
-          marks.links[key(op.from, op.to)] ||= {mark: "change", was};
+          marks.links[key(e.from, e.to)] ||= {mark: "change", was};
           return;
         }
         case "removeEdge": {
-          const e = edge(op.from, op.to);
+          const e = edge(op.from, op.to), k = e && key(e.from, e.to);
           if (!e) return t.done(op);
-          if (marks.links[key(op.from, op.to)]?.mark === "add") {
+          if (marks.links[k]?.mark === "add") {
             v[edgeKey].splice(v[edgeKey].indexOf(e), 1);
-            delete marks.links[key(op.from, op.to)];
-          } else marks.links[key(op.from, op.to)] = {mark: "remove"};
+            delete marks.links[k];
+          } else marks.links[k] = {mark: "remove"};
           return;
         }
+        case "reverseEdge":
+          return turn(edge0, op, t, () => flipped.add(key(op.from, op.to)), marks);
         case "editNode":
           return editNodeIn(has, nodes, op, marks, t);
         case "remove":
@@ -782,21 +805,23 @@ function applyK8s(v, nodes, ops, result) {
   v.links = (Array.isArray(v.links) ? v.links : []).filter(isObj).map((l) => ({...l}));
   const ids = () => new Set([...(v.outside || []), ...(v.configs || []), ...v.targets, ...(v.policy ? [v.policy] : []), ...(v.workloads || []).map((w) => w?.node)]);
   const has = (n) => ids().has(n);
-  const link = (f, to) => v.links.find((l) => l.from === f && l.to === to);
+  const link0 = (f, to) => v.links.find((l) => l.from === f && l.to === to);
   const key = (f, to) => `${f}>${to}`;
+  const flipped = new Set();
+  const link = (f, to) => link0(f, to) || (flipped.has(key(f, to)) ? link0(to, f) : undefined);
   for (const op of ops) {
     if (!isObj(op) || !Object.hasOwn(SHAPES, op.op) || !DRAFT_OPS.k8s.includes(op.op)) continue;
     t.track(op, () => {
       switch (op.op) {
         case "addBox":
           if (Object.hasOwn(nodes, op.node)) return t.stale(op, `id ${op.node} is taken`);
-          nodes[op.node] = {name: op.name.trim()};
+          nodes[op.node] = boxOf(op);
           v.targets.push(op.node);
           marks.nodes[op.node] = {mark: "add"};
           return;
         case "addLink":
           if (!has(op.from) || !has(op.to)) return t.stale(op, "a box on this line is not in the picture");
-          if (link(op.from, op.to)) return t.done(op);
+          if (link0(op.from, op.to)) return t.done(op);
           v.links.push({from: op.from, to: op.to, ...(op.label ? {label: op.label} : {}), ...(op.state ? {state: op.state} : {})});
           marks.links[key(op.from, op.to)] = {mark: "add"};
           return;
@@ -810,18 +835,20 @@ function applyK8s(v, nodes, ops, result) {
             if (op[k] === "" || (k === "state" && op[k] === "ok")) delete l[k];
             else l[k] = op[k];
           }
-          marks.links[key(op.from, op.to)] ||= {mark: "change", was};
+          marks.links[key(l.from, l.to)] ||= {mark: "change", was};
           return;
         }
         case "removeLink": {
-          const l = link(op.from, op.to);
+          const l = link(op.from, op.to), k = l && key(l.from, l.to);
           if (!l) return t.done(op);
-          if (marks.links[key(op.from, op.to)]?.mark === "add") {
+          if (marks.links[k]?.mark === "add") {
             v.links.splice(v.links.indexOf(l), 1);
-            delete marks.links[key(op.from, op.to)];
-          } else marks.links[key(op.from, op.to)] = {mark: "remove"};
+            delete marks.links[k];
+          } else marks.links[k] = {mark: "remove"};
           return;
         }
+        case "reverseLink":
+          return turn(link0, op, t, () => flipped.add(key(op.from, op.to)), marks);
         case "editNode":
           return editNodeIn(has, nodes, op, marks, t);
         case "remove":
@@ -899,7 +926,7 @@ export function draftLine(c) {
     case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}`;
     case "editGroup": return `~ group "${c.group}" → "${c.label}"`;
     case "removeGroup": return `− group "${c.group}"`;
-    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}`;
+    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}`;
     case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at place ${c.at + 1}` : ""}`;
     case "editLane": return `~ ${laneWords(c)} → "${c.title}"`;
@@ -907,6 +934,7 @@ export function draftLine(c) {
     case "addEdge": return `+ line ${c.from} → ${c.to}${c.label ? ` "${c.label}"` : ""}`;
     case "editEdge": return `~ line ${c.from} → ${c.to}: label ${JSON.stringify(c.label)}`;
     case "removeEdge": return `− line ${c.from} → ${c.to}`;
+    case "reverseEdge": return `⇄ line ${c.from} → ${c.to} turned round: now ${c.to} → ${c.from}`;
     default: return JSON.stringify(c);
   }
 }

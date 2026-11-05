@@ -1809,7 +1809,7 @@ function profileMarks(map, v) {
     const k = PROF.lineKindOf(l.kind);
     if (!k) continue;
     used.add(k.profile);
-    lines.set(l.kind, k.def);
+    lines.set(`${k.def.style}|${k.def.name}`, k.def);
   }
   if (!used.size) return null;
   const row = el("div", "profrow");
@@ -2057,6 +2057,22 @@ function lineHits(d, boxes, dx = 0, dy = 0, limit = Infinity) {
 }
 
 // Two rows of buttons, Leaves and Arrives: Auto or a side; chosen is changed in place and onPick called.
+// A pointer let go outside the window (or the drag cut short by the browser).
+const outside = (ev) => !!ev && (ev.type === "pointercancel" || ev.clientX < 0 || ev.clientY < 0 || ev.clientX > innerWidth || ev.clientY > innerHeight);
+// Enter on a card's choice buttons (a kind, a side, a state) takes that one and keeps the card. Buttons that do
+// something else (turn round, take out, keep) are left to themselves.
+function enterKeeps(parts, pop) {
+  for (const b of parts.flatMap((p) => (p.tagName === "BUTTON" ? [p] : [...(p.querySelectorAll?.("button") || [])]))) {
+    if (b.classList.contains("dlinkx") || b.classList.contains("primary")) continue;
+    b.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      e.stopPropagation();
+      b.click();
+      pop().close("done");
+    });
+  }
+}
 function sideChooser(chosen, onPick) {
   const wrap = el("div", "dsides");
   for (const end of ["from", "to"]) {
@@ -2223,7 +2239,7 @@ async function flushDraft(viewId) {
       redrawDraft();
       return flushDraft(viewId);
     }
-    if (!r.ok) throw new Error(await r.text());
+    if (!r.ok) throw Object.assign(new Error((await r.text()).split("\n")[0]), {status: r.status});
     const {rev} = await r.json();
     draftBase[viewId] = {ops, rev};
     // Changed again while this one was on its way: send that too.
@@ -2233,6 +2249,8 @@ async function flushDraft(viewId) {
   } catch (e) {
     sketchApi?.saved?.();
     clearTimeout(draftRetry);
+    // The server refused the change itself: sending it again would fail again. Say so.
+    if (e.status === 400) return showProblem(t("draftRefused", e.message));
     draftRetry = setTimeout(() => [...unsaved].forEach(flushDraft), 4000);
   }
 }
@@ -3774,7 +3792,8 @@ function renderMap(real) {
   const sidesNow = () => (lv.layout?.["@sides"] && typeof lv.layout["@sides"] === "object" ? lv.layout["@sides"] : {});
   const wantOf = (l) => {
     const k = `${l.from}>${l.to}`, pv = sidePreview?.key === k ? sidePreview : null, s0 = sidesNow()[k] || {};
-    const pick = (end) => (pv && pv[end] !== undefined ? (pv[end] === "auto" ? null : pv[end]) : s0[end] || null);
+    const ok = (x) => (SIDE_NORMAL[x] ? x : null);
+    const pick = (end) => (pv && pv[end] !== undefined ? (pv[end] === "auto" ? null : ok(pv[end])) : ok(s0[end]));
     return {from: pick("from"), to: pick("to")};
   };
   const routeOf = (l, a, b, all, lanes, base) => {
@@ -4092,7 +4111,8 @@ function renderMap(real) {
     if ((v.links || []).some((l) => l?.from === to && l?.to === from)) return showProblem(t("lineBothWays"));
     setOps([...list, {id: nextId(list), op: "reverseLink", from, to}]);
   };
-  const linkOps = (shownFrom, shownTo, change) => {
+  // nextLayout: the layout to save with it (sides chosen in the same card), one undo.
+  const linkOps = (shownFrom, shownTo, change, nextLayout = undefined) => {
     const added0 = ops().find((o) => o.op === "addLink" && o.from === shownFrom && o.to === shownTo);
     const [from, to] = added0 ? [shownFrom, shownTo] : planEnds(shownFrom, shownTo);
     const list = ops(), added = list.find((o) => o.op === "addLink" && o.from === from && o.to === to);
@@ -4101,7 +4121,7 @@ function renderMap(real) {
       const gone = list.find((o) => o.op === "removeLink" && o.from === from && o.to === to);
       return setOps(gone ? list.filter((o) => o !== gone) : [...list.filter((o) => !(o.op === "editLink" && o.from === from && o.to === to)), {id: nextId(list), op: "removeLink", from, to}]);
     }
-    if (added) return setOps(list.map((o) => (o === added ? Object.fromEntries(Object.entries({...o, ...change}).filter(([k, w]) => !((k === "label" && !w) || (k === "kind" && !w) || (k === "state" && (!w || w === "ok"))))) : o)));
+    if (added) return setOps(list.map((o) => (o === added ? Object.fromEntries(Object.entries({...o, ...change}).filter(([k, w]) => !((k === "label" && !w) || (k === "kind" && !w) || (k === "state" && (!w || w === "ok"))))) : o)), undefined, nextLayout);
     const orig = (lv.links || []).find((l) => l?.from === from && l?.to === to) || {};
     const ed = list.find((o) => o.op === "editLink" && o.from === from && o.to === to);
     const merged = {...(ed || {id: nextId(list), op: "editLink", from, to}), ...change};
@@ -4109,7 +4129,7 @@ function renderMap(real) {
     if (merged.state != null && merged.state === (orig.state ?? "ok")) delete merged.state;
     if (merged.kind != null && merged.kind === (orig.kind ?? "")) delete merged.kind;
     const keep = merged.label != null || merged.state != null || merged.kind != null;
-    setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list);
+    setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list, undefined, nextLayout);
   };
   // A line's label and kind (each kind drawn as it looks, its name under the samples), or take it out.
   // fresh: a line just drawn, not saved yet: closing the card saves it with what was chosen (Escape drops it),
@@ -4132,7 +4152,8 @@ function renderMap(real) {
       if (lab !== (l.label || "")) change.label = lab;
       if (state !== (l.state || "ok")) change.state = state;
       if (lineKind !== (l.kind || "")) change.kind = lineKind;
-      if (Object.keys(change).length) linkOps(from, to, change);
+      if (Object.keys(change).length) linkOps(from, to, change, sd?.next() ?? undefined);
+      else if (sd?.commit()) keepFocus(() => renderView());
     };
     // What the line is on a platform its boxes belong to (an event, VPC peering…): offered when one has a kind.
     const profs = new Set([from, to].map((n) => PROF.kindOf(drafted.plan.nodes[n]?.kind)?.profile).filter(Boolean));
@@ -4142,7 +4163,7 @@ function renderMap(real) {
     if (kindChoices.length) {
       kindRow.append(el("span", "dsidelabel", t("kindLabel")));
       for (const [k, d] of [["", {name: t("lineTraffic"), style: ""}], ...kindChoices]) {
-        const b = el("button", "dchoose", d.name);
+        const b = el("button", "dchoose", profs.size > 1 && k ? `${PROF.PROFILES[k.split(":")[0]].label}: ${d.name}` : d.name);
         b.type = "button";
         b.setAttribute("aria-pressed", lineKind === k);
         b.onclick = () => {
@@ -4204,17 +4225,14 @@ function renderMap(real) {
     }
     parts.push(el("div", "dhint", t("linkHint")));
     const end = map.querySelector(`[data-anchor="${CSS.escape(to)}"]`)?.getBoundingClientRect();
+    // Enter keeps the card wherever the focus is, as its hint says: on a kind or a side, that one is taken first.
+    enterKeeps(parts, () => pop);
     const pop = popover(x + 10, y + 10, parts, {
       beside: end,
       onClose: (why) => {
         if (why === "removed" || why === "replaced" || why === "escape" || why === "reverse") sd?.cancel();
         if (why === "removed" || why === "replaced" || why === "escape") return;
-        if (why !== "reverse") {
-          const moved = sd?.commit(), before = JSON.stringify(ops());
-          commit();
-          if (moved && JSON.stringify(ops()) === before) keepFocus(() => renderView());
-          return;
-        }
+        if (why !== "reverse") return commit();
         // Label or kind typed before turning it round: kept, then the line turns.
         const lab = cleanText(label.value), state0 = l.state || "ok";
         if (lab !== (l.label || "") || state !== state0 || lineKind !== (l.kind || "")) commit();
@@ -4304,6 +4322,11 @@ function renderMap(real) {
         keepSidesOf(k, chosen);
         return true;
       },
+      // The layout with these sides, for a change that saves both at once; null when they did not change.
+      next() {
+        sidePreview = null;
+        return (chosen.from || null) === (now.from || null) && (chosen.to || null) === (now.to || null) ? null : sidesLayout(k, chosen);
+      },
     };
   };
   const showEnds = (k) => {
@@ -4387,10 +4410,20 @@ function renderMap(real) {
         sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side && !reach ? {[end]: side} : {})};
         redraw();
       };
-      const up = () => {
+      const esc = (ev) => {
+        if (ev.key !== "Escape") return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        moved = false;
+        up();
+      };
+      const up = (ev) => {
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         removeEventListener("pointercancel", up);
+        removeEventListener("keydown", esc, true);
+        // Let go outside the window: taken back, as with Escape.
+        if (outside(ev)) moved = false;
         map.classList.remove("dragging");
         document.body.classList.remove("dnoplace");
         reach?.classList.remove("dtarget");
@@ -4414,6 +4447,7 @@ function renderMap(real) {
       addEventListener("pointermove", move);
       addEventListener("pointerup", up);
       addEventListener("pointercancel", up);
+      addEventListener("keydown", esc, true);
     }, true);
     map.addEventListener("click", (e) => {
       if (!e.target.closest?.(".dend")) return;
@@ -4906,7 +4940,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       const a = box(e.from), b = box(e.to);
       if (!a || !b) continue;
       const k = `${e.from}>${e.to}`, pv = grid.sidePreview?.key === k ? grid.sidePreview : {};
-      const pick = (end, id) => (pv[end] !== undefined ? (pv[end] === "auto" ? null : pv[end]) : saved()?.[id]?.sides?.[k] ?? null);
+      const pick = (end, id) => (pv[end] !== undefined ? (pv[end] === "auto" ? null : pv[end]) : SIDE_NORMAL[saved()?.[id]?.sides?.[k]] ? saved()[id].sides[k] : null);
       let fa = pick("from", e.from), fb = pick("to", e.to), span = null;
       if (!fa && !fb) {
         const clear = (l, r, t, bt) => !ids.some((x) => x !== e.from && x !== e.to && (() => {
@@ -5112,10 +5146,11 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
   if (hold?.canMove()) {
     const sideNow = (id, k) => saved()?.[id]?.sides?.[k] ?? null;
     // Keep the sides a line meets (null: the picture picks), one undo; true when anything changed.
-    const keepSides = (from, to, chosen) => {
+    // Where the boxes are, with these sides; null when they did not change.
+    const sidesPos = (from, to, chosen) => {
       const k = `${from}>${to}`;
-      if (chosen.from === sideNow(from, k) && chosen.to === sideNow(to, k)) return false;
-      const before = hold.real.layout, pos = grid.hold.positionsNow();
+      if (chosen.from === sideNow(from, k) && chosen.to === sideNow(to, k)) return null;
+      const pos = grid.hold.positionsNow();
       for (const [end, id] of [["from", from], ["to", to]]) {
         if (!pos[id]) continue;
         const sides = {...pos[id].sides};
@@ -5123,8 +5158,12 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         else delete sides[k];
         pos[id] = {x: pos[id].x, y: pos[id].y, ...(Object.keys(sides).length ? {sides} : {})};
       }
-      hold.tools?.done(before, pos);
-      return true;
+      return pos;
+    };
+    const keepSides = (from, to, chosen) => {
+      const pos = sidesPos(from, to, chosen);
+      if (pos) hold.tools?.done(hold.real.layout, pos);
+      return !!pos;
     };
     grid.sides = (from, to) => {
       const k = `${from}>${to}`, now = (id) => sideNow(id, k);
@@ -5158,6 +5197,11 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         commit() {
           grid.sidePreview = null;
           return keepSides(from, to, chosen) || (draw(), false);
+        },
+        // Where the boxes are with these sides, for a change that saves both at once; null when they did not change.
+        next() {
+          grid.sidePreview = null;
+          return sidesPos(from, to, chosen);
         },
       };
     };
@@ -5233,10 +5277,19 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         grid.sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side && !reach ? {[end]: side} : {})};
         draw();
       };
-      const up = () => {
+      const esc = (ev) => {
+        if (ev.key !== "Escape") return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        moved = false;
+        up();
+      };
+      const up = (ev) => {
         removeEventListener("pointermove", move);
         removeEventListener("pointerup", up);
         removeEventListener("pointercancel", up);
+        removeEventListener("keydown", esc, true);
+        if (outside(ev)) moved = false;
         grid.classList.remove("dragging");
         document.body.classList.remove("dnoplace");
         reach?.classList.remove("dtarget");
@@ -5257,6 +5310,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       addEventListener("pointermove", move);
       addEventListener("pointerup", up);
       addEventListener("pointercancel", up);
+      addEventListener("keydown", esc, true);
     }, true);
     grid.addEventListener("click", (e) => {
       if (!e.target.closest?.(".dend")) return;
@@ -6530,7 +6584,8 @@ function sketchLinks({real, v, drafted, container, tools}) {
     if (lines(v).some((l) => l?.from === to && l?.to === from)) return showProblem(t("lineBothWays"));
     kit.setOps([...list, {id: newOpId(list), op: OPS.reverse, from, to}]);
   };
-  const lineOps = (shownFrom, shownTo, change) => {
+  // placed: where the boxes are, saved with it (sides chosen in the same card), one undo.
+  const lineOps = (shownFrom, shownTo, change, placed = null) => {
     const drawnNew = kit.ops().some((o) => o.op === OPS.add && o.from === shownFrom && o.to === shownTo);
     const [from, to] = drawnNew ? [shownFrom, shownTo] : planEnds(shownFrom, shownTo);
     const list = kit.ops(), added = list.find((o) => o.op === OPS.add && o.from === from && o.to === to);
@@ -6540,14 +6595,14 @@ function sketchLinks({real, v, drafted, container, tools}) {
       return kit.setOps(gone ? list.filter((o) => o !== gone) : [...list.filter((o) => !(o.op === OPS.edit && o.from === from && o.to === to)), {id: newOpId(list), op: OPS.remove, from, to}]);
     }
     const clean = (o) => Object.fromEntries(Object.entries(o).filter(([k, w]) => !((k === "label" && !w) || (k === "state" && (!w || w === "ok")))));
-    if (added) return kit.setOps(list.map((o) => (o === added ? clean({...o, ...change}) : o)));
+    if (added) return kit.setOps(list.map((o) => (o === added ? clean({...o, ...change}) : o)), undefined, placed);
     const orig = lines(real).find((l) => l?.from === from && l?.to === to) || {};
     const ed = list.find((o) => o.op === OPS.edit && o.from === from && o.to === to);
     const merged = {...(ed || {id: newOpId(list), op: OPS.edit, from, to}), ...change};
     if (merged.label != null && merged.label === (orig.label ?? "")) delete merged.label;
     if (merged.state != null && merged.state === (orig.state ?? "ok")) delete merged.state;
     const keep = merged.label != null || merged.state != null;
-    kit.setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list);
+    kit.setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list, undefined, placed);
   };
   // An end of a line let go on another box: the line now joins that box. One the draft drew just changes; one in the
   // plan is taken out and a new one drawn, with its words. Its other changes (words, turned round) go with it.
@@ -6628,6 +6683,8 @@ function sketchLinks({real, v, drafted, container, tools}) {
       if (e.key === "Enter") pop.close("done");
       if (e.key === "Escape") pop.close("escape");
     };
+    // Enter keeps the card wherever the focus is, as its hint says: on a kind or a side, that one is taken first.
+    enterKeeps(parts, () => pop);
     const pop = popover(x + 10, y + 10, parts, {
       beside: kit.box(to)?.getBoundingClientRect(),
       onClose: (why) => {
@@ -6645,12 +6702,11 @@ function sketchLinks({real, v, drafted, container, tools}) {
           const list = kit.ops();
           return kit.setOps([...list, {id: newOpId(list), op: OPS.add, from, to, ...(lab && labelled ? {label: lab} : {}), ...(k8s && state !== "ok" ? {state} : {})}]);
         }
-        const moved = sd?.commit();
         const change = {};
         if (labelled && lab !== (l.label || "")) change.label = lab;
         if (k8s && state !== (l.state || "ok")) change.state = state;
-        if (Object.keys(change).length) lineOps(from, to, change);
-        else if (moved) keepFocus(() => renderView());
+        if (Object.keys(change).length) lineOps(from, to, change, sd?.next() || null);
+        else if (sd?.commit()) keepFocus(() => renderView());
       },
     });
     if (labelled) {

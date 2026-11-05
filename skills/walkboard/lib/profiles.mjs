@@ -250,7 +250,7 @@ PROFILES.onprem = {
   },
   lines: {
     replication: {name: "Replication", style: "replication"},
-    backup: {name: "Backup", style: "event"},
+    backup: {name: "Backup", style: "backup"},
   },
 };
 
@@ -298,9 +298,9 @@ PROFILES.k8s = {
   },
   lines: {
     uses: {name: "Reads config or secret", style: "uses"},
-    mounts: {name: "Mounts a volume", style: "uses"},
+    mounts: {name: "Mounts a volume", style: "mounts"},
     selects: {name: "Selects pods", style: "selects"},
-    routes: {name: "Routes to", style: "event"},
+    routes: {name: "Routes to", style: "routes"},
   },
 };
 

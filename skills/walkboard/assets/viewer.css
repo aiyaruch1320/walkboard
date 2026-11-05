@@ -417,7 +417,7 @@ svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important
 .dempty{color:var(--muted)}
 @keyframes dflash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 6px color-mix(in srgb,var(--you-bd) 45%,transparent)}}
 .map .dflash{animation:dflash .9s ease 2}
-@media print{.dtools,.dpop,.dedit,.ltools{display:none!important}}
+@media print{.dtools,.dpop,.dedit,.ltools,.dtip,svg .dend,svg .dsidedot{display:none!important}}
 .ltool{width:30px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
 .ltool svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ltool.flip svg{transform:scaleX(-1)}
@@ -965,6 +965,9 @@ svg .lk-permission{stroke-dasharray:1 4;stroke-linecap:round}
 svg .lk-replication{stroke-dasharray:10 3 2 3}
 svg .lk-uses{stroke:var(--muted)!important;stroke-width:1.2!important;opacity:.8}
 svg .lk-selects{stroke-dasharray:4 2 1 2}
+svg .lk-mounts{stroke:var(--muted)!important;stroke-dasharray:5 2}
+svg .lk-routes{stroke-dasharray:14 3;stroke-width:2.2!important}
+svg .lk-backup{stroke-dasharray:6 2 1 2 1 2}
 .containers span{font-size:11px;border:1px solid currentColor;border-radius:6px;padding:0 6px}
 .seq{padding:8px 4px 4px}
 .seq-head,.seq-row{display:grid;column-gap:12px}

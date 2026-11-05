@@ -4436,7 +4436,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       let p0, p1, p2, p3, row = null;
       if (free && e.from !== e.to && b.top > a.bottom + 24 && b.left <= a.right) {
         const q0 = P(a.right, spread(outs[e.from], e, a)), q3 = P(b.left - 4, spread(ins[e.to], e, b));
-        const xr = q0[0] + 22 + 6 * arcs, xl = q3[0] - 26 - 6 * arcs;
+        const xr = q0[0] + 22 + 6 * arcs, xl = Math.max(4, q3[0] - 26 - 6 * arcs);
         const y = gapAbove(a, b, xl, xr, [e.from, e.to]);
         if (y != null) row = {q0, q3, xr, xl, y: Math.min(y + 6 * arcs++, q3[1] - 12)};
       }
@@ -4445,7 +4445,8 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       } else if (!free && band(e.to) > band(e.from) && !back.has(e)) {
         // On to the next row: out to the right, along the gap between the rows, in from the left.
         p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
-        const y = bandBottom(band(e.from), base) + 39 + 6 * arcs, xr = p0[0] + 22 + 6 * arcs, xl = p3[0] - 26 - 6 * arcs++;
+        // The way down on the left stays inside the picture: each line further out, never past its edge.
+        const y = bandBottom(band(e.from), base) + 39 + 6 * arcs, xr = p0[0] + 22 + 6 * arcs, xl = Math.max(4, p3[0] - 26 - 6 * arcs++);
         p1 = p0; p2 = [xl, p3[1]];
         lanes.push({d: `M${p0} L${[xr, p0[1]]} L${[xr, y]} L${[xl, y]} L${[xl, p3[1]]} L${p3}`, mid: [(xr + xl) / 2, y], left: true});
       } else if (row) {

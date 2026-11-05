@@ -14,8 +14,8 @@ export const DRAFT_OPS = {
   map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
   datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove", "editRelation", "removeRelation"],
   flow: ["addBox", "moveBox", "addLane", "editLane", "moveLane", "editNode", "remove"],
-  state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
-  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
+  state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setEnd"],
+  decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart"],
   impact: ["addBox", "addEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
   k8s: ["addBox", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "remove"],
 };
@@ -72,6 +72,9 @@ const SHAPES = {
   // A line between two columns: how many rows on each end (from:to), or taken out when it is a relation (a ref goes with editColumn).
   editRelation: {from: colRef, to: colRef, kind: (x) => typeof x === "string" && /^[1NM]:[1NM]$/.test(x)},
   removeRelation: {from: colRef, to: colRef},
+  // Where a state or decision picture starts ("" = nowhere in particular), and whether a state is an end.
+  setStart: {node: (x) => x === "" || id(x)},
+  setEnd: {node: id, end: (x) => typeof x === "boolean"},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
   addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
   moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, at},
@@ -822,10 +825,30 @@ function applyGraph(v, nodes, ops, result) {
           return turn(edge0, op, t, () => flipped.add(key(op.from, op.to)), marks);
         case "editNode":
           return editNodeIn(has, nodes, op, marks, t);
+        case "setStart": {
+          if (op.node && !has(op.node)) return t.stale(op, `no box ${op.node}`);
+          const was = v.start ?? "";
+          if (was === op.node) return t.done(op);
+          if (op.node) v.start = op.node;
+          else delete v.start;
+          // Both boxes change: the one it leaves and the one it reaches.
+          for (const n of [was, op.node]) if (n && has(n)) marks.nodes[n] ||= {mark: "change"};
+          return;
+        }
+        case "setEnd": {
+          if (!has(op.node)) return t.stale(op, `no box ${op.node}`);
+          const ends = Array.isArray(v.end) ? v.end : [];
+          if (ends.includes(op.node) === op.end) return t.done(op);
+          v.end = op.end ? [...ends, op.node] : ends.filter((x) => x !== op.node);
+          marks.nodes[op.node] ||= {mark: "change"};
+          return;
+        }
         case "remove":
           if (!has(op.node)) return t.done(op);
           if (marks.nodes[op.node]?.mark === "add") {
             v[listKey] = v[listKey].filter((x) => x !== op.node);
+            if (v.start === op.node) delete v.start;
+            if (Array.isArray(v.end)) v.end = v.end.filter((x) => x !== op.node);
             v[edgeKey] = v[edgeKey].filter((e) => e.from !== op.node && e.to !== op.node);
             delete nodes[op.node];
             delete marks.nodes[op.node];
@@ -964,6 +987,8 @@ export function draftLine(c) {
     case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "editGroup": return `~ group "${c.group}"${c.label != null ? ` → "${c.label}"` : ""}${c.note != null ? `, note ${JSON.stringify(c.note)}` : ""}${c.icon != null ? `, icon ${JSON.stringify(c.icon)}` : ""}`;
     case "removeGroup": return `− group "${c.group}"`;
+    case "setStart": return c.node ? `~ starts at ${c.node}` : "~ no start";
+    case "setEnd": return `~ ${c.node}: ${c.end ? "an end state" : "no longer an end state"}`;
     case "editRelation": return `~ line ${c.from} → ${c.to}: ${c.kind}`;
     case "removeRelation": return `− line ${c.from} → ${c.to}`;
     case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;

@@ -2666,6 +2666,8 @@ function draftRows(viewId) {
       addTable: ["+", o.name, o.group || ""],
       addColumn: ["+", `${nm(o.table)}.${o.column}`, [o.type, o.key].filter(Boolean).join(" · ")],
       editColumn: ["~", `${nm(o.table)}.${o.column}`, o.name ? `→ ${o.name}` : o.ref != null ? (o.ref ? `→ ${colName(o.ref)}` : t("fkOff")) : [o.type, o.key].filter((x) => x != null).join(" · ")],
+      setStart: ["~", o.node ? nm(o.node) : t("gStart"), t(o.node ? "gStart" : "gNoStart")],
+      setEnd: ["~", nm(o.node), t(o.end ? "gEnd" : "gNoEnd")],
       editRelation: ["~", `${colName(o.from)} → ${colName(o.to)}`, o.kind],
       removeRelation: ["−", `${colName(o.from)} → ${colName(o.to)}`, ""],
       removeColumn: ["−", `${nm(o.table)}.${o.column}`, ""],
@@ -4387,7 +4389,10 @@ function renderDecision(real) {
     ids: [...new Set([...(v.nodes || []), ...(v.edges || []).flatMap((x) => [x.from, x.to])])],
     edges: v.edges || [],
     starts: v.start ? [v.start] : [],
-    shape: (b, id, outs) => b.classList.add(outs.length > 1 ? "g-q" : outs.length ? "g-do" : "g-out"),
+    shape: (b, id, outs) => {
+      b.classList.add(outs.length > 1 ? "g-q" : outs.length ? "g-do" : "g-out");
+      if (id === v.start) b.prepend(el("span", "g-start", t("gStart")));
+    },
   }));
 }
 
@@ -5653,9 +5658,34 @@ function sketchLinks({real, v, drafted, container, tools}) {
     const b = e.target.closest?.("[data-anchor]");
     return b && b.dataset.anchor !== "#namespace" && container.contains(b) ? b : null;
   };
+  // State and decision: two small marks on a box under the pointer turn it into the start, or an end, as the slot before a column does a key.
+  const toggleStart = (id) => {
+    const list = kit.ops().filter((o) => o.op !== "setStart"), to = v.start === id ? "" : id;
+    kit.setOps(to === (real.start ?? "") ? list : [...list, {id: newOpId(list), op: "setStart", node: to}]);
+  };
+  const toggleEnd = (id) => {
+    const list = kit.ops().filter((o) => !(o.op === "setEnd" && o.node === id)), to = !(v.end || []).includes(id);
+    kit.setOps(to === (real.end || []).includes(id) ? list : [...list, {id: newOpId(list), op: "setEnd", node: id, end: to}]);
+  };
+  if (v.kind === "state" || v.kind === "decision") for (const b of container.querySelectorAll("[data-anchor]")) {
+    const row = el("span", "dmarks");
+    for (const [cls, word, tip, on] of [["start", "gStart", "gStartTip", v.start === b.dataset.anchor], ...(v.kind === "state" ? [["end", "gEnd", "gEndTip", (v.end || []).includes(b.dataset.anchor)]] : [])]) {
+      const m = el("button", `dmark ${cls}${on ? " on" : ""}`, t(word));
+      m.title = t(tip);
+      m.tabIndex = -1;
+      row.append(m);
+    }
+    b.append(row);
+  }
   container.classList.add("sketch");
   container.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".dedit")) return;
+    const mark = (sketchTool === "select" || sketchTool === "rename") && e.target.closest?.(".dmark");
+    if (mark) {
+      e.preventDefault();
+      const id = mark.closest("[data-anchor]").dataset.anchor;
+      return mark.classList.contains("start") ? toggleStart(id) : toggleEnd(id);
+    }
     const b = target(e), line = !b && e.target.closest?.(".dhit");
     if (line && sketchTool === "remove") return (e.preventDefault(), lineOps(line.dataset.from, line.dataset.to, "remove"));
     if (line && sketchTool === "rename") return (e.preventDefault(), card(line.dataset.from, line.dataset.to, e.clientX, e.clientY));
@@ -5717,9 +5747,9 @@ function sketchLinks({real, v, drafted, container, tools}) {
     const b = target(e);
     kit.select(b ? {kind: "node", id: b.dataset.anchor} : null);
   }, true);
-  container.addEventListener("dblclick", (e) => sketchTool === "select" && target(e) && kit.rename(target(e).dataset.anchor));
+  container.addEventListener("dblclick", (e) => sketchTool === "select" && !e.target.closest?.(".dmark") && target(e) && kit.rename(target(e).dataset.anchor));
   lightLines(container);
-  const {refresh} = sketchBar(real, tools, container, LINK_TOOLS, hintsFor(k8s ? "k8s" : v.kind === "impact" ? "impact" : "graph", LINK_TOOLS));
+  const {refresh} = sketchBar(real, tools, container, LINK_TOOLS, hintsFor(v.kind, LINK_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));
   sketchApi = kit.api({toolList: LINK_TOOLS, refresh, saved: refresh});
 }

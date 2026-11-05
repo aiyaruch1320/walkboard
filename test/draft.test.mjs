@@ -162,6 +162,29 @@ test("taking out a box tells which lines go with it", () => {
   assert.match(draftLine(d.changes[0]), /and its lines: API \(api\) → NAT \(nat\) egress/);
 });
 
+test("a state picture's start and ends change in a draft; a decision has only a start", () => {
+  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}}, views: [
+    {id: "s", kind: "state", states: ["a", "b"], start: "a", end: ["b"], transitions: [{from: "a", to: "b"}]},
+    {id: "q", kind: "decision", nodes: ["a", "b"], edges: [{from: "a", to: "b"}]}]};
+  const on = (v, ...ops) => ({version: 1, views: {[v]: {ops: ops.map((o, i) => ({id: "op" + (i + 1), ...o}))}}});
+  assert.deepEqual(validateDraft(on("s", {op: "setStart", node: "b"}, {op: "setEnd", node: "a", end: true}, {op: "setStart", node: ""})), []);
+  assert.match(validateDraft(on("s", {op: "setEnd", node: "a", end: "yes"})).join(), /bad end/);
+  const r = applyDraft(p, on("s", {op: "setStart", node: "b"}, {op: "setEnd", node: "a", end: true}, {op: "setEnd", node: "b", end: false}), "s");
+  assert.equal(r.view.start, "b");
+  assert.deepEqual(r.view.end, ["a"]);
+  assert.equal(r.marks.nodes.a.mark, "change");
+  assert.equal(r.marks.nodes.b.mark, "change");
+  assert.equal(p.views[0].start, "a");
+  assert.deepEqual(applyDraft(p, on("s", {op: "setStart", node: "a"}), "s").done, ["op1"]);
+  assert.deepEqual(applyDraft(p, on("s", {op: "setEnd", node: "b", end: true}), "s").done, ["op1"]);
+  assert.equal(applyDraft(p, on("s", {op: "setStart", node: ""}), "s").view.start, undefined);
+  assert.match(applyDraft(p, on("s", {op: "setStart", node: "ghost"}), "s").stale[0].why, /no box/);
+  assert.equal(applyDraft(p, on("q", {op: "setStart", node: "b"}), "q").view.start, "b");
+  assert.equal(applyDraft(p, on("q", {op: "setEnd", node: "b", end: true}), "q").view.end, undefined);
+  assert.match(draftLine({op: "setStart", node: "b"}), /starts at b/);
+  assert.match(draftLine({op: "setEnd", node: "b", end: false}), /no longer an end/);
+});
+
 const model = () => ({
   title: "t", nodes: {users: {name: "users"}, orders: {name: "orders"}},
   views: [{id: "d", kind: "datamodel", groups: [{label: "Shop", tables: ["orders"]}], tables: [

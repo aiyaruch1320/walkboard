@@ -599,6 +599,12 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er.sketch:not([data-tool="select"],[data-tool="rename"],[data-tool="remove"]) svg.links .dhit{pointer-events:none}
 .dstate.dkind{width:auto;min-width:52px;font-size:12.5px;font-weight:600}
 .graph svg.links .dtmp,.k8s svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
+/* Start and end, on a box under the pointer: only the tools that use them show them. */
+.dmarks{position:absolute;left:8px;top:-11px;display:none;gap:4px;z-index:6}
+.graph.sketch:is([data-tool="select"],[data-tool="rename"]) [data-anchor]:hover>.dmarks{display:inline-flex}
+.dmark{font-size:11px;font-weight:700;line-height:1;padding:3px 7px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
+.dmark:hover{border-color:var(--you-bd);color:var(--text)}
+.dmark.on{background:var(--you-bd);border-color:var(--you-bd);color:#1a1a1a}
 .er svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}

@@ -40,6 +40,7 @@
 - **Start over from the plan.** A button on draft mode's toolbar and in its list drops the draft and the positions of the picture, after asking; undo brings both back. It takes the place of **Drop the whole draft**, which left the positions and was two menus away.
 - Drawing a line on any picture scrolls it when held near an edge of the window, not only on a data model.
 - Two lanes cannot take one name in a draft: changes find a lane by its title, so they would be mixed up.
+- **Start and end at a click.** While sketching a state or decision picture, a box under the pointer shows **Start** (and **End** on a state): a click changes the picture's start or ends (`setStart`, `setEnd`). A decision picture now shows where it starts.
 
 ## 0.8.0
 

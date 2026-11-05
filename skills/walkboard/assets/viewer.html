@@ -4551,6 +4551,17 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         [hit.dataset.from, hit.dataset.to] = [e.from, e.to];
         svg.append(hit);
       }
+      // Handles at both ends, shown while the line is pointed at: drag one to another side of its box.
+      if (hold?.canMove() && e.from !== e.to) for (const [end, [hx, hy]] of [["from", p0], ["to", p3]]) {
+        const h = document.createElementNS(svg.namespaceURI, "circle");
+        h.setAttribute("cx", hx);
+        h.setAttribute("cy", hy);
+        h.setAttribute("r", 6);
+        const k = `${e.from}>${e.to}`;
+        h.setAttribute("class", "dend" + (grid.endsShown === k || grid.sideDrag?.key === k ? " on" : ""));
+        Object.assign(h.dataset, {from: e.from, to: e.to, end});
+        svg.append(h);
+      }
       if (e.label) {
         const [mx, my] = detour ? detour.mid : bezierMid(p0, p1, p2, p3);
         const lab = el("span", "elabel" + (dim ? " dim" : "") + (lm ? " dr-" + lm : ""));
@@ -4559,6 +4570,18 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         lab.style.left = mx + "px";
         lab.style.top = my + "px";
         labels.append(lab);
+      }
+    }
+    // While an end is dragged: the middle of each side of its box, the one it would go to lit.
+    if (grid.sideDrag) {
+      const r = box(grid.sideDrag.id);
+      if (r) for (const [side, x, y] of [["left", r.left, r.top + r.height / 2], ["top", r.left + r.width / 2, r.top], ["right", r.right, r.top + r.height / 2], ["bottom", r.left + r.width / 2, r.bottom]]) {
+        const d = document.createElementNS(svg.namespaceURI, "circle");
+        d.setAttribute("cx", x - base.left);
+        d.setAttribute("cy", y - base.top);
+        d.setAttribute("r", 5);
+        d.setAttribute("class", "dsidedot" + (grid.sideDrag.side === side ? " on" : ""));
+        svg.append(d);
       }
     }
     // Labels that land on each other step down until each can be read.
@@ -4576,8 +4599,24 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
   addDrawer(draw, grid);
   // Which side of its boxes a line meets, chosen in its card: shown at once, kept with where the boxes are.
   if (hold?.canMove()) {
+    const sideNow = (id, k) => saved()?.[id]?.sides?.[k] ?? null;
+    // Keep the sides a line meets (null: the picture picks), one undo; true when anything changed.
+    const keepSides = (from, to, chosen) => {
+      const k = `${from}>${to}`;
+      if (chosen.from === sideNow(from, k) && chosen.to === sideNow(to, k)) return false;
+      const before = hold.real.layout, pos = grid.hold.positionsNow();
+      for (const [end, id] of [["from", from], ["to", to]]) {
+        if (!pos[id]) continue;
+        const sides = {...pos[id].sides};
+        if (chosen[end]) sides[k] = chosen[end];
+        else delete sides[k];
+        pos[id] = {x: pos[id].x, y: pos[id].y, ...(Object.keys(sides).length ? {sides} : {})};
+      }
+      hold.tools?.done(before, pos);
+      return true;
+    };
     grid.sides = (from, to) => {
-      const k = `${from}>${to}`, now = (id) => saved()?.[id]?.sides?.[k] ?? null;
+      const k = `${from}>${to}`, now = (id) => sideNow(id, k);
       const chosen = {from: now(from), to: now(to)};
       const wrap = el("div", "dsides");
       for (const end of ["from", "to"]) {
@@ -4607,20 +4646,84 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         // Save what was chosen (one undo); true when anything changed. The picture is drawn again by the caller.
         commit() {
           grid.sidePreview = null;
-          if (chosen.from === now(from) && chosen.to === now(to)) return draw(), false;
-          const before = hold.real.layout, pos = grid.hold.positionsNow();
-          for (const [end, id] of [["from", from], ["to", to]]) {
-            if (!pos[id]) continue;
-            const sides = {...pos[id].sides};
-            if (chosen[end]) sides[k] = chosen[end];
-            else delete sides[k];
-            pos[id] = {x: pos[id].x, y: pos[id].y, ...(Object.keys(sides).length ? {sides} : {})};
-          }
-          hold.tools?.done(before, pos);
-          return true;
+          return keepSides(from, to, chosen) || (draw(), false);
         },
       };
     };
+    // The handles at a line's ends show while it is pointed at, and a moment after, to be reached.
+    let hideEnds = 0;
+    const showEnds = (k) => {
+      clearTimeout(hideEnds);
+      if (grid.endsShown === k) return;
+      grid.endsShown = k;
+      svg.querySelectorAll(".dend").forEach((h) => h.classList.toggle("on", `${h.dataset.from}>${h.dataset.to}` === k));
+    };
+    grid.addEventListener("pointerover", (e) => {
+      const h = !grid.sideDrag && e.target.closest?.(".dhit, .dend");
+      if (h) showEnds(`${h.dataset.from}>${h.dataset.to}`);
+    });
+    grid.addEventListener("pointerout", (e) => {
+      if (!e.target.closest?.(".dhit, .dend") || grid.sideDrag) return;
+      clearTimeout(hideEnds);
+      hideEnds = setTimeout(() => showEnds(null), 400);
+    });
+    // Drag an end: the side of its box nearest the pointer takes it; let go on another box and it stays where it was.
+    grid.addEventListener("pointerdown", (e) => {
+      const h = e.target.closest?.(".dend");
+      if (!h || e.button !== 0) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      const {from, to, end} = h.dataset, k = `${from}>${to}`, id = end === "from" ? from : to;
+      const was = {from: sideNow(from, k), to: sideNow(to, k)};
+      const sx = e.clientX, sy = e.clientY;
+      grid.endsShown = k;
+      let moved = false, side = null, elsewhere = false;
+      const nearest = (x, y) => {
+        const r = box(id);
+        const d = {left: Math.abs(x - r.left) + Math.max(0, r.top - y, y - r.bottom), right: Math.abs(x - r.right) + Math.max(0, r.top - y, y - r.bottom),
+          top: Math.abs(y - r.top) + Math.max(0, r.left - x, x - r.right), bottom: Math.abs(y - r.bottom) + Math.max(0, r.left - x, x - r.right)};
+        return Object.keys(d).sort((a, b) => d[a] - d[b])[0];
+      };
+      const move = (ev) => {
+        if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 4) return;
+        moved = true;
+        grid.classList.add("dragging");
+        // Over another box: no side; the line is not moved to another box here (that would change the plan).
+        const over = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest?.("[data-anchor]")).find((x) => x && grid.contains(x));
+        elsewhere = !!over && over.dataset.anchor !== id;
+        side = elsewhere ? null : nearest(ev.clientX, ev.clientY);
+        document.body.classList.toggle("dnoplace", elsewhere);
+        grid.sideDrag = {key: k, id, side};
+        grid.sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side ? {[end]: side} : {})};
+        draw();
+      };
+      const up = () => {
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+        grid.classList.remove("dragging");
+        document.body.classList.remove("dnoplace");
+        grid.sideDrag = null;
+        grid.sidePreview = null;
+        if (!moved) return draw();
+        dragged = true;
+        setTimeout(() => (dragged = false));
+        if (elsewhere) {
+          draw();
+          return showProblem(t("sideOtherBox"));
+        }
+        if (side && keepSides(from, to, {...was, [end]: side})) keepFocus(() => renderView());
+        else draw();
+      };
+      addEventListener("pointermove", move);
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+    }, true);
+    grid.addEventListener("click", (e) => {
+      if (!e.target.closest?.(".dend")) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
     // Outside draft mode a line's card holds only that: which sides it meets.
     if (!sketch) grid.addEventListener("click", (e) => {
       const hit = e.target.closest?.(".dhit");

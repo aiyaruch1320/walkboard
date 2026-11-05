@@ -614,6 +614,12 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .graph svg.links .dtmp,.k8s svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 /* Start and end, on a box under the pointer: only the tools that use them show them. */
 .dflags{display:flex;gap:6px;margin:2px 0 8px}
+.dsides{display:grid;gap:4px;margin:8px 0}
+.dsiderow{display:flex;gap:4px;align-items:center}
+.dsidelabel{font-size:12px;color:var(--muted);min-width:64px}
+.dside{font-size:11px;min-width:28px;padding:3px 7px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.dside:hover{border-color:var(--you-bd);color:var(--text)}
+.dside[aria-pressed="true"]{border-color:var(--you-bd);background:color-mix(in srgb,var(--you-bg) 60%,var(--card));color:var(--text)}
 .dflag{font-size:12px;padding:4px 10px;border-radius:999px;border:1px dashed var(--line);background:transparent;color:var(--muted);cursor:pointer}
 .dflag::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border:1.5px solid currentColor;border-radius:2px;vertical-align:1px}
 .dflag.start::before{border-radius:50%}

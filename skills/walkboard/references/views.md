@@ -130,7 +130,7 @@ A lane per box; `to` makes a span; `marks` cross all lanes.
 
 `ref` draws N:1; `relations: [{"from":"a.x","to":"b.y","kind":"1:1"}]` for others. A column with `ref` or that is a relation's `from` shows FK, also beside PK when a table shares another's key (1:1); a composite key needs one relation per column. `copy: "users.email"` marks a column that stores the same data again (⧉): the page counts the copies and shows where each one comes from on hover; add `"keep": true` for a copy kept on purpose (price at the time of sale). Only the columns that matter.
 
-`groups: [{"label":"Push side","note":"one database","icon":"database","tables":["push_state","push_log"]}]` frames tables that belong together (a table in one group at most; `note` and `icon` are optional, as on a zone); add them when the user asks to group tables. On state, decision and impact pictures the user can drag boxes too, and `layout` works the same way. The user can drag tables and groups; the page saves where they put them in `layout`. Never write or change `layout`.
+`groups: [{"label":"Push side","note":"one database","icon":"database","tables":["push_state","push_log"]}]` frames tables that belong together (a table in one group at most; `note` and `icon` are optional, as on a zone); add them when the user asks to group tables. On state, decision and impact pictures the user can drag boxes too, and `layout` works the same way; a box there may also carry `sides`, which side of it the user wants each line to meet. The user can drag tables and groups; the page saves where they put them in `layout`. Never write or change `layout`.
 
 ## impact
 

@@ -386,6 +386,10 @@ test("boxes on state, decision and impact pictures keep places; a picture with f
     assert.equal((await post(s, "/api/layout", {view, positions: {a: {x: 10.4, y: 20}, b: {x: 5, y: 6}, "new:k3x9": {x: 1, y: 1}, ghost: {x: 1, y: 1}}})).status, 200);
     assert.deepEqual(read(i), {a: {x: 10, y: 20}, b: {x: 5, y: 6}, "new:k3x9": {x: 1, y: 1}});
   }
+  // The sides a line meets its boxes on: only lines that touch the box, only the four sides; none on a map.
+  const sides = {a: {x: 1, y: 2, sides: {"a>b": "bottom", "c>d": "top", "a>new:k3x9": "left", "b>a": "middle"}}, b: {x: 3, y: 4, sides: {"a>b": "top"}}, "new:k3x9": {x: 5, y: 6, sides: []}};
+  assert.equal((await post(s, "/api/layout", {view: "s", positions: sides})).status, 200);
+  assert.deepEqual(read(0), {a: {x: 1, y: 2, sides: {"a>b": "bottom", "a>new:k3x9": "left"}}, b: {x: 3, y: 4, sides: {"a>b": "top"}}, "new:k3x9": {x: 5, y: 6}});
   assert.equal((await post(s, "/api/layout", {view: "s", positions: {a: {x: -1, y: 0}}})).status, 400);
   assert.equal((await post(s, "/api/layout", {view: "k", positions: {a: {x: 1, y: 1}}})).status, 400);
   assert.equal((await post(s, "/api/layout", {view: "s", positions: null})).status, 200);

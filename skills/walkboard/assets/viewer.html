@@ -1743,6 +1743,8 @@ function readHelp(button, kind) {
     }
     if (arrows) for (const m of ["add", "change", "remove"]) parts.push(row(lineSample((kind === "lines" ? "l-ok" : "l-flow") + " dr-" + m), t("lh_" + m)));
   }
+  // On a picture whose boxes can be arranged, a line can be told which sides to meet.
+  if (["state", "decision", "impact"].includes(kind) && served && !snapshot) parts.push(el("div", "lhtext", t("rh_sides")));
   if (arrows) parts.push(el("div", "dhint", t("lh_shape")));
   const pop = popover(0, 0, parts);
   pop.classList.add("lhcard");
@@ -4328,7 +4330,8 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       freeze();
       const all = placedBoxes().map((c) => ({id: c.dataset.anchor, ...rectOf(c)}));
       pushDown(all, id);
-      return Object.fromEntries(all.map((b) => [b.id, {x: b.x, y: b.y}]));
+      // The sides lines were given at this box go along with it.
+      return Object.fromEntries(all.map((b) => [b.id, {x: b.x, y: b.y, ...(saved()?.[b.id]?.sides ? {sides: saved()[b.id].sides} : {})}]));
     },
     // Where a new box goes for a click at a point of the picture: on what is on screen, on free ground.
     spotFor(x, y, w, h) {
@@ -4401,15 +4404,17 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
     let arcs = 0;
     const lanes = [];
-    // Which side of each box a line leaves and reaches: for a box straight below, above or to the left with nothing
-    // between, the sides that face each other. Otherwise the usual way.
+    // Which side of each box a line leaves and reaches: the one chosen in its card (saved with the box), else, for a box
+    // straight below, above or to the left with nothing between, the sides that face each other. null: the usual way.
     const ends = new Map();
     for (const e of edges) {
       if (e.from === e.to) continue;
       const a = box(e.from), b = box(e.to);
       if (!a || !b) continue;
-      let fa = null, fb = null, span = null;
-      {
+      const k = `${e.from}>${e.to}`, pv = grid.sidePreview?.key === k ? grid.sidePreview : {};
+      const pick = (end, id) => (pv[end] !== undefined ? (pv[end] === "auto" ? null : pv[end]) : saved()?.[id]?.sides?.[k] ?? null);
+      let fa = pick("from", e.from), fb = pick("to", e.to), span = null;
+      if (!fa && !fb) {
         const clear = (l, r, t, bt) => !ids.some((x) => x !== e.from && x !== e.to && (() => {
           const q = box(x);
           return q && q.left < r && q.right > l && q.top < bt && q.bottom > t;
@@ -4419,7 +4424,13 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         else if (ox1 - ox0 > 20 && a.top > b.bottom + 8 && clear(ox0, ox1, b.bottom, a.top)) [fa, fb, span] = ["top", "bottom", [ox0, ox1]];
         else if (oy1 - oy0 > 16 && b.right < a.left - 8 && clear(b.right, a.left, oy0, oy1)) [fa, fb, span] = ["left", "right", [oy0, oy1]];
       }
-      if (fa) ends.set(e, {from: fa, to: fb, span});
+      if (!fa && !fb) continue;
+      // One end chosen: the other faces it.
+      const facing = (r, q) => {
+        const dx = (q.left + q.width / 2 - (r.left + r.width / 2)) / r.width, dy = (q.top + q.height / 2 - (r.top + r.height / 2)) / r.height;
+        return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? "top" : "bottom") : dx < 0 ? "left" : "right";
+      };
+      ends.set(e, {from: fa || facing(a, b), to: fb || facing(b, a), span});
     }
     // Where on its side each end sits: alone in the middle (of the part two boxes share, when they face), several spread
     // in the order of what is at their other ends.
@@ -4533,7 +4544,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       const lm = marks?.links?.[`${e.from}>${e.to}`]?.mark;
       const lineD = flat(detour ? detour.d : `M${p0} C${p1}, ${p2}, ${p3}`);
       linkPaths(svg, lineD, flat(`M${tip(0.45)} L${p3} L${tip(-0.45)}`), `l-${e.state || "flow"}${lm ? " dr-" + lm : ""}`, dim, [e.from, e.to]);
-      if (sketch) {
+      if (sketch || hold?.canMove()) {
         const hit = document.createElementNS(svg.namespaceURI, "path");
         hit.setAttribute("d", lineD);
         hit.setAttribute("class", "dhit");
@@ -4563,6 +4574,68 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
     }
   };
   addDrawer(draw, grid);
+  // Which side of its boxes a line meets, chosen in its card: shown at once, kept with where the boxes are.
+  if (hold?.canMove()) {
+    grid.sides = (from, to) => {
+      const k = `${from}>${to}`, now = (id) => saved()?.[id]?.sides?.[k] ?? null;
+      const chosen = {from: now(from), to: now(to)};
+      const wrap = el("div", "dsides");
+      for (const end of ["from", "to"]) {
+        const row = el("div", "dsiderow");
+        row.append(el("span", "dsidelabel", t(end === "from" ? "sideFrom" : "sideTo")));
+        for (const side of [null, "left", "top", "right", "bottom"]) {
+          const b = el("button", "dside", side ? {left: "◀", top: "▲", right: "▶", bottom: "▼"}[side] : t("sideAuto"));
+          b.type = "button";
+          b.title = t(side ? "side_" + side : "sideAutoTip");
+          b.setAttribute("aria-pressed", chosen[end] === side);
+          b.onclick = () => {
+            chosen[end] = side;
+            row.querySelectorAll(".dside").forEach((x) => x.setAttribute("aria-pressed", x === b));
+            grid.sidePreview = {key: k, from: chosen.from ?? "auto", to: chosen.to ?? "auto"};
+            draw();
+          };
+          row.append(b);
+        }
+        wrap.append(row);
+      }
+      return {
+        el: wrap,
+        cancel() {
+          grid.sidePreview = null;
+          draw();
+        },
+        // Save what was chosen (one undo); true when anything changed. The picture is drawn again by the caller.
+        commit() {
+          grid.sidePreview = null;
+          if (chosen.from === now(from) && chosen.to === now(to)) return draw(), false;
+          const before = hold.real.layout, pos = grid.hold.positionsNow();
+          for (const [end, id] of [["from", from], ["to", to]]) {
+            if (!pos[id]) continue;
+            const sides = {...pos[id].sides};
+            if (chosen[end]) sides[k] = chosen[end];
+            else delete sides[k];
+            pos[id] = {x: pos[id].x, y: pos[id].y, ...(Object.keys(sides).length ? {sides} : {})};
+          }
+          hold.tools?.done(before, pos);
+          return true;
+        },
+      };
+    };
+    // Outside draft mode a line's card holds only that: which sides it meets.
+    if (!sketch) grid.addEventListener("click", (e) => {
+      const hit = e.target.closest?.(".dhit");
+      if (!hit || dragged) return;
+      const {from, to} = hit.dataset, sd = grid.sides(from, to);
+      const keep = el("button", "primary", t("keep"));
+      const nm = (id) => grid.querySelector(`[data-anchor="${CSS.escape(id)}"] .name`)?.textContent || id;
+      const pop = popover(e.clientX + 10, e.clientY + 10, [el("div", "dphead", `${nm(from)} → ${nm(to)}`), sd.el, keep, el("div", "dhint", t("sideHint"))], {
+        beside: box(to),
+        onClose: (why) => (why === "escape" || why === "replaced" ? sd.cancel() : sd.commit() && keepFocus(() => renderView())),
+      });
+      keep.onclick = () => pop.close("done");
+      keep.focus();
+    });
+  }
   const scroll = el("div", "scroll");
   scroll.append(grid);
   return scroll;
@@ -5858,6 +5931,9 @@ function sketchLinks({real, v, drafted, container, tools}) {
       if (labelled) label.focus();
     };
     parts.push(turnBtn);
+    // Which sides of its boxes it meets (arrangement, not a change of plan).
+    const sd = !fresh && !k8s ? container.sides?.(from, to) : null;
+    if (sd) parts.push(sd.el);
     if (!fresh) {
       const del = el("button", "dlinkx");
       del.append(svgIcon("remove"), marks.links[`${from}>${to}`]?.mark === "remove" ? t("keepLink") : t("removeLink"));
@@ -5876,6 +5952,7 @@ function sketchLinks({real, v, drafted, container, tools}) {
     const pop = popover(x + 10, y + 10, parts, {
       beside: kit.box(to)?.getBoundingClientRect(),
       onClose: (why) => {
+        if (why === "removed" || why === "replaced" || why === "escape" || why === "reverse") sd?.cancel();
         if (why === "removed" || why === "replaced" || why === "escape") return;
         const lab = cleanText(label.value);
         if (why === "reverse") {
@@ -5889,10 +5966,12 @@ function sketchLinks({real, v, drafted, container, tools}) {
           const list = kit.ops();
           return kit.setOps([...list, {id: newOpId(list), op: OPS.add, from, to, ...(lab && labelled ? {label: lab} : {}), ...(k8s && state !== "ok" ? {state} : {})}]);
         }
+        const moved = sd?.commit();
         const change = {};
         if (labelled && lab !== (l.label || "")) change.label = lab;
         if (k8s && state !== (l.state || "ok")) change.state = state;
         if (Object.keys(change).length) lineOps(from, to, change);
+        else if (moved) keepFocus(() => renderView());
       },
     });
     if (labelled) {

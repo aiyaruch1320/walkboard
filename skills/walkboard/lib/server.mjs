@@ -309,6 +309,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       // Data model, state, decision, impact: where each table or box sits. Map: how far a box or a zone ("z:label") moved from its place,
       // and "in", the zone it was in then: the page drops an offset once the plan moves the box to another zone.
       // Moving a box into another zone is a change of plan, not arrangement: that goes in the draft (POST /api/draft).
+      // A state, decision or impact box can carry the sides lines meet it on: sides {"from>to": "left" | "top" | "right" | "bottom"}.
       // A map zone can also carry its size from its corner (w, h). "@fixed" ({x: 0, y: 0}) means placed by hand:
       // then x, y are where each box and zone sits from the corner of what holds it, not how far it moved.
       // Boxes, tables and zones the draft adds count too (new:… ids, any zone label), so a new one keeps the place it was given:
@@ -332,10 +333,16 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             const known = new Set(view.kind === "map" ? ["@fixed", ...zoneLabels(view.zones)] : boxed ? [...(Array.isArray(view.states) ? view.states : []), ...(Array.isArray(view.nodes) ? view.nodes : []), ...lineEnds(view.transitions), ...lineEnds(view.edges)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
             const keep = (id) => known.has(id) || isNewId(id) || (view.kind === "map" && id.startsWith("z:") && id.length <= 201);
             const size = (n) => Number.isFinite(n) && n > 0 && n <= 20000;
+            // Only lines that touch the box, a known side each, a few dozen at most.
+            const sidesOf = (id, q) => {
+              if (!boxed || !q.sides || typeof q.sides !== "object" || Array.isArray(q.sides)) return {};
+              const ok = Object.entries(q.sides).filter(([k, side]) => k.length <= 410 && k.split(">").length === 2 && k.split(">").includes(id) && ["left", "top", "right", "bottom"].includes(side)).slice(0, 40);
+              return ok.length ? {sides: Object.fromEntries(ok)} : {};
+            };
             if (pos === null) delete view.layout;
             else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => keep(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y),
               ...(view.kind === "map" && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {}),
-              ...(view.kind === "map" && size(q.w) ? {w: Math.round(q.w)} : {}), ...(view.kind === "map" && size(q.h) ? {h: Math.round(q.h)} : {})}]));
+              ...(view.kind === "map" && size(q.w) ? {w: Math.round(q.w)} : {}), ...(view.kind === "map" && size(q.h) ? {h: Math.round(q.h)} : {}), ...sidesOf(id, q)}]));
             return plan;
           });
         } catch (e) {

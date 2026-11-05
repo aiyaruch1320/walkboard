@@ -506,6 +506,11 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map>svg.links{z-index:1}
 .map [data-anchor]{z-index:2}
 .map .zone>.zhead{position:relative;z-index:1}
+.map.fixed .zone>.zhead{flex-wrap:nowrap;white-space:nowrap}
+.map.fixed .zone>.zhead>.icon{flex-shrink:0}
+.map.fixed .zone>.zhead>span:not(.icon),.map.fixed .zone>.zhead>small{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.map.fixed .zone>.zhead>span:not(.icon):not(.zkind){flex:0 0 auto;max-width:calc(100% - 30px)}
+.map.fixed .zone>.zhead>.zkind,.map.fixed .zone>.zhead>small{flex:0 1 auto}
 .map [data-anchor].lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
 /* Placed by hand: every box and zone where it was put, from the corner of what holds it. */
 .map.fixed .zone,.map.fixed [data-anchor]{position:absolute;margin:0}

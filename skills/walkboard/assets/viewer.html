@@ -3435,7 +3435,10 @@ function renderMap(real) {
       }
       if (c === map) return (map.style.height = Math.max(0, h - parseFloat(getComputedStyle(map).paddingTop)) + "px");
       const cs = getComputedStyle(c), head = c.querySelector(":scope > .zhead");
-      const headW = head ? head.offsetLeft + [...head.children].reduce((sum, x) => sum + x.offsetWidth + 7, 0) : 0;
+      // The title stays on one line and is cut short (whole on hover) rather than widening the zone over its neighbours:
+      // room for the icon and a few words is all a zone keeps for it.
+      const icon = head?.querySelector(":scope > .icon"), headW = head ? head.offsetLeft + (icon ? icon.offsetWidth + 7 : 0) + 90 : 0;
+      for (const t2 of head ? head.querySelectorAll(":scope > span:not(.icon), :scope > small") : []) t2.title = t2.scrollWidth > t2.clientWidth + 1 ? t2.textContent : t2.title === t2.textContent ? "" : t2.title;
       const need = {w: Math.ceil(Math.max(w, headW) + parseFloat(cs.paddingRight) + c.clientLeft * 2), h: Math.ceil(Math.max(h, head ? head.offsetTop + head.offsetHeight : 0) + parseFloat(cs.paddingBottom) + c.clientTop * 2)};
       const q = stored[keyOf(c)] || {};
       c.style.width = Math.max(Number.isFinite(q.w) ? q.w : nat.get(c).w, need.w) + "px";

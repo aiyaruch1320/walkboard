@@ -26,7 +26,7 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 
 ### What you get
 
-- **See it, don't scroll it.** Twelve kinds of picture (flow, Kubernetes, network map, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
+- **See it, don't scroll it.** Eleven kinds of picture (flow, map of a cloud, Kubernetes or network, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
 - **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
 - **You stay in charge.** Nothing is built before you press **Approve plan**. After each step you restate it in your own words and the agent corrects what you missed. Commit messages are suggested for you to edit, and proposed changes are drawn on the picture before anything is built.
 - **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it or mark it not true.
@@ -89,7 +89,7 @@ Type `/walkboard` and say what you want, or just ask in your own words:
    <img src="docs/images/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
 5. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
 
-Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours.
+Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, profiles say what each box, zone and line is on those platforms (an RDS in a private subnet, a CronJob in a namespace) and warn when something sits where it usually does not.
 
 More screens, FAQ and reference: **[docs/GUIDE.md](docs/GUIDE.md)**.
 

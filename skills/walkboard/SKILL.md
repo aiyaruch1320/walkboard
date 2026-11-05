@@ -1,6 +1,6 @@
 ---
 name: walkboard
-description: Show work as an interactive picture (flow, Kubernetes, sequence, map, state, timeline…) that the user clicks to ask, correct or confirm. Three modes - plan a feature as small steps and build it step by step, explain how existing code works ("explain the login flow in project A"), or compare designs for something new and pick one. Use when the user wants a visual plan, explanation or comparison, wants to follow along before you build, mentions walkboard, or runs /walkboard.
+description: Show work as an interactive picture (flow, cloud or Kubernetes map, sequence, state, timeline…) that the user clicks to ask, correct or confirm. Three modes - plan a feature as small steps and build it step by step, explain how existing code works ("explain the login flow in project A"), or compare designs for something new and pick one. Use when the user wants a visual plan, explanation or comparison, wants to follow along before you build, mentions walkboard, or runs /walkboard.
 ---
 
 # Walkboard

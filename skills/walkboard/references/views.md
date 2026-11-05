@@ -7,8 +7,7 @@ Every view has `id`, `kind` and `title`; the `title` is its tab, so give it word
 | The reader asks | Picture |
 |---|---|
 | What are the steps, in order? | `flow` (default, built from the steps) |
-| What runs in the cluster, with what config, talking to what? | `k8s` |
-| What sits inside what (account › VPC › subnet, cluster › namespace)? | `map` |
+| What sits inside what, on which platform (AWS account › VPC › subnet, cluster › namespace › pods, a host and its containers)? | `map`, with profile kinds |
 | Who calls whom, in what order, and what if it fails? | `sequence` |
 | What does the data look like before and after? | `transform` |
 | What happens to one piece of data along the way? | `journey` |
@@ -19,7 +18,7 @@ Every view has `id`, `kind` and `title`; the `title` is its tab, so give it word
 | If this goes down, what breaks? | `impact` |
 | What changes between now and after? | `diff` |
 
-One or two pictures that answer the question; more is noise. The user can sketch changes on map, datamodel, flow, state, decision, impact and k8s pictures (draft mode); they reach you as `review` (references/messages.md), never in plan.json. Use made-up values, never real customer data.
+One or two pictures that answer the question; more is noise. The user can sketch changes on map, datamodel, flow, state, decision and impact pictures (draft mode); they reach you as `review` (references/messages.md), never in plan.json. Use made-up values, never real customer data.
 
 ## flow
 
@@ -29,20 +28,6 @@ One or two pictures that answer the question; more is noise. The user can sketch
 ```
 
 Lanes of boxes, left to right. `"arrows": false` makes a lane a checklist.
-
-## k8s
-
-```json
-{"id":"k8s","kind":"k8s","cluster":"staging","namespace":"imports","outside":["git","argo"],
- "configs":["cm","secret"],"policy":"netpol",
- "workloads":[{"node":"cronjob","containers":["migrate (init)","import"],"uses":["cm","secret"]}],
- "targets":["db","warehouse","internet"],
- "links":[{"from":"cronjob","to":"db","state":"ok","label":":5432"},
-  {"from":"cronjob","to":"warehouse","state":"todo","label":":443 waiting for infra"},
-  {"from":"cronjob","to":"internet","state":"blocked"}]}
-```
-
-`outside`: left column (Git → ArgoCD). `configs`: lines to the workloads that `uses` them. `policy`: a network policy over every workload (a tag on each pod). `targets`: right column. More than one namespace: `"namespaces":[{"name":"web","workloads":[…],"configs":[…],"policies":[{"node":"np","pods":["api"]}]}]` instead of `namespace` / `workloads` / `configs` / `policy` (`pods` left out: every workload of that namespace). The page draws it as a map (zones: outside the cluster, the cluster with a zone per namespace, the targets), so the user drags and sketches it like one. `links[].state`: `standby` dotted blue for a backup path, `ok` solid green, `todo` dashed orange, `blocked` dotted red; `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
 
 ## sequence
 
@@ -78,7 +63,7 @@ Each stage has `columns` + `rows` (rows as long as `columns`) or `text`. Empty a
  "links":[{"from":"ec2a","to":"pcx","state":"ok","label":"route 10.1.0.0/16"},{"from":"pcx","to":"ec2b"}]}
 ```
 
-Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. On a cloud or platform, give boxes, zones and lines a `kind` from a profile (`"kind": "aws:subnet"`, `props`: its fields): the page draws its icon and fields, tags the picture with the platform and warns where a kind does not usually sit. The kinds are in references/profiles.md; read it before drawing AWS. Anything a profile does not cover goes without a kind. `"stack": true` stacks what a zone holds top to bottom (`false` keeps it side by side). A whole system (over 12 boxes, or 4+ top-level zones) gets smaller boxes, top-level zones in one row and zones of only boxes stacked: read left to right, outside first, one column per site or provider, at most 5. The user can drag boxes and zones, resize zones, switch the picture to placed by hand, sketch changes in draft mode, then ask you to review (`review`); never write `layout` or the draft. A shared box with no line reads as floating: put such boxes in a zone named for it ("Shared"). `links` as in `k8s`.
+Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels; three or four read best. On a cloud or platform, give boxes, zones and lines a `kind` from a profile (`"kind": "aws:subnet"`, `props`: its fields): the page draws its icon and fields, tags the picture with the platform and warns where a kind does not usually sit. The kinds are in references/profiles.md (AWS, Google Cloud, Azure, Huawei Cloud, on-prem, containers, Kubernetes); read it before drawing one of them. Profiles mix: an EKS cluster in an AWS VPC is a `k8s:cluster` zone in an `aws:vpc` zone, with `k8s:namespace` zones and workloads in it. A network policy or security group is a zone around what it covers; a config a workload reads is a `k8s:uses` line. Anything a profile does not cover goes without a kind. `"stack": true` stacks what a zone holds top to bottom (`false` keeps it side by side). A whole system (over 12 boxes, or 4+ top-level zones) gets smaller boxes, top-level zones in one row and zones of only boxes stacked: read left to right, outside first, one column per site or provider, at most 5. The user can drag boxes and zones, resize zones, switch the picture to placed by hand, sketch changes in draft mode, then ask you to review (`review`); never write `layout` or the draft. A shared box with no line reads as floating: put such boxes in a zone named for it ("Shared"). `links`: `{"from", "to", "label", "state", "kind"}`; `state` is `ok` (solid green), `todo` (dashed orange), `blocked` (dotted red) or `standby` (dotted blue, a backup path); `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
 
 ## journey
 

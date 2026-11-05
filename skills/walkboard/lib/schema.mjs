@@ -67,7 +67,6 @@ const isObj = (x) => x != null && typeof x === "object" && !Array.isArray(x);
 // Fields each picture iterates: a string or object where a list belongs would stop the page drawing, so check refuses it.
 const SHAPES = {
   flow: ["lanes", "lanes.*.nodes"],
-  k8s: ["outside", "configs", "targets", "workloads", "workloads.*.containers", "workloads.*.uses", "links"],
   sequence: ["actors", "messages"],
   map: ["zones", "links"],
   journey: ["stops"],
@@ -127,18 +126,7 @@ export const KINDS = {
     refs: (v) => list(v.lanes).flatMap((l) => list(l?.nodes)),
     check: (v) => (Array.isArray(v.lanes) ? [] : ["lanes must be an array"]),
   },
-  // One namespace (namespace, workloads, configs, policy), or several: namespaces [{name, workloads, configs, policies: [{node, pods}]}].
-  k8s: {
-    refs: (v) => [...list(v.outside), ...list(v.targets), ...list(v.links).flatMap((l) => [l?.from, l?.to]),
-      ...[v, ...list(v.namespaces)].flatMap((ns) => [...list(ns?.configs), ...(ns?.policy ? [ns.policy] : []), ...list(ns?.policies).map((x) => x?.node),
-        ...list(ns?.workloads).flatMap((w) => [w?.node, ...list(w?.uses)])])],
-    check: (v) => [
-      ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked, standby)`),
-      ...list(v.namespaces).flatMap((ns, i) => (!isObj(ns) ? [`namespaces[${i}] must be {"name", "workloads", "configs", "policies"}`]
-        : list(ns.policies).flatMap((pl, j) => (!isObj(pl) || typeof pl.node !== "string" ? [`namespaces[${i}].policies[${j}] needs a node`]
-          : list(pl.pods).filter((x) => !list(ns.workloads).some((w) => w?.node === x)).map((x) => `namespaces[${i}].policies[${j}]: "${x}" is not a workload of this namespace`))))),
-    ],
-  },
+
   sequence: {
     refs: (v) => [...list(v.actors), ...list(v.messages).flatMap((m) => (m?.node ? [m.node] : []))],
     check: (v, p) => list(v.messages).flatMap((m, i) => [

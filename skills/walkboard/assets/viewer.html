@@ -1773,24 +1773,6 @@ function readHelp(button, kind) {
   pop.style.setProperty("--tip", b.left + b.width / 2 - left + "px");
 }
 
-// A Kubernetes picture is a map with zones that mean something (outside, the cluster's namespaces, targets): it is drawn,
-// arranged and sketched as one. Under it, the lines with a port or a state, in words.
-function renderK8s(real) {
-  const out = el("div");
-  out.append(renderMap(real));
-  const listed = (real.links || []).filter((l) => l.label || (l.state && l.state !== "ok"));
-  if (listed.length) {
-    const ul = el("ul", "linklist");
-    for (const l of listed) {
-      const li = el("li");
-      li.append(`${nodeOf(l.from)?.name || l.from} → ${nodeOf(l.to)?.name || l.to} · ${t("lk_" + (l.state || "ok"))}`);
-      if (l.label) li.append(" · ", rich(l.label));
-      ul.append(li);
-    }
-    out.append(ul);
-  }
-  return out;
-}
 // What the card chose for a box or zone's kind, as fields of its change (none: drawn freely).
 const kindFields = (val) => ({...(val.kind ? {kind: val.kind} : {}), ...(val.kind && val.props && Object.keys(val.props).length ? {props: val.props} : {})});
 // A kind in words, with the values of its props: "RDS · postgres · db.t3.medium".
@@ -1848,37 +1830,7 @@ function profileMarks(map, v) {
   }
   return row;
 }
-// A zone as the page names it: a Kubernetes picture's outside and targets in the page's words.
-const zoneWords = (z) => (["outside", "targets"].includes(z.dataset.role) ? t("k8sZone_" + z.dataset.role) : z.dataset.zone);
-// What a map has no place for: each workload's containers, and the network policies over each pod as tags.
-// A tag lights up every pod under that policy.
-function k8sDetails(map, {containers = {}, policies = {}}) {
-  for (const b of map.querySelectorAll("[data-anchor]")) {
-    const id = b.dataset.anchor;
-    if (containers[id]?.length) {
-      const c = el("div", "containers");
-      containers[id].forEach((name) => c.append(el("span", null, name)));
-      b.append(c);
-    }
-    if (policies[id]?.length) {
-      const row = el("div", "kpols");
-      for (const p of policies[id]) {
-        const tag = el("button", "kpol", "🛡 " + (nodeOf(p)?.name || p));
-        tag.type = "button";
-        tag.dataset.policy = p;
-        tag.title = t("k8sPolicyTip", nodeOf(p)?.name || p);
-        tag.onclick = (e) => {
-          e.stopPropagation();
-          const on = !tag.classList.contains("on");
-          map.querySelectorAll(".kpol").forEach((x) => x.classList.toggle("on", on && x.dataset.policy === p));
-          map.querySelectorAll("[data-anchor]").forEach((x) => x.classList.toggle("kpolon", on && (policies[x.dataset.anchor] || []).includes(p) || (on && x.dataset.anchor === p)));
-        };
-        row.append(tag);
-      }
-      b.append(row);
-    }
-  }
-}
+const zoneWords = (z) => z.dataset.zone;
 
 function renderSequence(v) {
   const actors = v.actors || [];
@@ -2004,12 +1956,10 @@ function renderTransform(v) {
 function zoneEl(z, depth, dense = false) {
   const box = el("div", `zone z${Math.min(depth, 3)}`);
   box.dataset.zone = z.label || "";
-  // A Kubernetes picture's zones have roles: outside the cluster and the targets are named in the page's words.
-  if (z.role) box.dataset.role = z.role;
   const head = el("div", "zhead");
   const ic = iconEl({name: z.label, icon: z.icon, kind: z.kind}, "", z.family || null);
   if (ic) head.append(ic);
-  head.append(richEl("span", null, z.role === "outside" || z.role === "targets" ? t("k8sZone_" + z.role) : z.label || ""));
+  head.append(richEl("span", null, z.label || ""));
   // A zone of a kind says which, with its props: "Subnet · private · 10.0.1.0/24".
   if (PROF.kindOf(z.kind)) {
     box.dataset.kind = z.kind;
@@ -2019,8 +1969,7 @@ function zoneEl(z, depth, dense = false) {
   // In a big picture a zone that only holds boxes stacks them, so the zones stay side by side as columns.
   const stack = z.stack ?? (dense && !(z.zones || []).length);
   const body = el("div", "zbody" + (stack ? " stack" : "") + ((z.zones || []).length ? " zones" : ""));
-  // A zone in a Kubernetes cluster is a namespace, the draft's new ones too.
-  for (const c of (z.zones || []).filter((x) => x && typeof x === "object")) body.append(zoneEl(z.role === "cluster" ? {role: "namespace", family: z.family, stack: true, ...c} : c, depth + 1, dense));
+  for (const c of (z.zones || []).filter((x) => x && typeof x === "object")) body.append(zoneEl(c, depth + 1, dense));
   for (const id of z.nodes || []) body.append(anchored(id, nodeBox(id, z.family || null)));
   box.append(head, body);
   return box;
@@ -3245,7 +3194,6 @@ function renderMap(real) {
   const many = new Set(KINDS.map.refs(v)).size > 12 || tops.length >= 4;
   const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : "") + (many ? " dense" : ""));
   for (const z of tops) map.append(zoneEl(z, 0, many));
-  if (v.k8s) k8sDetails(map, v.k8s);
   const profRow = profileMarks(map, v);
   if (profRow) scroll.append(profRow);
   scroll.append(map);
@@ -4492,8 +4440,6 @@ function renderMap(real) {
       boxCard(tmp.getBoundingClientRect(), {}, {
         kinds: {zone: false},
         title: t("boxNewTitle", zoneWords(z)),
-        // On a Kubernetes picture, what a zone holds: workloads and configs in a namespace, a deploy tool outside, a target.
-        nameHint: z.dataset.role && STRINGS.en["k8sBoxHint_" + z.dataset.role] ? t("k8sBoxHint_" + z.dataset.role) : undefined,
         preview: (val) => showBox(tmp, val, t("boxNew")),
         onDone: (val) => {
           sketchTool = "select";
@@ -4522,7 +4468,6 @@ function renderMap(real) {
         zone: true,
         kinds: {zone: true},
         title: t("zoneNewTitle", z ? zoneWords(z) : t("topLevel")),
-        nameHint: z?.dataset.role === "cluster" ? t("k8sZoneHint") : undefined,
         preview: (val) => showZone(tmp, val, t("zoneNew")),
         onDone: (got) => {
           const spot = fixed ? relRect(tmp, z || map) : null, val = got?.name;
@@ -7066,7 +7011,6 @@ const VIEWS = {
   diff: {render: renderDiff, after: () => requestAnimationFrame(() => linkDrawer?.())},
   map: {render: renderMap, after: () => requestAnimationFrame(() => linkDrawer?.())},
   journey: {render: renderJourney},
-  k8s: {render: renderK8s, after: () => requestAnimationFrame(() => linkDrawer?.())},
   sequence: {render: renderSequence},
   transform: {render: renderTransform},
 };

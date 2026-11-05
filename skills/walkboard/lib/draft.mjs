@@ -17,51 +17,8 @@ export const DRAFT_OPS = {
   state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setEnd"],
   decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove", "setStart", "setShape"],
   impact: ["addBox", "addEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
-  // A Kubernetes picture is sketched as a map (see k8sAsMap): its zones are outside, the cluster's namespaces and targets.
-  k8s: ["addNode", "addZone", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
 };
 
-// A Kubernetes picture as a map: what is outside the cluster, the cluster with a zone per namespace (its configs,
-// workloads and network policies), and the targets it reaches. A plan with one namespace (namespace, workloads,
-// configs, policy) is one zone; namespaces: [{name, workloads, configs, policies: [{node, pods}]}] makes several.
-// k8s holds what a map has no place for: containers per workload, the policies over each pod, and roles of zones.
-// A config a workload uses, and the way from outside into the cluster, are lines of their own ("uses").
-export function k8sAsMap(v) {
-  const list = (x) => (Array.isArray(x) ? x : []);
-  const spaces = list(v.namespaces).filter(isObj).length
-    ? list(v.namespaces).filter(isObj)
-    : [{name: v.namespace, workloads: v.workloads, configs: v.configs, policies: v.policy ? [{node: v.policy}] : []}];
-  const containers = {}, policies = {}, links = [], used = new Set();
-  const label = (base) => {
-    let l = base, i = 2;
-    while (used.has(l)) l = `${base} (${i++})`;
-    used.add(l);
-    return l;
-  };
-  const outside = list(v.outside).filter((x) => typeof x === "string");
-  const nsZones = spaces.map((ns) => {
-    const pods = list(ns.workloads).filter((w) => isObj(w) && typeof w.node === "string");
-    for (const w of pods) {
-      if (list(w.containers).length) containers[w.node] = list(w.containers).map(String);
-      for (const u of list(w.uses)) if (typeof u === "string") links.push({from: u, to: w.node, state: "uses"});
-    }
-    const pols = list(ns.policies).filter((x) => isObj(x) && typeof x.node === "string");
-    for (const pl of pols) for (const pod of Array.isArray(pl.pods) ? pl.pods : pods.map((w) => w.node)) (policies[pod] ||= []).push(pl.node);
-    return {label: label(ns.name ? `namespace ${ns.name}` : "namespace"), role: "namespace", family: "k8s", stack: true, nodes: [...list(ns.configs).filter((x) => typeof x === "string"), ...pods.map((w) => w.node), ...pols.map((x) => x.node)]};
-  });
-  outside.forEach((id, i) => i && links.push({from: outside[i - 1], to: id, state: "uses"}));
-  // The last of them (a deploy tool) reaches into the cluster: drawn to the first workload of each namespace.
-  if (outside.length) for (const ns of spaces) {
-    const first = list(ns.workloads).find((w) => isObj(w) && typeof w.node === "string");
-    if (first) links.push({from: outside[outside.length - 1], to: first.node, state: "uses"});
-  }
-  const zones = [
-    {label: label("Outside"), role: "outside", family: "k8s", stack: true, nodes: outside},
-    {label: label(v.cluster ? `cluster ${v.cluster}` : "cluster"), role: "cluster", family: "k8s", stack: true, zones: nsZones, nodes: []},
-    {label: label("Targets"), role: "targets", family: "k8s", stack: true, nodes: list(v.targets).filter((x) => typeof x === "string")},
-  ];
-  return {...v, kind: "map", of: "k8s", zones, links: [...links, ...list(v.links).filter(isObj).map((l) => ({...l}))], k8s: {containers, policies}};
-}
 // A plan without views is drawn as one flow of its steps (as in lib/schema.mjs, kept here so this file imports nothing).
 export function viewList(p) {
   if (Array.isArray(p?.views) && p.views.length) return p.views;
@@ -210,9 +167,7 @@ export function applyDraft(plan, draft, viewId) {
   const marks = {nodes: {}, zones: {}, links: {}};
   const result = {plan, view: null, marks, done: [], stale: [], pending: []};
   const views = viewList(plan);
-  const found = views.find((x) => x?.id === viewId) || null;
-  // A Kubernetes picture is drawn and sketched as a map.
-  const real = found?.kind === "k8s" ? k8sAsMap(found) : found;
+  const found = views.find((x) => x?.id === viewId) || null, real = found;
   result.view = real;
   const ops = Array.isArray(draft?.views?.[viewId]?.ops) ? draft.views[viewId].ops : [];
   if (!real || !ops.length || !draftable(found)) return result;

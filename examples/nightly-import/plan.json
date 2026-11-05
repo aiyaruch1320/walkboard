@@ -47,8 +47,7 @@
         "argo",
         "cm",
         "secret",
-        "cronjob",
-        "netpol"
+        "cronjob"
       ],
       "detail": "Write the CronJob, ConfigMap and NetworkPolicy manifests for ArgoCD to create in staging",
       "done": "ArgoCD synced; the CronJob exists, suspended"
@@ -106,42 +105,84 @@
     },
     {
       "id": "k8s",
-      "kind": "k8s",
+      "kind": "map",
       "title": "Kubernetes",
-      "cluster": "staging",
-      "namespace": "imports",
-      "outside": [
-        "git",
-        "argo"
-      ],
-      "configs": [
-        "cm",
-        "secret",
-        "wkey"
-      ],
-      "policy": "netpol",
-      "workloads": [
+      "zones": [
         {
-          "node": "cronjob",
-          "containers": [
-            "migrate (init)",
-            "import"
-          ],
-          "uses": [
-            "cm",
-            "secret",
-            "wkey"
+          "label": "Outside the cluster",
+          "stack": true,
+          "nodes": [
+            "git",
+            "argo"
+          ]
+        },
+        {
+          "label": "cluster staging",
+          "kind": "k8s:cluster",
+          "zones": [
+            {
+              "label": "namespace imports",
+              "kind": "k8s:namespace",
+              "stack": true,
+              "nodes": [
+                "cm",
+                "secret",
+                "wkey"
+              ],
+              "zones": [
+                {
+                  "label": "NetworkPolicy",
+                  "kind": "k8s:networkpolicy",
+                  "props": {
+                    "rules": "egress: DNS, PostgreSQL, Customer API, BigQuery"
+                  },
+                  "nodes": [
+                    "cronjob"
+                  ],
+                  "note": "only the egress it needs"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Reaches",
+          "stack": true,
+          "nodes": [
+            "dns",
+            "db",
+            "api",
+            "warehouse",
+            "internet"
           ]
         }
       ],
-      "targets": [
-        "dns",
-        "db",
-        "api",
-        "warehouse",
-        "internet"
-      ],
       "links": [
+        {
+          "from": "git",
+          "to": "argo",
+          "kind": "k8s:uses"
+        },
+        {
+          "from": "argo",
+          "to": "cronjob",
+          "label": "sync"
+        },
+        {
+          "from": "cm",
+          "to": "cronjob",
+          "kind": "k8s:uses"
+        },
+        {
+          "from": "secret",
+          "to": "cronjob",
+          "kind": "k8s:uses"
+        },
+        {
+          "from": "wkey",
+          "to": "cronjob",
+          "kind": "k8s:mounts"
+        },
         {
           "from": "cronjob",
           "to": "dns",
@@ -354,7 +395,8 @@
       "file": "base/configmap.yaml",
       "in": "DB_HOST, API_URL, BATCH_SIZE",
       "out": "Container environment",
-      "why": "Change settings without rebuilding the image"
+      "why": "Change settings without rebuilding the image",
+      "kind": "k8s:configmap"
     },
     "secret": {
       "name": "Secret",
@@ -363,7 +405,8 @@
       "file": "overlays/staging/secrets.yaml",
       "in": "The system owners",
       "out": "DB_PASSWORD, API_KEY",
-      "why": "Real values never go into the repository"
+      "why": "Real values never go into the repository",
+      "kind": "k8s:secret"
     },
     "wkey": {
       "name": "BigQuery key",
@@ -371,7 +414,8 @@
       "status": "todo",
       "in": "The data team",
       "out": "File at /etc/import/key.json",
-      "why": "Only the import container uses it"
+      "why": "Only the import container uses it",
+      "kind": "k8s:secret"
     },
     "cronjob": {
       "name": "CronJob import",
@@ -380,16 +424,13 @@
       "file": "base/cronjob.yaml",
       "in": "Image, config, secret",
       "out": "A Job each night: migrate, then import",
-      "why": "Forbid overlapping runs; stays suspended until the secrets exist"
-    },
-    "netpol": {
-      "name": "NetworkPolicy",
-      "what": "only the egress it needs",
-      "status": "new",
-      "file": "base/network-policy.yaml",
-      "in": "Pods labelled app=nightly-import",
-      "out": "Allows DNS, DB, API · BigQuery pending · blocks the rest",
-      "why": "Customer data can only go where we intend"
+      "why": "Forbid overlapping runs; stays suspended until the secrets exist",
+      "kind": "k8s:cronjob",
+      "props": {
+        "schedule": "02:00",
+        "suspended": "yes",
+        "containers": "migrate (init), import"
+      }
     },
     "dns": {
       "name": "DNS",
@@ -419,7 +460,8 @@
       "status": "ext",
       "in": "Query for new customers",
       "out": "Customer rows",
-      "why": "Waiting for infra to open egress on :443"
+      "why": "Waiting for infra to open egress on :443",
+      "kind": "gcp:bigquery"
     },
     "internet": {
       "name": "Everything else",

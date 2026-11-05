@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validateDraft, applyDraft, describeDraft, draftLine, k8sAsMap} from "../skills/walkboard/lib/draft.mjs";
+import {validateDraft, applyDraft, describeDraft, draftLine} from "../skills/walkboard/lib/draft.mjs";
 
 const plan = () => ({
   title: "t",
@@ -83,10 +83,10 @@ test("a line turned round keeps its label and kind, and later edits still find i
   assert.match(draftLine({op: "reverseLink", from: "api", to: "nat"}), /now nat → api/);
 });
 
-test("graphs and k8s turn lines round too; new boxes there keep a note and an icon", () => {
+test("graphs and maps turn lines round too; new boxes there keep a note and an icon", () => {
   const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}}, views: [
     {id: "s", kind: "state", states: ["a", "b"], transitions: [{from: "a", to: "b", label: "pay"}]},
-    {id: "k", kind: "k8s", workloads: [{node: "a"}], targets: ["b"], links: [{from: "a", to: "b", label: ":443", state: "todo"}]},
+    {id: "k", kind: "map", zones: [{label: "Z", nodes: ["a", "b"]}], links: [{from: "a", to: "b", label: ":443", state: "todo"}]},
   ]};
   const d = (view, ...ops) => ({version: 1, views: {[view]: {ops: ops.map((o, i) => ({id: "op" + (i + 1), ...o}))}}});
   const s = applyDraft(p, d("s", {op: "reverseEdge", from: "a", to: "b"}, {op: "editEdge", from: "a", to: "b", label: "refund"}, {op: "addBox", node: "new:c", name: "C", what: "waits", icon: "clock"}), "s");
@@ -320,37 +320,14 @@ test("flows: a box in several lanes (steps touching it) moves out of the lane it
   assert.deepEqual(applyDraft(p, flow({op: "moveBox", node: "b", lane: 0, at: 0}), "flow").view.lanes[0].nodes, ["b", "a"]);
 });
 
-test("state, decision and impact pictures: boxes and lines; k8s: lines like a map's, new boxes on the right", () => {
-  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}, w: {name: "W"}, db: {name: "DB"}}, views: [
+test("state, decision and impact pictures: boxes and lines", () => {
+  const p = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}}, views: [
     {id: "st", kind: "state", states: ["a", "b"], transitions: [{from: "a", to: "b", label: "go"}]},
-    {id: "im", kind: "impact", edges: [{from: "a", to: "b"}]},
-    {id: "k", kind: "k8s", workloads: [{node: "w"}], targets: ["db"], links: [{from: "w", to: "db", label: ":5432"}]}]};
+    {id: "im", kind: "impact", edges: [{from: "a", to: "b"}]}]};
   const st = applyDraft(p, {version: 1, views: {st: {ops: [{id: "o1", op: "addBox", node: "new:c", name: "C"}, {id: "o2", op: "addEdge", from: "b", to: "new:c", label: "done"}, {id: "o3", op: "editEdge", from: "a", to: "b", label: "start"}]}}}, "st");
   assert.deepEqual(st.view.states, ["a", "b", "new:c"]);
   assert.deepEqual(st.marks.links, {"b>new:c": {mark: "add"}, "a>b": {mark: "change", was: "go"}});
   const im = applyDraft(p, {version: 1, views: {im: {ops: [{id: "o1", op: "removeEdge", from: "a", to: "b"}]}}}, "im");
   assert.equal(im.marks.links["a>b"].mark, "remove");
-  // Kubernetes is sketched as a map of its zones: a new box goes into the zone it is added to, a namespace is a zone.
-  const k = applyDraft(p, {version: 1, views: {k: {ops: [{id: "o1", op: "addNode", node: "new:r", name: "Redis", zone: "Targets"}, {id: "o2", op: "addLink", from: "w", to: "new:r", label: ":6379", state: "todo"}, {id: "o3", op: "editLink", from: "w", to: "db", state: "blocked"}, {id: "o4", op: "addZone", zone: "namespace web", parent: "cluster"}]}}}, "k");
-  assert.equal(k.view.kind, "map");
-  assert.deepEqual(k.view.zones.map((z) => z.label), ["Outside", "cluster", "Targets"]);
-  assert.deepEqual(k.view.zones[2].nodes, ["db", "new:r"]);
-  assert.deepEqual(k.view.zones[1].zones.map((z) => z.label), ["namespace", "namespace web"]);
-  assert.equal(k.marks.links["w>new:r"].mark, "add");
-  assert.deepEqual(k.marks.links["w>db"], {mark: "change", was: {label: ":5432", state: "ok"}});
-  assert.deepEqual(k.pending, ["o1", "o2", "o3", "o4"]);
 });
 
-test("a Kubernetes picture as a map: namespaces, containers, configs it uses, policies over pods", () => {
-  const v = {id: "k", kind: "k8s", cluster: "prod", outside: ["git", "argo"], targets: ["db"], links: [{from: "api", to: "db", label: ":5432"}],
-    namespaces: [{name: "web", configs: ["cm"], workloads: [{node: "api", containers: ["app"], uses: ["cm"]}, {node: "worker"}], policies: [{node: "np", pods: ["api"]}, {node: "all"}]}, {name: "jobs", workloads: [{node: "cron"}]}]};
-  const m = k8sAsMap(v);
-  assert.deepEqual(m.zones.map((z) => [z.label, z.role]), [["Outside", "outside"], ["cluster prod", "cluster"], ["Targets", "targets"]]);
-  assert.deepEqual(m.zones[1].zones.map((z) => [z.label, z.nodes]), [["namespace web", ["cm", "api", "worker", "np", "all"]], ["namespace jobs", ["cron"]]]);
-  assert.deepEqual(m.k8s, {containers: {api: ["app"]}, policies: {api: ["np", "all"], worker: ["all"]}});
-  assert.deepEqual(m.links.filter((l) => l.state === "uses").map((l) => `${l.from}>${l.to}`), ["cm>api", "git>argo", "argo>api", "argo>cron"]);
-  // The plan's one-namespace form is one zone, its policy over every workload.
-  const one = k8sAsMap({kind: "k8s", namespace: "imports", policy: "np", workloads: [{node: "a"}, {node: "b"}]});
-  assert.deepEqual(one.zones[1].zones.map((z) => z.label), ["namespace imports"]);
-  assert.deepEqual(one.k8s.policies, {a: ["np"], b: ["np"]});
-});

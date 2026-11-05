@@ -39,7 +39,7 @@ test("references to missing nodes, steps and actors are reported", () => {
   const p = base();
   p.steps[0].nodes.push("ghost");
   p.views.push(
-    {id: "k", kind: "k8s", workloads: [{node: "a", uses: ["cfg"]}], links: [{from: "a", to: "b", state: "maybe"}]},
+    {id: "k", kind: "map", zones: [{label: "Z", nodes: ["a", "cfg"]}], links: [{from: "a", to: "b", state: "maybe"}]},
     {id: "q", kind: "sequence", actors: ["a"], messages: [{from: "a", to: "b", step: "nope"}]},
     {id: "t", kind: "transform", stages: [{node: "a", columns: ["x", "y"], rows: [["1"]]}, {node: "b"}]},
   );

@@ -2403,7 +2403,8 @@ function svgIcon(name) {
   return svg;
 }
 const SKETCH_TOOLS = [["select", "V"], ["box", "B"], ["zone", "Z"], ["connect", "L"], ["rename", "R"], ["remove", "D"]];
-const MODEL_TOOLS = [["select", "V"], ["table", "B"], ["column", "C"], ["connect", "L"], ["group", "Z"], ["rename", "R"], ["remove", "D"]];
+// In the order of a map's: what to add first, then lines, then edit and take out.
+const MODEL_TOOLS = [["select", "V"], ["table", "B"], ["group", "Z"], ["column", "C"], ["connect", "L"], ["rename", "R"], ["remove", "D"]];
 // What the draft does to a thing, in one sign; the words in its tooltip. small: inline, for a column.
 const DRAFT_SIGNS = {add: "+", change: "~", remove: "−", move: "↦"};
 // The sign and a word ("+ new"): a sign alone did not say what it meant.
@@ -2687,7 +2688,8 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
     return b;
   };
   for (const [name, key] of toolList) {
-    const b = btn(name, `${t("tool_" + name)} (${key})`);
+    // Where the page places the boxes there is nothing to drag.
+    const b = btn(name, `${t(name === "select" && toolList === LINK_TOOLS ? "tool_pick" : "tool_" + name)} (${key})`);
     b.dataset.tool = name;
     b.onclick = () => sketchApi.tool(name);
     bar.append(b);

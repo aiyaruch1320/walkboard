@@ -339,7 +339,9 @@ button.danger{background:var(--warn-bd);color:#fff;border-color:var(--warn-bd)}
 /* Room for the frame: the picture's scroll box would cut its sides off. */
 .scroll:has(>.map.sketch){padding:10px}
 /* Where the box or zone tool would put it; nowhere: the cursor says so. */
-.map .zone.dhover{outline:2px dashed var(--you-bd);outline-offset:2px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+/* What a click would land in, and what a drag would drop into: the same on every picture. */
+.map .zone.dhover,.lane.dhover,.er .erframe.dhover{outline:2px dashed var(--you-bd);outline-offset:2px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+.map .zone.droptarget,.lane.droptarget,.er .erframe.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
 .map.sketch.dhover{outline-style:dashed;background:color-mix(in srgb,var(--you-bg) 25%,transparent)}
 /* Where nothing can go, the cursor says so: over the picture with a tool, and anywhere while something is being dragged. */
 .sketch.dnoplace,.sketch.dnoplace *,body.dnoplace,body.dnoplace *{cursor:not-allowed!important}
@@ -494,7 +496,6 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map [data-anchor]{z-index:2}
 .map .zone>.zhead{position:relative;z-index:1}
 .map [data-anchor].lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
-.map .zone.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
 /* Placed by hand: every box and zone where it was put, from the corner of what holds it. */
 .map.fixed .zone,.map.fixed [data-anchor]{position:absolute;margin:0}
 .map.fixed .zone{box-sizing:border-box}
@@ -531,7 +532,9 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .via.dr-change{border-style:dashed;border-color:#14a3b8}
 .via.dr-remove{text-decoration:line-through;opacity:.6}
 .zhead .ptag{position:static;margin-left:4px}
-.erhead .ptag,.erframe-label .ptag{position:static;margin-left:6px;box-shadow:none}
+.erframe-label .ptag{position:static;margin-left:6px;box-shadow:none}
+/* A table's sign on its corner, as a box's. */
+.er .ertable:has(.ptag){overflow:visible}
 .er li{position:relative}
 .ptag.small{position:absolute;right:-10px;top:50%;transform:translateY(-50%);min-width:17px;height:17px;font-size:11px;box-shadow:0 0 0 2px var(--card)}
 .ertable.dr-move .erhead>.ptag{background:var(--copy-tx)}.ertable.dr-change .erhead>.ptag,.erframe.dr-change .erframe-label>.ptag{background:#14a3b8}.ertable.dr-remove .erhead>.ptag,.erframe.dr-remove .erframe-label>.ptag{background:var(--warn-bd)}
@@ -552,11 +555,10 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er.sketch[data-tool="column"],.er.sketch[data-tool="column"] *,.er.sketch[data-tool="group"],.er.sketch[data-tool="group"] *{cursor:not-allowed}
 .er.sketch[data-tool="column"] .ertable,.er.sketch[data-tool="column"] .ertable *,.er.sketch[data-tool="group"] .ertable,.er.sketch[data-tool="group"] .ertable *{cursor:copy}
 .er.sketch[data-tool="connect"] li[data-col]{cursor:alias}
-.er.sketch[data-tool="rename"] .ertable{cursor:text}
+.er.sketch[data-tool="rename"] .ertable,.er.sketch[data-tool="rename"] .erframe-label{cursor:text}
 .er.sketch[data-tool="remove"] .ertable,.er.sketch[data-tool="remove"] .erframe-label{cursor:pointer}
-.er .dsel{outline:2px solid var(--you-bd)!important;outline-offset:2px}
+.er .dsel{outline:2px solid var(--you-bd)!important;outline-offset:3px}
 .er li.dtarget{outline:2px solid var(--you-bd);outline-offset:-2px}
-.er .erframe.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 40%,transparent)}
 .flowview,.graph,.k8s{position:relative}
 .graph>.dtemp,.k8s>.dtemp{position:absolute;width:210px;z-index:5;opacity:.85}
 .lane.dtemp{opacity:.85}
@@ -579,8 +581,6 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 /* Room for the frame: a scroll box would cut its sides off. */
 .scroll:has(>.sketch){padding:10px}
 /* Where the box or table tool would put it. */
-.lane.dhover{background:color-mix(in srgb,var(--you-bg) 40%,transparent);border-radius:10px;outline:2px dashed var(--you-bd);outline-offset:2px}
-.er .erframe.dhover{border:2px dashed var(--you-bd);background:color-mix(in srgb,var(--you-bg) 35%,transparent)}
 .sketch[data-tool="box"],.sketch[data-tool="box"] *,.sketch[data-tool="lane"],.sketch[data-tool="lane"] *{cursor:crosshair}
 .graph.sketch[data-tool="box"] [data-anchor],.graph.sketch[data-tool="box"] [data-anchor] *,.k8s.sketch[data-tool="box"] [data-anchor]:not([data-anchor="#namespace"]),.k8s.sketch[data-tool="box"] [data-anchor]:not([data-anchor="#namespace"]) *{cursor:not-allowed}
 .sketch[data-tool="connect"] [data-anchor]{cursor:alias}
@@ -589,7 +589,6 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .sketch .dsel{outline:2px solid var(--you-bd)!important;outline-offset:3px}
 .sketch [data-anchor].dtarget{outline:2px solid var(--you-bd)!important;outline-offset:3px}
 .flowview .lifted{z-index:50;position:relative;opacity:.9}
-.lane.droptarget{background:color-mix(in srgb,var(--you-bg) 40%,transparent);border-radius:10px}
 .graph svg.links .dhit,.k8s svg.links .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke;cursor:pointer}
 .graph svg.links .dtmp,.k8s svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .er svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}

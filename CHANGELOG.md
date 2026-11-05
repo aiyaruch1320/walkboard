@@ -31,6 +31,7 @@
 - **A group looks and edits like a zone.** A data model's group has a frame and a title like a map zone's, and a card for its name, note and icon (`groups[].note`, `groups[].icon`; `addGroup` and `editGroup` carry them).
 - **The same card everywhere.** A lane is added and renamed in a card (only a name: it has no note or icon), and on state, decision, impact and Kubernetes pictures a new box shows where you clicked as you type, as on a map.
 - **The cursor says where nothing can go, on every picture.** The tools that place something show a no-entry cursor over what they cannot use (a table or box under a new one, empty space for the column and group tools, the gap between lanes), as does dragging a box out of every lane or a table onto another. A table let go on another goes back, with a line that says why.
+- Draft mode reads the same across pictures: the tools come in a map's order (what to add, lines, edit, take out), what a click or a drop would land in lights up the same way, a table's sign sits on its corner as a box's does, and where the page places the boxes the first tool no longer says "drag".
 
 ## 0.8.0
 

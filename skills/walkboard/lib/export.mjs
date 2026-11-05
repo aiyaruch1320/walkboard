@@ -6,12 +6,29 @@ const assets = new URL("../assets/", import.meta.url);
 const lib = new URL("./", import.meta.url);
 const read = (base, name) => fs.readFileSync(new URL(name, base), "utf8");
 
+// What the browser does not need: whole-line comments, indentation and blank lines (about a fifth of the page).
+// Safe because no string in these files spans lines (they use no multi-line template literals).
+export const slim = (text) => text.split("\n").map((l) => l.trimStart()).filter((l) => l && !l.startsWith("//") && !/^\/\*.*\*\/$/.test(l)).join("\n");
+
+// Built again only when one of its files changes.
+const cache = new Map();
+export function cached(key, files, build) {
+  const stamp = files.map((f) => fs.statSync(f).mtimeMs).join();
+  const hit = cache.get(key);
+  if (hit?.stamp === stamp) return hit.text;
+  const text = build();
+  cache.set(key, {stamp, text});
+  return text;
+}
+
 // The page links its stylesheet and labels so it also opens as a file; served or exported, they are inlined into one document.
 export function pageHtml() {
-  return read(assets, "viewer.html")
+  return cached("page", ["viewer.html", "viewer.css", "strings.js"].map((f) => new URL(f, assets)), () => slim(read(assets, "viewer.html")
     .replace('<link rel="stylesheet" href="viewer.css">', () => `<style>\n${read(assets, "viewer.css")}</style>`)
-    .replace('<script src="strings.js"></script>', () => `<script>\n${read(assets, "strings.js")}</script>`);
+    .replace('<script src="strings.js"></script>', () => `<script>\n${read(assets, "strings.js")}</script>`)));
 }
+// A module the page imports (lib/schema.mjs, icons.mjs, draft.mjs), as sent.
+export const moduleText = (name) => cached(name, [new URL(name, lib)], () => slim(read(lib, name)));
 
 function lines(file) {
   if (!fs.existsSync(file)) return [];
@@ -50,7 +67,7 @@ export function snapshot(dir, plan, {code = true, chat = false} = {}) {
   delete shared.roots;
   if (Array.isArray(plan.links)) shared.links = plan.links.filter((l) => l && !local(l.url));
   const data = {plan: shared, glossary: JSON.parse(read(assets, "glossary.json")), sources, thread, exportedAt: new Date().toISOString()};
-  const module = (name) => "data:text/javascript;base64," + Buffer.from(read(lib, name)).toString("base64");
+  const module = (name) => "data:text/javascript;base64," + Buffer.from(moduleText(name)).toString("base64");
   // "<" escaped so nothing in the plan can close the script tag.
   const json = (x) => JSON.stringify(x).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
   // The file may only run what it carries: no requests anywhere, whatever a plan says.

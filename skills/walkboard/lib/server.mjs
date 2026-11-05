@@ -4,7 +4,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
-import {pageHtml, snapshot} from "./export.mjs";
+import {pageHtml, snapshot, moduleText} from "./export.mjs";
 import {validateDraft, emptyDraft, draftable, viewList, isNewId} from "./draft.mjs";
 
 export const paths = (dir) => {
@@ -22,9 +22,6 @@ export const paths = (dir) => {
   };
 };
 
-const schemaFile = new URL("./schema.mjs", import.meta.url);
-const iconsFile = new URL("./icons.mjs", import.meta.url);
-const draftFile = new URL("./draft.mjs", import.meta.url);
 const glossaryFile = new URL("../assets/glossary.json", import.meta.url);
 
 const MAX_BODY = 64 * 1024;
@@ -210,11 +207,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     if (route === "GET /") {
       res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store"}).end(pageHtml());
     } else if (route === "GET /schema.mjs") {
-      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(schemaFile));
+      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("schema.mjs"));
     } else if (route === "GET /icons.mjs") {
-      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(iconsFile));
+      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("icons.mjs"));
     } else if (route === "GET /draft.mjs") {
-      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(fs.readFileSync(draftFile));
+      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("draft.mjs"));
     } else if (route === "GET /glossary.json") {
       res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(fs.readFileSync(glossaryFile));
     } else if (route === "GET /api/plan") {

@@ -172,6 +172,24 @@ const dm = (...ops) => ({version: 1, views: {d: {ops: ops.map((o, i) => ({id: "o
 
 test("data models: tables, columns, keys and groups are drafted, marked, and the plan untouched", () => {
   const p = model(), before = JSON.stringify(p);
+  assert.match(validateDraft(dm({op: "editRelation", to: "users.id", kind: "1:1"})).join(), /needs from/);
+  assert.match(validateDraft(dm({op: "editRelation", from: "orders.user_id", to: "users.id", kind: "many"})).join(), /bad kind/);
+  const oneToOne = applyDraft(model(), dm({op: "editRelation", from: "orders.user_id", to: "users.id", kind: "1:1"}), "d");
+  assert.deepEqual(oneToOne.stale, []);
+  assert.equal(oneToOne.view.tables.find((tb) => tb.node === "orders").columns.find((c) => c.name === "user_id").ref, undefined);
+  assert.deepEqual(oneToOne.view.relations, [{from: "orders.user_id", to: "users.id", kind: "1:1"}]);
+  assert.equal(oneToOne.marks.links["orders.user_id>users.id"].mark, "change");
+  assert.deepEqual(applyDraft(model(), dm({op: "editRelation", from: "orders.user_id", to: "users.id", kind: "N:1"}), "d").done, ["op1"]);
+  assert.match(applyDraft(model(), dm({op: "editRelation", from: "users.id", to: "orders.id", kind: "1:1"}), "d").stale[0].why, /no line/);
+  const related = {...model()};
+  related.views = related.views.map((x) => ({...x, relations: [{from: "users.email", to: "orders.id", kind: "1:1"}]}));
+  const off = applyDraft(related, dm({op: "removeRelation", from: "users.email", to: "orders.id"}), "d");
+  assert.equal(off.marks.links["users.email>orders.id"].mark, "remove");
+  assert.equal(off.view.relations.length, 1);
+  assert.deepEqual(applyDraft(model(), dm({op: "removeRelation", from: "users.email", to: "orders.id"}), "d").done, ["op1"]);
+  const moved = applyDraft(related, dm({op: "editColumn", table: "users", column: "email", name: "mail"}), "d");
+  assert.equal(moved.view.relations[0].from, "users.mail");
+  assert.match(draftLine({op: "editRelation", from: "a.x", to: "b.y", kind: "1:1"}), /line a\.x → b\.y: 1:1/);
   assert.match(validateDraft(dm({op: "editGroup", group: "Shop"})).join(), /needs a label, an icon or a note/);
   assert.deepEqual(validateDraft(dm({op: "addGroup", group: "Ops", tables: ["users"], icon: "user", note: "team"}, {op: "editGroup", group: "Shop", note: "one db"})), []);
   const framed = applyDraft(model(), dm({op: "addGroup", group: "Ops", tables: ["users"], icon: "user", note: "team"}, {op: "editGroup", group: "Shop", note: "one db"}), "d");

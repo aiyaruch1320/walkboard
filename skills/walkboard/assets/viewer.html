@@ -2630,6 +2630,8 @@ function draftRows(viewId) {
   const nm = (id) => names[id]?.name ?? plan.nodes[id]?.name ?? id;
   const old = (id) => plan.nodes[id]?.name ?? id;
   const top = (z) => z || t("topLevel");
+  // A column by its table's name, not its id.
+  const colName = (k) => `${nm(String(k).slice(0, String(k).indexOf(".")))}${String(k).slice(String(k).indexOf("."))}`;
   const stale = Object.fromEntries(drafted.stale.map((x) => [x.id, x.why]));
   // A lane by its title (as it was when the change was made), else by its number.
   const laneName = (o) => drafted.lanes?.[o.id]?.laneTitle || o.laneTitle || `${t("laneWord")} ${(o.lane ?? 0) + 1}`;
@@ -2649,7 +2651,9 @@ function draftRows(viewId) {
       moveZone: ["↦", o.zone, `→ ${top(o.to)}`],
       addTable: ["+", o.name, o.group || ""],
       addColumn: ["+", `${nm(o.table)}.${o.column}`, [o.type, o.key].filter(Boolean).join(" · ")],
-      editColumn: ["~", `${nm(o.table)}.${o.column}`, o.name ? `→ ${o.name}` : o.ref != null ? (o.ref ? `→ ${o.ref}` : t("fkOff")) : [o.type, o.key].filter((x) => x != null).join(" · ")],
+      editColumn: ["~", `${nm(o.table)}.${o.column}`, o.name ? `→ ${o.name}` : o.ref != null ? (o.ref ? `→ ${colName(o.ref)}` : t("fkOff")) : [o.type, o.key].filter((x) => x != null).join(" · ")],
+      editRelation: ["~", `${colName(o.from)} → ${colName(o.to)}`, o.kind],
+      removeRelation: ["−", `${colName(o.from)} → ${colName(o.to)}`, ""],
       removeColumn: ["−", `${nm(o.table)}.${o.column}`, ""],
       moveTable: ["↦", nm(o.node), `→ ${o.to || t("noGroup")}`],
       addGroup: ["+", o.group, [(o.tables || []).map(nm).join(", "), o.note || ""].filter(Boolean).join(" · ")],
@@ -4792,6 +4796,15 @@ function renderDataModel(real) {
       if (r.copy) path.dataset.group = r.copy;
       svg.append(path);
       if (r.copy) continue;
+      [path.dataset.from, path.dataset.to] = [r.from, r.to];
+      // While sketching a line can be clicked: a wider line nobody sees.
+      if (isSketch) {
+        const hit = document.createElementNS(svg.namespaceURI, "path");
+        hit.setAttribute("d", path.getAttribute("d"));
+        hit.setAttribute("class", "dhit");
+        [hit.dataset.from, hit.dataset.to] = [r.from, r.to];
+        svg.append(hit);
+      }
       const [m, n] = String(r.kind || "N:1").split(":");
       for (const [txt, x, y, anchor] of [[m, x1 + (right ? 6 : -6), y1 - 5, right ? "start" : "end"], [n, x2 + (stacked ? 6 : right ? -6 : 6), y2 - 5, stacked || !right ? "start" : "end"]]) {
         const tx = document.createElementNS(svg.namespaceURI, "text");
@@ -5029,6 +5042,61 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     const {key: _k, ...base} = added;
     setOps(list.map((o) => (o === added ? (key ? {...base, key} : base) : o)));
   };
+  // A line taken out (again: put back). A relation has its own change; a foreign key is its column's.
+  const removeLine = (from, to) => {
+    const list = ops().filter((o) => !(o.op === "editRelation" && o.from === from && o.to === to));
+    if ((real.relations || []).some((r) => r?.from === from && r?.to === to)) {
+      const gone = list.find((o) => o.op === "removeRelation" && o.from === from && o.to === to);
+      return setOps(gone ? list.filter((o) => o !== gone) : [...list, {id: newOpId(list), op: "removeRelation", from, to}]);
+    }
+    setOps(editCol(list, from, {ref: marks.links[`${from}>${to}`]?.mark === "remove" ? to : ""}));
+  };
+  // Another kind of line; back to what the plan has, the change drops out.
+  const setKind = (from, to, kind) => {
+    const list = ops(), ed = list.find((o) => o.op === "editRelation" && o.from === from && o.to === to);
+    const orig = (real.relations || []).find((r) => r?.from === from && r?.to === to)?.kind ?? "N:1";
+    const op = kind === orig ? null : {id: ed?.id ?? newOpId(list), op: "editRelation", from, to, kind};
+    setOps(ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list);
+  };
+  // A line's card: which columns, how many rows on each end, or take it out.
+  const lineCard = (from, to, x, y) => {
+    const nameOf = (k) => `${drafted.plan.nodes[split(k)[0]]?.name ?? split(k)[0]}.${split(k)[1]}`;
+    const was = (v.relations || []).find((r) => r?.from === from && r?.to === to)?.kind ?? "N:1", gone = marks.links[`${from}>${to}`]?.mark === "remove";
+    let kind = was;
+    const parts = [el("div", "dphead", `${nameOf(from)} → ${nameOf(to)}`)];
+    if (!gone) {
+      const chips = el("div", "dstates"), says = el("div", "dstatename");
+      const word = (k) => (STRINGS.en[`rel_${k.replace(":", "")}`] ? t(`rel_${k.replace(":", "")}`) : k);
+      for (const k of new Set(["N:1", "1:1", was])) {
+        const b = el("button", "dstate dkind" + (k === kind ? " on" : ""), k);
+        b.title = word(k);
+        b.onclick = () => {
+          kind = k;
+          chips.querySelectorAll(".dstate").forEach((c) => c.classList.toggle("on", c === b));
+          says.textContent = word(k);
+        };
+        chips.append(b);
+      }
+      says.textContent = word(kind);
+      parts.push(chips, says);
+    }
+    const del = el("button", "dlinkx");
+    del.append(svgIcon("remove"), gone ? t("keepLink") : t("removeLink"));
+    del.onclick = () => {
+      pop.close("removed");
+      removeLine(from, to);
+    };
+    const keep = el("button", "primary", t("keep"));
+    keep.onclick = () => pop.close("done");
+    parts.push(del, keep, el("div", "dhint", t("linkHint")));
+    const pop = popover(x + 10, y + 10, parts, {
+      onClose: (why) => {
+        if (why === "removed" || why === "replaced" || why === "escape" || kind === was) return;
+        setKind(from, to, kind);
+      },
+    });
+    keep.focus();
+  };
   // A foreign key: drag from a column onto the column it points at; the same pair again takes it out.
   const connect = (e) => {
     const from = e.target.closest?.("li[data-col]");
@@ -5080,8 +5148,14 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
       over?.classList.remove("dtarget");
       if (!over) return;
       const k = from.dataset.col, to = over.dataset.col;
+      // The line already there, however it is drawn: the same pair again takes it out (or puts it back).
       const cur = v.tables.find((tb) => tb.node === split(k)[0])?.columns.find((c) => c.name === split(k)[1])?.ref;
-      setOps(editCol(ops(), k, {ref: cur === to && marks.links[`${k}>${to}`]?.mark !== "remove" ? "" : to}));
+      const rels = (v.relations || []).filter((r) => r?.from === k);
+      if (cur === to || rels.some((r) => r.to === to)) return removeLine(k, to);
+      // Another column: the line moves there, and what made the old one a relation goes.
+      let list = ops().filter((o) => !(o.op === "editRelation" && o.from === k));
+      for (const r of rels) if ((real.relations || []).some((x) => x?.from === k && x?.to === r.to) && !list.some((o) => o.op === "removeRelation" && o.from === k && o.to === r.to)) list = [...list, {id: newOpId(list), op: "removeRelation", from: k, to: r.to}];
+      setOps(editCol(list, k, {ref: to}));
     };
     addEventListener("pointermove", move);
     addEventListener("pointerup", up);
@@ -5119,6 +5193,9 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
   grid.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".dedit")) return;
     if (sketchTool === "connect") return connect(e);
+    const hit = e.target.closest?.(".dhit");
+    if (hit && sketchTool === "remove") return (e.preventDefault(), removeLine(hit.dataset.from, hit.dataset.to));
+    if (hit && sketchTool === "rename") return (e.preventDefault(), lineCard(hit.dataset.from, hit.dataset.to, e.clientX, e.clientY));
     const x = selOf(e.target);
     const slot = (sketchTool === "select" || sketchTool === "rename") && e.target.closest?.(".erkey:not(.copy)");
     if (slot) {
@@ -5195,8 +5272,12 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     if (e.target.closest(".dedit")) return;
     e.stopPropagation();
     e.preventDefault();
-    if (sketchTool === "select") select(selOf(e.target));
+    if (sketchTool !== "select") return;
+    const hit = e.target.closest?.(".dhit");
+    if (hit) return lineCard(hit.dataset.from, hit.dataset.to, e.clientX, e.clientY);
+    select(selOf(e.target));
   }, true);
+  lightLines(grid);
   grid.addEventListener("dblclick", (e) => sketchTool === "select" && !e.target.closest?.(".erkey") && rename(selOf(e.target)));
   grid.querySelectorAll(".erkey:not(.copy)").forEach((k) => (k.title = t("pkTip")));
   // The table tool: the group frame a click would put it in lights up.
@@ -5233,7 +5314,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
       setOps(o.op === "addTable" ? list.filter((x) => x.node !== o.node && x.table !== o.node) : o.op === "addColumn" ? list.filter((x) => !(x.table === o.table && x.column === o.column)) : list.filter((x) => x !== o));
     },
     show(o) {
-      const k = o.table && o.column ? grid.querySelector(`li[data-col="${CSS.escape(`${o.table}.${o.name && o.op !== "editColumn" ? o.name : o.column}`)}"]`) : null;
+      const k = o.op === "editRelation" || o.op === "removeRelation" ? grid.querySelector(`li[data-col="${CSS.escape(o.from)}"]`) : o.table && o.column ? grid.querySelector(`li[data-col="${CSS.escape(`${o.table}.${o.name && o.op !== "editColumn" ? o.name : o.column}`)}"]`) : null;
       const e = k || grid.querySelector(`.ertable[data-id="${CSS.escape(o.node || o.table || "")}"]`) || grid.querySelector(`.erframe[data-group="${CSS.escape(o.label || o.group || "")}"]`);
       e?.scrollIntoView({block: "center", behavior: "smooth"});
       e?.classList.remove("dflash");

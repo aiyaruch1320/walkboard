@@ -33,6 +33,7 @@
 - **The cursor says where nothing can go, on every picture.** The tools that place something show a no-entry cursor over what they cannot use (a table or box under a new one, empty space for the column and group tools, the gap between lanes), as does dragging a box out of every lane or a table onto another. A table let go on another goes back, with a line that says why.
 - Draft mode reads the same across pictures: the tools come in a map's order (what to add, lines, edit, take out), what a click or a drop would land in lights up the same way, a table's sign sits on its corner as a box's does, and where the page places the boxes the first tool no longer says "drag".
 - **Primary keys at a click.** While sketching a data model, the slot before a column's name turns its primary key on and off (a foreign key stays one), and shows **PK** under the pointer. A column the draft added can now lose its type or key by typing it without them.
+- **A data model's lines can be clicked.** A line opens a card, as on a map: which columns it joins, N:1 or 1:1 (`editRelation`), and take it out (`removeRelation` for one in `relations`). The edit and take-out tools work on lines, a line thickens under the pointer, and dragging a column onto another moves its line.
 
 ## 0.8.0
 

@@ -12,7 +12,7 @@ const LINK_STATES = ["ok", "todo", "blocked", "standby"];
 // What can be sketched on each kind of picture.
 export const DRAFT_OPS = {
   map: ["addNode", "addZone", "addLink", "editLink", "removeLink", "reverseLink", "editNode", "editZone", "remove", "removeZone", "move", "moveZone"],
-  datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove"],
+  datamodel: ["addTable", "addColumn", "editColumn", "removeColumn", "moveTable", "addGroup", "editGroup", "removeGroup", "editNode", "remove", "editRelation", "removeRelation"],
   flow: ["addBox", "moveBox", "addLane", "editLane", "moveLane", "editNode", "remove"],
   state: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
   decision: ["addBox", "addEdge", "editEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
@@ -69,6 +69,9 @@ const SHAPES = {
   // As a zone: its new name (label), icon or note ("" takes an icon or a note away); at least one of them.
   editGroup: {group: label, label: (x) => x == null || label(x), icon: (x) => optText(x, 60), note: (x) => optText(x, 120)},
   removeGroup: {group: label},
+  // A line between two columns: how many rows on each end (from:to), or taken out when it is a relation (a ref goes with editColumn).
+  editRelation: {from: colRef, to: colRef, kind: (x) => typeof x === "string" && /^[1NM]:[1NM]$/.test(x)},
+  removeRelation: {from: colRef, to: colRef},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
   addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
   moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, at},
@@ -108,6 +111,7 @@ export function validateDraft(d) {
       }
       for (const k of Object.keys(op)) if (k !== "id" && k !== "op" && !(k in shape)) out.push(`${at} (${op.op}): unknown field ${k}`);
       if (["addLink", "editLink", "removeLink", "reverseLink", "reverseEdge"].includes(op.op) && op.from === op.to) out.push(`${at}: a line needs two different boxes`);
+      if ((op.op === "editRelation" || op.op === "removeRelation") && op.from == null) out.push(`${at} (${op.op}): needs from`);
       if ((op.op === "editZone" || op.op === "editGroup") && op.label == null && op.icon == null && op.note == null) out.push(`${at} (${op.op}): needs a label, an icon or a note`);
     });
   }
@@ -423,6 +427,7 @@ function applyTables(v, nodes, ops, result) {
   marks.columns = {};
   v.tables = Array.isArray(v.tables) ? v.tables.filter(isObj) : [];
   v.groups = Array.isArray(v.groups) ? v.groups.filter(isObj) : [];
+  v.relations = Array.isArray(v.relations) ? v.relations.filter(isObj) : [];
   for (const tb of v.tables) tb.columns = Array.isArray(tb.columns) ? tb.columns.filter(isObj) : [];
   const alias = new Map();
   const r = (x) => alias.get(x) ?? x;
@@ -500,6 +505,10 @@ function applyTables(v, nodes, ops, result) {
         if (changed.includes("name")) {
           // What pointed at the old name points at the new one.
           for (const tb of v.tables) for (const x of tb.columns) if (x.ref === k0) x.ref = `${n}.${op.name}`;
+          for (const rel of v.relations) {
+            if (rel.from === k0) rel.from = `${n}.${op.name}`;
+            if (rel.to === k0) rel.to = `${n}.${op.name}`;
+          }
           c.name = op.name;
           delete marks.columns[k0];
         }
@@ -565,6 +574,29 @@ function applyTables(v, nodes, ops, result) {
           }
           marks.zones[now] = m?.mark === "add" ? m : {mark: "change", was: m?.was ?? op.group};
         }
+        break;
+      }
+      case "editRelation": {
+        const k = `${op.from}>${op.to}`, i = op.from.indexOf("."), c = col(r(op.from.slice(0, i)), op.from.slice(i + 1));
+        const rel = v.relations.find((x) => x.from === op.from && x.to === op.to), m = marks.links[k];
+        if (!rel && c?.ref !== op.to) stale(op, `no line from ${op.from} to ${op.to}`);
+        else if ((rel ? rel.kind ?? "N:1" : "N:1") === op.kind) done(op);
+        else {
+          const was = rel ? rel.kind ?? "N:1" : "N:1";
+          // A ref is always N:1: any other kind is a relation.
+          if (rel) rel.kind = op.kind;
+          else {
+            delete c.ref;
+            v.relations.push({from: op.from, to: op.to, kind: op.kind});
+          }
+          marks.links[k] = m?.mark === "add" ? m : {mark: "change", was};
+        }
+        break;
+      }
+      case "removeRelation": {
+        const k = `${op.from}>${op.to}`;
+        if (!v.relations.some((x) => x.from === op.from && x.to === op.to)) done(op);
+        else marks.links[k] = {mark: "remove"};
         break;
       }
       case "removeGroup": {
@@ -931,6 +963,8 @@ export function draftLine(c) {
     case "addGroup": return `+ group "${c.group}" with ${c.tables.join(", ")}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "editGroup": return `~ group "${c.group}"${c.label != null ? ` → "${c.label}"` : ""}${c.note != null ? `, note ${JSON.stringify(c.note)}` : ""}${c.icon != null ? `, icon ${JSON.stringify(c.icon)}` : ""}`;
     case "removeGroup": return `− group "${c.group}"`;
+    case "editRelation": return `~ line ${c.from} → ${c.to}: ${c.kind}`;
+    case "removeRelation": return `− line ${c.from} → ${c.to}`;
     case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}`;
     case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at place ${c.at + 1}` : ""}`;

@@ -566,6 +566,14 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er li.dtarget{outline:2px solid var(--you-bd);outline-offset:-2px}
 .flowview,.graph,.k8s{position:relative}
 .graph>.dtemp,.k8s>.dtemp{position:absolute;width:210px;z-index:5;opacity:.85}
+/* Boxes placed by hand: each at its own x, y. */
+.graph.free{display:block;min-width:0}
+.graph.free>[data-anchor]{position:absolute;width:210px;margin:0}
+.graph.free>.gband{display:none}
+.graph.sketch{min-width:100%}
+.graph.sketch:not(.free){padding-bottom:120px}
+.graph.dragging,.graph.dragging *{cursor:grabbing!important;user-select:none}
+@media (pointer:fine) and (min-width:820px){body:not(.snapshot) .graph:not(.sketch)>[data-anchor]{cursor:grab}body:not(.snapshot) .graph.sketch[data-tool="select"]>[data-anchor]{cursor:grab}}
 .lane.dtemp{opacity:.85}
 .lane.dtemp .row{min-height:44px}
 .graph [data-anchor],.k8s [data-anchor],.lane .node{position:relative}

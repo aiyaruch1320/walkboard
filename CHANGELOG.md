@@ -41,6 +41,7 @@
 - Drawing a line on any picture scrolls it when held near an edge of the window, not only on a data model.
 - Two lanes cannot take one name in a draft: changes find a lane by its title, so they would be mixed up.
 - **Start and end at a click.** While sketching a state or decision picture, a box under the pointer shows **Start** (and **End** on a state): a click changes the picture's start or ends (`setStart`, `setEnd`). A decision picture now shows where it starts.
+- **State, decision and impact pictures hold still.** From the first draft change on, nothing already on the picture moves: a new box stays where you clicked, boxes can be dragged (in and out of draft mode, saved in `layout`), and **Arrange again** lays the picture out from the plan. A box that grows moves what it reaches down; a box the agent just added starts on free ground. Lines take their shape from where the boxes are. Kubernetes keeps its fixed columns, where adding a box already moved nothing.
 
 ## 0.8.0
 

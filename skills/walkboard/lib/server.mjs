@@ -306,7 +306,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       }));
     } else if (route === "POST /api/layout") {
       // What was dragged on a picture: {view, positions: {id: {x, y}}}, or positions null to lay it out again.
-      // Data model: where each table sits. Map: how far a box or a zone ("z:label") moved from its place,
+      // Data model, state, decision, impact: where each table or box sits. Map: how far a box or a zone ("z:label") moved from its place,
       // and "in", the zone it was in then: the page drops an offset once the plan moves the box to another zone.
       // Moving a box into another zone is a change of plan, not arrangement: that goes in the draft (POST /api/draft).
       // A map zone can also carry its size from its corner (w, h). "@fixed" ({x: 0, y: 0}) means placed by hand:
@@ -324,10 +324,12 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         try {
           updatePlan(p.plan, (plan) => {
             const view = Array.isArray(plan?.views) ? plan.views.find((x) => x?.id === v.view) : null;
-            if (view?.kind !== "datamodel" && view?.kind !== "map") throw Object.assign(new Error(`no data model or map view "${v.view}"`), {status: 400});
-            if (view.kind === "datamodel" && pos && Object.values(pos).some((q) => q.x < 0 || q.y < 0)) throw Object.assign(new Error("a table's position cannot be negative"), {status: 400});
+            const boxed = ["state", "decision", "impact"].includes(view?.kind);
+            if (view?.kind !== "datamodel" && view?.kind !== "map" && !boxed) throw Object.assign(new Error(`no picture that can be arranged called "${v.view}"`), {status: 400});
+            if ((view.kind === "datamodel" || boxed) && pos && Object.values(pos).some((q) => q.x < 0 || q.y < 0)) throw Object.assign(new Error("a position cannot be negative"), {status: 400});
             const zoneLabels = (zs) => (Array.isArray(zs) ? zs : []).flatMap((z) => [`z:${z?.label}`, ...(z?.nodes || []), ...zoneLabels(z?.zones)]);
-            const known = new Set(view.kind === "map" ? ["@fixed", ...zoneLabels(view.zones)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
+            const lineEnds = (l) => (Array.isArray(l) ? l : []).flatMap((e) => [e?.from, e?.to]);
+            const known = new Set(view.kind === "map" ? ["@fixed", ...zoneLabels(view.zones)] : boxed ? [...(Array.isArray(view.states) ? view.states : []), ...(Array.isArray(view.nodes) ? view.nodes : []), ...lineEnds(view.transitions), ...lineEnds(view.edges)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
             const keep = (id) => known.has(id) || isNewId(id) || (view.kind === "map" && id.startsWith("z:") && id.length <= 201);
             const size = (n) => Number.isFinite(n) && n > 0 && n <= 20000;
             if (pos === null) delete view.layout;

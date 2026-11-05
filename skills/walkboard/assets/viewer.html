@@ -2690,6 +2690,28 @@ function draftRows(viewId) {
 // The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
 // picture: where the tool shows as the cursor; toolList: [name, key] for this kind of picture.
 // hints: {tool: what to do with it}, shown over the toolbar while that tool is on.
+const overlapping = (a, b, gap = 0) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+// The nearest spot to box that lies on none of the others.
+function freeSpot(box, others, minX, minY, gap = 24) {
+  const start = {x: Math.max(minX, box.x), y: Math.max(minY, box.y)};
+  const xs = [start.x, ...others.flatMap((b) => [b.x, b.x - box.w - gap, b.x + b.w + gap])].filter((x) => x >= minX);
+  const ys = [start.y, ...others.flatMap((b) => [b.y, b.y - box.h - gap, b.y + b.h + gap])].filter((y) => y >= minY);
+  const spots = xs.flatMap((x) => ys.map((y) => ({x, y}))).sort((p, q) => Math.hypot(p.x - start.x, p.y - start.y) - Math.hypot(q.x - start.x, q.y - start.y));
+  return spots.find((p) => !others.some((b) => overlapping({...box, ...p}, b, gap - 1))) || start;
+}
+// What a box taller than before now reaches moves down, and what that reaches in turn.
+function pushDown(boxes, id, gap = 24) {
+  const first = boxes.find((b) => b.id === id);
+  if (!first) return;
+  const todo = [first];
+  while (todo.length) {
+    const a = todo.shift();
+    for (const b of boxes) if (b !== a && b.y > a.y && overlapping(a, b, 8)) {
+      b.y = a.y + a.h + gap;
+      todo.push(b);
+    }
+  }
+}
 // While a line is dragged: held near an edge of what can be seen, the picture scrolls, so its other end can be a screen away.
 // at: where the pointer is now; moved: called after a scroll. Returns what stops it.
 function rollNearEdges(picture, at, moved) {
@@ -2735,8 +2757,8 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
     return b;
   };
   for (const [name, key] of toolList) {
-    // Where the page places the boxes there is nothing to drag.
-    const b = btn(name, `${t(name === "select" && toolList === LINK_TOOLS ? "tool_pick" : "tool_" + name)} (${key})`);
+    // Where the columns are fixed there is nothing to drag.
+    const b = btn(name, `${t(name === "select" && picture.classList.contains("k8s") ? "tool_pick" : "tool_" + name)} (${key})`);
     b.dataset.tool = name;
     b.onclick = () => sketchApi.tool(name);
     bar.append(b);
@@ -4173,7 +4195,8 @@ function bezierMid(p0, p1, p2, p3) {
 }
 
 // marks: what the picture's draft does to boxes and lines (applyDraft), drawn like a map's.
-function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = null, sketch = false}) {
+// hold: for a picture that can be arranged ({real, canMove, tools}): boxes keep the places saved in its layout.
+function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = null, sketch = false, hold = null}) {
   const known = new Set(ids);
   edges = edges.filter((e) => known.has(e.from) && known.has(e.to));
   const out = {};
@@ -4236,7 +4259,110 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
   const labels = el("div", "elabels");
   grid.append(labels);
   const box = (id) => grid.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.getBoundingClientRect();
+  // Placed by hand: every box at its own x, y from the first drag or draft change on, as the tables of a data model.
+  const MIN_X = 10, MIN_Y = 46;
+  const saved = () => (hold ? hold.real.layout : v.layout);
+  const placedBoxes = () => [...grid.children].filter((c) => c.dataset.anchor && !c.classList.contains("dtemp"));
+  const rectOf = (c) => ({x: c.offsetLeft, y: c.offsetTop, w: c.offsetWidth, h: c.offsetHeight});
+  let free = false, dragged = false;
+  const fitGrid = () => {
+    const all = placedBoxes().map(rectOf);
+    grid.style.width = Math.max(...all.map((b) => b.x + b.w)) + 70 + "px";
+    grid.style.height = Math.max(...all.map((b) => b.y + b.h)) + (sketch ? 170 : 40) + "px";
+  };
+  const freeze = () => {
+    if (free || !grid.isConnected) return;
+    const known = saved() || {}, at = placedBoxes().map((c) => [c, known[c.dataset.anchor] || {x: c.offsetLeft, y: c.offsetTop}]);
+    free = true;
+    // The boxes are about to leave the flow: the picture keeps its height, or the page jumps to the top.
+    grid.style.height = grid.offsetHeight + "px";
+    grid.classList.add("free");
+    for (const [c, q] of at) {
+      c.style.left = q.x + "px";
+      c.style.top = q.y + "px";
+    }
+    // One the saved places do not know (the agent just added it) starts on free ground.
+    if (saved()) for (const c of placedBoxes()) if (!known[c.dataset.anchor]) {
+      const spot = freeSpot(rectOf(c), placedBoxes().filter((x) => x !== c).map(rectOf), MIN_X, MIN_Y);
+      c.style.left = spot.x + "px";
+      c.style.top = spot.y + "px";
+    }
+    fitGrid();
+  };
+  if (hold) grid.hold = {
+    // Where every box is now; what id now reaches, being taller, moves down.
+    positionsNow(id) {
+      freeze();
+      const all = placedBoxes().map((c) => ({id: c.dataset.anchor, ...rectOf(c)}));
+      pushDown(all, id);
+      return Object.fromEntries(all.map((b) => [b.id, {x: b.x, y: b.y}]));
+    },
+    // Where a new box goes for a click at a point of the picture: on what is on screen, on free ground.
+    spotFor(x, y, w, h) {
+      freeze();
+      const holder = grid.closest(".scroll"), room = (holder?.clientWidth || grid.clientWidth) - w - 90;
+      return freeSpot({x: Math.min(x, Math.max(MIN_X, room)), y, w, h}, placedBoxes().map(rectOf), MIN_X, MIN_Y);
+    },
+  };
+  if (hold?.canMove()) {
+    // Drag a box. While sketching it cannot go on another; it goes back, as a table does.
+    grid.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || (sketch && sketchTool !== "select") || e.target.closest(".dmark, .dedit")) return;
+      const it = e.target.closest("[data-anchor]");
+      if (!it || it.parentElement !== grid) return;
+      const sx = e.clientX, sy = e.clientY;
+      let start = null, blocked = false;
+      const move = (ev) => {
+        if (!start) {
+          if (Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
+          freeze();
+          start = {x: it.offsetLeft, y: it.offsetTop};
+          it.style.zIndex = 9999;
+          grid.classList.add("dragging");
+        }
+        it.style.left = Math.max(MIN_X, start.x + ev.clientX - sx) + "px";
+        it.style.top = Math.max(MIN_Y, start.y + ev.clientY - sy) + "px";
+        fitGrid();
+        draw();
+        const me = rectOf(it);
+        blocked = sketch && placedBoxes().some((c) => c !== it && overlapping(me, rectOf(c)));
+        it.classList.toggle("dnodrop", blocked);
+        document.body.classList.toggle("dnoplace", blocked);
+      };
+      const up = () => {
+        removeEventListener("pointermove", move);
+        removeEventListener("pointerup", up);
+        removeEventListener("pointercancel", up);
+        if (!start) return;
+        dragged = true;
+        setTimeout(() => (dragged = false));
+        grid.classList.remove("dragging");
+        it.style.zIndex = "";
+        it.classList.remove("dnodrop");
+        document.body.classList.remove("dnoplace");
+        if (blocked) {
+          it.style.left = start.x + "px";
+          it.style.top = start.y + "px";
+          fitGrid();
+          draw();
+          return showProblem(t("boxOnBox"));
+        }
+        hold.tools?.done(hold.real.layout, grid.hold.positionsNow());
+        draw();
+      };
+      addEventListener("pointermove", move);
+      addEventListener("pointerup", up);
+      addEventListener("pointercancel", up);
+    });
+    // The click that ends a drag does not open the box.
+    grid.addEventListener("click", (e) => {
+      if (!dragged) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
+  }
   const draw = () => {
+    if (saved() && !free) freeze();
     const base = svg.clear();
     labels.replaceChildren();
     const inStep = curStep() ? new Set(curStep().nodes || []) : null;
@@ -4263,19 +4389,20 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       let p0, p1, p2, p3;
       if (e.from === e.to) {
         p0 = P(a.right - 22, a.bottom); p3 = P(a.right, a.bottom - 14); p1 = [p0[0] + 4, p0[1] + 34]; p2 = [p3[0] + 38, p3[1] + 6];
-      } else if (band(e.to) > band(e.from) && !back.has(e)) {
+      } else if (!free && band(e.to) > band(e.from) && !back.has(e)) {
         // On to the next row: out to the right, along the gap between the rows, in from the left.
         p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
         const y = bandBottom(band(e.from), base) + 39 + 6 * arcs, xr = p0[0] + 22 + 6 * arcs, xl = p3[0] - 26 - 6 * arcs++;
         p1 = p0; p2 = [xl, p3[1]];
         lanes.push({d: `M${p0} L${[xr, p0[1]]} L${[xr, y]} L${[xl, y]} L${[xl, p3[1]]} L${p3}`, mid: [(xr + xl) / 2, y], left: true});
-      } else if (depth[e.to] > depth[e.from] && !back.has(e)) {
+      } else if (free ? b.left > a.right : depth[e.to] > depth[e.from] && !back.has(e)) {
         const y0 = spread(outs[e.from], e, a), y3 = spread(ins[e.to], e, b);
         p0 = P(a.right - slant(e.from, a, y0), y0); p3 = P(b.left - 4 + slant(e.to, b, y3), y3);
         const dx = Math.max(30, (p3[0] - p0[0]) / 2);
         p1 = [p0[0] + dx, p0[1]]; p2 = [p3[0] - dx, p3[1]];
         // Skipping a column and a box is in the way: go around it, above or below.
-        const between = ids.filter((x) => depth[x] > depth[e.from] && depth[x] < depth[e.to]).map(box).filter(Boolean).map((r) => [r.left - base.left, r.right - base.left, r.top - base.top, r.bottom - base.top]);
+        const inBetween = (x) => (free ? x !== e.from && x !== e.to && box(x)?.left >= a.right && box(x)?.right <= b.left : depth[x] > depth[e.from] && depth[x] < depth[e.to]);
+        const between = ids.filter(inBetween).map(box).filter(Boolean).map((r) => [r.left - base.left, r.right - base.left, r.top - base.top, r.bottom - base.top]);
         const lo = Math.min(p0[1], p3[1]) - 8, hi = Math.max(p0[1], p3[1]) + 8;
         if (between.some(([, , top, bottom]) => bottom > lo && top < hi)) {
           const above = Math.min(...between.map((r) => r[2])) - 16 - 10 * arcs;
@@ -4284,7 +4411,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
           const xa = Math.min(...between.map((r) => r[0])) - 20, xb = Math.max(...between.map((r) => r[1])) + 20;
           lanes.push({d: `M${p0} C${[xa, p0[1]]}, ${[xa, y]}, ${[xa + 10, y]} L${[xb - 10, y]} C${[xb, y]}, ${[xb, p3[1]]}, ${p3}`, mid: [(xa + xb) / 2, y]});
         }
-      } else if (depth[e.to] === depth[e.from]) {
+      } else if (free ? a.left < b.right && b.left < a.right : depth[e.to] === depth[e.from]) {
         // Same column: a bracket around the right side.
         p0 = P(a.right, a.top + a.height / 2); p3 = P(b.right + 4, b.top + b.height / 2);
         const out = Math.max(a.right, b.right) - base.left + 36 + 10 * arcs++;
@@ -4347,15 +4474,18 @@ function graphPicture(real, build) {
   if (on && sketching && sketching !== real.id) sketching = null;
   const sketch = on && sketching === real.id && canMove();
   drawnNodes = drafted.plan.nodes;
+  // State, decision and impact keep their boxes where they are; Kubernetes has fixed columns, so nothing moves there.
+  const hold = on && ["state", "decision", "impact"].includes(v.kind) ? {real, canMove, tools: null} : null;
   let pic;
   try {
-    pic = build(v, {marks: drafted.marks, sketch});
+    pic = build(v, {marks: drafted.marks, sketch, hold});
   } finally {
     drawnNodes = null;
   }
   if (["state", "decision", "impact"].includes(v.kind)) pic.prepend(readLine(v.kind));
   if (!on) return pic;
   const tools = layoutTools(real, canMove, renderView, () => ({}), true);
+  if (hold) hold.tools = tools;
   const box = pic.querySelector(".graph, .k8s") || pic;
   if (sketch) sketchLinks({real, v, drafted, container: box, tools});
   else if (draftOps(real.id).length) sketchApi = passiveApi(real, tools);
@@ -5414,9 +5544,12 @@ function sketchKit(real, tools, container) {
   const kit = {
     ops,
     box,
-    setOps(next, focusId = document.activeElement?.closest?.("#view [data-anchor]")?.dataset.anchor) {
-      const before = tools.snap();
-      tools.change(before, {layout: before.layout, ops: next});
+    // On a picture that holds its boxes, a change never moves what is there: the layout goes with it, one undo. placed: a new box's place.
+    setOps(next, focusId = document.activeElement?.closest?.("#view [data-anchor]")?.dataset.anchor, placed = null) {
+      const before = tools.snap(), hold = container.hold;
+      const all = hold ? {...hold.positionsNow(focusId), ...placed} : before.layout;
+      const layout = hold ? Object.fromEntries(Object.entries(all).filter(([id]) => !id.startsWith("new:") || next.some((o) => o.op === "addBox" && o.node === id))) : all;
+      tools.change(before, {layout, ops: next});
       keepFocus(() => renderView());
       if (focusId) document.querySelector(`#view [data-anchor="${CSS.escape(focusId)}"]`)?.focus({preventScroll: true});
     },
@@ -5478,16 +5611,17 @@ function sketchKit(real, tools, container) {
       });
     },
     // A new box from the card: where (lane, place) comes in fields; done(false) when it was dropped.
-    add(beside, fields, {title, preview, done}) {
+    add(beside, fields, {title, preview, done, place}) {
       boxCard(beside, {}, {
         title,
         preview,
         onDone: (val) => {
           sketchTool = "select";
+          const spot = val && place?.();
           done?.(!!val);
           if (!val) return;
-          const list = ops();
-          kit.setOps([...list, {id: newOpId(list), op: "addBox", node: kit.newNode(), name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...fields}]);
+          const list = ops(), node = kit.newNode();
+          kit.setOps([...list, {id: newOpId(list), op: "addBox", node, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...fields}], undefined, spot ? {[node]: spot} : null);
         },
       });
     },
@@ -5693,8 +5827,14 @@ function sketchLinks({real, v, drafted, container, tools}) {
     if (sketchTool === "rename" && b) return (e.preventDefault(), kit.rename(b.dataset.anchor));
     if (sketchTool === "box" && !b) {
       e.preventDefault();
-      const tmp = kit.ghost(e.clientX, e.clientY);
-      return kit.add(tmp.getBoundingClientRect(), {}, {title: t("boxNew"), preview: (val) => previewBox(tmp, val, t("boxNew")), done: (kept) => {
+      const tmp = kit.ghost(e.clientX, e.clientY), hold = container.hold;
+      // Where the click was, on free ground; on Kubernetes it joins the targets once kept.
+      if (hold) {
+        const spot = hold.spotFor(tmp.offsetLeft, tmp.offsetTop, tmp.offsetWidth, tmp.offsetHeight);
+        tmp.style.left = spot.x + "px";
+        tmp.style.top = spot.y + "px";
+      }
+      return kit.add(tmp.getBoundingClientRect(), {}, {title: t("boxNew"), preview: (val) => previewBox(tmp, val, t("boxNew")), place: hold ? () => hold.spotFor(tmp.offsetLeft, tmp.offsetTop, tmp.offsetWidth, tmp.offsetHeight) : null, done: (kept) => {
         tmp.remove();
         if (!kept) refresh();
       }});

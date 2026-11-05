@@ -371,6 +371,27 @@ test("a map keeps zone sizes, placed-by-hand mode, and places for boxes and zone
   assert.deepEqual(read(1), {a: {x: 5, y: 6}});
 });
 
+test("boxes on state, decision and impact pictures keep places; a picture with fixed columns has none", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", nodes: {a: {name: "A"}, b: {name: "B"}}, views: [
+    {id: "s", kind: "state", states: ["a"], transitions: [{from: "a", to: "b"}]},
+    {id: "q", kind: "decision", edges: [{from: "a", to: "b"}]},
+    {id: "i", kind: "impact", nodes: ["a"], edges: [{from: "a", to: "b"}]},
+    {id: "k", kind: "k8s", targets: ["a"]}]};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const read = (i) => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[i].layout;
+  for (const [i, view] of ["s", "q", "i"].entries()) {
+    assert.equal((await post(s, "/api/layout", {view, positions: {a: {x: 10.4, y: 20}, b: {x: 5, y: 6}, "new:k3x9": {x: 1, y: 1}, ghost: {x: 1, y: 1}}})).status, 200);
+    assert.deepEqual(read(i), {a: {x: 10, y: 20}, b: {x: 5, y: 6}, "new:k3x9": {x: 1, y: 1}});
+  }
+  assert.equal((await post(s, "/api/layout", {view: "s", positions: {a: {x: -1, y: 0}}})).status, 400);
+  assert.equal((await post(s, "/api/layout", {view: "k", positions: {a: {x: 1, y: 1}}})).status, 400);
+  assert.equal((await post(s, "/api/layout", {view: "s", positions: null})).status, 200);
+  assert.equal(read(0), undefined);
+});
+
 test("a draft is saved per picture, checked, announced, and never wakes the agent", async (t) => {
   const dir = planDir();
   const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "Cloud", nodes: ["a"]}]}, {id: "f", kind: "sequence"}], nodes: {a: {name: "A"}}};

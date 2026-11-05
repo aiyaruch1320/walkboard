@@ -78,3 +78,15 @@ test("the kind search puts the platform of where it goes first, then the closest
   assert.equal(top("", {around: ["k8s:namespace"]}).split(":")[0], "k8s");
   assert.deepEqual(searchKinds("zzzz"), []);
 });
+
+test("across platforms, a kind warns unless the zone runs that platform (containers on a VM, Kubernetes in EKS)", () => {
+  assert.equal(kindWarning("container:container", ["onprem:vm"]), null);
+  assert.equal(kindWarning("container:container", ["aws:ec2"]), null);
+  assert.equal(kindWarning("k8s:namespace", ["aws:eks"]), null);
+  assert.equal(kindWarning("k8s:cluster", ["aws:vpc"]), null);
+  assert.match(kindWarning("k8s:deployment", ["onprem:server"]).there, /On-prem/);
+  assert.deepEqual(kindWarning("gcp:vpc", ["container:compose"]).usual, ["Project"]);
+  assert.equal(kindWarning("gcp:cloudsql", ["gcp:subnet"]), null);
+  assert.equal(kindWarning("azure:keyvault", ["azure:subnet"]), null);
+  for (const [p, pr] of Object.entries(PROFILES)) for (const [k, d] of Object.entries(pr.kinds)) for (const r of d.runs || []) assert.ok(PROFILES[r], `${p}:${k} runs ${r}`);
+});

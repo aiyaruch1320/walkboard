@@ -63,7 +63,8 @@ Lines: `aws:event` Event or message, `aws:peering` VPC peering, `aws:iam` Permis
 | Kind | Is | Sits in | props |
 |---|---|---|---|
 | `gcp:org` Organization | zone | anywhere |  |
-| `gcp:project` Project | zone | Organization |  |
+| `gcp:folder` Folder | zone | Organization, Folder |  |
+| `gcp:project` Project | zone | Organization, Folder |  |
 | `gcp:vpc` VPC network | zone | Project |  |
 | `gcp:region` Region | zone | Project, VPC network |  |
 | `gcp:zone` Zone | zone | Region |  |
@@ -71,25 +72,32 @@ Lines: `aws:event` Event or message, `aws:peering` VPC peering, `aws:iam` Permis
 | `gcp:firewall` Firewall rule | zone (rules look through it) | VPC network, Subnet | rules |
 | `gcp:gce` Compute Engine VM | box, also a zone | Subnet, Zone | type; os |
 | `gcp:gke` GKE cluster | box, also a zone | VPC network, Region, Subnet | mode: autopilot / standard |
-| `gcp:cloudrun` Cloud Run | box | Region, Project | cpu; memory |
-| `gcp:functions` Cloud Functions | box | Region, Project | runtime |
+| `gcp:cloudrun` Cloud Run | box | Region, Project, Subnet, VPC network | cpu; memory |
+| `gcp:functions` Cloud Functions | box | Region, Project, Subnet, VPC network | runtime |
 | `gcp:loadbalancer` Load balancer | box | Project, VPC network, Region | scheme: external / internal |
-| `gcp:armor` Cloud Armor | box | Project |  |
+| `gcp:psc` Private Service Connect endpoint | box | Subnet, VPC network |  |
+| `gcp:iap` Identity-Aware Proxy | box | Project |  |
+| `gcp:apigee` Apigee | box | Project, Region |  |
+| `gcp:armor` Cloud Armor | box | Project, Region |  |
 | `gcp:cdn` Cloud CDN | box | Project |  |
 | `gcp:dns` Cloud DNS | box | Project |  |
 | `gcp:nat` Cloud NAT | box | Region, VPC network |  |
 | `gcp:vpn` Cloud VPN | box | Region, VPC network |  |
 | `gcp:interconnect` Cloud Interconnect | box | Region, Project |  |
-| `gcp:cloudsql` Cloud SQL | box | Region, VPC network, Project | engine: postgres / mysql / sqlserver; tier; ha: yes / no |
+| `gcp:cloudsql` Cloud SQL | box | Region, VPC network, Project, Subnet | engine: postgres / mysql / sqlserver; tier; ha: yes / no |
 | `gcp:spanner` Spanner | box | Region, Project |  |
 | `gcp:firestore` Firestore | box | Region, Project |  |
-| `gcp:memorystore` Memorystore | box | VPC network, Region | engine: redis / valkey / memcached; size |
+| `gcp:memorystore` Memorystore | box | VPC network, Region, Subnet, Project | engine: redis / valkey / memcached; size |
+| `gcp:alloydb` AlloyDB | box | VPC network, Region, Subnet |  |
+| `gcp:filestore` Filestore | box | VPC network, Region, Zone |  |
 | `gcp:bigquery` BigQuery | box | Region, Project |  |
 | `gcp:gcs` Cloud Storage bucket | box | Region, Project | class: standard / nearline / coldline / archive |
-| `gcp:pubsub` Pub/Sub topic | box | Project |  |
+| `gcp:pubsub` Pub/Sub topic | box | Project, Region |  |
 | `gcp:dataflow` Dataflow | box | Region, Project |  |
 | `gcp:composer` Composer (Airflow) | box | Region, Project |  |
 | `gcp:scheduler` Cloud Scheduler | box | Region, Project | schedule |
+| `gcp:cloudtasks` Cloud Tasks | box | Region, Project |  |
+| `gcp:cloudbuild` Cloud Build | box | Region, Project |  |
 | `gcp:secretmanager` Secret Manager | box | Project |  |
 | `gcp:kms` Cloud KMS | box | Region, Project |  |
 | `gcp:iam` Service account | box | Project |  |
@@ -104,35 +112,45 @@ Lines: `gcp:event` Event or message, `gcp:peering` VPC peering, `gcp:iam` Permis
 
 | Kind | Is | Sits in | props |
 |---|---|---|---|
-| `azure:subscription` Subscription | zone | anywhere |  |
+| `azure:subscription` Subscription | zone | Management group |  |
+| `azure:managementgroup` Management group | zone | Management group |  |
 | `azure:resourcegroup` Resource group | zone | Subscription |  |
 | `azure:region` Region | zone | Subscription, Resource group |  |
 | `azure:vnet` Virtual network | zone | Resource group, Region, Subscription | cidr |
+| `azure:availabilityzone` Availability Zone | zone | Region, Virtual network |  |
 | `azure:subnet` Subnet | zone | Virtual network | cidr |
 | `azure:nsg` Network security group | zone (rules look through it) | Virtual network, Subnet | rules |
 | `azure:vm` Virtual machine | box, also a zone | Subnet | size; os |
 | `azure:aks` AKS cluster | box, also a zone | Virtual network, Subnet, Resource group |  |
 | `azure:appservice` App Service | box | Resource group, Region, Subnet | plan |
 | `azure:functions` Functions | box | Resource group, Region | runtime |
+| `azure:containerapps` Container Apps | box | Resource group, Region, Subnet |  |
+| `azure:aci` Container Instances | box | Resource group, Subnet |  |
+| `azure:logicapps` Logic Apps | box | Resource group, Region |  |
 | `azure:appgateway` Application Gateway | box | Subnet, Virtual network |  |
 | `azure:loadbalancer` Load Balancer | box | Subnet, Virtual network, Resource group | scheme: public / internal |
 | `azure:frontdoor` Front Door | box | Subscription, Resource group |  |
 | `azure:firewall` Azure Firewall | box | Subnet, Virtual network |  |
+| `azure:privateendpoint` Private endpoint | box | Subnet |  |
+| `azure:privatednszone` Private DNS zone | box | Resource group, Virtual network |  |
+| `azure:bastion` Bastion | box | Subnet, Virtual network |  |
+| `azure:natgateway` NAT Gateway | box | Subnet, Virtual network |  |
 | `azure:vpngateway` VPN Gateway | box | Subnet, Virtual network |  |
 | `azure:expressroute` ExpressRoute | box | Resource group, Region, Subscription |  |
 | `azure:apim` API Management | box | Resource group, Subnet |  |
-| `azure:sql` Azure SQL | box | Resource group, Region | tier |
+| `azure:sql` Azure SQL | box | Resource group, Region, Subnet, Virtual network | tier |
 | `azure:postgres` Database for PostgreSQL | box | Resource group, Subnet, Region | tier |
-| `azure:cosmosdb` Cosmos DB | box | Resource group, Region | api: nosql / mongodb / cassandra / gremlin / table |
+| `azure:cosmosdb` Cosmos DB | box | Resource group, Region, Subnet, Virtual network | api: nosql / mongodb / cassandra / gremlin / table |
 | `azure:redis` Azure Cache for Redis | box | Resource group, Subnet, Region | tier |
-| `azure:storage` Storage account | box | Resource group, Region | kind: blob / files / queue / table |
-| `azure:servicebus` Service Bus | box | Resource group, Region |  |
-| `azure:eventhubs` Event Hubs | box | Resource group, Region |  |
+| `azure:storage` Storage account | box | Resource group, Region, Subnet, Virtual network | kind: blob / files / queue / table |
+| `azure:servicebus` Service Bus | box | Resource group, Region, Subnet, Virtual network |  |
+| `azure:eventhubs` Event Hubs | box | Resource group, Region, Subnet, Virtual network |  |
 | `azure:eventgrid` Event Grid | box | Resource group, Region |  |
-| `azure:keyvault` Key Vault | box | Resource group, Region |  |
+| `azure:keyvault` Key Vault | box | Resource group, Region, Subnet, Virtual network |  |
 | `azure:entra` Entra ID | box | Subscription |  |
+| `azure:managedidentity` Managed identity | box | Resource group, Subscription |  |
 | `azure:monitor` Azure Monitor | box | Subscription, Resource group |  |
-| `azure:acr` Container Registry | box | Resource group, Region |  |
+| `azure:acr` Container Registry | box | Resource group, Region, Subnet, Virtual network |  |
 | `azure:openai` Azure OpenAI | box | Resource group, Region |  |
 
 Lines: `azure:event` Event or message, `azure:peering` VNet peering, `azure:iam` Permission (RBAC), `azure:replication` Replication; without a kind a line is traffic.
@@ -228,7 +246,9 @@ Lines: `container:uses` Mounts or reads; without a kind a line is traffic.
 | `k8s:configmap` ConfigMap | box | Namespace |  |
 | `k8s:secret` Secret | box | Namespace |  |
 | `k8s:pvc` PersistentVolumeClaim | box | Namespace | size; storageClass |
+| `k8s:pv` PersistentVolume | box | Cluster | size |
 | `k8s:hpa` HorizontalPodAutoscaler | box | Namespace | min; max |
 | `k8s:serviceaccount` ServiceAccount | box | Namespace |  |
+| `k8s:role` Role / RoleBinding | box | Namespace |  |
 
 Lines: `k8s:uses` Reads config or secret, `k8s:mounts` Mounts a volume, `k8s:selects` Selects pods, `k8s:routes` Routes to; without a kind a line is traffic.

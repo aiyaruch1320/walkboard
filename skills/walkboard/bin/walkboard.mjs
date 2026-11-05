@@ -316,9 +316,17 @@ function draft() {
 }
 
 const commands = {check, set, open, poll, reply, status, stop, serve, icons, draft, export: exportPlan};
+const help = (x) => x === "--help" || x === "-h" || x === "help";
 if (!commands[cmd]) {
-  console.error(USAGE);
-  process.exit(cmd ? 2 : 0);
+  console[help(cmd) || !cmd ? "log" : "error"](USAGE);
+  process.exit(cmd && !help(cmd) ? 2 : 0);
+}
+// "walkboard draft --help": that command's lines of the usage.
+if (help(args[0])) {
+  const lines = USAGE.split("\n"), at = lines.findIndex((l) => l.trimStart().startsWith(cmd + " ") || l.trim() === cmd);
+  const own = [lines[at], ...lines.slice(at + 1).filter((l, i, all) => all.slice(0, i + 1).every((x) => /^\s{20,}/.test(x)))];
+  console.log(["walkboard " + own[0].trim(), ...own.slice(1), "", lines.at(-1)].join("\n"));
+  process.exit(0);
 }
 try {
   await commands[cmd]();

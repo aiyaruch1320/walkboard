@@ -84,8 +84,10 @@ Summarize in chat with the URL. `WB stop <dir>` unless the user wants the page k
 | `WB check <dir>` | Validate; problems exit 1, warnings are advice |
 | `WB set <dir> [plan \| step: \| node: \| constraint: \| option: \| criterion: \| source:<id>] key=value …` | Change fields in place (`key=` removes one; JSON values allowed; `[skip ci] …` stays text) |
 | `WB open <dir> [--no-browser]` | Start or reuse the server, print the URL |
-| `WB poll <dir> [--timeout s]` / `WB reply <dir> [--node id \| --step id] <text>` | Wait for the page (`[]` after s seconds) / answer on it |
+| `WB poll <dir> [--full] [--timeout s]` / `WB reply <dir> [--node id \| --step id] <text>` | Wait for the page (`[]` after s seconds; `--full` adds ids, times and the view) / answer on it |
 | `WB status <dir>` / `WB stop <dir>` | URL, queue, settings / stop the server |
 | `WB export <dir> [--html file] [--no-code] [--with-chat]` | A read-only copy as one HTML file, when the user asks to share or send the plan (PDF: the page's ⋮ → Export → PDF) |
 | `WB draft <dir> [clear [view] [change …]]` | What the user sketched on the pictures / clear it once it is in the plan |
 | `WB icons` | Icon names for `icon` |
+
+`WB <command> --help` prints that command's options.

@@ -4709,13 +4709,15 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         elsewhere = !!over && over.dataset.anchor !== id;
         side = elsewhere ? null : nearest(ev.clientX, ev.clientY);
         // While drafting, another box takes the line (a change to the plan, in the draft); otherwise it cannot.
-        const next = elsewhere && sketch ? over : null;
+        // The box at its other end is no place for it: a line goes between two boxes.
+        const other = end === "from" ? to : from, own = elsewhere && over.dataset.anchor === other;
+        const next = elsewhere && sketch && !own ? over : null;
         if (next !== reach) {
           reach?.classList.remove("dtarget");
           next?.classList.add("dtarget");
           reach = next;
         }
-        document.body.classList.toggle("dnoplace", elsewhere && !sketch);
+        document.body.classList.toggle("dnoplace", elsewhere && (!sketch || own));
         grid.sideDrag = {key: k, id, side, end, reach: reach?.dataset.anchor ?? null, x: ev.clientX, y: ev.clientY};
         grid.sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side ? {[end]: side} : {})};
         draw();
@@ -4735,6 +4737,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         if (elsewhere) {
           draw();
           if (reach && grid.reconnect?.(from, to, end, reach.dataset.anchor)) return;
+          if (sketch) return showProblem(t("lineSelf"));
           return showProblem(t("sideOtherBox"));
         }
         if (side && keepSides(from, to, {...was, [end]: side})) keepFocus(() => renderView());
@@ -6021,7 +6024,7 @@ function sketchLinks({real, v, drafted, container, tools}) {
   // plan is taken out and a new one drawn, with its words. Its other changes (words, turned round) go with it.
   if (!k8s) container.reconnect = (from, to, end, other) => {
     const nf = end === "from" ? other : from, nt = end === "to" ? other : to;
-    if (nf === nt && v.kind !== "state") return showProblem(t("lineSelf")), true;
+    if (nf === nt) return showProblem(t("lineSelf")), true;
     if (lines(v).some((l) => l?.from === nf && l?.to === nt)) return showProblem(t("lineThere")), true;
     const l = lines(v).find((x) => x?.from === from && x?.to === to) || {};
     const list = kit.ops(), added = list.find((o) => o.op === OPS.add && o.from === from && o.to === to);

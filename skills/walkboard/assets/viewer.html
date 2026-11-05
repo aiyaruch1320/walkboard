@@ -2717,7 +2717,8 @@ function renderMap(real) {
     fitted = map.clientWidth;
     // The lines' layer and boxes moved by hand must not count as the picture's width.
     svg.style.display = "none";
-    movers().forEach((e) => place(e, null));
+    if (fixed) unfix();
+    else movers().forEach((e) => place(e, null));
     map.classList.remove("denser", "wrapped");
     if (map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
     // Wrapping gives the room back: no need for boxes so small that long names break.
@@ -2734,6 +2735,8 @@ function renderMap(real) {
   const zoneNamed = (label) => zoneEls().find((z) => z.dataset.zone === label);
   const homeOf = (e) => e.parentElement.closest(".zone")?.dataset.zone ?? "";
   const markOf = (e) => (e.classList.contains("zone") ? marks.zones[e.dataset.zone] : marks.nodes[e.dataset.anchor]);
+  // Placed by hand (the switch over the picture), or laid out by the page.
+  const fixed = !!(lv.layout && typeof lv.layout === "object" && lv.layout["@fixed"]);
   // Where the plan puts it (a box the draft moved still belongs where it came from until the plan agrees).
   movers().forEach((e) => {
     const m = markOf(e);
@@ -2763,7 +2766,7 @@ function renderMap(real) {
     tag.title = m.mark === "move" ? t("d_move", m.from || "—") : m.mark === "change" ? t("d_change", was) : t("d_" + m.mark);
     (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(tag);
   }
-  for (const e of movers()) {
+  for (const e of fixed ? [] : movers()) {
     const m = markOf(e);
     if (m?.mark !== "move") continue;
     const isZone = e.classList.contains("zone"), from = m.from ? zoneNamed(m.from) : null;
@@ -2783,20 +2786,29 @@ function renderMap(real) {
     else delete lv.layout;
   }
   const layout = () => (lv.layout && typeof lv.layout === "object" ? lv.layout : {});
+  // Placed by hand: where each box and zone sits now (from the top left corner of what holds it).
+  const fixedAt = new Map();
   const offsetOf = (e) => {
+    if (fixed) return fixedAt.get(keyOf(e)) ?? {x: 0, y: 0};
     const q = layout()[keyOf(e)];
     return {x: Number.isFinite(q?.x) ? q.x : 0, y: Number.isFinite(q?.y) ? q.y : 0};
   };
   const place = (e, q) => {
+    if (fixed) {
+      e.style.left = (q?.x ?? 0) + "px";
+      e.style.top = (q?.y ?? 0) + "px";
+      return fixedAt.set(keyOf(e), {x: q?.x ?? 0, y: q?.y ?? 0});
+    }
     e.style.left = q?.x ? q.x + "px" : "";
     e.style.top = q?.y ? q.y + "px" : "";
   };
   // A box or zone never leaves the picture: dragged past an edge, or saved on a wider screen, it stops at the edge.
+  // Placed by hand, the picture grows to the right and down: only the top and left edges stop it.
   const keepIn = (e, q) => {
     place(e, q);
     const r = e.getBoundingClientRect(), m = map.getBoundingClientRect();
-    const dx = r.left < m.left ? m.left - r.left : r.right > m.right ? Math.max(m.right - r.right, m.left - r.left) : 0;
-    const dy = r.top < m.top ? m.top - r.top : r.bottom > m.bottom ? Math.max(m.bottom - r.bottom, m.top - r.top) : 0;
+    const dx = r.left < m.left ? m.left - r.left : !fixed && r.right > m.right ? Math.max(m.right - r.right, m.left - r.left) : 0;
+    const dy = r.top < m.top ? m.top - r.top : !fixed && r.bottom > m.bottom ? Math.max(m.bottom - r.bottom, m.top - r.top) : 0;
     const at = {...q, x: Math.round(q.x + dx), y: Math.round(q.y + dy)};
     if (dx || dy) place(e, at);
     return at;
@@ -2808,8 +2820,6 @@ function renderMap(real) {
     const others = e.classList.contains("zone") ? [...zoneEls(), ...map.querySelectorAll("[data-anchor]")] : zoneEls();
     return others.some((z) => z !== e && !z.contains(e) && !e.contains(z) && over(z.getBoundingClientRect()));
   };
-  // The picture reflows when the draft adds or drops a zone, or on a window of another width: what was moved by hand
-  // can land on another zone. It goes back to its place in the plan (oldest first: what was moved last keeps its place).
   // Its centre outside the zone that holds it (moved there before letting go outside meant something).
   const strays = (e) => {
     const home = e.parentElement.closest(".zone");
@@ -2817,7 +2827,11 @@ function renderMap(real) {
     const r = e.getBoundingClientRect(), h = home.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     return x < h.left || x > h.right || y < h.top || y > h.bottom;
   };
+  // The picture reflows when the draft adds or drops a zone, or on a window of another width: what was moved by hand
+  // can land on another zone. It goes back to its place in the plan (oldest first: what was moved last keeps its place).
+  // Placed by hand, nothing reflows, and what overlaps is the user's to move.
   const uncover = () => {
+    if (fixed) return;
     const gone = Object.keys(layout()).filter((k) => {
       const e = movers().find((x) => keyOf(x) === k);
       if (!e || !(covers(e) || strays(e))) return false;
@@ -2829,8 +2843,84 @@ function renderMap(real) {
     if (Object.keys(rest).length) lv.layout = rest;
     else delete lv.layout;
   };
+  // A zone made bigger by hand (w, h): at least that big, and never so small that what it holds spills out.
+  const applySizes = () => {
+    for (const z of zoneEls()) {
+      const q = layout()[keyOf(z)], sized = !fixed && (Number.isFinite(q?.w) || Number.isFinite(q?.h));
+      z.classList.toggle("zsized", sized);
+      z.style.width = sized && q.w ? q.w + "px" : "";
+      z.style.minHeight = sized && q.h ? q.h + "px" : "";
+    }
+  };
+  // ---- placed by hand ("@fixed" in the layout): each box and zone sits where it was put, from the top left corner of
+  // the zone that holds it (or of the picture), so adding, moving or taking out something moves nothing else.
+  // A zone is as big as it was made and grows (right and down) only to hold what is in it; what has no place yet
+  // (new in the plan) goes under what is there.
+  const parentOf = (e) => e.parentElement.closest(".zone") || map;
+  const relRect = (e, p = parentOf(e)) => {
+    const r = e.getBoundingClientRect(), b = p.getBoundingClientRect();
+    return {x: Math.round(r.left - b.left - p.clientLeft), y: Math.round(r.top - b.top - p.clientTop), w: Math.round(r.width), h: Math.round(r.height)};
+  };
+  const kidsOf = (c) => [...(c === map ? map.children : c.querySelector(":scope > .zbody")?.children || [])].filter((x) => x.matches(".zone:not(.ghost), [data-anchor]"));
+  const unfix = () => {
+    map.classList.remove("fixed");
+    map.style.height = "";
+    for (const e of movers()) for (const k of ["left", "top", "width", "height"]) e.style[k] = "";
+  };
+  const layoutFixed = () => {
+    unfix();
+    const nat = new Map(movers().map((e) => [e, relRect(e)]));
+    map.classList.add("fixed");
+    const stored = layout();
+    const lay = (c) => {
+      const kids = kidsOf(c);
+      for (const k of kids) if (k.classList.contains("zone")) lay(k);
+      let bottom = -Infinity, left = Infinity;
+      const fresh = [];
+      for (const k of kids) {
+        const q = stored[keyOf(k)];
+        if (!Number.isFinite(q?.x) || !Number.isFinite(q?.y)) {
+          fresh.push(k);
+          continue;
+        }
+        place(k, q);
+        bottom = Math.max(bottom, q.y + k.offsetHeight);
+        left = Math.min(left, q.x);
+      }
+      for (const k of fresh) {
+        const n = nat.get(k), x = Number.isFinite(left) ? left : n.x, y = bottom > -Infinity ? bottom + 16 : n.y;
+        place(k, {x, y});
+        bottom = y + k.offsetHeight;
+        left = Math.min(left, x);
+      }
+      let w = 0, h = 0;
+      for (const k of kids) {
+        w = Math.max(w, k.offsetLeft + k.offsetWidth);
+        h = Math.max(h, k.offsetTop + k.offsetHeight);
+      }
+      if (c === map) return (map.style.height = Math.max(0, h - parseFloat(getComputedStyle(map).paddingTop)) + "px");
+      const cs = getComputedStyle(c), head = c.querySelector(":scope > .zhead");
+      const headW = head ? head.offsetLeft + [...head.children].reduce((sum, x) => sum + x.offsetWidth + 7, 0) : 0;
+      const need = {w: Math.ceil(Math.max(w, headW) + parseFloat(cs.paddingRight) + c.clientLeft * 2), h: Math.ceil(Math.max(h, head ? head.offsetTop + head.offsetHeight : 0) + parseFloat(cs.paddingBottom) + c.clientTop * 2)};
+      const q = stored[keyOf(c)] || {};
+      c.style.width = Math.max(Number.isFinite(q.w) ? q.w : nat.get(c).w, need.w) + "px";
+      c.style.height = Math.max(Number.isFinite(q.h) ? q.h : nat.get(c).h, need.h) + "px";
+      c._need = need;
+    };
+    lay(map);
+  };
+  // Switching to placed by hand: everything is written down where it is now, so the picture looks the same.
+  const captureFixed = () => {
+    const out = {"@fixed": {x: 0, y: 0}};
+    for (const e of movers()) {
+      const r = relRect(e);
+      out[keyOf(e)] = {x: r.x, y: r.y, ...(e.classList.contains("zone") ? {w: r.w, h: r.h} : {}), in: homeOf(e)};
+    }
+    return out;
+  };
   // Zones first (document order), so the boxes inside one are checked where the zone ends up.
   const placeAll = () => {
+    if (fixed) return map.isConnected && layoutFixed();
     movers().forEach((e) => {
       const q = layout()[keyOf(e)];
       if (q?.x || q?.y) keepIn(e, q);
@@ -2848,6 +2938,7 @@ function renderMap(real) {
     });
   };
   const arrange = () => {
+    applySizes();
     placeAll();
     stackUp();
   };
@@ -2857,9 +2948,102 @@ function renderMap(real) {
   const tools = layoutTools(lv, canMoveMap, renderView, () => ({geometry: mapGeometry(v, map, routes, layout())}), draftShown());
   // An offset is kept with the zone the box is in now.
   const movedTo = (e, q) => {
-    const k = keyOf(e), {[k]: _, ...rest} = layout();
-    return Object.fromEntries(Object.entries({...rest, [k]: {x: q.x, y: q.y}}).map(([id, p]) => [id, id in homes ? {...p, in: homes[id]} : p]));
+    const k = keyOf(e), {[k]: was, ...rest} = layout();
+    return Object.fromEntries(Object.entries({...rest, [k]: {...(was || {}), x: q.x, y: q.y}}).map(([id, p]) => [id, id in homes ? {...p, in: homes[id]} : p]));
   };
+  // A zone's size from its corner, saved like a move; double-click the corner: its own size again.
+  const resizeFrom = (z, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const k = keyOf(z), r0 = z.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, before = lv.layout;
+    let minW = 60, minH = 40;
+    if (fixed) ({w: minW, h: minH} = z._need || {w: minW, h: minH});
+    else {
+      const w0 = z.style.width;
+      z.style.width = "min-content";
+      minW = z.getBoundingClientRect().width;
+      z.style.width = w0;
+    }
+    let size = null, frame = 0;
+    map.classList.add("resizing");
+    boxDragging = true;
+    const move = (ev) => {
+      size = {w: Math.round(Math.max(minW, r0.width + ev.clientX - sx)), h: Math.round(Math.max(minH, r0.height + ev.clientY - sy))};
+      z.classList.toggle("zsized", !fixed);
+      z.style.width = size.w + "px";
+      z.style[fixed ? "height" : "minHeight"] = size.h + "px";
+      frame ||= requestAnimationFrame(() => {
+        frame = 0;
+        draw();
+      });
+    };
+    const up = () => {
+      removeEventListener("pointermove", move);
+      removeEventListener("pointerup", up);
+      removeEventListener("pointercancel", up);
+      cancelAnimationFrame(frame);
+      map.classList.remove("resizing");
+      setTimeout(() => (boxDragging = false));
+      if (!size) return;
+      const q = layout()[k] || {};
+      tools.done(before, {...layout(), [k]: {x: 0, y: 0, ...q, w: size.w, h: size.h, in: homes[k]}});
+      arrange();
+      draw();
+    };
+    addEventListener("pointermove", move);
+    addEventListener("pointerup", up);
+    addEventListener("pointercancel", up);
+  };
+  const unsize = (z) => {
+    const k = keyOf(z), q = layout()[k];
+    if (!q || (q.w == null && q.h == null)) return;
+    const {w: _w, h: _h, ...rest} = q, next = {...layout()};
+    if (fixed || rest.x || rest.y) next[k] = rest;
+    else delete next[k];
+    tools.done(lv.layout, Object.keys(next).length ? next : null);
+    arrange();
+    draw();
+  };
+  if (canMoveMap()) for (const z of zoneEls()) {
+    const grip = el("span", "zgrip");
+    grip.title = t("resizeTip");
+    grip.setAttribute("aria-hidden", "true");
+    grip.addEventListener("pointerdown", (e) => e.button === 0 && resizeFrom(z, e));
+    grip.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      unsize(z);
+    });
+    z.append(grip);
+  }
+  // What just moved blinks where it landed, scrolled into view: in a picture that lays itself out it may be elsewhere.
+  const flashMoved = (key) => requestAnimationFrame(() => {
+    const e = key.startsWith("z:") ? [...document.querySelectorAll("#view .map .zone:not(.ghost)")].find((z) => `z:${z.dataset.zone}` === key) : document.querySelector(`#view .map [data-anchor="${CSS.escape(key)}"]`);
+    if (!e) return;
+    e.scrollIntoView({block: "nearest", inline: "nearest", behavior: "smooth"});
+    e.classList.remove("dflash");
+    void e.offsetWidth;
+    e.classList.add("dflash");
+  });
+  // Laid out by the page, or placed by hand: a switch over the picture.
+  if (canMoveMap()) {
+    const sw = el("div", "lmode");
+    sw.setAttribute("role", "group");
+    sw.setAttribute("aria-label", t("layoutMode"));
+    const auto = el("button", null, t("modeAuto")), hand = el("button", null, t("modeFixed"));
+    auto.title = t("modeAutoTip");
+    hand.title = t("modeFixedTip");
+    auto.setAttribute("aria-pressed", String(!fixed));
+    hand.setAttribute("aria-pressed", String(fixed));
+    const to = (next) => {
+      const before = tools.snap();
+      tools.change(before, {layout: next, ops: before.ops});
+      renderView();
+    };
+    hand.onclick = () => !fixed && to(captureFixed());
+    auto.onclick = () => fixed && to(null);
+    sw.append(auto, hand);
+    tools.row.insertBefore(sw, tools.row.querySelector(".lsketch"));
+  }
   // Dropped with its centre in another zone: put it there, before the first box (or zone) that comes after it.
   // Where the pointer is: a zone is held by its title, far from its middle.
   // Let go outside every zone: a zone inside another comes out to the top ({to: null}); a box cannot be outside
@@ -2973,17 +3157,26 @@ function renderMap(real) {
         return showProblem(t("boxNeedsZone"));
       }
       if (drop) {
-        const before = tools.snap(), {[keyOf(it)]: _, ...rest} = layout();
+        // Laid out by the page, it takes its place in the new zone (a zone keeps its size); placed by hand, it stays
+        // where it was let go, now from the corner of the zone it went into.
+        const k = keyOf(it), before = tools.snap(), {[k]: was, ...rest} = layout(), dest = drop.to || map, into = drop.to ? drop.to.dataset.zone : "";
+        if (fixed) {
+          const r = it.getBoundingClientRect(), b = dest.getBoundingClientRect();
+          rest[k] = {...(was || {}), x: Math.round(r.left - b.left - dest.clientLeft), y: Math.round(r.top - b.top - dest.clientTop), in: into};
+        } else if (was?.w != null || was?.h != null) rest[k] = {x: 0, y: 0, ...(was.w != null ? {w: was.w} : {}), ...(was.h != null ? {h: was.h} : {}), in: into};
         tools.change(before, {layout: Object.keys(rest).length ? rest : null, ops: dropOps(it, drop)});
-        return renderView();
+        renderView();
+        return flashMoved(k);
       }
       // Let go over another zone (but not into it): it slides back to where it was.
-      if (covers(it)) {
+      if (!fixed && covers(it)) {
         place(it, from);
         return draw();
       }
       tools.done(lv.layout, movedTo(it, moved));
-      stackUp();
+      // Placed by hand, the zones around grow to hold it.
+      if (fixed) arrange();
+      else stackUp();
       draw();
     };
     addEventListener("pointermove", move);
@@ -3009,6 +3202,10 @@ function renderMap(real) {
     mapKeySave = setTimeout(() => {
       mapKeySave = null;
       tools.done(mapKeyFrom, lv.layout);
+      if (fixed) {
+        arrange();
+        draw();
+      }
     }, 500);
   });
   // A line between two boxes, in the coordinates of the lines' layer (base = its rectangle), with its arrow head.
@@ -3103,9 +3300,10 @@ function renderMap(real) {
   map.dataset.tool = isSketch ? sketchTool : "";
   const ops = () => draftOps(lv.id);
   // The box that had the keyboard focus keeps it after the picture is drawn again.
-  const setOps = (next, focusId = document.activeElement?.closest?.(".map [data-anchor]")?.dataset.anchor) => {
+  // nextLayout: where things go with it (placed by hand: a new box where it was clicked; a zone renamed keeps its place).
+  const setOps = (next, focusId = document.activeElement?.closest?.(".map [data-anchor]")?.dataset.anchor, nextLayout = undefined) => {
     const before = tools.snap();
-    tools.change(before, {layout: before.layout, ops: next});
+    tools.change(before, {layout: nextLayout === undefined ? before.layout : nextLayout, ops: next});
     keepFocus(() => renderView());
     if (focusId) document.querySelector(`#view .map [data-anchor="${CSS.escape(focusId)}"]`)?.focus({preventScroll: true});
   };
@@ -3168,11 +3366,13 @@ function renderMap(real) {
   const renameTo = (x, val) => {
     const list = ops(), added = addOp(x.kind, x.id);
     if (val !== x.id && zoneNamed(val)) return showProblem(t("zoneTaken", val));
+    // Its place and size, and what it holds, go with the new name.
+    const lay = Object.keys(layout()).length ? Object.fromEntries(Object.entries(layout()).map(([k, q]) => [k === "z:" + x.id ? "z:" + val : k, q?.in === x.id ? {...q, in: val} : q])) : undefined;
     const fix = (o) => Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val : w]));
-    if (added) return setOps(list.map((o) => (o === added ? {...o, zone: val} : fix(o))));
+    if (added) return setOps(list.map((o) => (o === added ? {...o, zone: val} : fix(o))), undefined, lay);
     const ed = list.find((o) => o.op === "editZone" && o.label === x.id);
-    if (ed) return setOps(ed.zone === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)));
-    setOps([...list, {id: nextId(list), op: "editZone", zone: x.id, label: val}]);
+    if (ed) return setOps(ed.zone === val ? list.filter((o) => o !== ed) : list.map((o) => (o === ed ? {...o, label: val} : o)), undefined, lay);
+    setOps([...list, {id: nextId(list), op: "editZone", zone: x.id, label: val}], undefined, lay);
   };
   const rename = (x) => {
     const e = elOf(x);
@@ -3333,6 +3533,21 @@ function renderMap(real) {
     hover(null);
     map.classList.remove("dnoplace");
   });
+  // Placed by hand: what is being added sits where it was clicked, until it has a name.
+  // Clicked on another box or zone: it moves down until it is clear of them.
+  const pinAt = (e, p, x, y) => {
+    const b = p.getBoundingClientRect();
+    e.style.position = "absolute";
+    e.style.left = Math.round(x - b.left - p.clientLeft - 16) + "px";
+    let top = Math.round(y - b.top - p.clientTop - 12);
+    e.style.top = top + "px";
+    const others = kidsOf(p).filter((k) => k !== e).map((k) => k.getBoundingClientRect());
+    for (let i = 0; i < 200; i++) {
+      const r = e.getBoundingClientRect();
+      if (!others.some((q) => Math.min(r.right, q.right) - Math.max(r.left, q.left) > 2 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 2)) break;
+      e.style.top = (top += 8) + "px";
+    }
+  };
   // A box drawn with these values (name, note, icon), as the card types them.
   const showBox = (box, val, empty = "") => {
     const head = box.querySelector(".nhead"), ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, "", null);
@@ -3363,20 +3578,22 @@ function renderMap(real) {
       what.hidden = true;
       tmp.append(head, what);
       body.insertBefore(tmp, [...body.children].filter((c) => c.matches("[data-anchor]"))[at] ?? null);
+      if (fixed) pinAt(tmp, z, x, y);
       // The box takes room: the zones around move, and the lines with them.
       draw();
       boxCard(tmp.getBoundingClientRect(), {}, {
         title: t("boxNewTitle", z.dataset.zone),
         preview: (val) => showBox(tmp, val, t("boxNew")),
         onDone: (val) => {
-          tmp.remove();
           sketchTool = "select";
           if (!val) {
+            tmp.remove();
             draw();
             return refreshBar();
           }
-          const list = ops();
-          setOps([...list, {id: nextId(list), op: "addNode", node: newNode(), name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), zone: z.dataset.zone, at}]);
+          const list = ops(), id = newNode(), spot = fixed ? relRect(tmp, z) : null;
+          tmp.remove();
+          setOps([...list, {id: nextId(list), op: "addNode", node: id, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), zone: z.dataset.zone, at}], undefined, spot ? {...layout(), [id]: {x: spot.x, y: spot.y, in: z.dataset.zone}} : undefined);
         },
       });
       return;
@@ -3388,9 +3605,11 @@ function renderMap(real) {
       tmp.append(head, el("div", "zbody"));
       hover(null);
       body.insertBefore(tmp, [...body.children].filter((c) => c.matches(".zone:not(.ghost)"))[at] ?? (z ? body.querySelector(":scope > [data-anchor]") : body.querySelector(":scope > svg")));
+      if (fixed) pinAt(tmp, z || map, x, y);
       draw();
       editText(lbl, "", t("zoneName"), {
         onDone: (val) => {
+          const spot = fixed ? relRect(tmp, z || map) : null;
           tmp.remove();
           sketchTool = "select";
           if (!val || zoneNamed(val)) draw();
@@ -3400,7 +3619,7 @@ function renderMap(real) {
             return showProblem(t("zoneTaken", val));
           }
           const list = ops();
-          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at}]);
+          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at}], undefined, spot ? {...layout(), ["z:" + val]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
         },
       });
       return;

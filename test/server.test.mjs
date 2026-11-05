@@ -354,6 +354,20 @@ test("a map offset keeps the zone it was dragged in; a table's does not", async 
   assert.deepEqual(read(1), {a: {x: 5, y: 6}});
 });
 
+test("a map keeps zone sizes, placed-by-hand mode, and places for boxes and zones the draft adds", async (t) => {
+  const dir = planDir();
+  const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "Cloud", nodes: ["a"]}]}, {id: "d", kind: "datamodel", tables: [{node: "a"}]}], nodes: {a: {name: "A"}}};
+  fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+  const s = await startServer(dir);
+  t.after(s.close);
+  const read = (i) => JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8")).views[i].layout;
+  const positions = {"@fixed": {x: 0, y: 0}, "z:Cloud": {x: 6, y: 10, w: 300.4, h: 0, in: ""}, a: {x: 10, y: 38, w: 50, in: "Cloud"}, "new:k3x9": {x: 20, y: 90, in: "Hub"}, "z:Hub": {x: 400, y: 10, in: ""}, ghost: {x: 1, y: 1}, "__proto__": {x: 1, y: 1}};
+  assert.equal((await post(s, "/api/layout", {view: "m", positions})).status, 200);
+  assert.deepEqual(read(0), {"@fixed": {x: 0, y: 0}, "z:Cloud": {x: 6, y: 10, in: "", w: 300}, a: {x: 10, y: 38, in: "Cloud", w: 50}, "new:k3x9": {x: 20, y: 90, in: "Hub"}, "z:Hub": {x: 400, y: 10, in: ""}});
+  assert.equal((await post(s, "/api/layout", {view: "d", positions: {a: {x: 5, y: 6, w: 80}, "new:k3x9": {x: 1, y: 1}}})).status, 200);
+  assert.deepEqual(read(1), {a: {x: 5, y: 6}});
+});
+
 test("a draft is saved per picture, checked, announced, and never wakes the agent", async (t) => {
   const dir = planDir();
   const plan = {title: "t", views: [{id: "m", kind: "map", zones: [{label: "Cloud", nodes: ["a"]}]}, {id: "f", kind: "sequence"}], nodes: {a: {name: "A"}}};

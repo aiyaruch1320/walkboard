@@ -482,6 +482,18 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .map .zone>.zhead{position:relative;z-index:1}
 .map [data-anchor].lifted,.map .zone.lifted [data-anchor]{z-index:9999!important}
 .map .zone.droptarget{border:2px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
+/* Placed by hand: every box and zone where it was put, from the corner of what holds it. */
+.map.fixed .zone,.map.fixed [data-anchor]{position:absolute;margin:0}
+.map.fixed .zone{box-sizing:border-box}
+/* A zone made bigger by hand: at least that big, never smaller than what it holds. */
+.map .zone.zsized{box-sizing:border-box;min-width:min-content}
+.zgrip{position:absolute;right:3px;bottom:3px;width:13px;height:13px;cursor:nwse-resize;opacity:0;transition:opacity .15s;z-index:2;background:linear-gradient(135deg,transparent 42%,var(--muted) 42% 52%,transparent 52% 66%,var(--muted) 66% 76%,transparent 76%)}
+.map .zone:hover>.zgrip,.map.resizing .zgrip{opacity:.75}
+.map.resizing,.map.resizing *{cursor:nwse-resize!important;user-select:none}
+.lmode{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.lmode button{border:0;border-radius:0;padding:3px 10px;font-size:12.5px;background:transparent;color:var(--muted)}
+.lmode button[aria-pressed="true"]{background:var(--you-bg);color:var(--you-tx);font-weight:600}
+@media print{.zgrip,.lmode{display:none!important}}
 .map.droptop{outline:2px dashed var(--you-bd);outline-offset:6px;border-radius:12px}
 .map [data-anchor].dnodrop{outline:2px dashed var(--warn-bd);outline-offset:3px;opacity:.75}
 .map .dr-add{outline:2px dashed var(--you-bd);outline-offset:3px}

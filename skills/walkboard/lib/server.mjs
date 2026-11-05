@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
 import {pageHtml, snapshot} from "./export.mjs";
-import {validateDraft, emptyDraft, draftable, viewList} from "./draft.mjs";
+import {validateDraft, emptyDraft, draftable, viewList, isNewId} from "./draft.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".walkboard");
@@ -312,6 +312,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       // Data model: where each table sits. Map: how far a box or a zone ("z:label") moved from its place,
       // and "in", the zone it was in then: the page drops an offset once the plan moves the box to another zone.
       // Moving a box into another zone is a change of plan, not arrangement: that goes in the draft (POST /api/draft).
+      // A map zone can also carry its size from its corner (w, h). "@fixed" ({x: 0, y: 0}) means placed by hand:
+      // then x, y are where each box and zone sits from the corner of what holds it, not how far it moved.
+      // Boxes and zones the draft adds count too (new:… ids, any zone label), so a new box keeps the place it was given:
+      // the page saves the layout and the draft at once, so the draft may not be here yet. The page drops what no
+      // longer matches anything.
       // Saved in plan.json so exports and other browsers keep it; the agent is not told, it is only arrangement.
       readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
@@ -325,9 +330,13 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             if (view?.kind !== "datamodel" && view?.kind !== "map") throw Object.assign(new Error(`no data model or map view "${v.view}"`), {status: 400});
             if (view.kind === "datamodel" && pos && Object.values(pos).some((q) => q.x < 0 || q.y < 0)) throw Object.assign(new Error("a table's position cannot be negative"), {status: 400});
             const zoneLabels = (zs) => (Array.isArray(zs) ? zs : []).flatMap((z) => [`z:${z?.label}`, ...(z?.nodes || []), ...zoneLabels(z?.zones)]);
-            const known = new Set(view.kind === "map" ? zoneLabels(view.zones) : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
+            const known = new Set(view.kind === "map" ? ["@fixed", ...zoneLabels(view.zones)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
+            const keep = (id) => known.has(id) || (view.kind === "map" && (isNewId(id) || (id.startsWith("z:") && id.length <= 201)));
+            const size = (n) => Number.isFinite(n) && n > 0 && n <= 20000;
             if (pos === null) delete view.layout;
-            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => known.has(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y), ...(view.kind === "map" && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {})}]));
+            else view.layout = Object.fromEntries(Object.entries(pos).filter(([id]) => keep(id)).map(([id, q]) => [id, {x: Math.round(q.x), y: Math.round(q.y),
+              ...(view.kind === "map" && typeof q.in === "string" ? {in: q.in.slice(0, 200)} : {}),
+              ...(view.kind === "map" && size(q.w) ? {w: Math.round(q.w)} : {}), ...(view.kind === "map" && size(q.h) ? {h: Math.round(q.h)} : {})}]));
             return plan;
           });
         } catch (e) {

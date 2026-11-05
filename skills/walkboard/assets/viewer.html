@@ -1529,6 +1529,7 @@ function viaChips(container, links, marks = null) {
     const dm = marks?.links?.[`${l.from}>${l.to}`]?.mark;
     const same = !dm && [...row.children].find((c) => c.dataset.label === l.label && c.dataset.state === state && !c.dataset.draft);
     if (same) {
+      same.dataset.links += ` ${l.from}>${l.to}`;
       same.dataset.n = (Number(same.dataset.n) || 1) + 1;
       same.textContent = `← ${l.label} ×${same.dataset.n}`;
       same.title += "\n" + tip;
@@ -1538,6 +1539,8 @@ function viaChips(container, links, marks = null) {
     if (dm) chip.dataset.draft = dm;
     chip.dataset.label = l.label;
     chip.dataset.state = state;
+    // Which lines it stands for, so pointing at a line can light up its label.
+    chip.dataset.links = `${l.from}>${l.to}`;
     chip.title = tip;
     row.append(chip);
   }
@@ -2511,6 +2514,7 @@ function draftRows(viewId) {
       addLink: ["+", `${nm(o.from)} → ${nm(o.to)}`, [o.label, o.state && o.state !== "ok" ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
       editLink: ["~", `${nm(o.from)} → ${nm(o.to)}`, [o.label != null ? o.label || "—" : "", o.state ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
       removeLink: ["−", `${nm(o.from)} → ${nm(o.to)}`, ""],
+      reverseLink: ["~", `${nm(o.from)} → ${nm(o.to)}`, t("reversedTo", `${nm(o.to)} → ${nm(o.from)}`)],
       editNode: ["~", o.name != null ? `${old(o.node)} → ${o.name}` : nm(o.node), [o.what != null ? o.what : "", o.icon ? "icon" : ""].filter(Boolean).join(" · ")],
       editZone: ["~", o.label != null ? `${o.zone} → ${o.label}` : o.zone, [o.note != null ? o.note || "—" : "", o.icon != null ? "icon" : ""].filter(Boolean).join(" · ")],
       remove: ["−", old(o.node), ""],
@@ -3529,7 +3533,20 @@ function renderMap(real) {
     search.focus();
   };
   // A line's label and kind (drawn as the line looks), or take it out.
-  const linkOps = (from, to, change) => {
+  // The ends a line has in the plan: one the draft turned round is drawn the other way.
+  const planEnds = (from, to) => (ops().some((o) => o.op === "reverseLink" && o.from === to && o.to === from) ? [to, from] : [from, to]);
+  // Turn a line round: a line the draft added just swaps its ends; turning one back drops the change.
+  const reverseLine = (from, to) => {
+    const list = ops(), added = list.find((o) => o.op === "addLink" && o.from === from && o.to === to);
+    if (added) return setOps(list.map((o) => (o === added ? {...o, from: to, to: from} : o)));
+    const back = list.find((o) => o.op === "reverseLink" && o.from === to && o.to === from);
+    if (back) return setOps(list.filter((o) => o !== back));
+    if ((v.links || []).some((l) => l?.from === to && l?.to === from)) return showProblem(t("lineBothWays"));
+    setOps([...list, {id: nextId(list), op: "reverseLink", from, to}]);
+  };
+  const linkOps = (shownFrom, shownTo, change) => {
+    const added0 = ops().find((o) => o.op === "addLink" && o.from === shownFrom && o.to === shownTo);
+    const [from, to] = added0 ? [shownFrom, shownTo] : planEnds(shownFrom, shownTo);
     const list = ops(), added = list.find((o) => o.op === "addLink" && o.from === from && o.to === to);
     if (change === "remove") {
       if (added) return setOps(list.filter((o) => o !== added));
@@ -3593,7 +3610,17 @@ function renderMap(real) {
       };
       chips.append(b);
     }
-    const parts = [el("div", "dphead", `${drafted.plan.nodes[from]?.name ?? from} → ${drafted.plan.nodes[to]?.name ?? to}`), label, chips, name];
+    const head = el("div", "dphead", `${drafted.plan.nodes[from]?.name ?? from} → ${drafted.plan.nodes[to]?.name ?? to}`);
+    // The arrow the other way: a line being drawn just swaps its ends; one already there becomes a change.
+    const turn = el("button", "dlinkx dturn", t("reverseLine"));
+    turn.title = t("reverseTip");
+    turn.onclick = () => {
+      if (!fresh) return pop.close("reverse");
+      [from, to] = [to, from];
+      head.textContent = `${drafted.plan.nodes[from]?.name ?? from} → ${drafted.plan.nodes[to]?.name ?? to}`;
+      label.focus();
+    };
+    const parts = [head, label, chips, name, turn];
     if (!fresh) {
       const removed = marks.links[`${from}>${to}`]?.mark === "remove";
       const del = el("button", "dlinkx");
@@ -3609,10 +3636,12 @@ function renderMap(real) {
     const pop = popover(x + 10, y + 10, parts, {
       beside: end,
       onClose: (why) => {
-        if (why === "removed" || why === "replaced") return;
-        if (why === "escape" && fresh) return;
-        if (why === "escape") return;
-        commit();
+        if (why === "removed" || why === "replaced" || why === "escape") return;
+        if (why !== "reverse") return commit();
+        // Label or kind typed before turning it round: kept, then the line turns.
+        const lab = cleanText(label.value), state0 = l.state || "ok";
+        if (lab !== (l.label || "") || state !== state0) commit();
+        reverseLine(from, to);
       },
     });
     label.focus();
@@ -3665,6 +3694,17 @@ function renderMap(real) {
       e.style.top = (top += 8) + "px";
     }
   };
+  // Pointing at a line (in draft mode) thickens it and lights up its label on the box it reaches.
+  const lightLine = (hit, on) => {
+    if (!hit) return;
+    const f = hit.dataset.from, to = hit.dataset.to, line = svg.querySelector(`path[data-from="${CSS.escape(f)}"][data-to="${CSS.escape(to)}"]`);
+    for (const e of [line, line?.nextElementSibling, ...map.querySelectorAll(".via[data-links]")]) {
+      if (!e || (e.classList.contains("via") && !e.dataset.links.split(" ").includes(`${f}>${to}`))) continue;
+      e.classList.toggle("dlhover", on);
+    }
+  };
+  map.addEventListener("pointerover", (e) => isSketch && lightLine(e.target.closest?.(".dhit"), true));
+  map.addEventListener("pointerout", (e) => isSketch && lightLine(e.target.closest?.(".dhit"), false));
   // A box drawn with these values (name, note, icon), as the card types them.
   const showBox = (box, val, empty = "") => {
     const head = box.querySelector(".nhead"), ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, "", null);
@@ -3683,6 +3723,9 @@ function renderMap(real) {
     e.preventDefault();
     const x = e.clientX, y = e.clientY;
     const it = e.target.closest?.(".zhead") ? e.target.closest(".zhead").parentElement : e.target.closest?.("[data-anchor]");
+    const line = !it && e.target.closest?.(".dhit");
+    if (line && sketchTool === "remove") return linkOps(line.dataset.from, line.dataset.to, "remove");
+    if (line && sketchTool === "rename") return editLink(line.dataset.from, line.dataset.to, x, y);
     if (sketchTool === "remove") return it && remove(selOf(it));
     if (sketchTool === "rename") return it && rename(selOf(it));
     if (sketchTool === "box") {

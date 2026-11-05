@@ -367,6 +367,10 @@ body.side-open .dtip{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var
 .map .dtemp{opacity:.85}
 .map .dtemp.zone{min-width:150px;min-height:70px}
 .map svg.links .dhit{fill:none;stroke:transparent;stroke-width:12;pointer-events:stroke;cursor:pointer}
+/* The line pointed at, and its label on the box it reaches. */
+.map svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important}
+.map .via.dlhover{outline:2px solid var(--you-bd);outline-offset:1px}
+.map.sketch[data-tool="remove"] svg.links .dhit,.map.sketch[data-tool="rename"] svg.links .dhit{cursor:pointer}
 .map svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .dedit{position:absolute;z-index:70;font:inherit;font-size:13px;font-weight:600;padding:3px 6px;border:1.5px solid var(--you-bd);border-radius:6px;background:var(--card);color:var(--text);outline:none;box-shadow:0 4px 14px rgba(0,0,0,.15)}
 .dpop{position:fixed;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:360px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card);box-shadow:0 10px 30px rgba(0,0,0,.2)}
@@ -381,6 +385,7 @@ body.side-open .dtip{right:calc(var(--side-w) + 12px);max-width:calc(100vw - var
 .dstate path{fill:none;stroke-width:2.5}
 .dstate.on{border-color:var(--you-bd);background:var(--you-bg)}
 .dlinkx{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;color:var(--warn-bd)}
+.dlinkx.dturn{color:var(--you-tx)}
 .dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .drow{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:4px 4px 4px 8px}
 .drow.stale{opacity:.6;border-style:dashed}

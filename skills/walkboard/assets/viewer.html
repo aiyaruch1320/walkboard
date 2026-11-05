@@ -74,7 +74,10 @@ const snapshot = (() => {
 })();
 const served = !snapshot && location.protocol !== "file:" && token;
 const moduleUrl = (name) => window.__walkboardModules?.[name] || `/${name}.mjs?token=${encodeURIComponent(token)}`;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn, useProfiles} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true, useProfiles: () => {}};
+// What boxes, zones and lines mean on a platform (lib/profiles.mjs): the plan's check uses it too.
+const PROF = served || snapshot ? await import(moduleUrl("profiles")) : {PROFILES: {}, kindOf: () => null, lineKindOf: () => null, kindNames: () => [], lineKindNames: () => [], kindWarning: () => null, kindProblems: () => []};
+useProfiles(PROF);
 const {GLYPHS, FAMILIES, iconOf, iconNames} = served || snapshot ? await import(moduleUrl("icons")) : {GLYPHS: {}, FAMILIES: {}, iconOf: () => null, iconNames: () => []};
 const {applyDraft, describeDraft, draftable, isNewId, rebaseOps, cleanText} = served || snapshot ? await import(moduleUrl("draft")) : {rebaseOps: (b, l) => l, cleanText: (x) => String(x ?? "").trim(), applyDraft: (p, d, id) => ({plan: p, view: p.views.find((x) => x.id === id), marks: {nodes: {}, zones: {}, links: {}}, pending: [], stale: [], done: []}), describeDraft: () => ({changes: []}), draftable: () => false, isNewId: () => false};
 
@@ -1406,7 +1409,9 @@ function arrow() {
 
 // Glyphs are walkboard's own constants; plan text never goes into innerHTML.
 function iconEl(n, id, family) {
-  const ic = iconOf(n, id, family);
+  // A box or zone of a kind (lib/profiles.mjs) takes that kind's icon unless it picked one.
+  const k = PROF.kindOf(n?.kind);
+  const ic = iconOf(k && !n.icon ? {...n, icon: k.def.icon} : n, id, family);
   if (!ic || !GLYPHS[ic.glyph]) return null;
   const f = FAMILIES[ic.family];
   const s = el("span", "icon" + (f ? " fam" : ""));
@@ -1445,6 +1450,12 @@ function nodeBox(id, family = null) {
   st.setAttribute("aria-label", statusLabel(status));
   head.append(breakable(el("div", "name"), n.name), st);
   d.append(head);
+  // Its kind on a platform, and the props that say most about it: "RDS · postgres · db.t3.medium".
+  if (PROF.kindOf(n.kind)) {
+    d.dataset.kind = n.kind;
+    const words = kindWords(n.kind, n.props, n.name);
+    if (words) d.append(el("div", "kindline", words));
+  }
   if (n.what) d.append(richEl("div", "what", n.what, true));
   if (pr?.note) d.append(richEl("div", "pnote", "→ " + (pr.note.length > 60 ? pr.note.slice(0, 58) + "…" : pr.note), true));
   if (BASIS_KEYS.includes(n.basis)) {
@@ -1780,6 +1791,63 @@ function renderK8s(real) {
   }
   return out;
 }
+// What the card chose for a box or zone's kind, as fields of its change (none: drawn freely).
+const kindFields = (val) => ({...(val.kind ? {kind: val.kind} : {}), ...(val.kind && val.props && Object.keys(val.props).length ? {props: val.props} : {})});
+// A kind in words, with the values of its props: "RDS · postgres · db.t3.medium".
+// The kind's name is left out when the box's own name already says it ("Route 53", "S3" for an S3 bucket).
+const kindWords = (kind, props, name = "") => {
+  const k = PROF.kindOf(kind)?.def.name, a = String(name).toLowerCase().replace(/\s+/g, ""), b = String(k || "").toLowerCase().replace(/\s+/g, "");
+  const said = a && b && (a.includes(b) || b.includes(a) || a.includes(b.split(/[(]/)[0]));
+  const shown = Object.entries(props && typeof props === "object" ? props : {}).filter(([, x]) => typeof x === "string" && x).map(([n, x]) => (["on", "off", "yes", "no"].includes(x) ? `${n} ${x}` : x));
+  return [said ? null : k, ...shown].filter(Boolean).join(" · ");
+};
+// The platforms a map draws (a tag each, in its colours), what its kinds of line look like, and a sign on whatever sits
+// where its kind does not usually go. Signs only warn: the map can be drawn freely, and the agent asks when reviewing.
+function profileMarks(map, v) {
+  const used = new Set(), lines = new Map();
+  const around = (e) => {
+    const out = [];
+    for (let z = e.parentElement?.closest(".zone"); z; z = z.parentElement?.closest(".zone")) out.push(z.dataset.kind || null);
+    return out;
+  };
+  for (const e of map.querySelectorAll("[data-kind]")) {
+    const k = PROF.kindOf(e.dataset.kind);
+    if (!k) continue;
+    used.add(k.profile);
+    const w = PROF.kindWarning(e.dataset.kind, around(e));
+    if (!w) continue;
+    const sign = el("span", "g-warn kwarn", t("kindWarn", w.usual.join(", ")));
+    sign.title = t("kindWarnTip", w.kind, w.there, w.usual.join(", "));
+    (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(sign);
+  }
+  for (const l of v.links || []) {
+    const k = PROF.lineKindOf(l.kind);
+    if (!k) continue;
+    used.add(k.profile);
+    lines.set(l.kind, k.def);
+  }
+  if (!used.size) return null;
+  const row = el("div", "profrow");
+  for (const p of used) {
+    const f = FAMILIES[PROF.PROFILES[p]?.family] || {};
+    const tag = el("span", "proftag", PROF.PROFILES[p]?.label || p);
+    tag.style.background = f.bg || "";
+    tag.style.color = f.fg || "";
+    tag.title = t("profileTip", PROF.PROFILES[p]?.label || p);
+    row.append(tag);
+  }
+  for (const [, def] of lines) {
+    const svgL = document.createElementNS("http://www.w3.org/2000/svg", "svg"), pl = document.createElementNS(svgL.namespaceURI, "path");
+    svgL.setAttribute("viewBox", "0 0 40 10");
+    pl.setAttribute("d", "M2 5H38");
+    pl.setAttribute("class", "l-ok lk-" + def.style);
+    svgL.append(pl);
+    const item = el("span", "proflk");
+    item.append(svgL, def.name);
+    row.append(item);
+  }
+  return row;
+}
 // A zone as the page names it: a Kubernetes picture's outside and targets in the page's words.
 const zoneWords = (z) => (["outside", "targets"].includes(z.dataset.role) ? t("k8sZone_" + z.dataset.role) : z.dataset.zone);
 // What a map has no place for: each workload's containers, and the network policies over each pod as tags.
@@ -1939,9 +2007,14 @@ function zoneEl(z, depth, dense = false) {
   // A Kubernetes picture's zones have roles: outside the cluster and the targets are named in the page's words.
   if (z.role) box.dataset.role = z.role;
   const head = el("div", "zhead");
-  const ic = iconEl({name: z.label, icon: z.icon}, "", z.family || null);
+  const ic = iconEl({name: z.label, icon: z.icon, kind: z.kind}, "", z.family || null);
   if (ic) head.append(ic);
   head.append(richEl("span", null, z.role === "outside" || z.role === "targets" ? t("k8sZone_" + z.role) : z.label || ""));
+  // A zone of a kind says which, with its props: "Subnet · private · 10.0.1.0/24".
+  if (PROF.kindOf(z.kind)) {
+    box.dataset.kind = z.kind;
+    head.append(el("span", "zkind", kindWords(z.kind, z.props)));
+  }
   if (z.note) head.append(el("small", null, z.note));
   // In a big picture a zone that only holds boxes stacks them, so the zones stay side by side as columns.
   const stack = z.stack ?? (dense && !(z.zones || []).length);
@@ -2524,8 +2597,94 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
 // A zone uses it too: its note is the short line by its name (zone: true).
 // nameHint, whatHint: the words in its fields, where it is not a box or a zone. iconId: what the icon is also guessed from.
 // plain: only a name, for what has no note or icon (a lane).
-function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false, flags = [], choice = null}) {
+function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false, flags = [], choice = null, kinds = null}) {
   let picked = initial.icon || "";
+  // Its kind on a platform (lib/profiles.mjs), searchable, and the fields of that kind. None: drawn freely.
+  let kind = kinds?.value || "", props = {...(kinds?.props || {})};
+  const kindRow = el("div", "dkindrow"), propBox = el("div", "dprops"), kindList = el("div", "dkinds");
+  kindList.hidden = true;
+  const kindIn = el("input", "dsearch dkindin");
+  kindIn.placeholder = t("kindFree");
+  const matches = (q) => {
+    q = q.trim().toLowerCase();
+    return PROF.kindNames(kinds?.zone).map((k) => ({k, d: PROF.kindOf(k)})).filter(({k, d}) => !q || k.includes(q) || d.def.name.toLowerCase().includes(q) || PROF.PROFILES[d.profile].label.toLowerCase().includes(q));
+  };
+  const pickKind = (k) => {
+    kind = k;
+    const want = PROF.kindOf(k)?.def.props || {};
+    props = Object.fromEntries(Object.entries(props).filter(([n]) => n in want));
+    kindList.hidden = true;
+    drawKind();
+    update();
+    nameIn.focus();
+  };
+  const showKinds = () => {
+    kindList.replaceChildren();
+    let group = null;
+    for (const {k, d} of matches(kindIn.value).slice(0, 60)) {
+      if (d.profile !== group) kindList.append(el("div", "dkindgroup", PROF.PROFILES[(group = d.profile)].label));
+      const b = el("button", "dkindopt");
+      b.type = "button";
+      b.append(iconEl({icon: d.def.icon}, "", null) || el("span", "icon"), d.def.name);
+      b.onmousedown = (e) => e.preventDefault();
+      b.onclick = () => pickKind(k);
+      kindList.append(b);
+    }
+    kindList.hidden = !kindList.childElementCount;
+  };
+  kindIn.onfocus = kindIn.oninput = showKinds;
+  kindIn.onblur = () => setTimeout(() => (kindList.hidden = true), 150);
+  kindIn.onkeydown = (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.isComposing) {
+      e.preventDefault();
+      const first = matches(kindIn.value)[0];
+      if (first && kindIn.value.trim()) pickKind(first.k);
+      else pop.close("done");
+    }
+  };
+  const drawKind = () => {
+    kindRow.replaceChildren(el("span", "dsidelabel", t("kindLabel")));
+    const k = PROF.kindOf(kind);
+    if (k) {
+      const chip = el("span", "dkindchip", `${PROF.PROFILES[k.profile].label} · ${k.def.name}`), x = el("button", "talklink dkindx", "×");
+      x.type = "button";
+      x.title = t("kindClear");
+      x.onclick = () => {
+        kind = "";
+        props = {};
+        drawKind();
+        update();
+        kindIn.focus();
+      };
+      kindRow.append(chip, x);
+    } else {
+      kindIn.value = "";
+      kindRow.append(kindIn);
+    }
+    propBox.replaceChildren();
+    for (const [name, want] of Object.entries(k?.def.props || {})) {
+      const f = Array.isArray(want) ? el("select", "dsearch dprop") : el("input", "dsearch dprop");
+      if (Array.isArray(want)) for (const o of ["", ...want]) f.append(new Option(o || "—", o));
+      else f.placeholder = name;
+      f.value = props[name] || "";
+      f.oninput = f.onchange = () => {
+        props[name] = f.value.trim();
+        update();
+      };
+      f.onkeydown = (e) => {
+        e.stopPropagation();
+        if (e.key === "Enter" && !e.isComposing) {
+          e.preventDefault();
+          pop.close("done");
+        }
+      };
+      const lbl = el("label", "dproprow");
+      lbl.append(el("span", "dsidelabel", name), f);
+      propBox.append(lbl);
+    }
+    if (!nameIn.value && k) nameIn.placeholder = k.def.name;
+  };
   // One of a few kinds (a decision box: question, step, end), shown pressed; none pressed: the picture decides.
   let chosen = choice?.value ?? null;
   const choiceRow = el("div", "dchoice");
@@ -2592,9 +2751,10 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   whatIn.classList.toggle("dnote", zone);
   const picker = el("div", "dpicker");
   picker.hidden = true;
-  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {})});
+  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {}),
+    ...(kinds ? {kind, props: Object.fromEntries(Object.entries(props).filter(([, x]) => x))} : {})});
   const update = () => {
-    const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value}, iconId, null);
+    const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value, kind}, iconId, null);
     iconBtn.replaceChildren(ic || el("span", "icon dnoicon"));
     iconBtn.title = picked ? t("iconPicked") : t("iconAuto");
     iconBtn.setAttribute("aria-label", iconBtn.title);
@@ -2650,7 +2810,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   cancel.onclick = () => pop.close("escape");
   const foot = el("div", "dpfoot");
   foot.append(keep, cancel, el("span", "dhint", t(plain ? "linkHint" : "boxHint")));
-  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), ...(choice ? [choiceRow] : []), ...(flags.length ? [flagRow] : []), foot], {
+  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), ...(kinds ? [kindRow, kindList, propBox] : []), ...(choice ? [choiceRow] : []), ...(flags.length ? [flagRow] : []), foot], {
     beside,
     escape: () => {
       if (picker.hidden) return false;
@@ -2661,6 +2821,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     onClose: (why) => onDone(why === "escape" || why === "replaced" || !values().name ? null : values()),
   });
   pop.classList.add("dboxcard");
+  if (kinds) drawKind();
   update();
   requestAnimationFrame(() => {
     nameIn.focus();
@@ -2685,10 +2846,15 @@ function previewBox(box, val, empty = "") {
   const head = box.querySelector(".nhead"), name = box.querySelector(".name");
   if (head) {
     head.querySelector(":scope > .icon")?.remove();
-    const ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name}, "", null);
+    const ic = iconEl(val.icon ? {icon: val.icon} : {name: val.name, kind: val.kind}, "", null);
     head.prepend(ic || el("span", "icon"));
   }
   if (name) name.textContent = val.name || empty;
+  if ("kind" in val) {
+    box.querySelector(":scope > .kindline")?.remove();
+    const words = val.kind ? kindWords(val.kind, val.props, val.name) : "";
+    if (words) (head || name)?.after(el("div", "kindline", words));
+  }
   if (val.flags) {
     // A decision box's kind decides whether it is an end; a state box's switch does.
     const shape = val.flags.shape, end = shape !== undefined ? shape === "end" || (!shape && box.classList.contains("g-out")) : !!val.flags.end;
@@ -3029,6 +3195,8 @@ function renderMap(real) {
   const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : "") + (many ? " dense" : ""));
   for (const z of tops) map.append(zoneEl(z, 0, many));
   if (v.k8s) k8sDetails(map, v.k8s);
+  const profRow = profileMarks(map, v);
+  if (profRow) scroll.append(profRow);
   scroll.append(map);
   viaChips(map, v.links, marks);
   drawnNodes = null;
@@ -3649,7 +3817,8 @@ function renderMap(real) {
       const r = {from: l.from, to: l.to, d: route.d, dx: base.left - mr.left, dy: base.top - mr.top};
       routes.push(r);
       const lm = marks.links[`${l.from}>${l.to}`]?.mark;
-      const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}${lm ? " dr-" + lm : ""}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
+      const lk = PROF.lineKindOf(l.kind);
+      const [line, head] = linkPaths(svg, route.d, route.headD, `l-${l.state || "ok"}${lk ? " lk-" + lk.def.style : ""}${lm ? " dr-" + lm : ""}`, inStep && !(inStep.has(l.from) && inStep.has(l.to)), [l.from, l.to]);
       drawn.push({link: l, from: l.from, to: l.to, line, head, route: r, at: {left: a.left - mr.left, top: a.top - mr.top}});
       if (isSketch && l.state !== "uses") {
         const hit = document.createElementNS(svg.namespaceURI, "path");
@@ -3709,11 +3878,12 @@ function renderMap(real) {
     const list = ops(), added = addOp("node", id);
     let next;
     if (added) {
-      const {what: _w, icon: _i, ...base} = added;
-      next = list.map((o) => (o === added ? {...base, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {})} : o));
+      const {what: _w, icon: _i, kind: _k, props: _p, ...base} = added;
+      next = list.map((o) => (o === added ? {...base, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...kindFields(val)} : o));
     } else {
       const orig = plan.nodes[id] || {}, ed = list.find((o) => o.op === "editNode" && o.node === id);
-      const fields = Object.fromEntries(["name", "what", "icon"].filter((k) => (val[k] || "") !== (orig[k] ?? "")).map((k) => [k, val[k] || ""]));
+      const fields = Object.fromEntries(["name", "what", "icon", "kind"].filter((k) => (val[k] || "") !== (orig[k] ?? "")).map((k) => [k, val[k] || ""]));
+      if (JSON.stringify(val.props || {}) !== JSON.stringify(orig.props || {})) fields.props = val.props || {};
       if (fields.name === "") delete fields.name;
       const op = Object.keys(fields).length ? {id: ed?.id ?? nextId(list), op: "editNode", node: id, ...fields} : null;
       next = ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list;
@@ -3724,6 +3894,7 @@ function renderMap(real) {
   const editBox = (id, e) => {
     const n = drafted.plan.nodes[id] || {};
     boxCard(e.getBoundingClientRect(), {name: n.name, what: n.what, icon: n.icon}, {
+      kinds: {zone: false, value: n.kind, props: n.props},
       title: t("boxEditTitle"),
       preview: (val) => showBox(e, val),
       // Dropped: the box is drawn again as it was.
@@ -3755,14 +3926,16 @@ function renderMap(real) {
     const fix = (o) => (renaming ? Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val.name : w])) : o);
     let next;
     if (added) {
-      const {icon: _i, note: _n, ...base} = added;
-      next = list.map((o) => (o === added ? {...base, zone: val.name, ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {})} : fix(o)));
+      const {icon: _i, note: _n, kind: _k, props: _p, ...base} = added;
+      next = list.map((o) => (o === added ? {...base, zone: val.name, ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {}), ...kindFields(val)} : fix(o)));
     } else {
       const ed = list.find((o) => o.op === "editZone" && (o.label ?? o.zone) === x.id);
       const from = ed ? ed.zone : x.id, orig = realZone(from) || {}, fields = {};
       if (val.name !== from) fields.label = val.name;
       if ((val.icon || "") !== (orig.icon ?? "")) fields.icon = val.icon || "";
       if ((val.what || "") !== (orig.note ?? "")) fields.note = val.what || "";
+      if ((val.kind || "") !== (orig.kind ?? "")) fields.kind = val.kind || "";
+      if (JSON.stringify(val.props || {}) !== JSON.stringify(orig.props || {})) fields.props = val.props || {};
       const op = Object.keys(fields).length ? {id: ed?.id ?? nextId(list), op: "editZone", zone: from, ...fields} : null;
       const rest = list.map((o) => (o === ed ? o : fix(o)));
       next = ed ? (op ? rest.map((o) => (o === ed ? op : o)) : rest.filter((o) => o !== ed)) : op ? [...rest, op] : rest;
@@ -3772,7 +3945,9 @@ function renderMap(real) {
   };
   // A zone's title drawn with these values (name, note, icon), as the card types them.
   const showZone = (z, val, empty = "") => {
-    const head = z.querySelector(":scope > .zhead"), ic = iconEl({name: val.name, icon: val.icon || undefined}, "", null);
+    const head = z.querySelector(":scope > .zhead"), ic = iconEl({name: val.name, icon: val.icon || undefined, kind: val.kind}, "", null);
+    head.querySelector(":scope > .zkind")?.remove();
+    if (val.kind) head.append(el("span", "zkind", kindWords(val.kind, val.props)));
     head.querySelector(":scope > .icon")?.remove();
     if (ic) head.prepend(ic);
     const name = [...head.children].find((c) => c.tagName === "SPAN" && !c.classList.contains("ptag") && !c.classList.contains("icon"));
@@ -3796,6 +3971,7 @@ function renderMap(real) {
     })(drafted.view.zones);
     boxCard(e.getBoundingClientRect(), {name: x.id, what: z?.note ?? "", icon: z?.icon ?? ""}, {
       zone: true,
+      kinds: {zone: true, value: z?.kind, props: z?.props},
       title: t("zoneEditTitle"),
       preview: (val) => showZone(e, val),
       onDone: (val) => (val ? zoneTo(x, val) : keepFocus(() => renderView())),
@@ -3853,13 +4029,14 @@ function renderMap(real) {
       const gone = list.find((o) => o.op === "removeLink" && o.from === from && o.to === to);
       return setOps(gone ? list.filter((o) => o !== gone) : [...list.filter((o) => !(o.op === "editLink" && o.from === from && o.to === to)), {id: nextId(list), op: "removeLink", from, to}]);
     }
-    if (added) return setOps(list.map((o) => (o === added ? Object.fromEntries(Object.entries({...o, ...change}).filter(([k, w]) => !((k === "label" && !w) || (k === "state" && (!w || w === "ok"))))) : o)));
+    if (added) return setOps(list.map((o) => (o === added ? Object.fromEntries(Object.entries({...o, ...change}).filter(([k, w]) => !((k === "label" && !w) || (k === "kind" && !w) || (k === "state" && (!w || w === "ok"))))) : o)));
     const orig = (lv.links || []).find((l) => l?.from === from && l?.to === to) || {};
     const ed = list.find((o) => o.op === "editLink" && o.from === from && o.to === to);
     const merged = {...(ed || {id: nextId(list), op: "editLink", from, to}), ...change};
     if (merged.label != null && merged.label === (orig.label ?? "")) delete merged.label;
     if (merged.state != null && merged.state === (orig.state ?? "ok")) delete merged.state;
-    const keep = merged.label != null || merged.state != null;
+    if (merged.kind != null && merged.kind === (orig.kind ?? "")) delete merged.kind;
+    const keep = merged.label != null || merged.state != null || merged.kind != null;
     setOps(ed ? (keep ? list.map((o) => (o === ed ? merged : o)) : list.filter((o) => o !== ed)) : keep ? [...list, merged] : list);
   };
   // A line's label and kind (each kind drawn as it looks, its name under the samples), or take it out.
@@ -3868,7 +4045,7 @@ function renderMap(real) {
   const editLink = (from, to, x, y, fresh = false) => {
     const l = fresh ? {from, to} : (v.links || []).find((k) => k?.from === from && k?.to === to);
     if (!l) return;
-    let state = l.state || "ok";
+    let state = l.state || "ok", lineKind = l.kind || "";
     const label = el("input", "dsearch");
     label.placeholder = t("linkLabel");
     label.value = l.label || "";
@@ -3877,13 +4054,33 @@ function renderMap(real) {
       const lab = cleanText(label.value);
       if (fresh) {
         const list = ops();
-        return setOps([...list, {id: nextId(list), op: "addLink", from, to, ...(lab ? {label: lab} : {}), ...(state !== "ok" ? {state} : {})}]);
+        return setOps([...list, {id: nextId(list), op: "addLink", from, to, ...(lab ? {label: lab} : {}), ...(state !== "ok" ? {state} : {}), ...(lineKind ? {kind: lineKind} : {})}]);
       }
       const change = {};
       if (lab !== (l.label || "")) change.label = lab;
       if (state !== (l.state || "ok")) change.state = state;
+      if (lineKind !== (l.kind || "")) change.kind = lineKind;
       if (Object.keys(change).length) linkOps(from, to, change);
     };
+    // What the line is on a platform its boxes belong to (an event, VPC peering…): offered when one has a kind.
+    const profs = new Set([from, to].map((n) => PROF.kindOf(drafted.plan.nodes[n]?.kind)?.profile).filter(Boolean));
+    if (PROF.lineKindOf(lineKind)) profs.add(PROF.lineKindOf(lineKind).profile);
+    const kindChoices = [...profs].flatMap((p) => Object.entries(PROF.PROFILES[p].lines || {}).map(([k, d]) => [`${p}:${k}`, d]));
+    const kindRow = el("div", "dlinekinds");
+    if (kindChoices.length) {
+      kindRow.append(el("span", "dsidelabel", t("kindLabel")));
+      for (const [k, d] of [["", {name: t("lineTraffic"), style: ""}], ...kindChoices]) {
+        const b = el("button", "dchoose", d.name);
+        b.type = "button";
+        b.setAttribute("aria-pressed", lineKind === k);
+        b.onclick = () => {
+          lineKind = k;
+          kindRow.querySelectorAll(".dchoose").forEach((x) => x.setAttribute("aria-pressed", x === b));
+          label.focus();
+        };
+        kindRow.append(b);
+      }
+    }
     label.onkeydown = (e) => {
       e.stopPropagation();
       if (e.key === "Enter") pop.close("done");
@@ -3920,7 +4117,7 @@ function renderMap(real) {
       head.textContent = `${drafted.plan.nodes[from]?.name ?? from} → ${drafted.plan.nodes[to]?.name ?? to}`;
       label.focus();
     };
-    const parts = [head, label, chips, name, turn];
+    const parts = [head, label, chips, name, ...(kindChoices.length ? [kindRow] : []), turn];
     if (!fresh) {
       const removed = marks.links[`${from}>${to}`]?.mark === "remove";
       const del = el("button", "dlinkx");
@@ -3940,7 +4137,7 @@ function renderMap(real) {
         if (why !== "reverse") return commit();
         // Label or kind typed before turning it round: kept, then the line turns.
         const lab = cleanText(label.value), state0 = l.state || "ok";
-        if (lab !== (l.label || "") || state !== state0) commit();
+        if (lab !== (l.label || "") || state !== state0 || lineKind !== (l.kind || "")) commit();
         reverseLine(from, to);
       },
     });
@@ -4023,6 +4220,7 @@ function renderMap(real) {
       // The box takes room: the zones around move, and the lines with them.
       draw();
       boxCard(tmp.getBoundingClientRect(), {}, {
+        kinds: {zone: false},
         title: t("boxNewTitle", zoneWords(z)),
         // On a Kubernetes picture, what a zone holds: workloads and configs in a namespace, a deploy tool outside, a target.
         nameHint: z.dataset.role && STRINGS.en["k8sBoxHint_" + z.dataset.role] ? t("k8sBoxHint_" + z.dataset.role) : undefined,
@@ -4036,7 +4234,7 @@ function renderMap(real) {
           }
           const list = ops(), id = newNode(), spot = fixed ? relRect(tmp, z) : null;
           tmp.remove();
-          setOps([...list, {id: nextId(list), op: "addNode", node: id, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), zone: z.dataset.zone, at}], undefined, spot ? {...layout(), [id]: {x: spot.x, y: spot.y, in: z.dataset.zone}} : undefined);
+          setOps([...list, {id: nextId(list), op: "addNode", node: id, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...kindFields(val), zone: z.dataset.zone, at}], undefined, spot ? {...layout(), [id]: {x: spot.x, y: spot.y, in: z.dataset.zone}} : undefined);
         },
       });
       return;
@@ -4052,6 +4250,7 @@ function renderMap(real) {
       draw();
       boxCard(tmp.getBoundingClientRect(), {}, {
         zone: true,
+        kinds: {zone: true},
         title: t("zoneNewTitle", z ? zoneWords(z) : t("topLevel")),
         nameHint: z?.dataset.role === "cluster" ? t("k8sZoneHint") : undefined,
         preview: (val) => showZone(tmp, val, t("zoneNew")),
@@ -4066,7 +4265,7 @@ function renderMap(real) {
             return showProblem(t("zoneTaken", val));
           }
           const list = ops();
-          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at, ...(got.icon ? {icon: got.icon} : {}), ...(got.what ? {note: got.what} : {})}], undefined, spot ? {...layout(), ["z:" + val]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
+          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at, ...(got.icon ? {icon: got.icon} : {}), ...(got.what ? {note: got.what} : {}), ...kindFields(got)}], undefined, spot ? {...layout(), ["z:" + val]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
         },
       });
       return;

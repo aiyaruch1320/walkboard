@@ -25,6 +25,7 @@
 - **A data model holds still while you sketch.** A new table stays where you clicked (in a group's frame: in that group), nudged only as far as it takes not to lie on another table, and no change to the draft moves what is already on the picture: the layout is kept from the first change on, one undo with it. A table that grows as you add columns moves what it would reach down. A table with no foreign keys no longer pulls its group to the first column, and one the agent just added starts on free ground.
 - **In and out of a data model's groups.** While sketching, a table let go outside its group's frame leaves the group (`moveTable` with `to: ""`), and the frame stays with the tables left in it; back over the frame, the change drops out. A table let go over a group lands beside the others instead of on one of them, where the frame takes in no table of another group. A table alone in its frame still takes the frame along.
 - A name already in use on a data model (a table, a column of that table, a group; capitals do not count) is said so, instead of the change quietly doing nothing; a new column's field comes back with what was typed.
+- Dragging a foreign key on a data model scrolls the picture when held near an edge of the window, so the column it points at can be a screen away.
 
 ## 0.8.0
 

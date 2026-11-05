@@ -4936,15 +4936,16 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
     const from = e.target.closest?.("li[data-col]");
     if (!from) return;
     e.preventDefault();
-    const m = grid.getBoundingClientRect(), a = from.getBoundingClientRect();
-    const ax = a.right - m.left, ay = a.top + a.height / 2 - m.top;
+    const m0 = grid.getBoundingClientRect(), a = from.getBoundingClientRect();
+    const ax = a.right - m0.left, ay = a.top + a.height / 2 - m0.top;
     const line = document.createElementNS(svg.namespaceURI, "path");
     line.setAttribute("class", "dr-add dtmp");
     svg.append(line);
-    let over = null;
-    const move = (ev) => {
-      line.setAttribute("d", `M${ax} ${ay} L${ev.clientX - m.left} ${ev.clientY - m.top}`);
-      const t2 = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("li[data-col]");
+    let over = null, at = {x: e.clientX, y: e.clientY}, frame = 0;
+    const track = () => {
+      const m = grid.getBoundingClientRect();
+      line.setAttribute("d", `M${ax} ${ay} L${at.x - m.left} ${at.y - m.top}`);
+      const t2 = document.elementFromPoint(at.x, at.y)?.closest?.("li[data-col]");
       const next = t2 && t2 !== from && grid.contains(t2) ? t2 : null;
       if (next !== over) {
         over?.classList.remove("dtarget");
@@ -4952,7 +4953,29 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, placeTable, p
         over = next;
       }
     };
+    const move = (ev) => {
+      at = {x: ev.clientX, y: ev.clientY};
+      track();
+    };
+    // The column it points at may be a long way off: held near an edge of what can be seen, the picture scrolls.
+    const EDGE = 56, speed = (past) => Math.min(24, Math.ceil(past / 3));
+    const scroller = grid.closest(".scroll");
+    const roll = () => {
+      const nav = document.querySelector(".stepnav"), top = Math.max(document.querySelector(".bar")?.offsetHeight || 0, nav ? 44 + nav.offsetHeight : 0);
+      const bottom = document.querySelector(".dtools")?.getBoundingClientRect().top ?? innerHeight;
+      const dy = at.y < top + EDGE ? -speed(top + EDGE - at.y) : at.y > bottom - EDGE ? speed(at.y - bottom + EDGE) : 0;
+      const box = scroller?.getBoundingClientRect();
+      const dx = !box || scroller.scrollWidth <= scroller.clientWidth ? 0 : at.x < box.left + EDGE ? -speed(box.left + EDGE - at.x) : at.x > box.right - EDGE ? speed(at.x - box.right + EDGE) : 0;
+      if (dy || dx) {
+        if (dy) window.scrollBy(0, dy);
+        if (dx) scroller.scrollLeft += dx;
+        track();
+      }
+      frame = requestAnimationFrame(roll);
+    };
+    frame = requestAnimationFrame(roll);
     const up = () => {
+      cancelAnimationFrame(frame);
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       line.remove();

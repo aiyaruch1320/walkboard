@@ -4503,6 +4503,8 @@ function renderDataModel(real) {
     if (free) return;
     const at = cards().map((c) => [c, v.layout?.[c.dataset.id] || {x: c.offsetLeft, y: c.offsetTop}]);
     free = true;
+    // The tables are about to leave the flow: the picture keeps its height until fit, or the page jumps to the top.
+    if (grid.isConnected) grid.style.height = grid.offsetHeight + "px";
     grid.classList.add("free");
     for (const [c, q] of at) {
       c.style.left = q.x + "px";

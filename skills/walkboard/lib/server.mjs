@@ -210,6 +210,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("schema.mjs"));
     } else if (route === "GET /icons.mjs") {
       res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("icons.mjs"));
+    } else if (route === "GET /profiles.mjs") {
+      res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("profiles.mjs"));
     } else if (route === "GET /draft.mjs") {
       res.writeHead(200, {"content-type": "text/javascript; charset=utf-8", "cache-control": "no-store"}).end(moduleText("draft.mjs"));
     } else if (route === "GET /glossary.json") {

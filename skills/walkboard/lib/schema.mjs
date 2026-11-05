@@ -57,6 +57,11 @@ export function highlightOf(h) {
 
 const has = (o, k) => o != null && typeof o === "object" && Object.hasOwn(o, k);
 const list = (x) => (Array.isArray(x) ? x : []);
+// What boxes, zones and lines of a map mean on a platform (lib/profiles.mjs). Node loads it here; the page, which loads
+// this file without that one beside it, hands it over with useProfiles.
+let kindProblems = null, lineKindOf = null;
+export const useProfiles = (m) => ({kindProblems, lineKindOf} = m);
+if (typeof window === "undefined") useProfiles(await import("./profiles.mjs"));
 const isObj = (x) => x != null && typeof x === "object" && !Array.isArray(x);
 
 // Fields each picture iterates: a string or object where a list belongs would stop the page drawing, so check refuses it.
@@ -145,10 +150,19 @@ export const KINDS = {
   // Zones inside zones (account › VPC › subnet), boxes inside them, links across.
   map: {
     refs: (v) => [...zoneNodes(list(v.zones)), ...list(v.links).flatMap((l) => [l?.from, l?.to])],
-    check: (v) => [
-      ...(!list(v.zones).length ? ["map needs zones: [{\"label\", \"zones\", \"nodes\"}]"] : []),
-      ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked, standby)`),
-    ],
+    check: (v, p) => {
+      const zones = (zs) => list(zs).filter(isObj).flatMap((z) => [z, ...zones(z.zones)]);
+      return [
+        ...(!list(v.zones).length ? ["map needs zones: [{\"label\", \"zones\", \"nodes\"}]"] : []),
+        ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked, standby)`),
+        // Kinds from a profile: zones and boxes ("aws:subnet", "aws:rds") with their props, and kinds of line.
+        ...(kindProblems ? [
+          ...zones(v.zones).flatMap((z) => kindProblems(`zone "${z.label}"`, z.kind, z.props, true)),
+          ...[...new Set(zoneNodes(list(v.zones)))].flatMap((id) => kindProblems(`node "${id}"`, p?.nodes?.[id]?.kind, p?.nodes?.[id]?.props, false)),
+          ...list(v.links).filter((l) => l?.kind != null && !lineKindOf(l.kind)).map((l) => `link ${l.from}→${l.to}: unknown kind "${l.kind}"`),
+        ] : []),
+      ];
+    },
   },
   // One piece of data travelling stop by stop, with what it looks like at each stop.
   journey: {

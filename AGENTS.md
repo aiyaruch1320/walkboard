@@ -14,6 +14,7 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 | `skills/walkboard/lib/source.mjs` | `file:line` lookups confined to declared roots |
 | `skills/walkboard/lib/edit.mjs` | `walkboard set` |
 | `skills/walkboard/lib/icons.mjs` | Box icons and how they are guessed from names (runs in Node and the browser) |
+| `skills/walkboard/lib/profiles.mjs` | Profiles: kinds of box, zone and line on a platform (AWS…), their fields and where each usually sits. A new profile is one more entry; then `node scripts/profiles-doc.mjs` rewrites `references/profiles.md` (npm test checks it) |
 | `skills/walkboard/assets/viewer.html` | The page script; `viewer.css` and `strings.js` (labels) beside it are inlined by the server, so the page is still one response with no network |
 | `skills/walkboard/assets/glossary.json` | Shared glossary, English and Thai |
 | `examples/` | Example plans; `npm test` validates all of them |

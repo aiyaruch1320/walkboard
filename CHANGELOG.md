@@ -35,6 +35,7 @@
 - **Primary keys at a click.** While sketching a data model, the slot before a column's name turns its primary key on and off (a foreign key stays one), and shows **PK** under the pointer. A column the draft added can now lose its type or key by typing it without them.
 - **A data model's lines can be clicked.** A line opens a card, as on a map: which columns it joins, N:1 or 1:1 (`editRelation`), and take it out (`removeRelation` for one in `relations`). The edit and take-out tools work on lines, a line thickens under the pointer, and dragging a column onto another moves its line.
 - A group the draft added and that has no table left leaves the draft on its own, and a table in such a group can move to another group or out of it (before, the move was refused as no longer fitting the plan).
+- **Draft mode is where changes happen.** **Ask the agent to review** is only in draft mode. Outside it a drag only arranges: a box or table let go over another zone or group goes back and says to use draft mode, undo only moves boxes back, and **Reset to the plan** leaves the draft alone. Every picture has the **✎ Draft changes** button in the same place: on before / after it offers to edit either picture and opens it in draft mode, and on a kind of picture with no draft it says so.
 
 ## 0.8.0
 

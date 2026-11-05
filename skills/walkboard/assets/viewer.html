@@ -2231,12 +2231,13 @@ let layoutKeys = null, layoutSavedAt = 0;
 // review: what to send with "ask the agent to review" ({geometry}); only pictures that have it get the button.
 // drafts: this picture's history and reset cover its draft too.
 function layoutTools(v, canMove, apply, review = null, drafts = false) {
-  const hist = (layoutHist[v.id] ||= {back: [], fwd: []});
+  // Draft mode has its own history: outside it, undo only moves boxes back and never touches the draft.
+  const inDraft = () => drafts && sketching === v.id;
+  const hist = (layoutHist[(inDraft() ? "draft:" : "") + v.id] ||= {back: [], fwd: []});
   const row = el("div", "ltools");
   const undo = el("button", "ltool"), redo = el("button", "ltool flip"), reset = el("button", "talklink", "↺ " + t("autoLayout"));
+  // Only draft mode asks the agent: its toolbar and list press this button, which is on no page of its own.
   const ask = el("button", "lreview", t("reviewPic"));
-  ask.title = t("reviewTip");
-  ask.hidden = !review;
   for (const b of [undo, redo]) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"), path = document.createElementNS(svg.namespaceURI, "path");
     svg.setAttribute("viewBox", "0 0 24 24");
@@ -2263,7 +2264,7 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   listChip.append(svgIcon("list"), el("span"));
   listChip.title = t("draftList");
   listChip.onclick = () => openSide({kind: "draft", view: v.id});
-  row.append(undo, redo, reset, ask, pencil, listChip);
+  row.append(undo, redo, reset, pencil, listChip);
   // Dragging and sketching never wake the agent; this does, with where everything is on screen and what was sketched.
   ask.onclick = async () => {
     ask.disabled = true;
@@ -2290,15 +2291,14 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   };
   const snap = () => ({layout: v.layout || null, ops: drafts ? draftOps(v.id) : null});
   const refresh = () => {
-    const any = !!Object.keys(v.layout || {}).length || (drafts && !!draftOps(v.id).length), history = hist.back.length || hist.fwd.length;
+    const placed = !!Object.keys(v.layout || {}).length, any = placed || (drafts && !!draftOps(v.id).length), history = hist.back.length || hist.fwd.length;
     // A picture that takes a draft always offers the pencil; while sketching, the toolbar holds all of this.
     const narrow = !canMove(), n = drafts ? draftOps(v.id).length : 0;
     row.hidden = narrow ? !n || snapshot || printState : !(any || history || drafts);
     // While sketching the toolbar holds these; the row keeps its room, so the picture does not jump up.
     row.style.visibility = !narrow && sketching === v.id ? "hidden" : "";
     for (const b of [undo, redo]) b.hidden = narrow || (drafts && !history);
-    reset.hidden = narrow || !any;
-    ask.hidden = narrow || !review || !any;
+    reset.hidden = narrow || !placed;
     pencil.hidden = narrow || !drafts;
     listChip.hidden = !narrow || !n;
     listChip.lastChild.textContent = String(n);
@@ -2321,7 +2321,8 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     to.push(snap());
     const was = from.pop();
     // Entries from before the draft held only a layout.
-    put(was && "layout" in was ? {...was, ops: was.ops ?? (drafts ? [] : null)} : {layout: was, ops: null});
+    if (!inDraft()) put({layout: was && "layout" in was ? was.layout : was, ops: null});
+    else put(was && "layout" in was ? {...was, ops: was.ops ?? (drafts ? [] : null)} : {layout: was, ops: null});
     refresh();
     apply();
   };
@@ -2330,7 +2331,8 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   reset.onclick = () => {
     hist.back.push(snap());
     hist.fwd.length = 0;
-    put({layout: null, ops: drafts ? [] : null});
+    // Back to where the plan puts things; a draft is not arrangement, and stays.
+    put({layout: null, ops: null});
     refresh();
     apply();
   };
@@ -2674,6 +2676,11 @@ function draftRows(viewId) {
 // The toolbar floats at the bottom of the window while sketching, so it is in reach however far the picture scrolls.
 // picture: where the tool shows as the cursor; toolList: [name, key] for this kind of picture.
 // hints: {tool: what to do with it}, shown over the toolbar while that tool is on.
+// Leaving draft mode: its list goes too, as asking the agent belongs to draft mode.
+function leaveSketch() {
+  if (side?.kind === "draft") closeSide();
+  sketchApi?.exit();
+}
 function sketchBar(lv, tools, picture, toolList, hints = {}) {
   document.body.classList.add("sketching");
   const bar = el("div", "dtools");
@@ -2709,6 +2716,7 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
   count.title = t("draftList");
   count.onclick = () => (side?.kind === "draft" ? closeSide() : openSide({kind: "draft", view: lv.id}));
   const send = el("button", "primary dsend", t("reviewPic"));
+  send.title = t("reviewTip");
   // Sent: says so until the next change, so it is not sent twice by accident.
   send.onclick = async () => {
     if (await tools.ask()) {
@@ -2717,7 +2725,7 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
     }
   };
   const exit = btn("close", `${t("exitSketch")} (Esc)`, "dexit");
-  exit.onclick = () => sketchApi.exit();
+  exit.onclick = () => leaveSketch();
   bar.append(count, send, exit);
   const tip = el("div", "dtip");
   tip.setAttribute("role", "status");
@@ -2797,7 +2805,7 @@ addEventListener("keydown", (e) => {
     if (document.querySelector(".dpop, .dedit")) return;
     if (sketchTool !== "select" || sketchSel) sketchApi.tool("select", true);
     else if (side) closeSide();
-    else sketchApi.exit();
+    else leaveSketch();
   } else return;
   e.preventDefault();
   e.stopPropagation();
@@ -3312,10 +3320,12 @@ function renderMap(real) {
       frame ||= requestAnimationFrame(() => {
         frame = 0;
         const drop = dropZone(it, px, py);
-        zoneEls().forEach((z) => z.classList.toggle("droptarget", z === drop?.to));
-        map.classList.toggle("droptop", drop?.to === null);
-        it.classList.toggle("dnodrop", !!drop?.nowhere);
-        document.body.classList.toggle("dnoplace", !!drop?.nowhere);
+        // Outside draft mode a drag only arranges: another zone is a change of plan, and draft mode's.
+        const blocked = !!drop?.nowhere || (!!drop && !isSketch);
+        zoneEls().forEach((z) => z.classList.toggle("droptarget", isSketch && z === drop?.to));
+        map.classList.toggle("droptop", isSketch && drop?.to === null);
+        it.classList.toggle("dnodrop", blocked);
+        document.body.classList.toggle("dnoplace", blocked);
         draw(moving);
       });
     };
@@ -3354,6 +3364,11 @@ function renderMap(real) {
         place(it, from);
         draw();
         return showProblem(t("boxNeedsZone"));
+      }
+      if (drop && !isSketch) {
+        place(it, from);
+        draw();
+        return showProblem(t("moveNeedsDraft"));
       }
       if (drop) {
         // Laid out by the page, it takes its place in the new zone (a zone keeps its size); placed by hand, it stays
@@ -4628,12 +4643,13 @@ function renderDataModel(real) {
           lifted.forEach((c) => (c.style.zIndex = 9999));
           grid.classList.add("dragging");
         }
-        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id);
+        const over = card && frameAt(ev.clientX, ev.clientY, card.dataset.id), to = isSketch ? over : null;
         leaving = !to && outside(ev) ? card : null;
         shift(start, ev.clientX - sx, ev.clientY - sy);
         grid.querySelectorAll(".erframe").forEach((f) => f.classList.toggle("droptarget", f === to));
         // While sketching a table cannot go on another one, except into a group, where it finds its own place.
-        const blocked = isSketch && !to && onAnother();
+        // Outside draft mode a drag only arranges: another group is a change of plan, and draft mode's.
+        const blocked = isSketch ? !to && onAnother() : !!over;
         lifted.forEach((c) => c.classList.toggle("dnodrop", blocked));
         document.body.classList.toggle("dnoplace", blocked);
       };
@@ -4653,12 +4669,13 @@ function renderDataModel(real) {
         setTimeout(() => (dragged = false));
         // One table let go over another group, or out of its own: a draft change. It stays where it was dropped, or
         // as near as it can without lying on another table.
-        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id), left = !to && outside(ev), blocked = isSketch && !to && onAnother();
+        const over = card && frameAt(ev.clientX, ev.clientY, card.dataset.id), to = isSketch ? over : null, left = !to && outside(ev);
+        const blocked = isSketch ? !to && onAnother() : !!over;
         leaving = null;
         // Let go where it cannot go: back to where it was, as a box on a map.
         if (blocked) {
           shift(start, 0, 0);
-          return showProblem(t("tableOnTable"));
+          return showProblem(t(isSketch ? "tableOnTable" : "moveNeedsDraft"));
         }
         if (to || left) {
           const before = tools.snap(), home = to ? frameDefs.findIndex((g) => g.label === to.dataset.group) : null;
@@ -5922,6 +5939,37 @@ function scrollHints() {
 }
 
 // scripts/perf.mjs sets window.__wbRender to an array: each time a picture is built again adds how long it took (ms).
+// A picture that takes no draft has the pencil in the same place all the same: it says why, and where to go instead.
+function pencilAnyway(v) {
+  if (snapshot || !served || printState || innerWidth < 820 || !matchMedia("(pointer: fine)").matches) return null;
+  const row = el("div", "ltools"), pencil = el("button", "lsketch" + (v.kind === "diff" ? "" : " lsketchoff"));
+  pencil.append(svgIcon("pencil"), t("sketch"));
+  pencil.title = t(v.kind === "diff" ? "sketchDiffTip" : "sketchNoTip");
+  pencil.onclick = () => {
+    const parts = [el("div", "dphead", t(v.kind === "diff" ? "sketchDiffHead" : "sketchNoHead"))];
+    if (v.kind !== "diff") parts.push(el("div", "dhint", t("sketchNoHint")));
+    else for (const [word, id] of [["editBefore", v.before], ["editAfter", v.after]]) {
+      const to = plan.views.find((x) => x.id === id);
+      if (!to) continue;
+      const go = el("button", "dgo", `${t(word)}: ${to.title || to.id}`);
+      go.disabled = !draftable(to);
+      if (go.disabled) go.title = t("sketchNoHead");
+      go.onclick = () => {
+        pop.close("done");
+        viewId = chosenView = to.id;
+        sketching = to.id;
+        sketchTool = "select";
+        sketchSel = null;
+        renderView();
+        document.querySelector("#view .sketch")?.scrollIntoView({block: "nearest"});
+      };
+      parts.push(go);
+    }
+    const pop = popover(0, 0, parts, {beside: pencil.getBoundingClientRect()});
+  };
+  row.append(pencil);
+  return row;
+}
 function renderView() {
   const t0 = performance.now();
   // The picture is built again after every change: the page stays where it was. The new picture may only get its
@@ -5989,7 +6037,8 @@ function renderViewNow() {
   } catch (e) {
     pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
   }
-  document.getElementById("view").replaceChildren(pic);
+  const noDraft = !draftable?.(v) && pencilAnyway(v);
+  document.getElementById("view").replaceChildren(...(noDraft ? [noDraft] : []), pic);
   tidyGuesses(document.getElementById("view"));
   // A big picture may use the whole window.
   document.body.classList.toggle("pic-wide", !!pic.querySelector?.(".map.dense"));

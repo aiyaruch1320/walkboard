@@ -3316,6 +3316,16 @@ function renderMap(real) {
     const others = e.classList.contains("zone") ? [...zoneEls(), ...map.querySelectorAll("[data-anchor]")] : zoneEls();
     return others.some((z) => z !== e && !z.contains(e) && !e.contains(z) && over(z.getBoundingClientRect()));
   };
+  // A box let go on another box: nothing could be read or pointed at under it.
+  const onBox = (e) => {
+    if (!e.matches("[data-anchor]")) return false;
+    const r = e.getBoundingClientRect();
+    return [...map.querySelectorAll("[data-anchor]")].some((o) => {
+      if (o === e || o.classList.contains("ghost")) return false;
+      const q = o.getBoundingClientRect();
+      return Math.min(r.right, q.right) - Math.max(r.left, q.left) > 6 && Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top) > 6;
+    });
+  };
   // Its centre outside the zone that holds it (moved there before letting go outside meant something).
   const strays = (e) => {
     const home = e.parentElement.closest(".zone");
@@ -3457,6 +3467,8 @@ function renderMap(real) {
       const zone = k.startsWith("z:") && movers().find((e) => e.classList.contains("zone") && keyOf(e) === k);
       for (const e of zone ? zone.querySelectorAll("[data-anchor]") : boxes.filter((x) => x.dataset.anchor === k)) e.style.zIndex = 3 + i;
     });
+    // What the draft adds or moves is never drawn under a box that was there before.
+    for (const e of boxes) if (e.classList.contains("dr-add") || e.classList.contains("dr-move")) e.style.zIndex = 900;
   };
   const arrange = () => {
     applySizes();
@@ -3703,10 +3715,12 @@ function renderMap(real) {
         renderView();
         return flashMoved(k);
       }
-      // Let go over another zone (but not into it): it slides back to where it was.
-      if (!fixed && covers(it)) {
+      // Let go over another zone (but not into it), or on another box: it slides back to where it was.
+      const onAnother = onBox(it);
+      if ((!fixed && covers(it)) || onAnother) {
         place(it, from);
-        return draw();
+        draw();
+        return onAnother ? showProblem(t("boxOnBox")) : undefined;
       }
       tools.done(lv.layout, movedTo(it, moved));
       // Placed by hand, the zones around grow to hold it.

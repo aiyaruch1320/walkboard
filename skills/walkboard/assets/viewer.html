@@ -3309,6 +3309,7 @@ function renderMap(real) {
         zoneEls().forEach((z) => z.classList.toggle("droptarget", z === drop?.to));
         map.classList.toggle("droptop", drop?.to === null);
         it.classList.toggle("dnodrop", !!drop?.nowhere);
+        document.body.classList.toggle("dnoplace", !!drop?.nowhere);
         draw(moving);
       });
     };
@@ -3324,6 +3325,7 @@ function renderMap(real) {
       zoneEls().forEach((z) => z.classList.remove("droptarget"));
       map.classList.remove("droptop");
       it.classList.remove("dnodrop");
+      document.body.classList.remove("dnoplace");
     };
     // Escape while dragging puts it back and changes nothing (it does not leave draft mode).
     const esc = (ev) => {
@@ -4622,19 +4624,34 @@ function renderDataModel(real) {
         leaving = !to && outside(ev) ? card : null;
         shift(start, ev.clientX - sx, ev.clientY - sy);
         grid.querySelectorAll(".erframe").forEach((f) => f.classList.toggle("droptarget", f === to));
+        // While sketching a table cannot go on another one, except into a group, where it finds its own place.
+        const blocked = isSketch && !to && onAnother();
+        lifted.forEach((c) => c.classList.toggle("dnodrop", blocked));
+        document.body.classList.toggle("dnoplace", blocked);
+      };
+      const onAnother = () => {
+        const rest = cards().filter((c) => !lifted.includes(c)).map(boxOf);
+        return lifted.some((c) => rest.some((b) => hits(boxOf(c), b)));
       };
       const up = (ev) => {
         for (const [n, fn] of [["pointermove", move], ["pointerup", up], ["pointercancel", up]]) handle.removeEventListener(n, fn);
         grid.classList.remove("dragging");
         grid.querySelectorAll(".erframe.droptarget").forEach((f) => f.classList.remove("droptarget"));
+        lifted.forEach((c) => c.classList.remove("dnodrop"));
+        document.body.classList.remove("dnoplace");
         if (!start) return;
         // The click that ends a drag does not open the table.
         dragged = true;
         setTimeout(() => (dragged = false));
         // One table let go over another group, or out of its own: a draft change. It stays where it was dropped, or
         // as near as it can without lying on another table.
-        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id), left = !to && outside(ev);
+        const to = card && frameAt(ev.clientX, ev.clientY, card.dataset.id), left = !to && outside(ev), blocked = isSketch && !to && onAnother();
         leaving = null;
+        // Let go where it cannot go: back to where it was, as a box on a map.
+        if (blocked) {
+          shift(start, 0, 0);
+          return showProblem(t("tableOnTable"));
+        }
         if (to || left) {
           const before = tools.snap(), home = to ? frameDefs.findIndex((g) => g.label === to.dataset.group) : null;
           const spot = fitTable(boxOf(card), home, card.dataset.id);
@@ -5629,14 +5646,18 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
       boxDragging = true;
       it.classList.add("lifted");
       it.style.transform = `translate(${ev.clientX - sx}px, ${ev.clientY - sy}px)`;
-      laneEls().forEach((l) => l.classList.toggle("droptarget", l === laneAt(ev.clientX, ev.clientY) && (b || l !== it)));
+      const on = laneAt(ev.clientX, ev.clientY);
+      laneEls().forEach((l) => l.classList.toggle("droptarget", l === on && (b || l !== it)));
+      it.classList.toggle("dnodrop", !on);
+      document.body.classList.toggle("dnoplace", !on);
     };
     const up = (ev) => {
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       setTimeout(() => (boxDragging = false));
       it.style.transform = "";
-      it.classList.remove("lifted");
+      it.classList.remove("lifted", "dnodrop");
+      document.body.classList.remove("dnoplace");
       laneEls().forEach((l) => l.classList.remove("droptarget"));
       if (!moved) return;
       const lane = laneAt(ev.clientX, ev.clientY);
@@ -5667,8 +5688,12 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
   wrap.addEventListener("pointermove", (e) => {
     const on = sketchTool === "box" && !document.querySelector(".dboxcard") ? laneAt(e.clientX, e.clientY) : null;
     laneEls().forEach((l) => l.classList.toggle("dhover", l === on));
+    wrap.classList.toggle("dnoplace", sketchTool === "box" && !on && !document.querySelector(".dboxcard"));
   });
-  wrap.addEventListener("pointerleave", () => laneEls().forEach((l) => l.classList.remove("dhover")));
+  wrap.addEventListener("pointerleave", () => {
+    laneEls().forEach((l) => l.classList.remove("dhover"));
+    wrap.classList.remove("dnoplace");
+  });
   const {refresh} = sketchBar(real, tools, wrap, FLOW_TOOLS, hintsFor("flow", FLOW_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));
   sketchApi = kit.api({toolList: FLOW_TOOLS, refresh, saved: refresh});

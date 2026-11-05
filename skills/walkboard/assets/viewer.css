@@ -341,7 +341,8 @@ button.danger{background:var(--warn-bd);color:#fff;border-color:var(--warn-bd)}
 /* Where the box or zone tool would put it; nowhere: the cursor says so. */
 .map .zone.dhover{outline:2px dashed var(--you-bd);outline-offset:2px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
 .map.sketch.dhover{outline-style:dashed;background:color-mix(in srgb,var(--you-bg) 25%,transparent)}
-.map.sketch.dnoplace,.map.sketch.dnoplace *{cursor:not-allowed!important}
+/* Where nothing can go, the cursor says so: over the picture with a tool, and anywhere while something is being dragged. */
+.sketch.dnoplace,.sketch.dnoplace *,body.dnoplace,body.dnoplace *{cursor:not-allowed!important}
 /* What the tool does, over the toolbar. */
 .dtip{position:fixed;left:12px;right:12px;margin:0 auto;width:max-content;max-width:calc(100vw - 24px);bottom:70px;z-index:60;padding:5px 14px;border-radius:999px;border:1px solid var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.12);pointer-events:none}
 .dtip[hidden]{display:none}
@@ -508,7 +509,7 @@ body.pic-wide main{max-width:min(1560px,100%)}
 .lmode button[aria-pressed="true"]{background:var(--you-bg);color:var(--you-tx);font-weight:600}
 @media print{.zgrip,.lmode{display:none!important}}
 .map.droptop{outline:2px dashed var(--you-bd);outline-offset:6px;border-radius:12px}
-.map [data-anchor].dnodrop{outline:2px dashed var(--warn-bd);outline-offset:3px;opacity:.75}
+.map [data-anchor].dnodrop,.lane .dnodrop,.lane.dnodrop,.ertable.dnodrop{outline:2px dashed var(--warn-bd)!important;outline-offset:3px;opacity:.75}
 .map .dr-add{outline:2px dashed var(--you-bd);outline-offset:3px}
 .map .dr-move{outline:2px dashed var(--copy-tx);outline-offset:3px}
 .map .dr-change{outline:2px dashed #14a3b8;outline-offset:3px}
@@ -546,8 +547,10 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .er li.dr-change .ptag{background:#14a3b8}.er li.dr-remove .ptag{background:var(--warn-bd)}
 .er.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px;min-width:100%}
 .er.sketch:not(.free){padding-bottom:160px}
-.er.sketch[data-tool="table"]{cursor:crosshair}
-.er.sketch[data-tool="column"] .ertable,.er.sketch[data-tool="group"] .ertable{cursor:copy}
+.er.sketch[data-tool="table"],.er.sketch[data-tool="table"] *{cursor:crosshair}
+.er.sketch[data-tool="table"] .ertable,.er.sketch[data-tool="table"] .ertable *{cursor:not-allowed}
+.er.sketch[data-tool="column"],.er.sketch[data-tool="column"] *,.er.sketch[data-tool="group"],.er.sketch[data-tool="group"] *{cursor:not-allowed}
+.er.sketch[data-tool="column"] .ertable,.er.sketch[data-tool="column"] .ertable *,.er.sketch[data-tool="group"] .ertable,.er.sketch[data-tool="group"] .ertable *{cursor:copy}
 .er.sketch[data-tool="connect"] li[data-col]{cursor:alias}
 .er.sketch[data-tool="rename"] .ertable{cursor:text}
 .er.sketch[data-tool="remove"] .ertable,.er.sketch[data-tool="remove"] .erframe-label{cursor:pointer}
@@ -578,7 +581,8 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 /* Where the box or table tool would put it. */
 .lane.dhover{background:color-mix(in srgb,var(--you-bg) 40%,transparent);border-radius:10px;outline:2px dashed var(--you-bd);outline-offset:2px}
 .er .erframe.dhover{border:2px dashed var(--you-bd);background:color-mix(in srgb,var(--you-bg) 35%,transparent)}
-.sketch[data-tool="box"],.sketch[data-tool="lane"]{cursor:crosshair}
+.sketch[data-tool="box"],.sketch[data-tool="box"] *,.sketch[data-tool="lane"],.sketch[data-tool="lane"] *{cursor:crosshair}
+.graph.sketch[data-tool="box"] [data-anchor],.graph.sketch[data-tool="box"] [data-anchor] *,.k8s.sketch[data-tool="box"] [data-anchor]:not([data-anchor="#namespace"]),.k8s.sketch[data-tool="box"] [data-anchor]:not([data-anchor="#namespace"]) *{cursor:not-allowed}
 .sketch[data-tool="connect"] [data-anchor]{cursor:alias}
 .sketch[data-tool="rename"] [data-anchor],.sketch[data-tool="rename"] .lane-title{cursor:text}
 .sketch[data-tool="remove"] [data-anchor]{cursor:pointer}

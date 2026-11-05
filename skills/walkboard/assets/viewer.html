@@ -1731,6 +1731,9 @@ function readHelp(button, kind) {
     parts.push(via, el("div", "lhsub", t("lh_kinds")));
     for (const st of LINK_STATE_KEYS) parts.push(row(lineSample("l-" + st, st === "blocked"), t("lk_" + st)));
   } else for (const k of READ_LINES[kind] || []) parts.push(el("div", "lhtext", t(k)));
+  // The tags on a box: where the picture starts, and (a state) where it can stop.
+  if (kind === "state" || kind === "decision") parts.push(row(el("span", "g-start", t("gStart")), t(`rh_${kind}_start`)));
+  if (kind === "state") parts.push(row(el("span", "g-endtag", t("gEndTag")), t("rh_state_end")));
   if (!snapshot) {
     parts.push(el("div", "lhsub", t(kind === "lines" ? "lh_draft" : "rh_draft")));
     if (kind !== "lines") for (const m of ["add", "change", "remove", ...(kind === "flow" || kind === "datamodel" ? ["move"] : [])]) {
@@ -2513,8 +2516,31 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
 // A zone uses it too: its note is the short line by its name (zone: true).
 // nameHint, whatHint: the words in its fields, where it is not a box or a zone. iconId: what the icon is also guessed from.
 // plain: only a name, for what has no note or icon (a lane).
-function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false}) {
+function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHint, whatHint, iconId = "", plain = false, flags = []}) {
   let picked = initial.icon || "";
+  // Switches for what a box is on its picture (a state picture: the start, an end), pressed or not.
+  const on = Object.fromEntries(flags.map((f) => [f.key, !!f.on]));
+  const flagRow = el("div", "dflags");
+  for (const f of flags) {
+    const b = el("button", "dflag " + f.key, f.label);
+    b.type = "button";
+    b.title = f.tip;
+    b.setAttribute("aria-pressed", on[f.key]);
+    b.onclick = () => {
+      on[f.key] = !on[f.key];
+      b.setAttribute("aria-pressed", on[f.key]);
+      update();
+    };
+    // Enter keeps the card, as in the fields; Space presses the switch.
+    b.onkeydown = (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        pop.close("done");
+      }
+    };
+    flagRow.append(b);
+  }
   const nameIn = el("input", "dsearch dname");
   nameIn.placeholder = nameHint || t(zone ? "zoneNameHint" : "boxNameHint");
   nameIn.value = initial.name || "";
@@ -2531,7 +2557,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   whatIn.classList.toggle("dnote", zone);
   const picker = el("div", "dpicker");
   picker.hidden = true;
-  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked});
+  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length ? {flags: {...on}} : {})});
   const update = () => {
     const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value}, iconId, null);
     iconBtn.replaceChildren(ic || el("span", "icon dnoicon"));
@@ -2589,7 +2615,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   cancel.onclick = () => pop.close("escape");
   const foot = el("div", "dpfoot");
   foot.append(keep, cancel, el("span", "dhint", t(plain ? "linkHint" : "boxHint")));
-  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), foot], {
+  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), ...(flags.length ? [flagRow] : []), foot], {
     beside,
     escape: () => {
       if (picker.hidden) return false;
@@ -2628,6 +2654,12 @@ function previewBox(box, val, empty = "") {
     head.prepend(ic || el("span", "icon"));
   }
   if (name) name.textContent = val.name || empty;
+  if (val.flags) {
+    box.querySelector(":scope > .g-tags")?.remove();
+    const tags = graphTags(val.flags.start, val.flags.end);
+    if (tags) box.prepend(tags);
+    box.classList.toggle("g-end", !!val.flags.end);
+  }
   let what = box.querySelector(":scope > .what");
   if (!what && val.what) (head || name)?.after((what = el("div", "what")));
   if (what) {
@@ -4308,7 +4340,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
   if (hold?.canMove()) {
     // Drag a box. While sketching it cannot go on another; it goes back, as a table does.
     grid.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0 || (sketch && sketchTool !== "select") || e.target.closest(".dmark, .dedit")) return;
+      if (e.button !== 0 || (sketch && sketchTool !== "select") || e.target.closest(".dedit")) return;
       const it = e.target.closest("[data-anchor]");
       if (!it || it.parentElement !== grid) return;
       const sx = e.clientX, sy = e.clientY;
@@ -4495,6 +4527,14 @@ function graphPicture(real, build) {
   return out;
 }
 
+// A state or decision box's tags: where the picture starts, and an end it can stop at.
+function graphTags(start, end) {
+  if (!start && !end) return null;
+  const row = el("span", "g-tags");
+  if (start) row.append(el("span", "g-start", t("gStart")));
+  if (end) row.append(el("span", "g-endtag", t("gEndTag")));
+  return row;
+}
 function renderState(real) {
   return graphPicture(real, (v, extra) => stateGraph(v, extra));
 }
@@ -4508,7 +4548,8 @@ function stateGraph(v, extra) {
     wrap: true,
     shape: (b, id) => {
       b.classList.add("g-state");
-      if (id === v.start) b.prepend(el("span", "g-start", t("gStart")));
+      const tags = graphTags(id === v.start, ends.has(id));
+      if (tags) b.prepend(tags);
       if (ends.has(id)) b.classList.add("g-end");
     },
   });
@@ -4522,7 +4563,7 @@ function renderDecision(real) {
     starts: v.start ? [v.start] : [],
     shape: (b, id, outs) => {
       b.classList.add(outs.length > 1 ? "g-q" : outs.length ? "g-do" : "g-out");
-      if (id === v.start) b.prepend(el("span", "g-start", t("gStart")));
+      if (id === v.start) b.prepend(graphTags(true, false));
     },
   }));
 }
@@ -5591,7 +5632,12 @@ function sketchKit(real, tools, container) {
       const n = nodeOfDrafted(real, id) || {};
       boxCard(e.getBoundingClientRect(), {name: n.name ?? id, what: n.what, icon: n.icon}, {
         title: t("boxEditTitle"),
-        preview: (val) => previewBox(e, val),
+        flags: kit.flags?.(id) || [],
+        preview: (val) => {
+          previewBox(e, val);
+          // One start: the box that has it now gives it up while this one takes it.
+          for (const tag of container.querySelectorAll(".g-start")) if (!e.contains(tag)) tag.hidden = !!val.flags?.start;
+        },
         onDone: (val) => {
           if (!val) return keepFocus(() => renderView());
           const list = ops(), added = list.find((o) => o.op === "addBox" && o.node === id);
@@ -5606,6 +5652,7 @@ function sketchKit(real, tools, container) {
             const op = Object.keys(fields).length ? {id: ed?.id ?? newOpId(list), op: "editNode", node: id, ...fields} : null;
             next = ed ? (op ? list.map((o) => (o === ed ? op : o)) : list.filter((o) => o !== ed)) : op ? [...list, op] : list;
           }
+          if (val.flags) next = kit.setFlags(next, id, val.flags);
           if (JSON.stringify(next) === JSON.stringify(list)) return keepFocus(() => renderView());
           kit.setOps(next, id);
         },
@@ -5615,6 +5662,7 @@ function sketchKit(real, tools, container) {
     add(beside, fields, {title, preview, done, place}) {
       boxCard(beside, {}, {
         title,
+        flags: kit.flags?.(null) || [],
         preview,
         onDone: (val) => {
           sketchTool = "select";
@@ -5622,7 +5670,8 @@ function sketchKit(real, tools, container) {
           done?.(!!val);
           if (!val) return;
           const list = ops(), node = kit.newNode();
-          kit.setOps([...list, {id: newOpId(list), op: "addBox", node, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...fields}], undefined, spot ? {[node]: spot} : null);
+          const next = [...list, {id: newOpId(list), op: "addBox", node, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...fields}];
+          kit.setOps(val.flags ? kit.setFlags(next, node, val.flags) : next, undefined, spot ? {[node]: spot} : null);
         },
       });
     },
@@ -5793,34 +5842,25 @@ function sketchLinks({real, v, drafted, container, tools}) {
     const b = e.target.closest?.("[data-anchor]");
     return b && b.dataset.anchor !== "#namespace" && container.contains(b) ? b : null;
   };
-  // State and decision: two small marks on a box under the pointer turn it into the start, or an end, as the slot before a column does a key.
-  const toggleStart = (id) => {
-    const list = kit.ops().filter((o) => o.op !== "setStart"), to = v.start === id ? "" : id;
-    kit.setOps(to === (real.start ?? "") ? list : [...list, {id: newOpId(list), op: "setStart", node: to}]);
-  };
-  const toggleEnd = (id) => {
-    const list = kit.ops().filter((o) => !(o.op === "setEnd" && o.node === id)), to = !(v.end || []).includes(id);
-    kit.setOps(to === (real.end || []).includes(id) ? list : [...list, {id: newOpId(list), op: "setEnd", node: id, end: to}]);
-  };
-  if (v.kind === "state" || v.kind === "decision") for (const b of container.querySelectorAll("[data-anchor]")) {
-    const row = el("span", "dmarks");
-    for (const [cls, word, tip, on] of [["start", "gStart", "gStartTip", v.start === b.dataset.anchor], ...(v.kind === "state" ? [["end", "gEnd", "gEndTip", (v.end || []).includes(b.dataset.anchor)]] : [])]) {
-      const m = el("button", `dmark ${cls}${on ? " on" : ""}`, t(word));
-      m.title = t(tip);
-      m.tabIndex = -1;
-      row.append(m);
-    }
-    b.append(row);
+  // State and decision: the box card says whether a box is where the picture starts, or an end it can stop at (state).
+  if (v.kind === "state" || v.kind === "decision") {
+    kit.flags = (id) => [
+      {key: "start", label: t("cardStart"), tip: t(v.kind === "state" ? "gStartTip" : "gStartTipQ"), on: id != null && v.start === id},
+      ...(v.kind === "state" ? [{key: "end", label: t("cardEnd"), tip: t("gEndTip"), on: id != null && (v.end || []).includes(id)}] : []),
+    ];
+    // The changes that make it so, against the plan: one start for the picture, an end per box.
+    kit.setFlags = (list, id, f) => {
+      const start = f.start ? id : v.start === id ? "" : v.start ?? "";
+      let out = list.filter((o) => o.op !== "setStart");
+      if (start !== (real.start ?? "")) out = [...out, {id: newOpId(out), op: "setStart", node: start}];
+      if (v.kind !== "state") return out;
+      out = out.filter((o) => !(o.op === "setEnd" && o.node === id));
+      return !!f.end === (real.end || []).includes(id) ? out : [...out, {id: newOpId(out), op: "setEnd", node: id, end: !!f.end}];
+    };
   }
   container.classList.add("sketch");
   container.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".dedit")) return;
-    const mark = (sketchTool === "select" || sketchTool === "rename") && e.target.closest?.(".dmark");
-    if (mark) {
-      e.preventDefault();
-      const id = mark.closest("[data-anchor]").dataset.anchor;
-      return mark.classList.contains("start") ? toggleStart(id) : toggleEnd(id);
-    }
     const b = target(e), line = !b && e.target.closest?.(".dhit");
     if (line && sketchTool === "remove") return (e.preventDefault(), lineOps(line.dataset.from, line.dataset.to, "remove"));
     if (line && sketchTool === "rename") return (e.preventDefault(), card(line.dataset.from, line.dataset.to, e.clientX, e.clientY));
@@ -5888,7 +5928,7 @@ function sketchLinks({real, v, drafted, container, tools}) {
     const b = target(e);
     kit.select(b ? {kind: "node", id: b.dataset.anchor} : null);
   }, true);
-  container.addEventListener("dblclick", (e) => sketchTool === "select" && !e.target.closest?.(".dmark") && target(e) && kit.rename(target(e).dataset.anchor));
+  container.addEventListener("dblclick", (e) => sketchTool === "select" && target(e) && kit.rename(target(e).dataset.anchor));
   lightLines(container);
   const {refresh} = sketchBar(real, tools, container, LINK_TOOLS, hintsFor(v.kind, LINK_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));

@@ -4604,11 +4604,12 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
     if (kept) {
       const g = document.createElementNS(svg.namespaceURI, "path");
       g.setAttribute("class", "dr-add dtmp");
-      g.setAttribute("d", `M${kept[0]} ${kept[1]} L${sd.x - base.left} ${sd.y - base.top}`);
+      const r = box(sd.reach), mid = r && sd.side ? {left: [r.left - 4, r.top + r.height / 2], right: [r.right + 4, r.top + r.height / 2], top: [r.left + r.width / 2, r.top - 4], bottom: [r.left + r.width / 2, r.bottom + 4]}[sd.side] : [sd.x, sd.y];
+      g.setAttribute("d", `M${kept[0]} ${kept[1]} L${mid[0] - base.left} ${mid[1] - base.top}`);
       svg.append(g);
     }
     // While an end is dragged: the middle of each side of its box, the one it would go to lit.
-    if (grid.sideDrag && !grid.sideDrag.reach) {
+    if (grid.sideDrag) {
       const r = box(grid.sideDrag.id);
       if (r) for (const [side, x, y] of [["left", r.left, r.top + r.height / 2], ["top", r.left + r.width / 2, r.top], ["right", r.right, r.top + r.height / 2], ["bottom", r.left + r.width / 2, r.bottom]]) {
         const d = document.createElementNS(svg.namespaceURI, "circle");
@@ -4713,8 +4714,11 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
       const sx = e.clientX, sy = e.clientY;
       grid.endsShown = k;
       let moved = false, side = null, elsewhere = false, reach = null;
-      const nearest = (x, y) => {
-        const r = box(id);
+      const other = end === "from" ? to : from;
+      // How far a point is from a box (0 inside it), and the side of a box nearest to it.
+      const gap = (r, x, y) => Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+      const nearest = (x, y, at = id) => {
+        const r = box(at);
         const d = {left: Math.abs(x - r.left) + Math.max(0, r.top - y, y - r.bottom), right: Math.abs(x - r.right) + Math.max(0, r.top - y, y - r.bottom),
           top: Math.abs(y - r.top) + Math.max(0, r.left - x, x - r.right), bottom: Math.abs(y - r.bottom) + Math.max(0, r.left - x, x - r.right)};
         return Object.keys(d).sort((a, b) => d[a] - d[b])[0];
@@ -4723,22 +4727,35 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 4) return;
         moved = true;
         grid.classList.add("dragging");
-        // Over another box: no side; the line is not moved to another box here (that would change the plan).
-        const over = document.elementsFromPoint(ev.clientX, ev.clientY).map((x) => x.closest?.("[data-anchor]")).find((x) => x && grid.contains(x));
-        elsewhere = !!over && over.dataset.anchor !== id;
-        side = elsewhere ? null : nearest(ev.clientX, ev.clientY);
-        // While drafting, another box takes the line (a change to the plan, in the draft); otherwise it cannot.
-        // The box at its other end is no place for it: a line goes between two boxes.
-        const other = end === "from" ? to : from, own = elsewhere && over.dataset.anchor === other;
-        const next = elsewhere && sketch && !own ? over : null;
+        const x = ev.clientX, y = ev.clientY;
+        const over = document.elementsFromPoint(x, y).map((q) => q.closest?.("[data-anchor]")).find((q) => q && grid.contains(q));
+        // While drafting, another box takes the line (a change to the plan, in the draft): the one under the pointer, or
+        // one near it (nearer than the line's own box). The box at its other end is no place for it: a line joins two boxes.
+        let near = over && over.dataset.anchor !== id ? over : null;
+        if (!over && sketch) {
+          let best = gap(box(id), x, y);
+          for (const q of ids) {
+            if (q === id || q === other) continue;
+            const r = box(q), d = r ? gap(r, x, y) : Infinity;
+            if (d < 40 && d < best) {
+              best = d;
+              near = grid.querySelector(`[data-anchor="${CSS.escape(q)}"]`);
+            }
+          }
+        }
+        elsewhere = !!near;
+        const own = elsewhere && near.dataset.anchor === other;
+        const next = elsewhere && sketch && !own ? near : null;
+        // The side it would meet: of its own box, or of the box it would join.
+        side = next ? nearest(x, y, next.dataset.anchor) : elsewhere ? null : nearest(x, y);
         if (next !== reach) {
           reach?.classList.remove("dtarget");
           next?.classList.add("dtarget");
           reach = next;
         }
         document.body.classList.toggle("dnoplace", elsewhere && (!sketch || own));
-        grid.sideDrag = {key: k, id, side, end, reach: reach?.dataset.anchor ?? null, x: ev.clientX, y: ev.clientY};
-        grid.sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side ? {[end]: side} : {})};
+        grid.sideDrag = {key: k, id: reach?.dataset.anchor ?? id, side, end, reach: reach?.dataset.anchor ?? null, x, y};
+        grid.sidePreview = {key: k, from: was.from ?? "auto", to: was.to ?? "auto", ...(side && !reach ? {[end]: side} : {})};
         draw();
       };
       const up = () => {
@@ -4755,7 +4772,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         setTimeout(() => (dragged = false));
         if (elsewhere) {
           draw();
-          if (reach && grid.reconnect?.(from, to, end, reach.dataset.anchor)) return;
+          if (reach && grid.reconnect?.(from, to, end, reach.dataset.anchor, side)) return;
           if (sketch) return showProblem(t("lineSelf"));
           return showProblem(t("sideOtherBox"), {label: t("sketch"), run: () => enterDraft(hold.real.id)});
         }
@@ -6041,17 +6058,21 @@ function sketchLinks({real, v, drafted, container, tools}) {
   };
   // An end of a line let go on another box: the line now joins that box. One the draft drew just changes; one in the
   // plan is taken out and a new one drawn, with its words. Its other changes (words, turned round) go with it.
-  if (!k8s) container.reconnect = (from, to, end, other) => {
+  if (!k8s) container.reconnect = (from, to, end, other, side = null) => {
     const nf = end === "from" ? other : from, nt = end === "to" ? other : to;
     if (nf === nt) return showProblem(t("lineSelf")), true;
     if (lines(v).some((l) => l?.from === nf && l?.to === nt)) return showProblem(t("lineThere")), true;
     const l = lines(v).find((x) => x?.from === from && x?.to === to) || {};
+    // The new line meets the new box on the side it was let go by, and the box it keeps as it did.
+    const pos = container.hold?.positionsNow(), kept = end === "from" ? to : from, nk = `${nf}>${nt}`, oldSide = pos?.[kept]?.sides?.[`${from}>${to}`];
+    const withSide = (q, s2) => (q && s2 ? {...q, sides: {...q.sides, [nk]: s2}} : q);
+    const placed = pos ? Object.fromEntries([[other, withSide(pos[other], side)], [kept, withSide(pos[kept], oldSide)]].filter(([, q]) => q)) : null;
     const list = kit.ops(), added = list.find((o) => o.op === OPS.add && o.from === from && o.to === to);
-    if (added) return kit.setOps(list.map((o) => (o === added ? {...o, from: nf, to: nt} : o))), true;
+    if (added) return kit.setOps(list.map((o) => (o === added ? {...o, from: nf, to: nt} : o)), undefined, placed), true;
     const [pf, pt] = planEnds(from, to);
     const rest = list.filter((o) => !([OPS.edit, OPS.reverse, OPS.remove].includes(o.op) && o.from === pf && o.to === pt));
     const out = [...rest, {id: newOpId(rest), op: OPS.remove, from: pf, to: pt}];
-    kit.setOps([...out, {id: newOpId(out), op: OPS.add, from: nf, to: nt, ...(labelled && l.label ? {label: l.label} : {})}]);
+    kit.setOps([...out, {id: newOpId(out), op: OPS.add, from: nf, to: nt, ...(labelled && l.label ? {label: l.label} : {})}], undefined, placed);
     return true;
   };
   // A line's card: its label (and for k8s its kind), or take it out. A line just drawn is saved when the card closes.

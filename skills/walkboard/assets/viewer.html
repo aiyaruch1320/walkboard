@@ -4415,11 +4415,31 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
     // A question is a hexagon: its sides slant 10px in, so a line meets the side where it really is.
     const isQ = (id) => grid.querySelector(`[data-anchor="${CSS.escape(id)}"]`)?.classList.contains("g-q");
     const slant = (id, r, y) => (isQ(id) ? (10 * Math.abs(y - (r.top + r.height / 2))) / (r.height / 2) : 0);
+    // Boxes where they are, to find a clear gap for a line to run along.
+    const rects = free ? ids.map((x) => [x, box(x)]).filter(([, r]) => r).map(([x, r]) => ({x, l: r.left - base.left, r: r.right - base.left, t: r.top - base.top, b: r.bottom - base.top})) : [];
+    // Placed by hand, a box below (not to the right) is reached as a wrapped row is: out to the right, along the
+    // clear gap just above it, in from the left. The y of that gap, or null when there is none between the two.
+    const gapAbove = (a, b, x0, x1, skip) => {
+      const lo = Math.min(x0, x1), hi = Math.max(x0, x1), floor = a.bottom - base.top + 12;
+      let y = b.top - base.top - 39;
+      for (let k = 0; k < rects.length + 1; k++) {
+        const hit = rects.find((r) => !skip.includes(r.x) && r.l < hi && r.r > lo && y > r.t - 12 && y < r.b + 12);
+        if (!hit) return y >= floor ? y : null;
+        y = hit.t - 39;
+      }
+      return null;
+    };
     for (const e of edges) {
       const a = box(e.from), b = box(e.to);
       if (!a || !b) continue;
       const P = (x, y) => [x - base.left, y - base.top];
-      let p0, p1, p2, p3;
+      let p0, p1, p2, p3, row = null;
+      if (free && e.from !== e.to && b.top > a.bottom + 24 && b.left <= a.right) {
+        const q0 = P(a.right, spread(outs[e.from], e, a)), q3 = P(b.left - 4, spread(ins[e.to], e, b));
+        const xr = q0[0] + 22 + 6 * arcs, xl = q3[0] - 26 - 6 * arcs;
+        const y = gapAbove(a, b, xl, xr, [e.from, e.to]);
+        if (y != null) row = {q0, q3, xr, xl, y: Math.min(y + 6 * arcs++, q3[1] - 12)};
+      }
       if (e.from === e.to) {
         p0 = P(a.right - 22, a.bottom); p3 = P(a.right, a.bottom - 14); p1 = [p0[0] + 4, p0[1] + 34]; p2 = [p3[0] + 38, p3[1] + 6];
       } else if (!free && band(e.to) > band(e.from) && !back.has(e)) {
@@ -4427,6 +4447,11 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
         p0 = P(a.right, spread(outs[e.from], e, a)); p3 = P(b.left - 4, spread(ins[e.to], e, b));
         const y = bandBottom(band(e.from), base) + 39 + 6 * arcs, xr = p0[0] + 22 + 6 * arcs, xl = p3[0] - 26 - 6 * arcs++;
         p1 = p0; p2 = [xl, p3[1]];
+        lanes.push({d: `M${p0} L${[xr, p0[1]]} L${[xr, y]} L${[xl, y]} L${[xl, p3[1]]} L${p3}`, mid: [(xr + xl) / 2, y], left: true});
+      } else if (row) {
+        // The same, placed by hand: along the gap above the box it reaches.
+        const {q0, q3, xr, xl, y} = row;
+        p0 = q0; p3 = q3; p1 = p0; p2 = [xl, p3[1]];
         lanes.push({d: `M${p0} L${[xr, p0[1]]} L${[xr, y]} L${[xl, y]} L${[xl, p3[1]]} L${p3}`, mid: [(xr + xl) / 2, y], left: true});
       } else if (free ? b.left > a.right : depth[e.to] > depth[e.from] && !back.has(e)) {
         const y0 = spread(outs[e.from], e, a), y3 = spread(ins[e.to], e, b);

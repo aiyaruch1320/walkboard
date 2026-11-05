@@ -5726,6 +5726,8 @@ function sketchLinks({real, v, drafted, container, tools}) {
 
 function sketchFlow({real, v, drafted, wrap, tools}) {
   const kit = sketchKit(real, tools, wrap);
+  // Changes find a lane by its title, so two lanes with one title would be mixed up (capitals do not count).
+  const laneTaken = (name, except) => (v.lanes || []).some((l, i) => i !== except && String(l.title ?? "").trim().toLowerCase() === name.trim().toLowerCase());
   // A lane is as wide as the picture: its card goes beside the words of its title, not over them.
   const wordsRect = (title) => {
     const range = document.createRange();
@@ -5765,6 +5767,10 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
         onDone: (got) => {
           const val = got?.name;
           if (!val || val === initial) return keepFocus(() => renderView());
+          if (laneTaken(val, li)) {
+            keepFocus(() => renderView());
+            return showProblem(t("laneTaken", val));
+          }
           const list = kit.ops(), ed = list.find((o) => o.op === "editLane" && o.lane === li);
           kit.setOps(ed ? list.map((o) => (o === ed ? {...o, title: val} : o)) : [...list, {id: newOpId(list), op: "editLane", lane: li, ...(initial ? {laneTitle: initial} : {}), title: val}]);
         },
@@ -5809,6 +5815,10 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
           tmp.remove();
           sketchTool = "select";
           if (!got?.name) return refresh();
+          if (laneTaken(got.name)) {
+            refresh();
+            return showProblem(t("laneTaken", got.name));
+          }
           const list = kit.ops();
           kit.setOps([...list, {id: newOpId(list), op: "addLane", title: got.name, at}]);
         },

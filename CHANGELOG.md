@@ -39,6 +39,7 @@
 - Dragging a table for the first time on a page scrolled down no longer jumps the page to the top.
 - **Start over from the plan.** A button on draft mode's toolbar and in its list drops the draft and the positions of the picture, after asking; undo brings both back. It takes the place of **Drop the whole draft**, which left the positions and was two menus away.
 - Drawing a line on any picture scrolls it when held near an edge of the window, not only on a data model.
+- Two lanes cannot take one name in a draft: changes find a lane by its title, so they would be mixed up.
 
 ## 0.8.0
 

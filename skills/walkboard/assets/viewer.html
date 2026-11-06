@@ -8352,10 +8352,16 @@ function showCard(anchor, cls, ...parts) {
   box.hidden = false;
 }
 
-// Every conversation on the page in one list under 💬, newest first; new replies first in line and marked.
+// Every conversation on the page in one list under 💬, the one with the newest message on top; new replies are marked.
 function conversations() {
   const latest = new Map();
-  thread.forEach((m) => m.kind !== "settings" && latest.set(sideKey(sideOf(m)), {c: sideOf(m), m}));
+  thread.forEach((m) => {
+    if (m.kind === "settings") return;
+    const key = sideKey(sideOf(m));
+    // A Map keeps the place of a key's first entry: taken out first, a conversation moves to the end with its newest message.
+    latest.delete(key);
+    latest.set(key, {c: sideOf(m), m});
+  });
   return [...latest.values()].reverse();
 }
 
@@ -8387,9 +8393,8 @@ function goTalk(c) {
 document.getElementById("talks").onclick = (e) => {
   e.stopPropagation();
   const isNew = (c) => unread().some((u) => sideKey(sideOf(u)) === sideKey(c));
-  const list = conversations().sort((a, b) => isNew(b.c) - isNew(a.c));
   const ul = el("div", "talklist");
-  for (const {c, m} of list) {
+  for (const {c, m} of conversations()) {
     const gone = c.kind === "node" && !inPlan(c.id);
     const row = el("button", "rtalk" + (isNew(c) ? " unread" : "") + (gone ? " gone" : ""));
     row.append(el("span", "rt", (gone ? "🗑 " : "") + sideTitle(c) + (gone ? ` · ${t("goneTag")}` : "")), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 80)));

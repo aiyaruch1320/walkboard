@@ -4,7 +4,7 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths, exportName, readDraft, writeDraft} from "../lib/server.mjs";
-import {describeDraft, draftLine} from "../lib/draft.mjs";
+import {carryPlaces, describeDraft, draftLine} from "../lib/draft.mjs";
 import * as profiles from "../lib/profiles.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
 import {checkEvidence} from "../lib/source.mjs";
@@ -309,7 +309,18 @@ function draft() {
       if (view && k !== view) continue;
       const unknown = ids.filter((id) => !v.ops.some((o) => o.id === id));
       if (unknown.length) fail(`no change ${unknown.join(", ")} on "${k}"; ids: ${v.ops.map((o) => o.id).join(", ")}`);
-      v.ops = ids.length ? v.ops.filter((o) => !ids.includes(o.id)) : [];
+      const cleared = ids.length ? v.ops.filter((o) => ids.includes(o.id)) : v.ops, left = ids.length ? v.ops.filter((o) => !ids.includes(o.id)) : [];
+      // What is now in the plan keeps the place the user gave it.
+      const carried = carryPlaces(plan, k, cleared, left);
+      v.ops = carried.left;
+      if (carried.moved.length) {
+        updatePlan(p.plan, (current) => {
+          const view = (current.views || []).find((x) => x?.id === k);
+          if (view) view.layout = carryPlaces(current, k, cleared, left).layout;
+          return current;
+        });
+        console.log(`kept the place of: ${carried.moved.map(([, to]) => to).join(", ")}`);
+      }
       v.rev = Math.max((v.rev ?? 0) + 1, Date.now());
     }
     writeDraft(dir, d);

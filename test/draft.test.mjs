@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validateDraft, applyDraft, describeDraft, draftLine} from "../skills/walkboard/lib/draft.mjs";
+import {carryPlaces, validateDraft, applyDraft, describeDraft, draftLine} from "../skills/walkboard/lib/draft.mjs";
 
 const plan = () => ({
   title: "t",
@@ -418,4 +418,27 @@ test("a pasted copy keeps the name of what it came from, says so, and is not tak
   later.nodes.api2 = {name: "API"};
   later.views[0].zones[0].zones[0].nodes.push("api2");
   assert.deepEqual(applyDraft(later, draft({op: "addNode", node: "new:c", name: "API", zone: "App", copyOf: "api"}), "m").done.length, 1);
+});
+
+test("what reaches the plan keeps its place, its lines' sides and the changes that name it", () => {
+  const plan = {nodes: {a: {name: "A"}, redis: {name: "Redis sessions"}, other: {name: "Other"}}, views: [{id: "m", kind: "map", zones: [{id: "vpc-2", label: "VPC", nodes: ["redis"]}], layout: {"new:r": {x: 40, y: 50, in: "VPC (2)"}, "z:VPC (2)": {x: 5, y: 6}, a: {x: 1, y: 2}, "@sides": {"a>new:r": {from: "left", to: "top"}}}}]};
+  const cleared = [{id: "o1", op: "addZone", zone: "VPC (2)", label: "VPC"}, {id: "o2", op: "addNode", node: "new:r", name: "redis Sessions", zone: "VPC (2)"}];
+  const left = [{id: "o3", op: "addLink", from: "a", to: "new:r"}, {id: "o4", op: "addNode", node: "new:q", name: "Queue", zone: "VPC (2)"}];
+  const {layout, left: after, moved} = carryPlaces(plan, "m", cleared, left);
+  assert.deepEqual(moved, [["new:r", "redis"], ["VPC (2)", "vpc-2"]]);
+  assert.deepEqual(layout.redis, {x: 40, y: 50, in: "vpc-2"});
+  assert.deepEqual(layout["z:vpc-2"], {x: 5, y: 6});
+  assert.equal(layout["new:r"], undefined);
+  assert.deepEqual(layout["@sides"], {"a>redis": {from: "left", to: "top"}});
+  assert.equal(after[0].to, "redis");
+  assert.equal(after[1].zone, "vpc-2");
+});
+
+test("a box with a place of its own or another name is not taken for what was sketched", () => {
+  const plan = {nodes: {a: {name: "Cache"}, b: {name: "Cache"}, c: {name: "Else"}}, views: [{id: "m", kind: "map", zones: [], layout: {a: {x: 1, y: 1}, "new:x": {x: 9, y: 9}, "new:y": {x: 8, y: 8}}}]};
+  const {layout, moved} = carryPlaces(plan, "m", [{op: "addNode", node: "new:x", name: "Cache"}, {op: "addNode", node: "new:y", name: "Nothing like it"}], []);
+  assert.deepEqual(moved, [["new:x", "b"]]);
+  assert.deepEqual(layout.b, {x: 9, y: 9});
+  assert.deepEqual(layout.a, {x: 1, y: 1});
+  assert.deepEqual(layout["new:y"], {x: 8, y: 8});
 });

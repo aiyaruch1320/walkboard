@@ -909,6 +909,60 @@ function applyGraph(v, nodes, ops, result) {
 // The draft in words the agent can act on without opening plan.json: names next to ids, zones by label, what an
 // edit changes from (`was`), and with profiles (lib/profiles.mjs, passed in: this module imports nothing) the name of
 // each kind and the places the draft puts something where its kind does not usually go (`warnings`).
+// Changes the agent has just written into the plan: what they added has a real id or key now, and keeps the place the user
+// gave it. By name, among what has no place of its own yet. Returns the view's layout, the changes still in the draft, which
+// may name what is now real, and what was carried over; the plan's view is not touched.
+export function carryPlaces(plan, viewId, cleared, left) {
+  const view = viewList(plan).find((x) => x?.id === viewId);
+  const norm = (x) => String(x ?? "").trim().toLowerCase();
+  const layout = {...(view?.layout || {})}, nodes = isObj(plan?.nodes) ? plan.nodes : {}, ids = {}, keys = {};
+  const taken = new Set();
+  const renamed = (o) => cleared.filter((x) => x.op === "editNode" && x.node === o.node && x.name != null).at(-1)?.name ?? o.name;
+  for (const o of cleared) {
+    if (!["addNode", "addBox", "addTable"].includes(o.op) || !isNewId(o.node)) continue;
+    const real = Object.keys(nodes).find((id) => !isNewId(id) && !taken.has(id) && !(id in layout) && norm(nodes[id]?.name) === norm(renamed(o)));
+    if (!real) continue;
+    taken.add(real);
+    ids[o.node] = real;
+    if (o.node in layout) {
+      layout[real] = layout[o.node];
+      delete layout[o.node];
+    }
+  }
+  const zones = [];
+  (function walk(list) {
+    for (const z of Array.isArray(list) ? list : []) {
+      if (!isObj(z)) continue;
+      zones.push(z);
+      walk(z.zones);
+    }
+  })(view?.zones);
+  for (const o of cleared) {
+    if (o.op !== "addZone" || zones.some((z) => zoneKey(z) === o.zone)) continue;
+    const real = zones.find((z) => !taken.has(zoneKey(z)) && !(`z:${zoneKey(z)}` in layout) && norm(z.label) === norm(o.label ?? o.zone));
+    if (!real) continue;
+    taken.add(zoneKey(real));
+    keys[o.zone] = zoneKey(real);
+    if (`z:${o.zone}` in layout) {
+      layout[`z:${zoneKey(real)}`] = layout[`z:${o.zone}`];
+      delete layout[`z:${o.zone}`];
+    }
+  }
+  const moved = [...Object.entries(ids), ...Object.entries(keys)];
+  if (!moved.length) return {layout, left, moved};
+  // Lines name their boxes in the sides they were given, and a place names the zone it was dragged in.
+  const line = (k) => k.split(">").map((x) => ids[x] ?? x).join(">");
+  const sides = (o) => Object.fromEntries(Object.entries(o).map(([k, x]) => [line(k), x]));
+  for (const [k, q] of Object.entries(layout)) {
+    if (k === "@sides" && isObj(q)) layout[k] = sides(q);
+    else if (isObj(q)) layout[k] = {...q, ...(keys[q.in] ? {in: keys[q.in]} : {}), ...(isObj(q.sides) ? {sides: sides(q.sides)} : {})};
+  }
+  const swap = (x) => (typeof x === "string" ? ids[x] ?? x : x);
+  const place = (x) => (typeof x === "string" ? keys[x] ?? x : x);
+  const after = left.map((o) => Object.fromEntries(Object.entries(o).map(([k, x]) => [k, k === "zone" || k === "parent" || k === "to" ? place(swap(x)) : swap(x)])));
+  return {layout, left: after, moved};
+}
+
 export function describeDraft(plan, draft, viewId, profiles = null) {
   const applied = applyDraft(plan, draft, viewId), {stale, pending, plan: drawn} = applied;
   const ops = draft?.views?.[viewId]?.ops || [];

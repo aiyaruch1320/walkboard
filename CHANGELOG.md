@@ -80,6 +80,8 @@
 - **Reviews read like a colleague, not a change list.** The skill asks for the names on the picture and what the sketch means for the plan. `walkboard reply` refuses a draft's ids (`o3fk2`, `new:…`), which mean nothing to whoever reads them, and links that lead nowhere.
 - **Quicker with a long chat and on a click.** A chat keeps its messages instead of building them again on every event, and text selected in it stays selected. A selected box no longer lifts by 3 px, which routed every line on a map again at each click: on a 52-box map with 300 messages a click on a box went from about 100 ms to 35 ms at a quarter of a laptop's speed.
 - **A sketch goes along when you export.** PDF and the exported file draw the draft changes on the pictures (their outlines and signs) and list them in words under each picture, marked as not in the plan yet, so a sketch can be talked over with people. Export has a switch to leave them out; `walkboard export --no-draft` does the same. Before / after pictures stay the plan's own.
+- **What the agent puts in the plan stays where you placed it.** Clearing the draft carries a new box's, table's or zone's place to its real id, by name, along with the sides of its lines and the changes still in the draft that name it. Before, it landed on free ground nearby.
+- Before / after only compares: dragging there no longer moves the picture on its own tab without showing it.
 
 ## 0.8.0
 

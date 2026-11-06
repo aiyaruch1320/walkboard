@@ -22,7 +22,7 @@ Check each new box against those already there: a new "Redis sessions" next to a
 
 ## Their answer
 
-- Yes (all or some): write exactly those into plan.json with a small Edit or script (`WB set` does not add zones or lines; the shape is in views/<kind>.md): a node under `nodes` with a real id (short, lowercase, `redis-sessions`) for each `new:…`; its place in that view; links in that view; the `nodes` of the steps that build or change it. Then `WB check`, `WB draft <dir> clear <view> <op…>` for exactly those (it prints what is left), and reply with what changed, naming what stays in the draft. Leave `layout` alone.
+- Yes (all or some): write exactly those into plan.json with a small Edit or script (`WB set` does not add zones or lines; the shape is in views/<kind>.md): a node under `nodes` with a real id (short, lowercase, `redis-sessions`) for each `new:…`; its place in that view; links in that view; the `nodes` of the steps that build or change it. Then `WB check`, `WB draft <dir> clear <view> <op…>` for exactly those, in that order and keeping the names the user gave: that is how each keeps its place on the picture (it prints what is left). Reply with what changed, naming what stays in the draft. Leave `layout` alone.
 - No: change nothing; ask whether to clear the draft (`WB draft <dir> clear <view>`), or the user drops it on the page.
 - Explain mode never edits the project: agreed changes become `proposal`s. Design mode: agreed changes revise an option or make a new one (design.md), never a loose picture.
 

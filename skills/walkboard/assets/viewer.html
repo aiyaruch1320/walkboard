@@ -2777,6 +2777,69 @@ function splitMapForPaper(box, v) {
   box.querySelector(".pcap")?.after(index);
   return made;
 }
+// The scale at which a picture's names come out at 7 pt.
+function readableScale(box) {
+  const words = box.querySelector("[data-id] .name, [data-anchor] .name, .ertable .erhead, [data-id]");
+  return words ? Math.min(1, 7 / (parseFloat(getComputedStyle(words).fontSize) * 0.75)) : PRINT_READABLE;
+}
+// A picture with no zones to go by: where its boxes leave room, the sheets it is cut into at a size to read. Lines go on to the
+// next sheet, and the overview shows how the sheets lie.
+function sheetsOf(pic, scale) {
+  const base = pic.getBoundingClientRect(), fullW = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth)), fullH = base.height;
+  const flat = fullW >= fullH, W = (flat ? 1000 : 676) / scale, H = (flat ? 540 : 820) / scale;
+  const items = [...pic.querySelectorAll("[data-id], [data-anchor], .ertable")].map((e) => e.getBoundingClientRect()).map((r) => ({l: r.left - base.left, r: r.right - base.left, t: r.top - base.top, b: r.bottom - base.top}));
+  // As far as the page reaches, back to the nearest gap between boxes; none in the last half of the page: where the page ends.
+  const cut = (spans, from, size, end) => {
+    if (from + size >= end) return end;
+    for (let at = from + size; at > from + size / 2; at -= 8) if (!spans.some(([a, b]) => at > a - 6 && at < b + 6)) return at;
+    return from + size;
+  };
+  const out = [];
+  for (let y = 0, y2; y < fullH - 1; y = y2) {
+    y2 = cut(items.map((i) => [i.t, i.b]), y, H, fullH);
+    const row = items.filter((i) => i.b > y && i.t < y2);
+    for (let x = 0, x2; x < fullW - 1; x = x2) {
+      x2 = cut(row.map((i) => [i.l, i.r]), x, W, fullW);
+      if (row.some((i) => i.r > x && i.l < x2)) out.push({x, y, w: x2 - x, h: y2 - y, flat});
+    }
+  }
+  return {sheets: out, fullW};
+}
+function sheetsForPaper(box, v) {
+  const pic = [...box.children].filter((x) => !x.matches(".pdraft, .pxlist, .pzindex, .pcap")).at(-1);
+  if (!pic) return [];
+  const {sheets, fullW} = sheetsOf(pic, readableScale(box));
+  if (sheets.length < 2) return [];
+  const base = pic.getBoundingClientRect(), actors = pic.querySelector(".seq-head"), headH = actors ? actors.getBoundingClientRect().bottom - base.top + 6 : 0;
+  const made = sheets.map((s, i) => {
+    const sheet = el("div", "ptile"), copy = pic.cloneNode(true), top = s.y > 0 && actors ? headH : 0;
+    Object.assign(sheet.style, {width: Math.ceil(s.w) + "px", height: Math.ceil(s.h + top) + "px"});
+    Object.assign(copy.style, {width: fullW + "px", left: -s.x + "px", top: top - s.y + "px"});
+    copy.classList.add("ptilepic");
+    sheet.append(copy);
+    // Further down a long sequence, who is who still heads the sheet.
+    if (top) {
+      const head = pic.cloneNode(true), hold = el("div", "ptilehead");
+      Object.assign(head.style, {width: fullW + "px", left: -s.x + "px", top: "0"});
+      head.classList.add("ptilepic");
+      hold.style.height = top + "px";
+      hold.append(head);
+      sheet.append(hold);
+    }
+    const section = el("section", "pview" + (s.flat ? " landscape" : ""));
+    section.append(el("div", "pcap", `${t("printPart", i + 1)} · ${v.title || v.id}`), sheet);
+    return section;
+  });
+  pic.style.position = "relative";
+  sheets.forEach((s, i) => {
+    const mark = el("div", "ptilemark");
+    Object.assign(mark.style, {left: s.x + "px", top: s.y + "px", width: s.w + "px", height: s.h + "px"});
+    mark.append(el("span", "pzno", String(i + 1)));
+    pic.append(mark);
+  });
+  box.querySelector(".pcap")?.append(` · ${t("printOverview")}`);
+  return made;
+}
 const canArrange = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
 const draftShown = () => !printState && !drawingDiff;
 // On paper the draft goes along: a picture is sketched to be talked over, with the agent and with people. Export can leave
@@ -8899,7 +8962,7 @@ addEventListener("beforeprint", () => {
       if (at > 700) pic.style.width = at + "px";
     }
     box.append(pic);
-    if (v.kind === "map") box.mapView = v;
+    if (v.kind !== "journey") box.printView = v;
     if (printDraft && v.kind !== "diff") {
       const words = draftSummary(v.id);
       if (words) box.append(words);
@@ -8947,19 +9010,21 @@ addEventListener("beforeprint", () => {
   // Lines are one layer over the whole picture and cannot follow its boxes onto the next page, so a picture with lines
   // is scaled to fit one page. Without lines a tall picture breaks between its rows.
   // What would come out too small takes a landscape page of its own: first choose (the lines redraw for the new width), then scale.
-  const scaleOf = (pic, wide, room) => Math.min(1, wide / Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth)), pic.querySelector("svg.links") ? room / pic.getBoundingClientRect().height : 1);
-  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [[...box.children].filter((x) => !x.matches(".pdraft, .pxlist, .pzindex")).at(-1)]);
+  // A sheet is as wide as it is cut, whatever the whole picture behind it measures.
+  const widthOf = (pic) => (pic.classList.contains("ptile") ? pic.offsetWidth : Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth)));
+  const scaleOf = (pic, wide, room) => Math.min(1, wide / widthOf(pic), pic.querySelector("svg.links") ? room / pic.getBoundingClientRect().height : 1);
+  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [[...box.children].filter((x) => !x.matches(".pdraft, .pxlist, .pzindex, .ptilehead")).at(-1)]);
   const worst = (box, wide, room) => Math.min(...partsOf(box).map((pic) => scaleOf(pic, wide, room)));
-  // A map too small to read on paper: an overview, then its parts.
+  // A picture too small to read on paper: an overview, then its parts (a map) or sheets (the others).
   for (const box of [...pics]) {
-    if (!box.mapView || Math.max(worst(box, 676, 880), worst(box, 1000, 590)) >= PRINT_READABLE) continue;
-    const made = splitMapForPaper(box, box.mapView);
+    if (box.querySelector(".diffview") || !box.printView || Math.max(worst(box, 676, 880), worst(box, 1000, 590)) >= readableScale(box)) continue;
+    const made = box.printView.kind === "map" ? splitMapForPaper(box, box.printView) : sheetsForPaper(box, box.printView);
     if (!made.length) continue;
     made.reverse().forEach((s) => box.after(s));
     pics.splice(pics.indexOf(box) + 1, 0, ...made.reverse());
     made.forEach(tidyGuesses);
     // What a box had no room to say goes under its picture.
-    for (const s of made) if (s.partOf.rest?.length) {
+    for (const s of made) if (s.partOf?.rest?.length) {
       const ul = el("ul", "pxlist");
       s.partOf.rest.forEach((x) => ul.append(el("li", null, x)));
       s.append(ul);
@@ -8987,7 +9052,7 @@ addEventListener("beforeprint", () => {
     box.classList.toggle("ppage", !!diff);
     const parts = partsOf(box), flat = box.classList.contains("landscape"), pageH = flat ? 590 : 880, pageW = flat ? 1000 : 676;
     for (const pic of parts) {
-      const w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
+      const w = widthOf(pic);
       // A diff's list of changes shares the first page with its first picture.
       let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0) - (picsHead && box.contains(picsHead) ? picsHead.offsetHeight + 16 : 0) - [...box.querySelectorAll(":scope > .pdraft, :scope > .pxlist, :scope > .pzindex")].reduce((n, x) => n + x.offsetHeight + 8, 0);
       // Unless that would make it too small: then the list keeps its page and the picture takes the next.
@@ -8995,7 +9060,8 @@ addEventListener("beforeprint", () => {
         room = pageH;
         pic.classList.add("ppagebreak");
       }
-      const tall = pic.querySelector("svg.links") ? Math.max(0.3, room / pic.getBoundingClientRect().height) : 1;
+      // An overview fits its page however small; its parts are what is read.
+      const tall = pic.querySelector("svg.links") || box.classList.contains("poverview") ? Math.max(box.classList.contains("poverview") ? 0.02 : 0.3, room / pic.getBoundingClientRect().height) : 1;
       const scale = Math.min(1, pageW / w, tall);
       if (scale < 1) {
         // The width stays what it was when the lines were drawn: zoom alone would let the boxes reflow under them.

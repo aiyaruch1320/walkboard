@@ -347,8 +347,8 @@ function refreshThreads() {
     const msgs = thread.filter((m, i) => inThread(m, c, i) && m.kind !== "settings");
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     t.replaceChildren(...msgs.map(msgEl));
-    const busy = working().find((m) => inCtx(m, c));
-    if (busy) t.append(typingEl(busy));
+    const busy = working().findLast((m) => inCtx(m, c));
+    if (busy && !(quiet(busy) && hiddenNotes.has(busy.id))) t.append(typingEl(busy));
     // Follow the conversation while you are at its end, as a chat does.
     if (end) t.scrollTop = t.scrollHeight;
     const lbl = t.closest(".pb")?.querySelector(".fold .lbl");
@@ -533,19 +533,46 @@ function working() {
     !thread.slice(i + 1).some((r, j) => r.from === "agent" && inThread(r, ctxOf(m), i + 1 + j)));
 }
 
+// Ten minutes with no sign of the agent (a reply anywhere, a change to the plan) since this message: it may well have
+// answered in its own chat or stopped, which the page cannot tell apart, so it says what it knows and stops saying "typing".
+const QUIET_MIN = 10;
+let agentActiveAt = 0;
+const quiet = (m) => {
+  const replied = thread.findLast((r) => r.from === "agent")?.at;
+  return Date.now() - Math.max(Date.parse(m.at), agentActiveAt, replied ? Date.parse(replied) : 0) >= QUIET_MIN * 60000;
+};
+const hiddenNotes = new Set((() => {
+  try {
+    return JSON.parse(store.get("walkboard.quiet." + token)) || [];
+  } catch {
+    return [];
+  }
+})());
+
 function typingEl(m) {
   const min = Math.floor((Date.now() - Date.parse(m.at)) / 60000);
-  const stuck = min >= 10;
+  const stuck = quiet(m);
   const d = el("div", "msg agent typing" + (stuck ? " stuck" : ""));
   const dots = el("span", "dots");
   dots.append(el("i"), el("i"), el("i"));
   d.append(dots, el("span", null, stuck ? t("noReply", min) : t("working", min)));
+  if (stuck) {
+    const hide = el("button", "typing-x", "×");
+    hide.title = t("hideNote");
+    hide.setAttribute("aria-label", hide.title);
+    hide.onclick = () => {
+      hiddenNotes.add(m.id);
+      store.set("walkboard.quiet." + token, JSON.stringify([...hiddenNotes]));
+      d.remove();
+    };
+    d.append(hide);
+  }
   return d;
 }
 
 function renderBadges() {
   const conn = document.getElementById("conn");
-  const busy = working().length > 0, building = !!plan && steps().some((x) => x.status === "doing");
+  const busy = working().some((m) => !quiet(m)), building = !!plan && steps().some((x) => x.status === "doing");
   // A snapshot says when it was exported instead (set once in load).
   if (!snapshot) {
     conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
@@ -8208,6 +8235,8 @@ async function load() {
   };
   events.onerror = () => setConn(false);
   events.addEventListener("plan", () => {
+    // A drag of ours saved a moment ago is not the agent at work.
+    if (Date.now() - layoutSavedAt >= 2000) agentActiveAt = Date.now();
     fetchPlan();
     [...unsaved].forEach(flushDraft);
   });

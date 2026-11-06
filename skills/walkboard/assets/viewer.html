@@ -159,6 +159,28 @@ function emphasis(text) {
   return f;
 }
 
+// [[node:id]], [[step:id]], [[option:id]], [[plan]] in an agent's reply: a link to that place, by its name.
+const REF = /\[\[(?:(node|step|option):([^\]\s]+)|(plan))\]\]/g;
+const refTarget = (kind, id) => (kind === "node" ? {kind: "node", id} : kind === "step" ? {kind: "step", id} : kind === "option" ? {kind: "option", id} : {kind: "plan"});
+function talkLink(c, label = sideTitle(c)) {
+  const b = el("button", "msglink", label);
+  b.type = "button";
+  b.onclick = () => goTalk(c);
+  return b;
+}
+function linked(text) {
+  const f = document.createDocumentFragment();
+  let last = 0;
+  for (const m of text.matchAll(REF)) {
+    f.append(emphasis(text.slice(last, m.index)), talkLink(refTarget(m[1] || "plan", m[2])));
+    last = m.index + m[0].length;
+  }
+  f.append(emphasis(text.slice(last)));
+  return f;
+}
+// The same words where a link cannot go (a list's preview, paper).
+const plainRefs = (text) => String(text ?? "").replace(REF, (_, kind, id) => sideTitle(refTarget(kind || "plan", id)));
+
 // ```fenced``` blocks become code blocks and `ticks` inline code; everything stays text, never HTML.
 function msgBody(text) {
   const f = document.createDocumentFragment();
@@ -168,7 +190,7 @@ function msgBody(text) {
     part.split(/`([^`\n]+)`/).forEach((x, j) => {
       if (j % 2) return f.append(el("code", "mcode", x));
       x.split(/(https?:\/\/[^\s<>"'`]+)/).forEach((y, k) => {
-        if (!(k % 2)) return f.append(emphasis(y));
+        if (!(k % 2)) return f.append(linked(y));
         const a = el("a", null, y);
         a.href = y;
         a.target = "_blank";
@@ -352,7 +374,7 @@ function msgFor(m, holder) {
 }
 
 function refreshThreads() {
-  const open = working();
+  const open = snapshot ? [] : unanswered(), listening = connected && !waiting;
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
     // Like a chat: open on the newest message and stay there, also when the chat is unfolded, the panel widened
@@ -369,7 +391,9 @@ function refreshThreads() {
     if (els.length === have.length && els.every((x, i) => x === have[i])) t.querySelector(":scope > .typing")?.remove();
     else t.replaceChildren(...els);
     const busy = open.findLast((m) => inCtx(m, c));
-    if (busy && !(quiet(busy) && hiddenNotes.has(busy.id))) t.append(typingEl(busy));
+    const other = busy && thread.findLast((r) => r.from === "agent" && r.at > busy.at);
+    if (other) hiddenNotes.has(busy.id) || t.append(elsewhereEl(busy, other));
+    else if (busy && listening && !(quiet(busy) && hiddenNotes.has(busy.id))) t.append(typingEl(busy));
     // Follow the conversation while you are at its end, as a chat does.
     if (end) t.scrollTop = t.scrollHeight;
     const lbl = t.closest(".pb")?.querySelector(".fold .lbl");
@@ -589,6 +613,26 @@ const hiddenNotes = new Set((() => {
   }
 })());
 
+// A message answered somewhere else: where, as a link, instead of looking as if nothing came back.
+function elsewhereEl(m, reply) {
+  const d = el("div", "msg agent typing stuck elsewhere");
+  const line = el("span");
+  line.append(t("answeredAt") + " ", talkLink(sideOf(reply)));
+  d.append(line, hideBtn(m, d));
+  return d;
+}
+function hideBtn(m, d) {
+  const hide = el("button", "typing-x", "×");
+  hide.title = t("hideNote");
+  hide.setAttribute("aria-label", hide.title);
+  hide.onclick = () => {
+    hiddenNotes.add(m.id);
+    store.set("walkboard.quiet." + token, JSON.stringify([...hiddenNotes]));
+    d.remove();
+  };
+  return hide;
+}
+
 function typingEl(m) {
   const min = Math.floor((Date.now() - Date.parse(m.at)) / 60000);
   const stuck = quiet(m);
@@ -596,23 +640,13 @@ function typingEl(m) {
   const dots = el("span", "dots");
   dots.append(el("i"), el("i"), el("i"));
   d.append(dots, el("span", null, stuck ? t("noReply", min) : t("working", min)));
-  if (stuck) {
-    const hide = el("button", "typing-x", "×");
-    hide.title = t("hideNote");
-    hide.setAttribute("aria-label", hide.title);
-    hide.onclick = () => {
-      hiddenNotes.add(m.id);
-      store.set("walkboard.quiet." + token, JSON.stringify([...hiddenNotes]));
-      d.remove();
-    };
-    d.append(hide);
-  }
+  if (stuck) d.append(hideBtn(m, d));
   return d;
 }
 
 function renderBadges() {
   const conn = document.getElementById("conn");
-  const busy = working().some((m) => !quiet(m)), building = !!plan && steps().some((x) => x.status === "doing");
+  const busy = working().some((m) => !quiet(m) && !thread.some((r) => r.from === "agent" && r.at > m.at)), building = !!plan && steps().some((x) => x.status === "doing");
   // A snapshot says when it was exported instead (set once in load).
   if (!snapshot) {
     conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
@@ -8533,7 +8567,7 @@ document.getElementById("talks").onclick = (e) => {
   for (const {c, m} of conversations()) {
     const gone = c.kind === "node" && !inPlan(c.id);
     const row = el("button", "rtalk" + (isNew(c) ? " unread" : "") + (gone ? " gone" : ""));
-    row.append(el("span", "rt", (gone ? "🗑 " : "") + sideTitle(c) + (gone ? ` · ${t("goneTag")}` : "")), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + String(m.text).replace(/\s+/g, " ").slice(0, 80)));
+    row.append(el("span", "rt", (gone ? "🗑 " : "") + sideTitle(c) + (gone ? ` · ${t("goneTag")}` : "")), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + plainRefs(m.text).replace(/\s+/g, " ").slice(0, 80)));
     row.onclick = () => goTalk(c);
     ul.append(row);
   }
@@ -8680,7 +8714,7 @@ addEventListener("beforeprint", () => {
     const ul = el("ul", "pchat");
     for (const m of snapshot.thread) {
       const li = el("li", m.from === "agent" ? "agent" : "user");
-      li.append(el("b", null, `${t(m.from === "agent" ? "agent" : "you")} · ${sideTitle(sideOf(m))}`), richEl("div", null, m.text));
+      li.append(el("b", null, `${t(m.from === "agent" ? "agent" : "you")} · ${sideTitle(sideOf(m))}`), richEl("div", null, plainRefs(m.text)));
       ul.append(li);
     }
     parts.push(el("h2", "ph", t("printChat")), ul);

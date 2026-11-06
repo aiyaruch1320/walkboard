@@ -76,6 +76,9 @@
 - **A smaller skill.** An agent now loads only what it uses: one file per picture (`references/views/<kind>.md`) and per platform (`references/profiles/<profile>.md`, which replace `references/profiles.md`), the review guide (`review.md`) apart from the rarer messages, animation (`moves.md`) apart from the plan format. Drawing an AWS map and answering a review reads about 60% less than before (62 KB to 26 KB).
 - `walkboard poll` keeps a review's `view`, which clearing the draft needs, and of where things sit on screen only what is off (`moved`, `outOfZone`, `overlaps`, `linesOverBoxes`). `--full` has every box's place.
 - Line labels on paper have no grey rectangle around them in PDF readers such as Preview.
+- **Answered somewhere else, you can get there.** A message answered in another box or step no longer looks unanswered: its chat says where the agent answered last, as a link. A reply can link to a place itself: `[[node:id]]`, `[[step:id]]`, `[[option:id]]`, `[[plan]]`, drawn with its name.
+- **Reviews read like a colleague, not a change list.** The skill asks for the names on the picture and what the sketch means for the plan. `walkboard reply` refuses a draft's ids (`o3fk2`, `new:…`), which mean nothing to whoever reads them, and links that lead nowhere.
+- **Quicker with a long chat and on a click.** A chat keeps its messages instead of building them again on every event, and text selected in it stays selected. A selected box no longer lifts by 3 px, which routed every line on a map again at each click: on a 52-box map with 300 messages a click on a box went from about 100 ms to 35 ms at a quarter of a laptop's speed.
 
 ## 0.8.0
 

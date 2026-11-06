@@ -4,7 +4,19 @@ The user asks you to check a picture. The message has `view` (for `WB draft … 
 
 ## Reply
 
-`WB reply <dir>` (whole plan) and change nothing yet: one short line per change or out-of-place box, by id ("o3fk2: the worker needs SG 6379 from the app subnet"; changes that go together share a line), saying what it means for the plan (network, cost, a missing step, a broken constraint), then ask once whether to put them in the plan. Nothing out of place: say it matches, in one line. Mention an overlap or a crossing line only when it hides something; looks (balance, spacing) cannot be judged from numbers, so leave them out.
+`WB reply <dir>` (whole plan) and change nothing yet. A person reads this while looking at the picture, so write as you would to a colleague beside them:
+
+- Use the names on the picture (a box, a zone, a line as "API → Aurora") and everyday words. Never `o3fk2`, `new:…` (`WB reply` refuses them), node ids or change names such as `addNode`; ids are only for `WB draft … clear`. Geometry gives ids: say the box's name.
+- Open with one line on what the sketch adds up to. Then only what it means for the plan (network, cost, a missing step, a broken constraint), what goes together on one line, most important first. End by asking once whether to put them in the plan.
+- A box already in the plan can be a link: `[[node:<id>]]`.
+- Nothing out of place: say it matches, in one line. Mention an overlap or a crossing line only when it hides something; looks (balance, spacing) cannot be judged from numbers, so leave them out.
+
+```text
+You added a cache and moved the worker.
+- **Redis sessions**: [[node:redis]] is already in the data subnet. The same one, or a second?
+- **Worker** in the private subnet: it can no longer reach the payment API without a NAT Gateway, and the plan has none, so that is one more step.
+Put these in the plan?
+```
 
 Check each new box against those already there: a new "Redis sessions" next to an existing Redis is likely the same thing. A `remove` lists the lines that go with the box (`lines`).
 

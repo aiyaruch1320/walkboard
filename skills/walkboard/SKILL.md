@@ -52,7 +52,9 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
    - `review`: [review.md](references/review.md). `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [messages.md](references/messages.md). `decide`: design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
 
-   Reply to every other message **on the page, where it was asked**, even in one line, even if you also act on it or say it in chat: the page shows the user no answer until you do.
+   Reply to every other message **on the page, where it was asked**, even in one line, even if you also act on it or say it in chat: asked on the page, answered on the page. If the answer belongs on another box or step, reply there and also, in one line, where it was asked with a link: `[[node:<id>]]`, `[[step:<id>]]`, `[[plan]]`.
+
+   A person reads every reply: use the names on the picture, never ids.
 
    No background commands that wake you when they end? `WB poll <dir> --timeout 240` in the foreground instead (`[]` = nothing yet, poll again). A killed poll loses nothing.
 3. Refer to steps by title. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.

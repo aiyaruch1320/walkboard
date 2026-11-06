@@ -853,6 +853,8 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .msg.typing.stuck{color:var(--muted);border-style:dashed;background:transparent;font-size:12.5px}
 .typing-x{flex:none;border:0;background:transparent;padding:0 2px;color:inherit;line-height:1;cursor:pointer}
 .typing-x:hover{color:var(--text)}
+.msglink{display:inline;padding:0;border:0;background:transparent;color:var(--you-tx);font:inherit;text-decoration:underline;cursor:pointer}
+.msglink:hover{background:transparent;color:var(--text)}
 .badges .ok{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
 .badges .wait{border-color:var(--new-bd);color:var(--new-tx);background:var(--new-bg)}
 .stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}

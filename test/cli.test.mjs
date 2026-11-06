@@ -58,6 +58,20 @@ test("a review reaches poll with the picture's geometry, view included", async (
   assert.deepEqual(full.geometry, geometry);
 });
 
+test("a reply is for a person: no draft ids, and its links lead somewhere", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const plan = JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8"));
+  const node = Object.keys(plan.nodes)[0];
+  fs.mkdirSync(path.join(dir, ".walkboard"), {recursive: true});
+  fs.writeFileSync(path.join(dir, ".walkboard", "draft.json"), JSON.stringify({version: 1, views: {m: {ops: [{id: "o3fk2ab", op: "addNode", node: "new:abc", name: "Cache", zone: "Data"}]}}}));
+  assert.match((await run("reply", dir, "o3fk2ab needs a port")).stderr, /does not know o3fk2ab/);
+  assert.match((await run("reply", dir, "see new:abc please")).stderr, /does not know new:abc/);
+  assert.match((await run("reply", dir, "see [[node:nope]]")).stderr, /no node "nope"/);
+  assert.match((await run("reply", dir, `see [[node:${node}]] and [[plan]]`)).stdout, /sent/);
+});
+
 test("every reference a skill file links to exists", () => {
   const root = new URL("../skills/walkboard/", import.meta.url).pathname;
   const walk = (d) => fs.readdirSync(d, {withFileTypes: true}).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith(".md") ? [path.join(d, e.name)] : []));

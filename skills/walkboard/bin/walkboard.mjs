@@ -20,7 +20,8 @@ const USAGE = `walkboard <command> [options]
                                 (targets: plan, step:, node:, constraint:, option:, criterion:, source:<id>)
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
   poll   [dir] [--full] [--timeout s]   wait for feedback from the page, print one short JSON line per item, exit ([] after s seconds)
-  reply  [dir] [--node n] [--step s] [--option o [--criterion c]] <text>   show an agent reply on the page (or --dir d)
+  reply  [dir] [--node n] [--step s] [--option o [--criterion c]] <text>   show an agent reply on the page (or --dir d);
+                                [[node:id]], [[step:id]], [[option:id]], [[plan]] in the text link to that place
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
@@ -210,6 +211,14 @@ async function reply() {
   if (!text) fail("reply needs text");
   const s = (await running()) ?? fail(`server not running for ${dir}`);
   const plan = JSON.parse(fs.readFileSync(p.plan, "utf8"));
+  // A person reads this: a draft's ids mean nothing to them, and a link has to lead somewhere.
+  const opIds = new Set(Object.values(readDraft(dir).views).flatMap((v) => v.ops.map((o) => o.id)));
+  const codes = [...new Set((text.match(/[\w:-]+/g) || []).filter((w) => opIds.has(w) || /(^|\[)new:/.test(w)))];
+  if (codes.length) fail(`the reader does not know ${codes.join(", ")}: write the name shown on the picture instead; nothing was sent`);
+  for (const [, kind, id] of text.matchAll(/\[\[(node|step|option):([^\]\s]+)\]\]/g)) {
+    const known = kind === "node" ? Object.hasOwn(plan.nodes || {}, id) : (plan[kind === "step" ? "steps" : "options"] || []).some((x) => x?.id === id);
+    if (!known) fail(`no ${kind} "${id}" for the link [[${kind}:${id}]]; nothing was sent`);
+  }
   if (flags.node && !Object.hasOwn(plan.nodes || {}, flags.node)) fail(`no node "${flags.node}" in the plan; ids: ${Object.keys(plan.nodes || {}).join(", ")}`);
   if (flags.step && !(plan.steps || []).some((x) => x.id === flags.step)) fail(`no step "${flags.step}" in the plan; ids: ${(plan.steps || []).map((x) => x.id).join(", ")}`);
   for (const [flag, list] of [["option", "options"], ["criterion", "criteria"]]) {

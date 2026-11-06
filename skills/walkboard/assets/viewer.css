@@ -392,7 +392,7 @@ svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important
 .map.sketch[data-tool="remove"] svg.links .dhit,.map.sketch[data-tool="rename"] svg.links .dhit{cursor:pointer}
 .map svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .dedit{position:absolute;z-index:70;font:inherit;font-size:13px;font-weight:600;padding:3px 6px;border:1.5px solid var(--you-bd);border-radius:6px;background:var(--card);color:var(--text);outline:none;box-shadow:0 4px 14px rgba(0,0,0,.15)}
-.dpop{position:fixed;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:360px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card);box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.dpop{position:absolute;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:360px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card);box-shadow:0 10px 30px rgba(0,0,0,.2)}
 .dphead{font-size:12.5px;font-weight:600;color:var(--muted)}
 .dsearch{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}
 .dicons{display:grid;grid-template-columns:repeat(8,34px);gap:4px;max-height:240px;overflow:auto}
@@ -639,6 +639,9 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .dkindchip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:6px;border:1px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 60%,var(--card))}
 .dkinds{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin:0 0 8px;padding:4px}
 .dkindnone{font-size:12px;color:var(--muted);padding:6px}
+.dkindplats{display:flex;flex-wrap:wrap;gap:4px;padding:2px 2px 6px;position:sticky;top:-4px;z-index:1;background:var(--card);border-bottom:1px solid var(--line);margin-bottom:4px}
+.dkindplat{font-size:11.5px;padding:1px 9px;border-radius:999px}
+.dkindplat[aria-pressed="true"]{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-weight:600}
 .dkindgroup{font-size:11px;font-weight:700;color:var(--muted);padding:4px 6px 2px}
 .dkindopt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;font-size:13px;padding:4px 6px;border:0;border-radius:6px;background:transparent;color:var(--text);cursor:pointer}
 .dkindopt:hover{background:color-mix(in srgb,var(--you-bg) 50%,var(--card))}

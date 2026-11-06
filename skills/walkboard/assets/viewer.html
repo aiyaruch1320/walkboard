@@ -2607,8 +2607,9 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
     x = beside.right + 12 + w < innerWidth ? beside.right + 12 : beside.left - 12 - w;
     y = beside.top;
   }
-  box.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + "px";
-  box.style.top = Math.max(8, Math.min(innerHeight - hgt - 96, y)) + "px";
+  // Placed in the window, then pinned to the page: scrolling takes it along with the box or line it is for.
+  box.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + scrollX + "px";
+  box.style.top = Math.max(8, Math.min(innerHeight - hgt - 96, y)) + scrollY + "px";
   const away = (e) => {
     if (box.contains(e.target)) return;
     close("away");
@@ -2660,13 +2661,34 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     update();
     nameIn.focus();
   };
+  // A row of platforms over the list: nothing typed, it shows every kind of the platform that fits where this goes
+  // (or the one picked); typing searches them all, and a platform picked narrows the search to it.
+  let platform = null;
   const showKinds = () => {
     kindList.replaceChildren();
     let group = null;
-    const found = matches(kindIn.value);
+    const all = matches(kindIn.value), shown = platform || (kindIn.value.trim() ? null : all[0]?.d.profile ?? null);
+    const plats = el("div", "dkindplats");
+    for (const p of Object.keys(PROF.PROFILES)) {
+      const n = all.filter((x) => x.d.profile === p).length;
+      if (!n) continue;
+      const c = el("button", "dkindplat", PROF.PROFILES[p].label);
+      c.type = "button";
+      c.title = t("kindCount", n);
+      c.setAttribute("aria-pressed", shown === p);
+      c.onmousedown = (e) => e.preventDefault();
+      c.onclick = () => {
+        platform = shown === p ? null : p;
+        showKinds();
+        kindList.scrollTop = 0;
+      };
+      plats.append(c);
+    }
+    if (plats.childElementCount > 1) kindList.append(plats);
+    const found = shown ? all.filter((x) => x.d.profile === shown) : all;
     if (!found.length) kindList.append(el("div", "dkindnone", t("kindNone")));
-    for (const {k, d} of found.slice(0, 60)) {
-      if (d.profile !== group) kindList.append(el("div", "dkindgroup", PROF.PROFILES[(group = d.profile)].label));
+    for (const {k, d} of found.slice(0, 200)) {
+      if (!shown && d.profile !== group) kindList.append(el("div", "dkindgroup", PROF.PROFILES[(group = d.profile)].label));
       const b = el("button", "dkindopt");
       b.type = "button";
       b.append(iconEl({icon: d.def.icon}, "", null) || el("span", "icon"), d.def.name);
@@ -2841,7 +2863,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     picker.hidden = !picker.hidden;
     // Taller now: keep the card on screen.
     const r = pop.getBoundingClientRect();
-    if (r.bottom > innerHeight - 90) pop.style.top = Math.max(8, innerHeight - 90 - r.height) + "px";
+    if (r.bottom > innerHeight - 90) pop.style.top = Math.max(8, innerHeight - 90 - r.height) + scrollY + "px";
     (picker.hidden ? nameIn : picker.querySelector("input")).focus();
   };
   nameIn.oninput = whatIn.oninput = update;

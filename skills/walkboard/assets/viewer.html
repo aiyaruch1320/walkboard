@@ -3891,13 +3891,26 @@ function renderMap(real, focus = null) {
     if (Object.keys(rest).length) lv.layout = rest;
     else delete lv.layout;
   };
-  // A zone made bigger by hand (w, h): at least that big, and never so small that what it holds spills out.
+  // A zone given a size by hand (w, h): that big, and never so small that what it holds spills out.
   const applySizes = () => {
     for (const z of zoneEls()) {
       const q = layout()[keyOf(z)], sized = !fixed && (Number.isFinite(q?.w) || Number.isFinite(q?.h));
       z.classList.toggle("zsized", sized);
       z.style.width = sized && q.w ? q.w + "px" : "";
-      z.style.minHeight = sized && q.h ? q.h + "px" : "";
+      z.style.height = sized && q.h ? q.h + "px" : "";
+    }
+  };
+  // How tall a zone has to be for what it holds, wherever that has been dragged: a box moved away leaves room to take in.
+  const heightFor = (z) => {
+    const top = z.getBoundingClientRect().top, kids = [...z.querySelectorAll(":scope > .zhead, [data-anchor], .zone:not(.ghost)")].map((k) => k.getBoundingClientRect().bottom);
+    return Math.ceil(Math.max(top, ...kids) - top + parseFloat(getComputedStyle(z).paddingBottom));
+  };
+  // Innermost first: what a zone holds may have grown since its size was set. A zone that gives way makes the one around it taller.
+  const holdContents = () => {
+    for (const z of zoneEls().reverse()) {
+      if (!z.style.height) continue;
+      const need = heightFor(z);
+      if (need > z.getBoundingClientRect().height) z.style.height = need + "px";
     }
   };
   // ---- placed by hand ("@fixed" in the layout): each box and zone sits where it was put, from the top left corner of
@@ -3982,7 +3995,7 @@ function renderMap(real, focus = null) {
       if (Math.abs(r.w - own.width) > 4 || Math.abs(r.h - own.height) > 4) {
         z.classList.add("zsized");
         z.style.width = r.w + "px";
-        z.style.minHeight = r.h + "px";
+        z.style.height = r.h + "px";
         out[keyOf(z)] = {x: 0, y: 0, w: r.w, h: r.h, in: homeOf(z)};
       }
     }
@@ -4002,6 +4015,7 @@ function renderMap(real, focus = null) {
       if (q?.x || q?.y) keepIn(e, q);
       else place(e, q);
     });
+    if (map.isConnected) holdContents();
     if (map.isConnected) uncover();
   };
   // Whatever was moved last lies on top: the layout keeps its keys in that order.
@@ -4041,21 +4055,34 @@ function renderMap(real, focus = null) {
       z.style.width = "min-content";
       minW = z.getBoundingClientRect().width;
       z.style.width = w0;
+      minH = heightFor(z);
     }
-    let size = null, frame = 0;
+    let size = null, frame = 0, at = {x: sx, y: sy}, stopRoll = null;
+    const scroller = map.closest(".scroll"), y0 = scrollY, x0 = scroller?.scrollLeft || 0;
     map.classList.add("resizing");
     boxDragging = true;
-    const move = (ev) => {
-      size = {w: Math.round(Math.max(minW, r0.width + ev.clientX - sx)), h: Math.round(Math.max(minH, r0.height + ev.clientY - sy))};
+    const follow = () => {
+      // The page may have scrolled under the pointer: a zone taller than the window can still be pulled out.
+      const w = r0.width + at.x - sx + (scroller?.scrollLeft || 0) - x0, h = r0.height + at.y - sy + scrollY - y0;
+      size = {w: Math.round(Math.max(minW, w)), h: Math.round(Math.max(minH, h))};
+      // As small as it goes: the cursor says so, instead of the corner just not following.
+      document.body.classList.toggle("dnoplace", w < minW || h < minH);
       z.classList.toggle("zsized", !fixed);
       z.style.width = size.w + "px";
-      z.style[fixed ? "height" : "minHeight"] = size.h + "px";
+      z.style.height = size.h + "px";
       frame ||= requestAnimationFrame(() => {
         frame = 0;
         draw();
       });
     };
+    const move = (ev) => {
+      at = {x: ev.clientX, y: ev.clientY};
+      stopRoll ||= rollNearEdges(map, () => at, follow);
+      follow();
+    };
     const up = () => {
+      stopRoll?.();
+      document.body.classList.remove("dnoplace");
       removeEventListener("pointermove", move);
       removeEventListener("pointerup", up);
       removeEventListener("pointercancel", up);

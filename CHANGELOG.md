@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **A zone resizes in height as it does in width.** Dragging its corner near the window's edge scrolls the page, so a zone can be made taller than the window, and it takes in the room left where a box was dragged away, down to what it holds. As small as it goes, the cursor says so.
+
 ## 0.9.0
 
 **Change a picture yourself, then talk it over.**

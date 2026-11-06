@@ -441,3 +441,33 @@ test("a draft saved from an older version is refused with what is there now; oth
   const evil = await new Promise((done) => http.get({host: "127.0.0.1", port: s.port, path: `/api/plan?token=${s.token}`, headers: {host: "evil.example:80"}}, (r) => done(r.statusCode)));
   assert.equal(evil, 403);
 });
+
+test("an image attached to a message: what its bytes say, kept beside the plan", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const png = Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), Buffer.alloc(20)]);
+  const up = (body) => call(s, "/api/image", {method: "POST", body});
+  const r = await up(png);
+  assert.equal(r.status, 200);
+  const {name} = await r.json();
+  assert.match(name, /\.png$/);
+  assert.deepEqual(fs.readFileSync(path.join(dir, ".walkboard/images", name)), png);
+  const got = await call(s, `/api/image?name=${name}`);
+  assert.equal(got.headers.get("content-type"), "image/png");
+  assert.equal(got.headers.get("x-content-type-options"), "nosniff");
+  assert.equal(Buffer.compare(Buffer.from(await got.arrayBuffer()), png), 0);
+  // Whatever it claims: an SVG, a page or too much is refused, and nothing outside the folder can be asked for.
+  assert.equal((await up('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')).status, 415);
+  assert.equal((await up("<html>")).status, 415);
+  assert.equal((await up(Buffer.concat([png, Buffer.alloc(10 * 1024 * 1024)]))).status, 413);
+  assert.equal((await call(s, `/api/image?name=${encodeURIComponent("../plan.json")}`)).status, 404);
+  assert.equal((await fetch(`http://127.0.0.1:${s.port}/api/image?name=${name}&token=nope`)).status, 403);
+  // A message names only images that were sent, five at most.
+  const ok = await post(s, "/api/feedback", {kind: "question", text: "see", images: [name]});
+  assert.deepEqual((await ok.json()).images, [name]);
+  assert.equal((await post(s, "/api/feedback", {kind: "question", text: "a", images: ["../plan.json"]})).status, 400);
+  assert.equal((await post(s, "/api/feedback", {kind: "question", text: "b", images: ["00000000-0000-0000-0000-000000000000.png"]})).status, 400);
+  assert.equal((await post(s, "/api/feedback", {kind: "question", text: "c", images: Array(6).fill(name)})).status, 400);
+  assert.equal((await post(s, "/api/reply", {text: "d", images: [name]})).status, 400);
+});

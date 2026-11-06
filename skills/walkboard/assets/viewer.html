@@ -145,7 +145,55 @@ function msgEl(m) {
   d.dataset.id = m.id;
   const who = m.from === "agent" ? t("agent") : `${t("you")} · ${m.delivered ? t("received") : t("waitingAgent")}`;
   d.append(el("span", "who", who), msgBody(m.text));
+  if (m.images?.length) d.append(msgImages(m.images));
   return d;
+}
+const imageUrl = (name) => `/api/image?token=${encodeURIComponent(token)}&name=${encodeURIComponent(name)}`;
+function msgImages(names) {
+  const box = el("div", "msgimgs");
+  for (const n of names) {
+    // An exported copy has no server to ask for them.
+    if (snapshot) {
+      box.append(el("span", "imggone", t("imageLeftOut")));
+      continue;
+    }
+    const a = el("a");
+    a.href = imageUrl(n);
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    const img = el("img");
+    img.src = a.href;
+    img.alt = t("imageAlt");
+    img.loading = "lazy";
+    img.decoding = "async";
+    a.append(img);
+    box.append(a);
+  }
+  return box;
+}
+
+// Images waiting to go with the next message, by conversation: a panel drawn again keeps them. Nothing reaches the server until it is sent.
+const pendingImages = {};
+const IMAGE_ACCEPT = ["image/png", "image/jpeg", "image/gif", "image/webp"], MAX_MSG_IMAGES = 5, MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+// Longer than this and a model scales it down anyway: doing it here sends less, stores less, and costs the agent fewer tokens.
+const IMAGE_SIDE = 1568;
+async function shrinkImage(file) {
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, IMAGE_SIDE / Math.max(bmp.width, bmp.height));
+    if (k === 1 && file.size <= 1024 * 1024) return file;
+    const c = new OffscreenCanvas(Math.round(bmp.width * k), Math.round(bmp.height * k));
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const small = await c.convertToBlob({type: "image/webp", quality: 0.9});
+    return small.size < file.size || k < 1 ? small : file;
+  } catch {
+    return file;
+  }
+}
+async function uploadImage(blob) {
+  const r = await fetch("/api/image?token=" + encodeURIComponent(token), {method: "POST", body: blob});
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return (await r.json()).name;
 }
 
 // **bold** and *italic* (or _italic_), still as text nodes.
@@ -451,11 +499,83 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
   ta.oninput = () => (drafts[key] = ta.value);
   const note = el("span", "note", hintText());
   const sendBtn = el("button", "primary", t("send"));
+  const thumbs = el("div", "attached");
+  thumbs.dataset.key = key;
+  thumbs.draw = () => {
+    thumbs.replaceChildren(...(pendingImages[key] || []).map((im) => {
+      const d = el("span", "thumb"), img = el("img"), x = el("button", null, "×");
+      img.src = im.url;
+      img.alt = t("imageAlt");
+      x.type = "button";
+      x.title = t("imageRemove");
+      x.setAttribute("aria-label", x.title);
+      x.onclick = () => {
+        URL.revokeObjectURL(im.url);
+        pendingImages[key] = pendingImages[key].filter((o) => o !== im);
+        thumbs.draw();
+      };
+      d.append(img, x);
+      return d;
+    }));
+  };
+  thumbs.draw();
+  const redrawThumbs = () => document.querySelectorAll(`.attached[data-key="${CSS.escape(key)}"]`).forEach((x) => x.draw());
+  const addImages = async (files) => {
+    for (const file of files) {
+      if ((pendingImages[key] || []).length >= MAX_MSG_IMAGES) {
+        note.textContent = t("imageMany", MAX_MSG_IMAGES);
+        note.className = "note err";
+        break;
+      }
+      const blob = IMAGE_ACCEPT.includes(file.type) ? await shrinkImage(file) : null;
+      if (!blob || blob.size > MAX_IMAGE_BYTES) {
+        note.textContent = t(blob ? "imageBig" : "imageKind");
+        note.className = "note err";
+        continue;
+      }
+      (pendingImages[key] ||= []).push({blob, url: URL.createObjectURL(blob)});
+      redrawThumbs();
+    }
+  };
+  // A paste that also carries words (a cell from a spreadsheet) stays words.
+  ta.onpaste = (e) => {
+    const files = [...e.clipboardData.files].filter((x) => x.type.startsWith("image/"));
+    if (!files.length || e.clipboardData.getData("text/plain")) return;
+    e.preventDefault();
+    addImages(files);
+  };
+  comp.ondragover = (e) => {
+    if (!e.dataTransfer?.types.includes("Files")) return;
+    e.preventDefault();
+    comp.classList.add("dropping");
+  };
+  comp.ondragleave = (e) => !comp.contains(e.relatedTarget) && comp.classList.remove("dropping");
+  comp.ondrop = (e) => {
+    comp.classList.remove("dropping");
+    if (!e.dataTransfer?.files.length) return;
+    e.preventDefault();
+    addImages([...e.dataTransfer.files]);
+  };
+  const picker = el("input");
+  picker.type = "file";
+  picker.accept = IMAGE_ACCEPT.join(",");
+  picker.multiple = true;
+  picker.hidden = true;
+  picker.onchange = () => {
+    addImages([...picker.files]);
+    picker.value = "";
+  };
+  const clip = el("button", "clip", "📎");
+  clip.type = "button";
+  clip.title = t("imageAttach");
+  clip.setAttribute("aria-label", clip.title);
+  clip.onclick = () => picker.click();
   let busy = false;
   const buttons = [sendBtn];
   const go = async (kind, fallback) => {
     if (busy) return;
-    const text = ta.value.trim() || fallback;
+    const images = pendingImages[key] || [];
+    const text = ta.value.trim() || fallback || (images.length ? t("q_image") : "");
     if (!text) {
       note.textContent = t("typeFirst");
       note.className = "note err";
@@ -467,6 +587,8 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
     // draw this panel again from `drafts`, with a new box still holding the text. A failed send puts it back.
     const typed = ta.value;
     if (typed.trim()) ta.value = drafts[key] = "";
+    pendingImages[key] = [];
+    redrawThumbs();
     const live = () => document.querySelector(`textarea[data-key="${CSS.escape(key)}"]`) || ta;
     const say = (text, cls) => {
       const n = live().closest(".composer")?.querySelector(".note") || note;
@@ -474,11 +596,15 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
       n.className = cls;
     };
     try {
-      await send(to, kind, prefix + text, extra);
+      const names = await Promise.all(images.map((im) => uploadImage(im.blob)));
+      await send(to, kind, prefix + text, names.length ? {...extra, images: names} : extra);
+      images.forEach((im) => URL.revokeObjectURL(im.url));
       if (sent) return sent();
       say(t("sent"), "note");
     } catch (e) {
       if (typed.trim() && !live().value.trim()) live().value = drafts[key] = typed;
+      pendingImages[key] = [...images, ...(pendingImages[key] || [])];
+      redrawThumbs();
       say(/413/.test(e.message) ? t("tooLong") : t("sendFail") + e.message, "note err");
     } finally {
       busy = false;
@@ -504,11 +630,11 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
     go("question", "");
   };
   const row = el("div", "send");
-  row.append(note, sendBtn);
+  row.append(clip, picker, note, sendBtn);
   const thr = el("div", "thread");
   thr.dataset.ctx = JSON.stringify(c);
   // Like a chat: the conversation first, what you type under it.
-  comp.append(ta, row);
+  comp.append(thumbs, ta, row);
   box.append(thr, comp);
   return box;
 }

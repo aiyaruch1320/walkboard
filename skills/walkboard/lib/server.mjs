@@ -18,6 +18,7 @@ export const paths = (dir) => {
     delivered: path.join(state, "delivered"),
     replies: path.join(state, "replies.jsonl"),
     draft: path.join(state, "draft.json"),
+    images: path.join(state, "images"),
     lock: path.join(state, "server.lock"),
   };
 };
@@ -26,9 +27,23 @@ const glossaryFile = new URL("../assets/glossary.json", import.meta.url);
 
 const MAX_BODY = 64 * 1024;
 
+// Images attached to a message. An image is what its first bytes say, whatever the request claims; never SVG, which can
+// hold scripts. Names come from the server and are checked on every use, so none reaches outside the folder.
+const MAX_IMAGE = 10 * 1024 * 1024, MAX_IMAGES = 5;
+const IMAGE_TYPES = {png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp"};
+const IMAGE_NAME = /^[0-9a-f-]{36}\.(png|jpg|gif|webp)$/;
+function imageExt(b) {
+  const head = b.toString("latin1", 0, 12);
+  if (head.startsWith("\x89PNG\r\n\x1a\n")) return "png";
+  if (head.startsWith("\xff\xd8\xff")) return "jpg";
+  if (head.startsWith("GIF87a") || head.startsWith("GIF89a")) return "gif";
+  if (head.startsWith("RIFF") && head.slice(8) === "WEBP") return "webp";
+  return null;
+}
+
 // The exported file is named after the plan's title (letters of any script, digits, dashes), else its folder.
 export const exportName = (plan, dir) => (String(plan?.title || "").normalize("NFC").replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60) || path.basename(dir)) + ".html";
-const sameKey = (v) => JSON.stringify(["kind", "text", "node", "step", "option", "criterion", "constraint"].map((k) => v[k] ?? null));
+const sameKey = (v) => JSON.stringify(["kind", "text", "node", "step", "option", "criterion", "constraint", "images"].map((k) => v[k] ?? null));
 
 // A torn or hand-edited line must not keep the server from starting.
 function readLines(file) {
@@ -242,6 +257,28 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
       const replies = readLines(p.replies);
       res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify({items: [...feedback, ...replies], waiting: waiters.length}));
+    } else if (route === "POST /api/image") {
+      const chunks = [];
+      let size = 0;
+      req.on("data", (c) => {
+        size += c.length;
+        if (size <= MAX_IMAGE) chunks.push(c);
+      });
+      req.on("end", safe(res, () => {
+        if (size > MAX_IMAGE) return res.writeHead(413).end(`image over ${MAX_IMAGE} bytes`);
+        const body = Buffer.concat(chunks), ext = imageExt(body);
+        if (!ext) return res.writeHead(415).end("need a PNG, JPEG, GIF or WebP image");
+        const name = `${crypto.randomUUID()}.${ext}`;
+        fs.mkdirSync(p.images, {recursive: true, mode: 0o700});
+        fs.writeFileSync(path.join(p.images, name), body, {mode: 0o600});
+        res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({name}));
+      }));
+    } else if (route === "GET /api/image") {
+      const name = url.searchParams.get("name") || "";
+      if (!IMAGE_NAME.test(name) || !fs.existsSync(path.join(p.images, name))) return res.writeHead(404).end();
+      // A name never changes its bytes: the page need not fetch it twice.
+      res.writeHead(200, {"content-type": IMAGE_TYPES[name.split(".").pop()], "x-content-type-options": "nosniff", "cache-control": "private, max-age=86400, immutable"});
+      fs.createReadStream(path.join(p.images, name)).pipe(res);
     } else if (route === "GET /api/events") {
       res.writeHead(200, {"content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive"});
       res.write("retry: 2000\n\n");
@@ -253,6 +290,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         if (err || typeof v.text !== "string" || blank(v.text)) return res.writeHead(400).end("need a JSON object with text");
         // "settings" is how the server itself reports switched settings; the page cannot send one.
         if (route === "POST /api/feedback" && v.kind === "settings") return res.writeHead(400).end("kind settings is reserved");
+        if (v.images != null && (route !== "POST /api/feedback" || !Array.isArray(v.images) || v.images.length > MAX_IMAGES || v.images.some((n) => typeof n !== "string" || !IMAGE_NAME.test(n) || !fs.existsSync(path.join(p.images, n))))) return res.writeHead(400).end("images must name images sent to /api/image");
         ensureState();
         // A double click sends the same message twice; keep the first.
         const same = route === "POST /api/feedback" && recent.find((r) => Date.now() - r.t < 5000 && r.key === sameKey(v));

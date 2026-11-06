@@ -42,6 +42,18 @@ test("poll prints the batch and acknowledges it; --timeout gives up quietly", as
   assert.equal(empty.stdout.trim(), "[]");
 });
 
+test("poll gives the agent an attached image as a path it can read", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const base = `http://127.0.0.1:${s.port}`;
+  const png = Buffer.concat([Buffer.from("89504e470d0a1a0a", "hex"), Buffer.alloc(20)]);
+  const {name} = await (await fetch(`${base}/api/image?token=${s.token}`, {method: "POST", body: png})).json();
+  await fetch(`${base}/api/feedback?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({text: "see", images: [name]})});
+  const m = JSON.parse((await run("poll", dir, "--timeout", "5")).stdout.trim());
+  assert.deepEqual(fs.readFileSync(m.images[0]), png);
+});
+
 test("a review reaches poll with the picture's geometry, view included", async (t) => {
   const dir = planDir();
   const s = await startServer(dir);

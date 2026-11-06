@@ -785,8 +785,10 @@ const answered = (step) => thread.some((m, i) => m.step === step.id && !m.node &
 
 function yourTurn(step) {
   if (snapshot || step?.status !== "review" || plan.mode === "explain") return null;
-  return plan.settings?.commit === "suggest" ? "turnCommit" : "turnNext";
+  return plan.settings?.commit === "suggest" && suggested(step) ? "turnCommit" : "turnNext";
 }
+// The agent says what to commit, and only when the step changed files: a step that changed none has nothing to fill in.
+const suggested = (step) => !!step.commitMessage?.trim() || !!step.commits?.some((c) => c?.message?.trim());
 
 // A finished step goes on when the user says so; on the last step that ends the plan.
 // "Run the rest" only when the agent commits by itself: otherwise each step still waits for its commit.

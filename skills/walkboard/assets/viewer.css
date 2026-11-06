@@ -166,6 +166,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .nextbox .quiet{border:0;background:none;color:var(--muted);padding:2px 4px;font-size:12.5px}
 .nextbox .quiet:hover{color:var(--text);text-decoration:underline}
 .nextbox.inpanel{display:flex;flex-wrap:wrap;margin:0 0 8px}
+@media (min-width:821px){.nextbox.inpanel{display:none}}
 .turnbtn{display:flex;width:100%;align-items:center;gap:8px;margin-top:10px;text-align:left;background:var(--you-bg);color:var(--you-tx);border:1.5px solid var(--you-bd);border-radius:9px;padding:7px 12px;font-weight:500}
 .turnbtn::after{content:"→";margin-left:auto}
 .talklink{margin-top:10px;font-size:12.5px;padding:3px 10px;border-radius:999px;color:var(--muted)}
@@ -197,9 +198,6 @@ body.side-open .side-inner{opacity:1;transform:none}
 .proplist button{display:flex;gap:8px;align-items:baseline;text-align:left;width:100%;padding:7px 10px;border-radius:8px}
 .proplist .pbadge{flex:none;margin:0}
 .proplist small{display:block;color:var(--muted);font-size:12px}
-.pchoose{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 6px}
-.pchoose button{font-size:12px;padding:2px 10px;border-radius:999px}
-.pchoose button[aria-pressed="true"]{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx);font-weight:600}
 .helpbtn{width:26px;height:26px;padding:0;border-radius:50%;font-weight:600;font-size:13px;display:inline-grid;place-items:center;line-height:1}
 .helpbtn svg{display:block}
 .legendbox{margin:0 0 10px;font-size:13px}
@@ -942,10 +940,6 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 }
 .talk .quick{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
 .talk .quick .qlabel{font-size:12px;color:var(--muted);margin-right:2px}
-.talk .modes{display:inline-flex;gap:2px;padding:2px;margin-bottom:6px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
-.talk .modes button{border:0;border-radius:6px;padding:3px 12px;background:transparent;color:var(--muted)}
-.talk .modes button:hover{color:var(--text)}
-.talk .modes button[aria-pressed="true"]{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.25)}
 button:disabled{opacity:.5;cursor:wait}
 .talk textarea{width:100%;min-height:56px;resize:vertical;font:inherit;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
 .talk .send{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:var(--muted)}

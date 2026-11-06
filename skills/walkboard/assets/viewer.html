@@ -129,7 +129,6 @@ addEventListener("pagehide", () => {
   } catch {}
 });
 const touch = matchMedia("(pointer: coarse)").matches;
-const picked = {};
 const seen = new Set();
 let freshReply = null;
 const hintText = () => (connected ? "" : t("noAgent"));
@@ -144,7 +143,7 @@ const inThread = (m, c, i) => inCtx(m, c) || (!!c.option && m.from === "agent" &
 function msgEl(m) {
   const d = el("div", "msg " + (m.from === "agent" ? "agent" : "user"));
   d.dataset.id = m.id;
-  const who = m.from === "agent" ? t("agent") : `${t("you")} · ${t(STRINGS.en[m.kind] ? m.kind : "question")} · ${m.delivered ? t("received") : t("waitingAgent")}`;
+  const who = m.from === "agent" ? t("agent") : `${t("you")} · ${m.delivered ? t("received") : t("waitingAgent")}`;
   d.append(el("span", "who", who), msgBody(m.text));
   return d;
 }
@@ -431,9 +430,9 @@ async function send(c, kind, text, extra = {}) {
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
 }
 
-// quick: buttons that send at once; modes: what the typed text is sent as.
+// quick: buttons that send at once. Everything typed goes in one box; the agent tells a question from a request to change something.
 // to, prefix, sent: for a conversation that continues elsewhere (a box taken out of the plan continues in the whole plan's).
-function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase = "", extra = {}, to = c, prefix = "", sent = null}) {
+function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", sent = null}) {
   if (snapshot) {
     // Read-only: the conversation if it was exported, nothing to type into.
     const box = el("div", "talk");
@@ -443,29 +442,22 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     return box;
   }
   const key = ctxKey(c);
-  const pickKey = key + "|" + phase;
-  let current = modes.includes(picked[pickKey]) ? picked[pickKey] : mode && modes.includes(mode) ? mode : modes[0];
   const box = el("div", "talk");
   const comp = el("div", "composer");
   const ta = el("textarea");
   ta.dataset.key = key;
   ta.value = drafts[key] || "";
+  ta.placeholder = placeholder;
   ta.oninput = () => (drafts[key] = ta.value);
   const note = el("span", "note", hintText());
-  const sendBtn = el("button", "primary");
+  const sendBtn = el("button", "primary", t("send"));
   let busy = false;
-  const buttons = [];
-  let pchange = null;
+  const buttons = [sendBtn];
   const go = async (kind, fallback) => {
     if (busy) return;
     const text = ta.value.trim() || fallback;
-    if (kind === "propose" && c.node && !pchange) {
-      note.textContent = t("pickChange");
-      note.className = "note err";
-      return choose.querySelector("button")?.focus();
-    }
     if (!text) {
-      note.textContent = kind === "change" ? t("typeChange") : t("typeFirst");
+      note.textContent = t("typeFirst");
       note.className = "note err";
       return ta.focus();
     }
@@ -482,7 +474,7 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
       n.className = cls;
     };
     try {
-      await send(to, kind, prefix + text, kind === "propose" ? {...extra, change: c.node ? pchange : "add"} : extra);
+      await send(to, kind, prefix + text, extra);
       if (sent) return sent();
       say(t("sent"), "note");
     } catch (e) {
@@ -504,52 +496,12 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     }
     comp.append(row);
   }
-  // Proposing on a box: add something after it, change it, or remove it.
-  const choose = el("div", "pchoose");
-  for (const k of ["add", "change", "remove"]) {
-    const b = el("button", null, t("pc_" + k));
-    b.dataset.change = k;
-    b.onclick = () => {
-      pchange = k;
-      note.textContent = hintText();
-      note.className = "note";
-      setMode("propose");
-      ta.focus();
-    };
-    choose.append(b);
-  }
-  const setMode = (m) => {
-    current = m;
-    ta.placeholder = m === "question" ? placeholder : m === "propose" ? t(c.node ? (pchange ? "ph_propose_" + pchange : "pickChange") : "ph_propose_plan") : t("ph_" + m, unit());
-    sendBtn.textContent = t("send_" + m);
-    seg.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
-    choose.hidden = !(m === "propose" && c.node);
-    choose.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.change === pchange)));
-  };
-  const seg = el("div", "modes");
-  if (modes.length > 1) {
-    seg.setAttribute("role", "group");
-    for (const m of modes) {
-      const b = el("button", null, t(m));
-      b.dataset.mode = m;
-      b.onclick = () => {
-        picked[pickKey] = m;
-        setMode(m);
-        ta.focus();
-      };
-      seg.append(b);
-    }
-    comp.append(seg);
-  }
-  comp.append(choose);
-  setMode(current);
-  sendBtn.onclick = () => go(current, "");
-  buttons.push(sendBtn);
+  sendBtn.onclick = () => go("question", "");
   // Enter sends, as in any chat; Shift+Enter starts a new line.
   ta.onkeydown = (e) => {
     if (e.key !== "Enter" || e.shiftKey || e.isComposing) return;
     e.preventDefault();
-    go(current, "");
+    go("question", "");
   };
   const row = el("div", "send");
   row.append(note, sendBtn);
@@ -1281,7 +1233,7 @@ function renderDesignPanel() {
       }
       list.append(row);
     }
-    parts.push(list, talkBox({}, {placeholder: t("ph_propose_plan"), modes: ["propose", "question"]}));
+    parts.push(list, talkBox({}, {placeholder: t("askPlan")}));
   } else if (side.kind === "cell") {
     const c = criteria().find((x) => x.id === side.criterion);
     if (!opt || !c) return closeSide();
@@ -1302,7 +1254,7 @@ function renderDesignPanel() {
       }
       parts.push(ul);
     }
-    parts.push(talkBox({option: opt.id, criterion: c.id}, {placeholder: t("cellAsk", c.label, opt.title), modes: ["question", "propose"]}));
+    parts.push(talkBox({option: opt.id, criterion: c.id}, {placeholder: t("cellAsk", c.label, opt.title)}));
   } else if (side.kind === "decide") {
     const pv = side.view && plan.views.find((x) => x.id === side.view);
     const name = pv ? pv.title || pv.id : opt?.title;
@@ -1341,7 +1293,7 @@ function renderDesignPanel() {
   } else {
     if (!opt) return closeSide();
     title.textContent = opt.title;
-    parts.push(talkBox({option: opt.id}, {placeholder: t("askOption", opt.title), modes: ["question", "propose"]}));
+    parts.push(talkBox({option: opt.id}, {placeholder: t("askOption", opt.title)}));
   }
   fillPanel(p, parts);
   refreshThreads();
@@ -1551,16 +1503,14 @@ function renderSide() {
     }
     parts.push(talkBox({step: step.id}, {
       placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
-      quick: plan.mode === "explain" ? ["confused", "deeper"] : thread.some((m) => m.from === "agent" && m.step === step.id && !m.node) ? ["confused"] : [],
-      modes: ["question", "propose"],
-      phase: step.status,
+      quick: plan.mode === "explain" ? ["confused", "deeper"] : [],
     }));
     fillPanel(p, parts);
   } else {
     title.textContent = t("wholePlan");
     const approve = (plan.mode ?? "build") === "build" && !plan.approved && !approvePending() && steps().length ? ["approve"] : [];
     const parts = approve.length ? [el("span", "turn", t("turnApprove"))] : [];
-    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve, modes: ["question", "propose"]}));
+    parts.push(talkBox({}, {placeholder: t("askPlan"), quick: approve}));
     fillPanel(p, parts);
   }
   refreshThreads();
@@ -8261,7 +8211,7 @@ function renderNodePanel(id) {
   if (n.file && parseFile(n.file, plan)?.abs) parts.push(codeBox(id));
   const where = steps().map((s, i) => (s.nodes || []).includes(id) ? `${i + 1}. ${s.title}` : null).filter(Boolean);
   if (where.length) parts.push(el("p", "insteps", (plan.mode === "explain" ? t("inStages") : t("inSteps")) + where.join(", ")));
-  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: ["confused", "deeper"], modes: ["question", "propose"]}));
+  parts.push(talkBox({node: id}, {placeholder: t("askBox", n.name), quick: plan.mode === "explain" ? ["confused", "deeper"] : []}));
   fillPanel(p, parts);
   refreshThreads();
 }

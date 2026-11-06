@@ -2,17 +2,17 @@
 
 Read this the first time one of these arrives. `WB` is the CLI from SKILL.md.
 
-## propose (`change` = `add`, `change` or `remove`; any mode)
+## Proposals: a message asking to add, change or remove something (any mode)
 
-Decide what it is first:
+It arrives as `question` (`propose` from older pages). Decide what it is first:
 
 - It corrects the picture (wrong, unclear or missing explanation of what exists): fix the picture and say so.
 - It changes what gets built and the plan is not approved yet: change the plan directly and `WB check`; the page outlines what changed.
 - Otherwise draw it and build nothing:
-  - `add`: a new node with `"proposal": {"type": "add", "note": "…"}`, placed in the views next to the box it came from.
-  - `change` / `remove`: `WB set <dir> node:<id> 'proposal={"type":"change","note":"…"}'`.
+  - To add: a new node with `"proposal": {"type": "add", "note": "…"}`, placed in the views next to the box it came from.
+  - To change or remove (`"type":"remove"`): `WB set <dir> node:<id> 'proposal={"type":"change","note":"…"}'`.
 
-Reply in one line. In explain mode proposals are the only part of the picture that is not in the code. `change` from older pages means the same as `propose`.
+Reply in one line. In explain mode proposals are the only part of the picture that is not in the code.
 
 ## withdraw
 

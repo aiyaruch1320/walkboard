@@ -2687,6 +2687,78 @@ const flash = (e) => {
 // Drafts are drawn on screen, on a picture's own tab: not on paper, not inside before / after.
 // A picture can be arranged by hand on a page that can save it. Before / after only compares: a drag there would move the
 // picture on its own tab without showing it, so each picture says it is being compared when it is drawn (see compared).
+// Paper: a map whose names would come out under 7 pt (under 0.78 of their 9 pt) goes on as an overview, then its parts, each
+// large enough to read. Sizes in px at full size: landscape and upright pages, less the room for a caption.
+const PRINT_READABLE = 0.78;
+const pageScale = (w, h) => Math.max(Math.min(1, 1000 / w, 560 / h), Math.min(1, 676 / w, 840 / h));
+function mapParts(box, view) {
+  const map = box.querySelector(".map");
+  if (!map) return [];
+  const sizeOf = (z) => {
+    const r = map.querySelector(`.zone[data-zone="${CSS.escape(zoneKey(z))}"]`)?.getBoundingClientRect();
+    return r ? {w: r.width, h: r.height} : {w: 0, h: 0};
+  };
+  // The boxes a zone holds directly, without the zones inside it.
+  const shellOf = (z) => {
+    const body = [...(map.querySelector(`.zone[data-zone="${CSS.escape(zoneKey(z))}"]`)?.querySelectorAll(":scope > .zbody [data-anchor]") || [])].filter((e) => e.parentElement.closest(".zone")?.dataset.zone === zoneKey(z));
+    if (!body.length) return {w: 0, h: 0};
+    const rs = body.map((e) => e.getBoundingClientRect());
+    return {w: Math.max(...rs.map((r) => r.right)) - Math.min(...rs.map((r) => r.left)) + 40, h: Math.max(...rs.map((r) => r.bottom)) - Math.min(...rs.map((r) => r.top)) + 70};
+  };
+  const units = [];
+  (function walk(list, path) {
+    for (const z of list) {
+      const size = sizeOf(z), inner = (z.zones || []).filter((x) => x && typeof x === "object"), label = [...path, z.label ?? zoneKey(z)];
+      if (!inner.length || pageScale(size.w, size.h) >= PRINT_READABLE) {
+        units.push({zone: z, ...size, label: label.join(" › ")});
+        continue;
+      }
+      if ((z.nodes || []).length) units.push({zone: z, only: true, ...shellOf(z), label: label.join(" › ")});
+      walk(inner, label);
+    }
+  })((view.zones || []).filter((x) => x && typeof x === "object"), []);
+  // Small neighbours share a page.
+  const parts = [];
+  for (const u of units) {
+    const last = parts.at(-1), w = last ? last.w + 20 + u.w : 0, h = last ? Math.max(last.h, u.h) : 0;
+    if (last && pageScale(w, h) >= PRINT_READABLE) Object.assign(last, {w, h, units: [...last.units, u]});
+    else parts.push({w: u.w, h: u.h, units: [u]});
+  }
+  return parts;
+}
+// The parts of a map, each its own section after the overview; tags on the overview say which is which.
+function splitMapForPaper(box, v) {
+  const view = applyDraft(plan, draftDrawn() ? draft : null, v.id).view, parts = mapParts(box, view);
+  if (parts.length < 2) return [];
+  const where = new Map();
+  parts.forEach((p, i) => p.units.forEach((u) => {
+    (function walk(z, top) {
+      for (const n of z.nodes || []) where.set(n, i + 1);
+      if (!u.only || !top) (z.zones || []).forEach((c) => walk(c, false));
+    })(u.zone, true);
+  }));
+  const index = el("ol", "pzindex");
+  const made = parts.map((p, i) => {
+    index.append(el("li", null, p.units.map((u) => u.label).join(", ")));
+    for (const u of p.units) {
+      const z = box.querySelector(`.map .zone[data-zone="${CSS.escape(zoneKey(u.zone))}"]`);
+      z?.append(el("span", "pzno", String(i + 1)));
+    }
+    // Where each thing sits inside its zone stays; the parts themselves start at the corner of their page.
+    const layout = {...(v.layout || {})};
+    for (const u of p.units) delete layout[`z:${zoneKey(u.zone)}`];
+    const focus = {parts: p.units.map((u) => ({zone: u.zone, only: u.only})), where};
+    const pic = renderMap({...v, layout}, focus);
+    pic.style.width = Math.ceil(p.w + 40) + "px";
+    const section = el("section", "pview");
+    section.append(el("div", "pcap", `${t("printPart", i + 1)} · ${p.units.map((u) => u.label).join(", ")}`), pic);
+    section.partOf = focus;
+    return section;
+  });
+  box.querySelector(".pcap")?.append(` · ${t("printOverview")}`);
+  box.querySelector(".pcap")?.after(index);
+  return made;
+}
 const canArrange = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
 const draftShown = () => !printState && !drawingDiff;
 // On paper the draft goes along: a picture is sketched to be talked over, with the agent and with people. Export can leave
@@ -3484,10 +3556,43 @@ const timed = (fn) => (...a) => {
   window.__wbPerf.push(performance.now() - t0);
 };
 
-function renderMap(real) {
+// Paper: part of a map on a page of its own. parts: {zone, only} (only: the boxes it holds directly, not its inner zones);
+// the lines that stay inside are drawn, and each line that leaves says where it goes (see crossChips).
+function focusedView(view, focus) {
+  const zones = focus.parts.map((p) => (p.only ? {...p.zone, zones: []} : p.zone));
+  const ids = new Set();
+  (function walk(list) {
+    for (const z of list) {
+      for (const n of z.nodes || []) ids.add(n);
+      walk(z.zones || []);
+    }
+  })(zones);
+  return {...view, zones, links: (view.links || []).filter((l) => ids.has(l.from) && ids.has(l.to))};
+}
+// A line that leaves this part of the map, as a label on its box. A box shows two; the rest are listed under the picture.
+function crossChips(map, view, nodes, focus) {
+  const inside = new Set([...map.querySelectorAll("[data-anchor]")].map((e) => e.dataset.anchor)), rest = [], shown = {};
+  const nameOf = (id) => nodes[id]?.name ?? id;
+  for (const l of view.links || []) {
+    const out = inside.has(l.from), into = inside.has(l.to);
+    if (out === into) continue;
+    const here = out ? l.from : l.to, there = out ? l.to : l.from, part = focus.where.get(there);
+    const words = `${out ? "→" : "←"} ${nameOf(there)}${l.label ? ` · ${l.label}` : ""}${part ? ` · ${t("printPart", part)}` : ""}`;
+    shown[here] = (shown[here] || 0) + 1;
+    if (shown[here] > 2) {
+      rest.push(`${nameOf(here)} ${words}`);
+      continue;
+    }
+    const box = map.querySelector(`[data-anchor="${CSS.escape(here)}"]`);
+    box?.append(el("div", `pxref l-${l.state || "ok"}`, words));
+  }
+  return rest;
+}
+
+function renderMap(real, focus = null) {
   // The picture drawn is the plan with this view's draft in it; arranging (layout) stays on the real view.
   // Paper shows the plan as it is: a draft is not part of it yet.
-  const drafted = applyDraft(plan, draftDrawn() ? draft : null, real.id), v = drafted.view, marks = drafted.marks, lv = real;
+  const drafted = applyDraft(plan, draftDrawn() ? draft : null, real.id), v = focus ? focusedView(drafted.view, focus) : drafted.view, marks = drafted.marks, lv = real;
   drawnNodes = drafted.plan.nodes;
   const scroll = el("div", "scroll");
   // "uses" lines (a config a workload reads, the way into a cluster) are drawn thin and are not lines to edit.
@@ -3496,13 +3601,14 @@ function renderMap(real) {
   if (states.length || uses) scroll.append(linkLegend(states, uses));
   // Many boxes or many zones: smaller boxes and zones side by side, so the whole system fits in one look.
   const tops = (v.zones || []).filter((x) => x && typeof x === "object");
-  const many = new Set(KINDS.map.refs(v)).size > 12 || tops.length >= 4;
+  const many = !!focus || new Set(KINDS.map.refs(v)).size > 12 || tops.length >= 4;
   const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : "") + (many ? " dense" : ""));
   for (const z of tops) map.append(zoneEl(z, 0, many));
   const profRow = profileMarks(map, v);
   if (profRow) scroll.append(profRow);
   scroll.append(map);
   viaChips(map, v.links, marks);
+  if (focus) focus.rest = crossChips(map, drafted.view, drafted.plan.nodes, focus);
   drawnNodes = null;
   const svg = linkLayer(map);
   let routes = [], keptOnce = false;
@@ -3515,7 +3621,8 @@ function renderMap(real) {
     if (fixed) unfix();
     else movers().forEach((e) => place(e, null));
     map.classList.remove("denser", "wrapped");
-    if (map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
+    // A part of a map on paper keeps the size of its boxes in the whole, so what was arranged stays as it was.
+    if (focus || map.scrollWidth > map.clientWidth + 1) map.classList.add("denser");
     // Wrapping gives the room back: no need for boxes so small that long names break.
     // Paper scales the picture instead, so its zones stay in a row.
     if (!printState && map.scrollWidth > map.clientWidth + 1) map.classList.replace("denser", "wrapped");
@@ -8722,6 +8829,7 @@ addEventListener("beforeprint", () => {
       if (at > 700) pic.style.width = at + "px";
     }
     box.append(pic);
+    if (v.kind === "map") box.mapView = v;
     if (printDraft && v.kind !== "diff") {
       const words = draftSummary(v.id);
       if (words) box.append(words);
@@ -8766,13 +8874,30 @@ addEventListener("beforeprint", () => {
   out.replaceChildren(...parts);
   pics.forEach(tidyGuesses);
   linkDrawer?.();
-  linkObserver?.disconnect();
   // Lines are one layer over the whole picture and cannot follow its boxes onto the next page, so a picture with lines
   // is scaled to fit one page. Without lines a tall picture breaks between its rows.
   // What would come out too small takes a landscape page of its own: first choose (the lines redraw for the new width), then scale.
   const scaleOf = (pic, wide, room) => Math.min(1, wide / Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth)), pic.querySelector("svg.links") ? room / pic.getBoundingClientRect().height : 1);
-  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [[...box.children].filter((x) => !x.classList.contains("pdraft")).at(-1)]);
+  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [[...box.children].filter((x) => !x.matches(".pdraft, .pxlist, .pzindex")).at(-1)]);
   const worst = (box, wide, room) => Math.min(...partsOf(box).map((pic) => scaleOf(pic, wide, room)));
+  // A map too small to read on paper: an overview, then its parts.
+  for (const box of [...pics]) {
+    if (!box.mapView || Math.max(worst(box, 676, 880), worst(box, 1000, 590)) >= PRINT_READABLE) continue;
+    const made = splitMapForPaper(box, box.mapView);
+    if (!made.length) continue;
+    made.reverse().forEach((s) => box.after(s));
+    pics.splice(pics.indexOf(box) + 1, 0, ...made.reverse());
+    made.forEach(tidyGuesses);
+    // What a box had no room to say goes under its picture.
+    for (const s of made) if (s.partOf.rest?.length) {
+      const ul = el("ul", "pxlist");
+      s.partOf.rest.forEach((x) => ul.append(el("li", null, x)));
+      s.append(ul);
+    }
+    box.classList.add("poverview");
+  }
+  linkDrawer?.();
+  linkObserver?.disconnect();
   const small = pics.filter((box) => partsOf(box).some((pic) => pic.querySelector("svg.links")) && worst(box, 676, 880) < 0.8).map((box) => [box, worst(box, 676, 880)]);
   small.forEach(([box]) => box.classList.add("landscape"));
   if (small.length) {
@@ -8794,7 +8919,7 @@ addEventListener("beforeprint", () => {
     for (const pic of parts) {
       const w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
       // A diff's list of changes shares the first page with its first picture.
-      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0) - (picsHead && box.contains(picsHead) ? picsHead.offsetHeight + 16 : 0) - (box.querySelector(":scope > .pdraft")?.offsetHeight || 0);
+      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0) - (picsHead && box.contains(picsHead) ? picsHead.offsetHeight + 16 : 0) - [...box.querySelectorAll(":scope > .pdraft, :scope > .pxlist, :scope > .pzindex")].reduce((n, x) => n + x.offsetHeight + 8, 0);
       // Unless that would make it too small: then the list keeps its page and the picture takes the next.
       if (diff && pic === parts[0] && room / pic.getBoundingClientRect().height < 0.6) {
         room = pageH;
@@ -8807,6 +8932,8 @@ addEventListener("beforeprint", () => {
         pic.style.width = w + "px";
         pic.style.zoom = String(scale);
       }
+      // A section's number stays readable however small its overview comes out.
+      pic.querySelectorAll(".pzno").forEach((x) => (x.style.fontSize = Math.min(90, 12 / scale) + "px"));
     }
     box.classList.toggle("fit", box.getBoundingClientRect().height < 980);
   }

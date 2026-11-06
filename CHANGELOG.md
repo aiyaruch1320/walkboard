@@ -82,6 +82,7 @@
 - **A sketch goes along when you export.** PDF and the exported file draw the draft changes on the pictures (their outlines and signs) and list them in words under each picture, marked as not in the plan yet, so a sketch can be talked over with people. Export has a switch to leave them out; `walkboard export --no-draft` does the same. Before / after pictures stay the plan's own.
 - **What the agent puts in the plan stays where you placed it.** Clearing the draft carries a new box's, table's or zone's place to its real id, by name, along with the sides of its lines and the changes still in the draft that name it. Before, it landed on free ground nearby.
 - Before / after only compares: dragging there no longer moves the picture on its own tab without showing it.
+- **A big map stays readable on paper.** A map whose names would come out under 7 pt prints as an overview with numbered parts, then each part at a size to read: one zone, or small neighbours together, and a zone still too big goes down to the zones inside it. A line that leaves a part is a label on its box (`→ Aurora · 5432 · Part 3`). A map that already reads well stays on one page, and the exported file does not change: it zooms on screen.
 
 ## 0.8.0
 

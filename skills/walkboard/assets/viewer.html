@@ -1821,7 +1821,8 @@ function profileMarks(map, v) {
     if (!w) continue;
     // Another platform's zone around it: that is what is wrong, not the kind of zone ("a GCE VM in an AWS subnet").
     // Two words on the sign; what it means in one line on hover or click.
-    const sign = el("span", "g-warn kwarn", t(w.cross ? "kindWarnCloud" : "kindWarn"));
+    // In another platform's zone, the sign names the platform it is of ("Google Cloud" on a VM in an AWS subnet).
+    const sign = el("span", "g-warn kwarn", w.cross ? w.platform : t("kindWarn"));
     sign.title = w.cross ? t("kindWarnCloudTip", w.kind, w.platform, w.cross) : t("kindWarnTip", w.kind, w.usual.join(", "));
     sign.tabIndex = 0;
     sign.setAttribute("role", "button");

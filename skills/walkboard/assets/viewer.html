@@ -1819,8 +1819,11 @@ function profileMarks(map, v) {
     used.add(k.profile);
     const w = PROF.kindWarning(e.dataset.kind, around(e));
     if (!w) continue;
-    const sign = el("span", "g-warn kwarn", t("kindWarn", w.usual.slice(0, 2).join(", ") + (w.usual.length > 2 ? "…" : "")));
-    sign.title = t("kindWarnTip", w.kind, w.there, w.usual.join(", "));
+    // Another platform's zone around it: that is what is wrong, not the kind of zone ("a GCE VM in an AWS subnet").
+    const sign = el("span", "g-warn kwarn", w.cross ? t("kindWarnCloud", w.cross, w.platform) : t("kindWarn", w.usual.slice(0, 2).join(", ") + (w.usual.length > 2 ? "…" : "")));
+    sign.title = w.cross ? t("kindWarnCloudTip", w.kind, w.platform, w.there) : t("kindWarnTip", w.kind, w.there, w.usual.join(", "));
+    sign.tabIndex = 0;
+    sign.setAttribute("role", "button");
     (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(sign);
   }
   for (const l of v.links || []) {
@@ -2514,6 +2517,15 @@ let sketching = null, sketchTool = "select", sketchSel = null, boxDragging = fal
 // pastePt: where the pointer last was over the picture (⌘V puts it there).
 let clipboard = null, pastePt = null;
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o?.[k] != null && o[k] !== "").map((k) => [k, o[k]]));
+// A warning sign opens what it means beside it: a tooltip may never show, and the words on the sign are cut short.
+const openWarn = (sign) => popover(0, 0, [el("div", "dphead", t("kindWarnHead")), el("div", "dwarntext", sign.title)], {beside: sign.getBoundingClientRect()});
+for (const type of ["pointerdown", "click", "keydown"]) addEventListener(type, (e) => {
+  const sign = e.target.closest?.(".kwarn");
+  if (!sign || (type === "keydown" && e.key !== "Enter" && e.key !== " ") || (type === "pointerdown" && e.button !== 0)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (type !== "click") openWarn(sign);
+}, true);
 const flash = (e) => {
   if (!e) return;
   e.classList.remove("dflash");
@@ -2609,7 +2621,7 @@ function editText(over, initial, placeholder, {onInput, onDone}) {
 // A floating card next to a point, closed by Escape or a click elsewhere.
 // beside: a rectangle to stand next to (right of it, else left), so the card never hides what it is about.
 // escape: called first on Escape; true when the card used it (closing something inside it).
-function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {}) {
+function popover(x, y, parts, {beside = null, onClose = null, escape = null, keepOpen = null} = {}) {
   document.querySelector(".dpop")?.close?.("replaced");
   document.querySelector(".dpop")?.remove();
   const box = el("div", "dpop");
@@ -2635,7 +2647,7 @@ function popover(x, y, parts, {beside = null, onClose = null, escape = null} = {
   };
   let closed = false;
   const close = (why = "done") => {
-    if (closed) return;
+    if (closed || keepOpen?.(why)) return;
     closed = true;
     box.remove();
     removeEventListener("pointerdown", away, true);
@@ -2818,7 +2830,12 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
     };
     flagRow.append(b);
   }
-  const nameIn = el("input", "dsearch dname");
+  const nameIn = el("input", "dsearch dname"), needMsg = el("div", "dneedmsg", t("nameNeeded"));
+  needMsg.hidden = true;
+  nameIn.addEventListener("input", () => {
+    nameIn.classList.remove("dneed");
+    needMsg.hidden = true;
+  });
   nameIn.placeholder = choice?.options.find((o) => o.value === choice.value)?.hint || nameHint || t(zone ? "zoneNameHint" : "boxNameHint");
   nameIn.value = initial.name || "";
   nameIn.maxLength = 80;
@@ -2834,9 +2851,7 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   whatIn.classList.toggle("dnote", zone);
   const picker = el("div", "dpicker");
   picker.hidden = true;
-  // No name typed but a kind chosen: the box is called what its kind is (the name field already shows it), rather than
-  // being dropped as one left without a name.
-  const values = () => ({name: cleanText(nameIn.value) || (kinds && PROF.kindOf(kind) ? PROF.kindOf(kind).def.name : ""), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {}),
+  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {}),
     ...(kinds ? {kind, props: Object.fromEntries(Object.entries(props).filter(([, x]) => x))} : {})});
   const update = () => {
     const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value, kind}, iconId, null);
@@ -2895,11 +2910,22 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   cancel.onclick = () => pop.close("escape");
   const foot = el("div", "dpfoot");
   foot.append(keep, cancel, el("span", "dhint", t(plain ? "linkHint" : "boxHint")));
-  const pop = popover(0, 0, [el("div", "dphead", title), row, ...(plain ? [] : [whatIn, picker]), ...(kinds ? [kindRow, kindList, propBox] : []), ...(choice ? [choiceRow] : []), ...(flags.length ? [flagRow] : []), foot], {
+  const pop = popover(0, 0, [el("div", "dphead", title), row, needMsg, ...(plain ? [] : [whatIn, picker]), ...(kinds ? [kindRow, kindList, propBox] : []), ...(choice ? [choiceRow] : []), ...(flags.length ? [flagRow] : []), foot], {
     beside,
     escape: () => {
       if (picker.hidden) return false;
       picker.hidden = true;
+      nameIn.focus();
+      return true;
+    },
+    // A name is needed. Kept (Enter, the button, a click elsewhere) without one, but with anything else filled in: the
+    // card stays and says so, rather than dropping what was typed. Nothing filled in at all: it was not wanted.
+    keepOpen: (why) => {
+      if (why === "escape" || why === "replaced" || values().name) return false;
+      const filled = kind || cleanText(whatIn.value) || picked || Object.values(props).some(Boolean);
+      if (!filled) return false;
+      nameIn.classList.add("dneed");
+      needMsg.hidden = false;
       nameIn.focus();
       return true;
     },

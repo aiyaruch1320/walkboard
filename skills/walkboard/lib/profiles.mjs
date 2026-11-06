@@ -538,7 +538,7 @@ export function kindWarning(kind, around) {
     // EC2, Kubernetes in EKS or GKE), else it is not where it usually sits.
     if (it.profile !== me.profile && it.def.runs?.includes(me.profile)) return null;
     const usual = me.def.in.map((k) => PROFILES[me.profile].kinds[k]?.name || k);
-    if (it.profile !== me.profile) return {kind: me.def.name, there: `${it.def.name} (${PROFILES[it.profile].label})`, usual};
+    if (it.profile !== me.profile) return {kind: me.def.name, there: `${it.def.name} (${PROFILES[it.profile].label})`, usual, platform: PROFILES[me.profile].label, cross: PROFILES[it.profile].label};
     return me.def.in.includes(it.key) ? null : {kind: me.def.name, there: it.def.name, usual};
   }
   return null;

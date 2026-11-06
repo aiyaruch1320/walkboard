@@ -960,7 +960,7 @@ svg.links path{fill:none;stroke-width:1.8}
 .containers{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .kindline{font-size:11px;color:var(--muted);margin-top:3px;overflow-wrap:anywhere}
 .zkind{font-size:11px;font-weight:500;color:var(--muted);margin-left:6px;padding:0 6px;border:1px solid var(--line);border-radius:5px;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle}
-.kwarn{margin-left:6px;cursor:help;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kwarn{margin-left:6px;cursor:pointer;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zhead .kwarn{margin-top:0}
 .profrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12px;color:var(--muted)}
 .proftag{font-weight:700;font-size:11px;padding:1px 8px;border-radius:5px;background:var(--card);color:var(--text)}
@@ -1172,3 +1172,8 @@ path.mv-on{stroke:var(--new-bd)!important;stroke-width:3.2!important;stroke-dash
 /* A line or a label is marked by its own stroke, never by a box drawn around it. */
 svg .dr-add,svg .dr-change,svg .dr-remove,svg .dr-move{outline:none!important}
 .er li[class*="dr-"]{padding-right:16px}
+
+/* A card's name left empty while other fields were filled in: it is needed. */
+.dname.dneed{outline:2px solid var(--warn-bd);outline-offset:1px}
+.dneedmsg{font-size:12px;color:var(--warn-tx);margin:-4px 0 0}
+.dwarntext{font-size:13px;line-height:1.5;max-width:300px}

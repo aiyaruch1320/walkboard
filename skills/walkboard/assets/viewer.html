@@ -422,15 +422,23 @@ function talkBox(c, {placeholder, quick = [], modes = ["question"], mode, phase 
     }
     busy = true;
     buttons.forEach((b) => (b.disabled = true));
+    // The box empties now, not when the server answers: the message comes back over the live stream first, and that can
+    // draw this panel again from `drafts`, with a new box still holding the text. A failed send puts it back.
+    const typed = ta.value;
+    if (typed.trim()) ta.value = drafts[key] = "";
+    const live = () => document.querySelector(`textarea[data-key="${CSS.escape(key)}"]`) || ta;
+    const say = (text, cls) => {
+      const n = live().closest(".composer")?.querySelector(".note") || note;
+      n.textContent = text;
+      n.className = cls;
+    };
     try {
       await send(to, kind, prefix + text, kind === "propose" ? {...extra, change: c.node ? pchange : "add"} : extra);
-      if (ta.value.trim()) ta.value = drafts[key] = "";
       if (sent) return sent();
-      note.textContent = t("sent");
-      note.className = "note";
+      say(t("sent"), "note");
     } catch (e) {
-      note.textContent = /413/.test(e.message) ? t("tooLong") : t("sendFail") + e.message;
-      note.className = "note err";
+      if (typed.trim() && !live().value.trim()) live().value = drafts[key] = typed;
+      say(/413/.test(e.message) ? t("tooLong") : t("sendFail") + e.message, "note err");
     } finally {
       busy = false;
       buttons.forEach((b) => (b.disabled = false));

@@ -1252,6 +1252,13 @@ function openSide(ctx) {
   if (ctx.kind !== "node") nodeId = null;
   else nodeId = ctx.id;
   const was = document.body.classList.contains("side-open");
+  // The panel narrows the page column. The picture keeps the width it was laid out at (it scrolls sideways instead of
+  // wrapping its zones into another order), and the box that was clicked stays where it was on screen.
+  const clicked = ctx.kind === "node" ? document.querySelector(`#view [data-anchor="${CSS.escape(ctx.id)}"]`) : null, top0 = clicked?.getBoundingClientRect().top;
+  if (!was) {
+    const pic = document.querySelector("#view > .scroll > .diagram");
+    if (pic) document.getElementById("view").style.setProperty("--held-w", pic.offsetWidth + "px");
+  }
   document.getElementById("side").inert = false;
   document.body.classList.add("side-open");
   renderSide();
@@ -1261,15 +1268,19 @@ function openSide(ctx) {
   // Once the page column has narrowed, keep the box you clicked in sight.
   setTimeout(() => {
     scrollHints();
+    if (clicked?.isConnected && top0 != null) scrollBy({top: clicked.getBoundingClientRect().top - top0, behavior: "instant"});
     document.querySelector("#view .active")?.scrollIntoView({block: "nearest", inline: "nearest", behavior: "smooth"});
   }, was ? 0 : 320);
 }
+// A window of another size lays the picture out again, as without the panel.
+addEventListener("resize", () => document.getElementById("view")?.style.removeProperty("--held-w"));
 
 function closeSide() {
   side = null;
   nodeId = null;
   document.getElementById("side").inert = true;
   document.body.classList.remove("side-open");
+  document.getElementById("view").style.removeProperty("--held-w");
   highlight();
   setTimeout(scrollHints, 320);
 }

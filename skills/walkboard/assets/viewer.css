@@ -91,6 +91,7 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 0px;transition:grid-template-columns .3s ease}
 body.side-open .layout{grid-template-columns:minmax(0,1fr) var(--side-w)}
 .layout>main{min-width:0;width:100%}
+body.side-open #view>.scroll>.diagram{min-width:var(--held-w,0)}
 .side{background:var(--card);color:var(--text);position:sticky;top:0;height:100vh;overflow:hidden;visibility:hidden;transition:visibility 0s .3s}
 body.side-open .side{visibility:visible;transition-delay:0s;border-left:1px solid var(--line);box-shadow:-6px 0 18px rgba(0,0,0,.08)}
 .side-inner{width:100%;min-width:clamp(340px,32vw,440px);height:100%;overflow:auto;opacity:0;transform:translateX(28px);transition:transform .3s ease,opacity .25s ease}

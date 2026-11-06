@@ -2834,7 +2834,9 @@ function boxCard(beside, initial, {title, preview, onDone, zone = false, nameHin
   whatIn.classList.toggle("dnote", zone);
   const picker = el("div", "dpicker");
   picker.hidden = true;
-  const values = () => ({name: cleanText(nameIn.value), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {}),
+  // No name typed but a kind chosen: the box is called what its kind is (the name field already shows it), rather than
+  // being dropped as one left without a name.
+  const values = () => ({name: cleanText(nameIn.value) || (kinds && PROF.kindOf(kind) ? PROF.kindOf(kind).def.name : ""), what: cleanText(whatIn.value), icon: picked, ...(flags.length || choice ? {flags: {...on, ...(choice ? {[choice.key]: chosen} : {})}} : {}),
     ...(kinds ? {kind, props: Object.fromEntries(Object.entries(props).filter(([, x]) => x))} : {})});
   const update = () => {
     const ic = iconEl(picked ? {icon: picked} : {name: nameIn.value, kind}, iconId, null);

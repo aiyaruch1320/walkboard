@@ -5,7 +5,7 @@ import {validate, lint} from "../skills/walkboard/lib/schema.mjs";
 
 const base = () => ({
   title: "t",
-  settings: {teachBack: false, commit: "suggest"},
+  settings: {commit: "suggest"},
   steps: [{id: "s1", title: "one", status: "doing", nodes: ["a"]}],
   views: [{id: "f", kind: "flow", lanes: [{nodes: ["a", "b"]}]}],
   nodes: {a: {name: "A", status: "new"}, b: {name: "B", status: "ext"}},
@@ -22,17 +22,17 @@ test("a minimal plan is valid", () => {
   assert.deepEqual(validate(base()), []);
 });
 
-test("build mode asks about commits up front; restating defaults to on", async () => {
-  const {teachBackOn} = await import("../skills/walkboard/lib/schema.mjs");
+test("build mode asks about commits up front; an old plan's restating fields are left alone", () => {
   const p = base();
   delete p.settings;
   assert.match(validate(p)[0], /settings/);
   assert.deepEqual(validate({...p, mode: "explain"}), []);
   assert.deepEqual(validate({...p, settings: {commit: "auto"}}), []);
-  assert.equal(teachBackOn(p), true);
-  assert.equal(teachBackOn({settings: {teachBack: false}}), false);
-  p.settings = {teachBack: "yes", commit: "always"};
-  assert.equal(validate(p).length, 2);
+  p.settings = {teachBack: true, commit: "auto"};
+  p.steps[0].confirmed = true;
+  assert.deepEqual(validate(p), []);
+  p.settings = {commit: "always"};
+  assert.equal(validate(p).length, 1);
 });
 
 test("references to missing nodes, steps and actors are reported", () => {
@@ -75,7 +75,7 @@ test("prototype names are not mistaken for nodes or statuses", () => {
 
 test("explain mode needs no commit setting, and lint asks for evidence", async () => {
   const {lint} = await import("../skills/walkboard/lib/schema.mjs");
-  const p = {...base(), mode: "explain", settings: {teachBack: true}};
+  const p = {...base(), mode: "explain", settings: {}};
   assert.deepEqual(validate(p), []);
   const warn = lint(p).join("\n");
   assert.match(warn, /node "a" has no file/);
@@ -91,12 +91,10 @@ test("a step's suggested commits are checked", () => {
   assert.match(validate(p).join("\n"), /commits must be/);
 });
 
-test("approval, teach-back records and the glossary are checked", () => {
+test("approval and the glossary are checked", () => {
   const p = {...base(), approved: "yes", glossary: {CronJob: "งานที่ตั้งเวลารันเอง"}};
-  p.steps[0].confirmed = "ok";
   const out = validate(p).join("\n");
   assert.match(out, /approved/);
-  assert.match(out, /confirmed/);
   assert.doesNotMatch(out, /glossary/);
 });
 
@@ -111,7 +109,7 @@ test("file references parse with lines, ranges and named roots", async () => {
 });
 
 test("root, roots, start, editor and depth are checked", () => {
-  const p = {...base(), root: 7, roots: {d: 1}, start: "nope", settings: {teachBack: true, commit: "auto", editor: "notepad", depth: "deep"}};
+  const p = {...base(), root: 7, roots: {d: 1}, start: "nope", settings: {commit: "auto", editor: "notepad", depth: "deep"}};
   const out = validate(p).join("\n");
   for (const want of [/root must be/, /roots must be/, /start "nope"/, /settings.editor/, /settings.depth/]) assert.match(out, want);
   assert.deepEqual(validate({...base(), root: "/repo", start: "s1"}), []);

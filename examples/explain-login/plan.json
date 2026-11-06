@@ -6,7 +6,6 @@
   "root": "shop-api",
   "start": "submit",
   "settings": {
-    "teachBack": true,
     "depth": "detail"
   },
   "glossary": {

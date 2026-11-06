@@ -284,11 +284,10 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       readBody(req, safe(res, (err, v) => {
         if (err?.status === 413) return res.writeHead(413).end(`body over ${MAX_BODY} bytes`);
         const s = {};
-        if (typeof v?.teachBack === "boolean") s.teachBack = v.teachBack;
         if (v?.commit === "auto" || v?.commit === "suggest") s.commit = v.commit;
         // Design criteria weights: {criterion id: 0-3}.
         const w = v?.weights && typeof v.weights === "object" && !Array.isArray(v.weights) ? Object.entries(v.weights) : [];
-        if (err || (!Object.keys(s).length && !w.length)) return res.writeHead(400).end('need teachBack (true|false), commit ("auto"|"suggest") or weights ({criterion: 0-3})');
+        if (err || (!Object.keys(s).length && !w.length)) return res.writeHead(400).end('need commit ("auto"|"suggest") or weights ({criterion: 0-3})');
         let plan;
         try {
           plan = updatePlan(p.plan, (plan) => {

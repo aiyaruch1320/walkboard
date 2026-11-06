@@ -19,7 +19,7 @@ Use the user's language for everything (questions, plan, replies, suggested comm
 
 If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`).
 
-`settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
+`settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config.
 
 ## 1. Write the plan (build)
 
@@ -46,7 +46,6 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen). `[]` means the server stopped: `WB open` again. Start it again after each batch.
    - `question` / `confused`: `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
-   - `teachback`: say what is right, correct the rest; when it matches, `WB set <dir> step:<id> confirmed=true`.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
    - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `wrong: true` = the user says it is not true: ask what is, or find out, then fix it the same way.
    - `review`: [review.md](references/review.md). `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [messages.md](references/messages.md). `decide`: design.md.
@@ -64,10 +63,9 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 Not before `approved` is true. For each step:
 
 1. `WB set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
-2. `WB set <dir> step:<id> status=review node:<a> status=done …`, and `WB reply <dir> --step <id>` with one line on what you built and the files touched.
-3. `WB status <dir>` shows the current `settings`. Teach-back on: wait for `confirmed` (skip only if the user asks).
-4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (messages.md).
-5. `WB set <dir> step:<id> status=done`, next step. Teach-back off and `"auto"`: nothing waits.
+2. `git status` to see what the step changed. `WB status <dir>` shows the current `settings`. Files changed: `"auto"` → small commits now, one context each; `"suggest"` → a suggested message (messages.md). Nothing changed (or not a repository): nothing to commit or suggest.
+3. `WB set <dir> step:<id> status=review node:<a> status=done …` (with the suggested message, in one call), and `WB reply <dir> --step <id>` with one line on what you built and the files touched, or that no files changed.
+4. Wait for the user, then `WB set <dir> step:<id> status=done` and start the next step: `next` (their go-ahead; on the last step, the end), or `commit` / `committed` (messages.md). `next` with `"all": true`: do the remaining steps without stopping.
 
 ## 4E. Walk through (explain)
 

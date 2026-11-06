@@ -16,7 +16,7 @@ const USAGE = `walkboard <command> [options]
 
   check  [dir]                  validate dir/plan.json, print problems, exit 1 if any
   set    [dir] [target] key=value ...   change plan.json in place, e.g.
-                                step:build status=review confirmed=true node:job status=done approved=true
+                                step:build status=review node:job status=done approved=true
                                 (targets: plan, step:, node:, constraint:, option:, criterion:, source:<id>)
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
   poll   [dir] [--full] [--timeout s]   wait for feedback from the page, print one short JSON line per item, exit ([] after s seconds)

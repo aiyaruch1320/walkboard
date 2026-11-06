@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 // Small updates without rewriting plan.json:
-//   approved=true  step:build status=review confirmed=true  node:job status=done  constraint:cidr confirmed=true
+//   approved=true  step:build status=review  node:job status=done  constraint:cidr confirmed=true
 // A word with ":" and no "=" picks the target; "plan" goes back to the top level; "key=" removes a key.
 export function parseSet(words) {
   const ops = [];

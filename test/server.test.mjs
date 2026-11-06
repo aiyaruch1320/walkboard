@@ -232,21 +232,21 @@ test("a switch on the page saves the setting without waking the agent", async (t
   const s = await startServer(dir, {pollMs: 300});
   t.after(s.close);
   const quiet = call(s, "/api/poll").then((r) => r.json());
-  const r = await post(s, "/api/settings", {teachBack: false, commit: "auto", extra: 1});
+  const r = await post(s, "/api/settings", {commit: "auto", extra: 1});
   assert.equal(r.status, 200);
   const plan = JSON.parse(fs.readFileSync(path.join(dir, "plan.json"), "utf8"));
-  assert.deepEqual(plan.settings, {teachBack: false, commit: "auto"});
+  assert.deepEqual(plan.settings, {commit: "auto"});
   assert.equal(plan.title, "t");
   assert.deepEqual(await quiet, []);
   const polled = call(s, "/api/poll").then((r) => r.json());
   await post(s, "/api/feedback", {kind: "question", text: "why?"});
   const items = await polled;
   assert.deepEqual(items.map((i) => i.kind), ["settings", "question"]);
-  assert.deepEqual(items[0].settings, {teachBack: false, commit: "auto"});
+  assert.deepEqual(items[0].settings, {commit: "auto"});
   const thread = await (await call(s, "/api/thread")).json();
   assert.equal(thread.items.length, 1);
   assert.equal((await post(s, "/api/settings", {commit: "sometimes"})).status, 400);
-  assert.equal((await post(s, "/api/settings", {teachBack: "yes"})).status, 400);
+  assert.equal((await post(s, "/api/settings", {extra: "yes"})).status, 400);
 });
 
 test("design weights are saved from the page and reach the agent with its next message", async (t) => {

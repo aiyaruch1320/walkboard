@@ -19,7 +19,7 @@ One JSON object, written compact. `WB check <dir>` validates it with the page's 
 | `goal` | One sentence under it |
 | `mode` | `"build"` (default; "plan mode" on the page), `"explain"`, `"design"` (fields in [design.md](design.md)) |
 | `lang` | `"en"` or `"th"` page labels (others get English). Default: Thai if the title or goal is Thai |
-| `settings` | build: required. `commit` `"auto"`/`"suggest"`; `teachBack` (default on; the user switches it); explain: `depth` `"overview"`/`"detail"`; `editor` `"vscode"` (default) / `"cursor"` / `"idea"` / `"none"`. Defaults: `~/.walkboard/config.json` |
+| `settings` | build: required. `commit` `"auto"`/`"suggest"`; explain: `depth` `"overview"`/`"detail"`; `editor` `"vscode"` (default) / `"cursor"` / `"idea"` / `"none"`. Defaults: `~/.walkboard/config.json` |
 | `approved` | build: `true` once the user approved; build nothing before |
 | `root` / `roots` | explain: repository of the `file` paths (absolute or relative to the plan folder); more as `{"deploy": "/path"}`, used as `deploy:path:line` |
 | `start` | Step id to open on (default: first in `review`, else `doing`) |
@@ -32,7 +32,7 @@ One JSON object, written compact. `WB check <dir>` validates it with the page's 
 
 ## steps[]
 
-`id`, `title` (≤ 8 words), `detail` (what it does), `done` (how we know; explain: what the reader understands), `nodes` (boxes it touches; the rest fade), `status` (`todo` `doing` `review` `done`; omit in explain), `confirmed` (restatement matched). Suggested commits: `commitMessage`, or `commits: [{"message","files":[…]}]` ([messages.md](messages.md)).
+`id`, `title` (≤ 8 words), `detail` (what it does), `done` (how we know; explain: what the reader understands), `nodes` (boxes it touches; the rest fade), `status` (`todo` `doing` `review` `done`; omit in explain). Suggested commits: `commitMessage`, or `commits: [{"message","files":[…]}]` ([messages.md](messages.md)).
 
 Animation on a step (`moves`, `show`): [moves.md](moves.md), only where the flow itself is the hard part.
 

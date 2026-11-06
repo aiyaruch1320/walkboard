@@ -27,14 +27,14 @@ Both carry `proposals`, the ids of the proposed nodes.
 
 ## Suggested commits (`settings.commit` = `"suggest"`)
 
-When a step is done, put the message on the step and wait:
+When a step changed files, put the message on the step and wait (no files changed: no message, the page offers to go on instead):
 
 - One commit: `WB set <dir> step:<id> commitMessage="<message>"`.
 - Separate concerns (refactor and feature, migration and the code using it, dependency bump and code): `WB set <dir> step:<id> 'commits=[{"message":"…","files":["…"]}]'`. More than 3 means the step is too big; split the step instead.
 
 The page shows them, editable, each with its files.
 
-- `commit` (with `commits` = the messages as the user left them): make those commits in order, each with only its files, then go on.
+- `commit` (with `commits` = the messages as the user left them): make those commits in order, each with only its files. Going on needs no other word from the user.
 - `committed`: the user committed; go on.
 
 Before the next step, `git status`: if this step's changes are still uncommitted, ask instead of going on, so steps never mix in one working tree.

@@ -2,7 +2,6 @@ export const NODE_STATUS = {done: "done", new: "new", todo: "todo", ext: "ext"};
 export const STEP_STATUS = {done: "done", doing: "doing", review: "review", todo: "todo"};
 export const LINK_STATE = {ok: "ok", todo: "todo", blocked: "blocked", standby: "standby"};
 export const LANGS = ["en", "th"];
-export const teachBackOn = (p) => p?.settings?.teachBack !== false;
 export const MODES = ["build", "explain", "design"];
 export const BASIS = ["iac", "cli", "doc", "assumed"];
 // A design score: 0-5, or "yes" / "no" / "na" for things that either work or do not.
@@ -240,12 +239,11 @@ export function validate(p) {
   if (p.lang != null && typeof p.lang !== "string") out.push('lang must be a language code such as "en" or "th"');
   const mode = p.mode ?? "build";
   if (!MODES.includes(mode)) out.push(`unknown mode "${p.mode}" (${MODES.join(", ")})`);
-  // Restating defaults to on and is switched on the page; build mode asks about commits up front.
+  // Build mode asks about commits up front.
   const s = p.settings;
   if (s != null && !isObj(s)) out.push("settings must be an object");
   else if (!isObj(s) && mode === "build") out.push('no settings (ask the user first: {"commit": "auto"|"suggest"})');
   else if (isObj(s)) {
-    if (s.teachBack != null && typeof s.teachBack !== "boolean") out.push("settings.teachBack must be true or false");
     if (mode === "build" && !["auto", "suggest"].includes(s.commit)) out.push('settings.commit must be "auto" or "suggest"');
   }
   if (p.approved != null && typeof p.approved !== "boolean") out.push("approved must be true or false");
@@ -290,7 +288,6 @@ export function validate(p) {
     for (const k of ["title", "detail", "done"]) if (!TEXT(st[k])) out.push(`step "${st.id}" ${k} must be text`);
     if (st.nodes != null && !Array.isArray(st.nodes)) out.push(`step "${st.id}" nodes must be a list of node ids`);
     if (st.status && !has(STEP_STATUS, st.status)) out.push(`step "${st.id}": unknown status "${st.status}" (${Object.keys(STEP_STATUS).join(", ")})`);
-    if (st.confirmed != null && typeof st.confirmed !== "boolean") out.push(`step "${st.id}" confirmed must be true or false`);
     if (st.commitMessage != null && typeof st.commitMessage !== "string") out.push(`step "${st.id}" commitMessage must be a string`);
     if (st.commits != null && (!Array.isArray(st.commits) || st.commits.some((c) => !isObj(c) || typeof c.message !== "string" || (c.files != null && !(Array.isArray(c.files) && c.files.every((f) => typeof f === "string"))))))
       out.push(`step "${st.id}" commits must be [{"message": "…", "files": ["…"]}]`);

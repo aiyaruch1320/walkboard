@@ -75,7 +75,7 @@ const snapshot = (() => {
 })();
 const served = !snapshot && location.protocol !== "file:" && token;
 const moduleUrl = (name) => window.__walkboardModules?.[name] || `/${name}.mjs?token=${encodeURIComponent(token)}`;
-const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, teachBackOn, useProfiles} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true, useProfiles: () => {}};
+const {NODE_STATUS, STEP_STATUS, KINDS, validate, parseFile, highlightOf, ratingValue, failsMust, viewsOf, langOf, useProfiles} = served || snapshot ? await import(moduleUrl("schema")) : {NODE_STATUS: {}, STEP_STATUS: {}, KINDS: {}, validate: () => [], parseFile: () => null, highlightOf: () => null, ratingValue: () => null, failsMust: () => [], viewsOf: () => [], langOf: () => "en", teachBackOn: () => true, useProfiles: () => {}};
 // What boxes, zones and lines mean on a platform (lib/profiles.mjs): the plan's check uses it too.
 const PROF = served || snapshot ? await import(moduleUrl("profiles")) : {PROFILES: {}, kindOf: () => null, lineKindOf: () => null, kindNames: () => [], lineKindNames: () => [], kindWarning: () => null, kindProblems: () => []};
 useProfiles(PROF);
@@ -595,7 +595,7 @@ function unanswered() {
     const key = ctxKey(ctxOf(m));
     if (planReply && m.option) answered.add(key);
     planReply = false;
-    if (m.delivered && !answered.has(key) && !(m.kind === "approve" && plan?.approved)) out.unshift(m);
+    if (m.delivered && !answered.has(key) && !(m.kind === "approve" && plan?.approved) && !(STEP_ANSWERS.includes(m.kind) && plan?.steps?.find((x) => x.id === m.step)?.status !== "review")) out.unshift(m);
   }
   return out;
 }
@@ -696,14 +696,6 @@ function renderBadges() {
     c.append(el("span", "sname", name), control);
     box.append(c);
   };
-  const on = teachBackOn(plan);
-  const sw = el("button", "switch" + (on ? " on" : ""));
-  sw.setAttribute("role", "switch");
-  sw.setAttribute("aria-checked", String(on));
-  sw.setAttribute("aria-label", t("restate", unit()));
-  sw.append(el("span", "track"), el("span", "state", on ? t("on") : t("off")));
-  sw.onclick = () => saveSetting({teachBack: !on});
-  card(t("restate", unit()), sw, on ? t("restateOnFx", unit()) : t("restateOffFx", unit()));
   if (!explain) {
     const opts = el("span", "opts");
     opts.setAttribute("role", "group");
@@ -719,8 +711,7 @@ function renderBadges() {
     card(t("commits"), seg, s.commit === "auto" ? t("commitAutoFx") : t("commitOnlyFx"));
   }
   for (const b of box.querySelectorAll("button")) b.disabled = !connected;
-  if (!explain) items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")));
-  items.push(box);
+  if (!explain) items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")), box);
   document.getElementById("badges").replaceChildren(...items);
   renderBar();
 }
@@ -745,6 +736,7 @@ function renderBar() {
         if (review) openSide({kind: "step", id: a.id});
       };
       extra.push(b);
+      if (review && yourTurn(a) === "turnNext" && connected) extra.push(nextButtons(a));
     }
   }
   renderTalksBtn();
@@ -778,24 +770,52 @@ function renderBar() {
   document.getElementById("barExtra").replaceChildren(...extra);
 }
 
-// What a step in review still waits for: a restatement, then (when the user commits) the commit.
+// What a step in review still waits for: the commit when the user commits, else the word to go on.
 // Approved and not yet answered: the agent replying (e.g. with a question) gives the button back.
+const STEP_ANSWERS = ["commit", "committed", "next"];
 const approvePending = () => {
   const i = thread.findLastIndex((m) => m.kind === "approve" && m.from !== "agent");
   return i >= 0 && !thread.slice(i + 1).some((m) => m.from === "agent");
 };
 const approveOk = () => !proposals().length || confirm(t("approveOpen", proposals().length));
 
-// A step whose answer (restatement or commit) was sent and is waiting for the agent.
-const answered = (step) => thread.some((m, i) => m.step === step.id && !m.node && ["teachback", "commit", "committed"].includes(m.kind) &&
+// A step whose answer (commit or go on) was sent and is waiting for the agent.
+const answered = (step) => thread.some((m, i) => m.step === step.id && !m.node && STEP_ANSWERS.includes(m.kind) &&
   !thread.slice(i + 1).some((x) => x.from === "agent" && x.step === step.id && !x.node));
 
 function yourTurn(step) {
-  if (snapshot || step?.status !== "review") return null;
-  if (teachBackOn(plan) && !step.confirmed) return "turnRestate";
-  if (plan.mode !== "explain" && plan.settings?.commit === "suggest") return "turnCommit";
-  // Restating off and the agent commits itself: nothing waits for the user.
-  return null;
+  if (snapshot || step?.status !== "review" || plan.mode === "explain") return null;
+  return plan.settings?.commit === "suggest" ? "turnCommit" : "turnNext";
+}
+
+// A finished step goes on when the user says so; on the last step that ends the plan.
+// "Run the rest" only when the agent commits by itself: otherwise each step still waits for its commit.
+function nextButtons(step, cls = "") {
+  const list = steps(), after = list[list.indexOf(step) + 1];
+  const box = el("span", "nextbox " + cls);
+  const go = el("button", "primary", after ? t("nextStep", after.title) : t("finishPlan"));
+  const rest = after && plan.settings?.commit !== "suggest" && list.indexOf(after) < list.length - 1 ? el("button", "quiet", t("runRest")) : null;
+  const say = async (text, extra) => {
+    go.disabled = true;
+    if (rest) rest.disabled = true;
+    try {
+      await send({step: step.id}, "next", text, extra);
+    } catch (e) {
+      go.disabled = false;
+      if (rest) rest.disabled = false;
+      const box = document.getElementById("toast");
+      box.className = "toast";
+      box.replaceChildren(t("sendFail") + e.message);
+      box.hidden = false;
+    }
+  };
+  go.onclick = () => say(t(after ? "q_next" : "q_finish"));
+  box.append(go);
+  if (rest) {
+    rest.onclick = () => say(t("q_runRest"), {all: true});
+    box.append(rest);
+  }
+  return box;
 }
 
 // The agent's suggested commits (one or several, each with its files), editable; the user commits through the agent or says they did it themselves.
@@ -895,9 +915,8 @@ function renderStepCard() {
   const c = el("div", "stepcard " + (turn ? "review" : ""));
   const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
   // Before approval every step is only proposed: no status to show yet.
-  const st = !explain && (plan.approved || (plan.mode ?? "build") !== "build") && (turn ? "review" : step.status === "done" || step.confirmed && step.status !== "doing" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
+  const st = !explain && (plan.approved || (plan.mode ?? "build") !== "build") && (turn ? "review" : step.status === "done" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
   if (st) h.append(el("span", "sbadge " + st, (st === "done" ? "✓ " : "") + t("sb_" + st)));
-  if (step.confirmed && step.status !== "done") h.append(el("span", "passed", t("restated")));
   c.append(h);
   if (st === "doing") {
     const line = el("div", "implementing");
@@ -914,15 +933,6 @@ function renderStepCard() {
     c.append(b);
   } else {
     const n = thread.filter((m) => inCtx(m, {step: step.id}) && m.kind !== "settings").length;
-    // With restating on in explain mode, every stage offers it right on the card.
-    if (explain && teachBackOn(plan) && !step.confirmed) {
-      const b = el("button", "turnbtn", t("restateThis", unit()));
-      b.onclick = () => {
-        picked[`step:${step.id}|${step.status}`] = "teachback";
-        openSide({kind: "step", id: step.id});
-      };
-      c.append(b);
-    }
     c.append(talk({kind: "step", id: step.id}, t("talkStep", n, unit())));
     if (stepMoves(step).length) {
       const again = el("button", "talklink mv-again", "↻ " + t("replayStep"));
@@ -1475,7 +1485,7 @@ function fillPanel(p, parts) {
   p.classList.remove("fold-info", "fold-chat", "split");
   const i = parts.findIndex((x) => x?.classList?.contains("talk") && !x.classList.contains("decideform"));
   // What waits for the user (your turn, the commit) sits with the chat, by the buttons that answer it.
-  const act = (x) => x?.classList?.contains("turn") || x?.classList?.contains("commitbox");
+  const act = (x) => x?.classList?.contains("turn") || x?.classList?.contains("commitbox") || x?.classList?.contains("nextbox");
   const explain = parts.slice(0, Math.max(i, 0)).filter((x) => !act(x));
   if (i < 0 || !explain.length) return p.replaceChildren(...parts);
   const info = el("div", "pinfo");
@@ -1529,20 +1539,19 @@ function renderSide() {
     const turn = yourTurn(step);
     const parts = [];
     if (turn) parts.push(el("span", "turn", answered(step) ? t("sentWait") : t(turn, unit())));
+    if (turn === "turnNext" && !answered(step) && connected) parts.push(nextButtons(step, "inpanel"));
     if (turn === "turnCommit" && !answered(step)) {
       const box = commitBox(step);
       parts.push(box);
-      // The suggested commits appear after a restatement passes: bring them into view once.
+      // The suggested commits arrive with the step's end: bring them into view once.
       if (commitShown !== step.id) requestAnimationFrame(() => box.scrollIntoView({block: "nearest", behavior: "smooth"}));
       commitShown = step.id;
     }
-    const teach = teachBackOn(plan) && ((step.status ?? "todo") !== "todo" || plan.mode === "explain");
     parts.push(talkBox({step: step.id}, {
       placeholder: t(plan.mode === "explain" ? "askStage" : "askStep"),
       quick: plan.mode === "explain" ? ["confused", "deeper"] : thread.some((m) => m.from === "agent" && m.step === step.id && !m.node) ? ["confused"] : [],
-      modes: teach && (turn === "turnRestate" || plan.mode === "explain") ? ["teachback", "question", "propose"] : ["question", "propose"],
-      mode: turn === "turnRestate" ? "teachback" : "question",
-      phase: step.status + (step.confirmed ? "+" : ""),
+      modes: ["question", "propose"],
+      phase: step.status,
     }));
     fillPanel(p, parts);
   } else {
@@ -8011,11 +8020,11 @@ function renderSteps() {
   all.onclick = () => { stop(); selectStep(null); };
   const chips = steps().map((s, i) => {
     const turn = yourTurn(s);
-    const cls = plan.mode === "explain" && !s.status ? "plain" : turn ? "review" : s.confirmed ? "done" : STEP_STATUS[s.status] || "todo";
-    const mark = turn ? "👉 " : s.status === "done" || s.confirmed ? "✓ " : "";
+    const cls = plan.mode === "explain" && !s.status ? "plain" : turn ? "review" : STEP_STATUS[s.status] || "todo";
+    const mark = turn ? "👉 " : s.status === "done" ? "✓ " : "";
     const c = el("button", "chip " + cls + (s.id === stepId ? " sel" : ""), `${mark}${i + 1}. ${s.title}`);
     c.setAttribute("aria-pressed", String(s.id === stepId));
-    c.title = s.confirmed ? t("chipRestated") : s.status === "review" ? t("chipTurn") : "";
+    c.title = s.status === "review" ? t("chipTurn") : "";
     c.dataset.step = s.id;
     c.onclick = () => { stop(); selectStep(s.id); };
     return c;
@@ -8439,7 +8448,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 // What the agent changed since the user last acknowledged; outlines stay until then.
 const changes = {nodes: new Set(), steps: new Set(), notes: [], was: {}};
 
-// Progress (statuses, restated, suggested commits) is not a change of plan.
+// Progress (statuses, suggested commits) is not a change of plan.
 const content = (x, skip) => x && Object.fromEntries(Object.entries(x).filter(([k]) => !skip.includes(k)));
 function noteChanges(prev) {
   // The first status seen before a change, so the list can say "todo → done" however many reloads it took.

@@ -4,7 +4,6 @@
   "lang": "en",
   "mode": "build",
   "settings": {
-    "teachBack": true,
     "commit": "suggest"
   },
   "approved": true,
@@ -22,8 +21,7 @@
         "build"
       ],
       "detail": "Build the image from main and scan it for vulnerabilities",
-      "done": "The image is in the registry and the scan passed",
-      "confirmed": true
+      "done": "The image is in the registry and the scan passed"
     },
     {
       "id": "trigger",
@@ -35,8 +33,7 @@
         "git"
       ],
       "detail": "CI changes the image tag in the deploy repo itself; nobody edits it by hand",
-      "done": "An automatic commit appears in the deploy repo",
-      "confirmed": true
+      "done": "An automatic commit appears in the deploy repo"
     },
     {
       "id": "manifests",

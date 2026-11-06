@@ -3,7 +3,6 @@
   "goal": "skill ที่วาดแผนของ agent เป็นภาพ แล้วคลิก component เพื่อคุยกับ agent ได้",
   "mode": "build",
   "settings": {
-    "teachBack": true,
     "commit": "auto"
   },
   "approved": true,
@@ -23,8 +22,7 @@
         "wake"
       ],
       "detail": "พิสูจน์ก่อนว่าคลิกบนหน้าเว็บแล้วปลุก agent ได้จริง",
-      "done": "คลิกแล้ว poll จบและ agent ทำงานต่อ",
-      "confirmed": true
+      "done": "คลิกแล้ว poll จบและ agent ทำงานต่อ"
     },
     {
       "id": "viewer",
@@ -36,8 +34,7 @@
         "server"
       ],
       "detail": "ให้ agent เขียนแค่ข้อมูล แล้วหน้าเว็บวาดเอง",
-      "done": "plan.json ตัวอย่างแสดงเป็นภาพได้",
-      "confirmed": true
+      "done": "plan.json ตัวอย่างแสดงเป็นภาพได้"
     },
     {
       "id": "server",
@@ -49,8 +46,7 @@
         "reply"
       ],
       "detail": "server จริง: หน้าอัปเดตเอง คิวไม่หาย ตอบกลับขึ้นหน้าได้",
-      "done": "test ของ server ผ่านทั้งหมด",
-      "confirmed": true
+      "done": "test ของ server ผ่านทั้งหมด"
     },
     {
       "id": "chat",
@@ -61,8 +57,7 @@
         "reply"
       ],
       "detail": "กล่องคุยบนทุกกล่อง ทุกขั้น และทั้งแผน",
-      "done": "ถาม ขอแก้ ทวน ส่งถึง agent ถูกชนิด",
-      "confirmed": true
+      "done": "ถาม ขอแก้ ทวน ส่งถึง agent ถูกชนิด"
     },
     {
       "id": "views",
@@ -74,8 +69,7 @@
         "check"
       ],
       "detail": "ภาพ k8s, sequence และ transform",
-      "done": "ตัวอย่างใช้ภาพครบสี่แบบ",
-      "confirmed": true
+      "done": "ตัวอย่างใช้ภาพครบสี่แบบ"
     },
     {
       "id": "skill",
@@ -86,8 +80,7 @@
         "check"
       ],
       "detail": "SKILL.md ที่บอก agent ทั้งโหมดวางแผนและโหมดอธิบายโค้ด",
-      "done": "agent ทำตามได้ตั้งแต่ต้นจนจบ",
-      "confirmed": true
+      "done": "agent ทำตามได้ตั้งแต่ต้นจนจบ"
     },
     {
       "id": "plugin",
@@ -97,8 +90,7 @@
         "skill"
       ],
       "detail": "ห่อเป็น plugin ให้ทีมติดตั้งได้",
-      "done": "claude plugin validate ผ่าน",
-      "confirmed": true
+      "done": "claude plugin validate ผ่าน"
     },
     {
       "id": "dogfood",

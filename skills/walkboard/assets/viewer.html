@@ -171,12 +171,12 @@ function msgImages(names) {
 // Images waiting to go with the next message, by conversation: a panel drawn again keeps them. Nothing reaches the server until it is sent.
 const pendingImages = {};
 const IMAGE_ACCEPT = ["image/png", "image/jpeg", "image/gif", "image/webp"], MAX_MSG_IMAGES = 5, MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-// Longer than this and a model scales it down anyway: doing it here sends less, stores less, and costs the agent fewer tokens.
-const IMAGE_SIDE = 1568;
+// Past these a model scales it down anyway: doing it here sends less, stores less, and costs the agent about 1,500 tokens at most.
+const IMAGE_SIDE = 1568, IMAGE_PIXELS = 1.15e6;
 async function shrinkImage(file) {
   try {
     const bmp = await createImageBitmap(file);
-    const k = Math.min(1, IMAGE_SIDE / Math.max(bmp.width, bmp.height));
+    const k = Math.min(1, IMAGE_SIDE / Math.max(bmp.width, bmp.height), Math.sqrt(IMAGE_PIXELS / (bmp.width * bmp.height)));
     if (k === 1 && file.size <= 1024 * 1024) return file;
     const c = new OffscreenCanvas(Math.round(bmp.width * k), Math.round(bmp.height * k));
     c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);

@@ -14,18 +14,18 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 
 ## The plan page
 
-![Steps on top, the selected step with what it does and how we know it is done, a chat box, and the flow picture](images/build-overview.png)
+![Steps on top, the selected step with what it does and how we know it is done, the tabs with the draft button, and the flow picture](images/build-overview.png)
 
 | Part | What it does |
 |---|---|
-| Top bar (always visible) | ● agent listening now · ✎ agent is answering you · ◐ agent busy, your message waits in a queue · ○ server not reachable. Also **💬** lists every conversation on the page, newest first (it turns orange with "new" when the agent has replied; click one to carry on), **⋮** holds Export, the theme (follow the system, light or dark; remembered in this browser) and the shortcuts and tour, and "✎ Plan changed" shows what the agent changed (outlined until you press **Mark as seen**). |
-| Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages; each card says what the current choice means. Saved to the plan at once without waking the agent, which reads it before its next step. Defaults for every plan: `~/.walkboard/config.json`, e.g. `{"teachBack": true, "commit": "suggest"}`. |
-| Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ⏵ Play walks through the steps once. The address keeps the step, picture and box, so a reload or a shared link opens the same place. |
-| Step card | What the step does, its status and how we know it is done. When it is your turn, a purple bar opens the side panel. |
-| Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; drag its left edge for the width you want; a sheet from the bottom on narrow screens. |
+| Top bar (always visible) | What to do next is the button at the right: **Approve plan**, **Start next step: …** or **Check the commit message**, beside how far the work is. The dot says how the agent is: green listening, purple answering you, orange busy, your message waits in a queue; hover for words. Words appear when the server is not reachable. **💬** lists every conversation on the page, newest first (it turns orange with "new" when the agent has replied; click one to carry on), **⋮** holds the mode, who commits, Export, the theme and the shortcuts, and "✎ Plan changed" shows what the agent changed (outlined until you press **Mark as seen**). |
+| Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ done, 👉 your turn. ⏵ Play walks through the steps once. The address keeps the step, picture and box, so a reload or a shared link opens the same place. |
+| Step text | What the step does and how we know it is done. |
+| Tabs and tools | The plan's pictures, with **✎ Draft changes** and **?** on the same row. **?** says what the colours and marks mean and how to read this kind of picture. |
+| Chat bar | At the bottom of the page: opens the conversation about what is on screen (the selected step, or the whole plan with **All** selected). |
+| Side panel | A box's details and conversation, the suggested commits. Opens when you click a box or the chat bar, slides away with ✕, Esc or a second click on the same box; drag its left edge for the width you want; a sheet from the bottom on narrow screens. |
 | Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
 | Dotted words | Glossary: tap for a plain explanation (inside a box, hover; a tap opens the box). |
-| Mode pill | Next to the logo: plan, explain or design. Click it for one line on what this mode does; click again to close. |
 
 ## Pictures
 
@@ -64,16 +64,18 @@ What it puts in the plan stays where you placed it, and what you turned down sta
 
 ## Talking on the page
 
-| Ask on a box; the answer appears in the side panel | Restate a step; the agent confirms it |
-|---|---|
-| ![A question and the agent's answer](images/chat.png) | ![A step marked as your turn and confirmed](images/teachback.png) |
+Ask on a box; the answer appears in the side panel:
 
-- **Still unclear · Go deeper** send at once.
-- **Ask** or **Propose** (add after a box, change it, remove it) choose what the text you type is sent as. The agent decides whether a proposal just corrects the picture, changes a plan not yet approved, or is drawn as a proposal. **Restate** appears when it is your turn (and on every stage in explain mode).
-- The first visit shows a three-stop tour; **⋮ → Shortcuts** lists the shortcuts (← → steps, Esc closes the panel, Enter sends, Shift+Enter starts a new line) and shows the tour again. In the side panel the details sit above the chat and the box you type in stays at the bottom, as in a chat. Click **▾ Details** or **▾ Chat** to fold it away, either or both; its arrow turns, the part slides shut and "folded" shows quietly beside the name; the choice is remembered. Drag the panel's left edge for any width, or **⤢** to jump to a wide one and back: from 640 px the details sit beside the chat, and each folds into a thin rail so the other has the room.
+![A question and the agent's answer](images/chat.png)
+
+- One box takes everything: a question, or what to add, change or remove. The agent decides whether a request just corrects the picture, changes a plan not yet approved, or is drawn as a proposal.
+- **Attach images** by pasting, dropping or 📎: five to a message, 10 MB each (PNG, JPEG, GIF, WebP). A big image is scaled down before it is sent (a 3000×2000 screenshot to about 1300×880), so it costs the agent roughly 1,500 tokens at most. They stay beside the plan in `.walkboard/images`; an exported copy leaves them out.
+- **Still unclear · Go deeper** send at once, in explain mode.
+- The first time on a computer the picture draws itself along its arrows, then a hint says to click a box; **⋮ → Shortcuts** lists the shortcuts (← → steps, Esc closes the panel, Enter sends, Shift+Enter starts a new line) and shows it again. In the side panel the details sit above the chat and the box you type in stays at the bottom, as in a chat. Click **▾ Details** or **▾ Chat** to fold it away, either or both; its arrow turns, the part slides shut and "folded" shows quietly beside the name; the choice is remembered. Drag the panel's left edge for any width, or **⤢** to jump to a wide one and back: from 640 px the details sit beside the chat, and each folds into a thin rail so the other has the room.
 - A message the agent has not taken yet says it is in line, with its place and what the agent is on (⏳ with a count in the top bar). A message answered on another box says so with a link to it. A message with no answer yet says the agent has it, and you can hide the note.
 - **Approve plan** lets the agent start building. Nothing is built before.
-- **Agent commits these, then goes on** / **I committed, go on** appear under the suggested commit message of a finished step when commits are only suggested; you can edit the message first. The agent waits for one of them before the next step.
+- When a step is finished the agent stops. **Start next step: …** at the top goes on (**Finish** on the last one); **Run the rest** does the remaining steps without stopping, when the agent commits by itself.
+- **Agent commits these, then goes on** / **I committed, go on** take its place when commits are only suggested and the step changed files; you can edit the message first. A step that changed no files asks for no message.
 
 The page speaks the plan's language: the agent writes the plan in the language you use and sets `lang`, and the buttons and labels follow (English and Thai today; other languages get English labels).
 
@@ -121,7 +123,7 @@ The page does the explaining, so the agent spends tokens on content once and ver
 | Code in explain mode | paste it | `file:line` + `highlight`; the server reads the excerpt |
 | Common terms | explain each time | ~95 ship with Walkboard, in English and Thai |
 | Each message from the page | — | one compact line, ~100–150 bytes |
-| Switching restating or commits on the page | — | nothing: the agent is not woken; it reads the setting with its next message or step |
+| Switching who commits on the page | — | nothing: the agent is not woken; it reads the setting with its next message or step |
 | Instructions loaded with the skill | — | SKILL.md ~8.5 KB; the plan format, each picture, each platform, the review guide and rarer messages in small files read only when needed. An AWS map and a review read 27 KB in all; icon names from `walkboard icons` |
 
 Every message from the page wakes the agent once, which re-reads the conversation (mostly from cache). That is why "Got it" was removed and settings never wake it: only clicks that need an answer cost a turn.

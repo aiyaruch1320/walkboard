@@ -12,6 +12,8 @@ For something that does not exist yet: research options, draw each, compare, rec
 
 ## plan.json
 
+Plan fields are in schema.md, each option's picture in views.md. Design mode has no `settings` to ask about.
+
 ```json
 {"mode":"design",
  "constraints":[{"id":"cidr","text":"The two VPCs' CIDRs do not overlap","confirmed":false}],

@@ -83,6 +83,9 @@
 - **What the agent puts in the plan stays where you placed it.** Clearing the draft carries a new box's, table's or zone's place to its real id, by name, along with the sides of its lines and the changes still in the draft that name it. Before, it landed on free ground nearby.
 - Before / after only compares: dragging there no longer moves the picture on its own tab without showing it.
 - **A big map stays readable on paper.** A map whose names would come out under 7 pt prints as an overview with numbered parts, then each part at a size to read: one zone, or small neighbours together, and a zone still too big goes down to the zones inside it. A line that leaves a part is a label on its box (`→ Aurora · 5432 · Part 3`). A map that already reads well stays on one page, and the exported file does not change: it zooms on screen.
+- **Arrange again keeps what you drew.** New boxes and tables in the draft stay where you put them when the picture is laid out again. The button only shows when there is something of yours to undo: a picture that holds still because it is being sketched does not count (`@held` in `layout`).
+- **Draft mode by keyboard.** With an adding tool, Enter places the new box, table, zone or lane on the first free place in sight, beside the box that has the keyboard if one does. Opening draft mode from the keyboard goes straight to the toolbar.
+- **A column has a card**, as a box does: name, type (with suggestions) and key. Enter goes on to the next new column. Typing it all in the name field (`id bigint pk`) still works.
 
 ## 0.8.0
 

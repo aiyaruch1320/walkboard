@@ -337,6 +337,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
             const zoneLabels = (zs) => (Array.isArray(zs) ? zs : []).flatMap((z) => [`z:${z?.label}`, ...(z?.nodes || []), ...zoneLabels(z?.zones)]);
             const lineEnds = (l) => (Array.isArray(l) ? l : []).flatMap((e) => [e?.from, e?.to]);
             const known = new Set(mapped ? ["@fixed", ...zoneLabels(mapped.zones)] : boxed ? [...(Array.isArray(view.states) ? view.states : []), ...(Array.isArray(view.nodes) ? view.nodes : []), ...lineEnds(view.transitions), ...lineEnds(view.edges)] : (Array.isArray(view.tables) ? view.tables : []).map((t) => t?.node));
+            if (!mapped) known.add("@held");
             const keep = (id) => known.has(id) || isNewId(id) || (mapped && id.startsWith("z:") && id.length <= 201);
             const size = (n) => Number.isFinite(n) && n > 0 && n <= 20000;
             // Only lines that touch the box, a known side each, a few dozen at most.

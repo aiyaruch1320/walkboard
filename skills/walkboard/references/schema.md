@@ -45,7 +45,7 @@ Animation on a step (`moves`, `show`): [moves.md](moves.md), only where the flow
 | `status` | `done`, `new` (being built; explain: the focus), `todo` (explain: missing), `ext` (outside). Default: `todo`; explain `done`; design neutral |
 | `file` | `path`, `path:line`, `path:from-to` or `root:path:line`. Explain mode: required and checked; the page shows the code |
 | `anchor` | A short piece of the cited code, e.g. `"function send("`; `check` fails when it is no longer in those lines and says where it went |
-| `highlight` | Lines that make the point: `"146-152"`, or with notes `{"152": "returns: this wakes the agent"}`. Without it a single line is highlighted, a range is context |
+| `highlight` | Lines that make the point, numbered as in the file: `"146-152"`, or with notes `{"152": "returns: this wakes the agent"}`. Without it a single line is highlighted, a range is context |
 | `icon` | Guessed from `name`; set when wrong: `aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, … (`WB icons` lists all), `"none"` |
 | `in` / `out` / `why` | One line each; a concrete example beats a description |
 | `basis` / `source` / `checked` | Where its facts come from: `iac`, `cli`, `doc`, `assumed` (dashed, confirmable), a `sources` id, the date seen |

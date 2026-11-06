@@ -2519,11 +2519,13 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   const pencil = el("button", "lsketch");
   pencil.append(svgIcon("pencil"), t("sketch"));
   pencil.title = t("sketchTip");
-  pencil.onclick = () => {
+  pencil.onclick = (e) => {
     sketching = v.id;
     sketchTool = "select";
     sketchSel = null;
     apply();
+    // Reached with the keyboard: the toolbar comes next in the Tab order, not after the whole page.
+    if (e.detail === 0) document.querySelector(".dtools .dtool")?.focus();
   };
   // Too narrow (or no mouse) to sketch: the draft can still be read, sent or dropped from its list.
   const listChip = el("button", "lsketch ldraft");
@@ -2559,6 +2561,13 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   // The sides chosen for a map's lines ride along when the layout is written again (a drag, the layout switch);
   // only a layout that says "@sides" itself, or none at all (arrange again), changes them.
   const keepSides = (next) => (next && v.layout?.["@sides"] && !("@sides" in next) ? {...next, "@sides": v.layout["@sides"]} : next);
+  const draftPlaces = () => {
+    if (!drafts || v.layout?.["@fixed"]) return null;
+    const added = new Set(draftOps(v.id).filter((o) => o.op === "addZone").map((o) => `z:${o.zone}`));
+    const kept = Object.entries(v.layout || {}).filter(([k]) => isNewId(k) || added.has(k));
+    if (!kept.length) return null;
+    return Object.fromEntries(v.kind === "map" ? kept : [...kept, ["@held", {x: 0, y: 0}]]);
+  };
   const refresh = () => {
     const placed = !!Object.keys(v.layout || {}).length, any = placed || (drafts && !!draftOps(v.id).length), history = hist.back.length || hist.fwd.length;
     // A picture that takes a draft always offers the pencil; while sketching, the toolbar holds all of this.
@@ -2567,7 +2576,9 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     // While sketching the toolbar holds these; the row keeps its room, so the picture does not jump up.
     row.style.visibility = !narrow && sketching === v.id ? "hidden" : "";
     for (const b of [undo, redo]) b.hidden = narrow || (drafts && !history);
-    reset.hidden = narrow || !placed || inDiff;
+    // A layout the draft froze is not arrangement: nothing to undo while that draft is there, and only then.
+    const held = !!v.layout?.["@held"], arranged = placed && Object.keys(v.layout || {}).some((k) => k !== "@held");
+    reset.hidden = narrow || !arranged || inDiff || (held && n > 0);
     pencil.hidden = narrow || !drafts;
     listChip.hidden = !narrow || !n;
     listChip.lastChild.textContent = String(n);
@@ -2600,8 +2611,8 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
   reset.onclick = () => {
     hist.back.push(snap());
     hist.fwd.length = 0;
-    // Back to where the plan puts things; a draft is not arrangement, and stays.
-    put({layout: null, ops: null});
+    // Back to where the plan puts things; a draft is not arrangement, and stays, with the places its new things were given.
+    put({layout: draftPlaces(), ops: null});
     refresh();
     apply();
   };
@@ -2622,6 +2633,11 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
       hist.back.push({layout: before || null, ops: drafts ? draftOps(v.id) : null});
       hist.fwd.length = 0;
       positions = keepSides(positions);
+      // Moved by hand: from here on the places are the user's.
+      if (positions?.["@held"]) {
+        positions = {...positions};
+        delete positions["@held"];
+      }
       v.layout = positions;
       save(positions);
       refresh();
@@ -2638,7 +2654,9 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     change(before, next) {
       hist.back.push(before);
       hist.fwd.length = 0;
-      put({...next, layout: keepSides(next.layout)});
+      // Places written only to hold the picture still while it is sketched say so (see reset).
+      const holds = v.kind !== "map" && next.layout && (!before.layout || before.layout["@held"]);
+      put({...next, layout: keepSides(holds ? {...next.layout, "@held": {x: 0, y: 0}} : next.layout)});
       refresh();
     },
   };
@@ -2816,39 +2834,58 @@ function draftSign(m, small = false) {
   return tag;
 }
 // A small text field over a box's name or a zone's title; Enter keeps it, Escape (or nothing typed) drops it.
-function editText(over, initial, placeholder, {onInput, onDone}) {
-  // Above the toolbar, where it can be seen: the field for a table's next column may start under it.
-  const barTop = document.querySelector(".dtools")?.getBoundingClientRect().top;
-  if (barTop && over.getBoundingClientRect().bottom + 56 > barTop) window.scrollBy(0, over.getBoundingClientRect().bottom + 56 - barTop);
-  const host = over.closest(".map, .er") || document.body, r = over.getBoundingClientRect(), h = host.getBoundingClientRect();
-  const input = el("input", "dedit");
-  input.value = initial;
-  input.placeholder = placeholder;
-  input.maxLength = 80;
-  input.style.left = r.left - h.left + "px";
-  input.style.top = r.top - h.top + "px";
-  input.style.width = Math.max(120, r.width) + "px";
-  host.append(input);
-  let over_ = false;
-  const finish = (keep) => {
-    if (over_) return;
-    over_ = true;
-    const val = cleanText(input.value);
-    input.remove();
-    onDone(keep && val ? val : null);
-  };
-  input.oninput = () => onInput?.(input.value);
-  input.onkeydown = (e) => {
-    e.stopPropagation();
-    if (e.key === "Enter") finish(true);
-    else if (e.key === "Escape") finish(false);
-  };
-  input.onblur = () => finish(true);
-  requestAnimationFrame(() => {
-    input.focus();
-    input.select();
+// A column's name, type and key in a card, as a box has. onDone(the words "name type key", or "" when dropped, and how it
+// closed). The name field still takes the whole of it typed at once ("id bigint pk"). A foreign key is drawn, so it only shows.
+const COLUMN_TYPES = ["bigint", "int", "uuid", "text", "varchar", "boolean", "numeric", "date", "timestamptz", "jsonb"];
+function columnCard(over, initial, title, onDone) {
+  const [name0 = "", ...rest] = String(initial).split(/\s+/).filter(Boolean);
+  const key0 = rest.find((w) => /^(pk|fk|uk)$/i.test(w))?.toLowerCase() || "", type0 = rest.filter((w) => !/^(pk|fk|uk)$/i.test(w)).join(" ");
+  const nameIn = el("input", "dsearch dname"), typeIn = el("input", "dsearch"), need = el("div", "dneedmsg", t("nameNeeded"));
+  nameIn.value = name0;
+  nameIn.placeholder = t("colName");
+  nameIn.setAttribute("aria-label", t("colName"));
+  typeIn.value = type0;
+  typeIn.placeholder = t("colType");
+  typeIn.setAttribute("aria-label", t("colType"));
+  const types = el("datalist");
+  types.id = "dcoltypes";
+  COLUMN_TYPES.forEach((x) => {
+    const o = el("option");
+    o.value = x;
+    types.append(o);
   });
-  return input;
+  typeIn.setAttribute("list", types.id);
+  need.hidden = true;
+  let key = key0;
+  const keys = el("div", "modes dcolkeys");
+  for (const [k, label] of [["", "—"], ["pk", "PK"], ["uk", "UK"], ...(key0 === "fk" ? [["fk", "FK"]] : [])]) {
+    const b = el("button", null, label);
+    b.type = "button";
+    b.dataset.key = k;
+    b.setAttribute("aria-pressed", String(k === key));
+    b.onclick = () => {
+      key = k;
+      keys.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.key === k)));
+    };
+    keys.append(b);
+  }
+  const words = () => [nameIn.value.trim(), typeIn.value.trim(), key].filter(Boolean).join(" ");
+  const box = popover(0, 0, [el("div", "dphead", title), nameIn, need, typeIn, types, keys], {beside: over.getBoundingClientRect(), onClose: (why) => onDone(why === "escape" ? "" : words(), why)});
+  box.classList.add("dcolcard");
+  // Enter keeps it. A column has to have a name, unless nothing was typed (that ends the list of new columns).
+  box.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.isComposing) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!nameIn.value.trim() && (typeIn.value.trim() || key)) {
+      need.hidden = false;
+      return nameIn.focus();
+    }
+    box.close("enter");
+  });
+  nameIn.focus();
+  nameIn.select();
+  return box;
 }
 // A floating card next to a point, closed by Escape or a click elsewhere.
 // beside: a rectangle to stand next to (right of it, else left), so the card never hides what it is about.
@@ -3342,7 +3379,7 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
   };
   for (const [name, key] of toolList) {
     // Where the columns are fixed there is nothing to drag.
-    const b = btn(name, `${t(name === "select" && picture.classList.contains("k8s") ? "tool_pick" : "tool_" + name)} (${key})`);
+    const b = btn(name, `${t(name === "select" && picture.classList.contains("k8s") ? "tool_pick" : "tool_" + name)} (${key}${ADD_TOOLS.has(name) ? `, ${t("enterPlaces")}` : ""})`);
     b.dataset.tool = name;
     b.onclick = () => sketchApi.tool(name);
     bar.append(b);
@@ -3463,6 +3500,33 @@ function renderDraftPanel() {
   }
   p.replaceChildren(...parts);
 }
+// Enter with an adding tool: what a click would do, on the first free place in sight. Inside the zone or lane of the box that
+// has the keyboard, else anywhere on the picture. Tab to a box, then Enter: the new one goes beside it.
+const ADD_TOOLS = new Set(["box", "zone", "table", "group", "lane"]);
+function placeByKey(from) {
+  const pic = document.querySelector("#view .sketch");
+  if (!pic) return;
+  const scope = from?.closest(".zone, .lane") || pic;
+  scope.scrollIntoView({block: "nearest"});
+  const r = scope.getBoundingClientRect(), bar = document.querySelector(".dtools")?.getBoundingClientRect().top ?? innerHeight;
+  const free = (x, y) => {
+    const e = document.elementFromPoint(x, y);
+    if (!e || !pic.contains(e) || e.closest("[data-anchor], .ertable, .dhit, .zhead, .via, .elabel, .ptag")) return false;
+    return scope === pic || scope.contains(e);
+  };
+  for (let y = Math.max(r.top + 12, 12); y < Math.min(r.bottom - 12, bar - 40); y += 24) {
+    for (let x = Math.max(r.left + 12, 12); x < Math.min(r.right - 12, innerWidth - 12); x += 24) {
+      if (!free(x, y)) continue;
+      const e = document.elementFromPoint(x, y), at = {bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1, pointerType: "mouse", isPrimary: true};
+      e.dispatchEvent(new PointerEvent("pointermove", at));
+      if (document.body.classList.contains("dnoplace")) continue;
+      for (const type of ["pointerdown", "pointerup"]) e.dispatchEvent(new PointerEvent(type, {...at, buttons: type === "pointerdown" ? 1 : 0}));
+      e.dispatchEvent(new MouseEvent("click", at));
+      return;
+    }
+  }
+  showProblem(t("noRoomKey"));
+}
 // Typing letters picks a tool; Delete takes out what is selected; Escape steps back (tool, then the mode).
 // Delete and Enter act on the selected box, or on the one that has the keyboard focus. Escape closes, in order:
 // a card or field, the tool or selection, the side panel, then draft mode.
@@ -3474,8 +3538,13 @@ addEventListener("keydown", (e) => {
   const focused = a?.closest?.("#view [data-anchor]");
   const target = sketchSel || (focused ? {kind: "node", id: focused.dataset.anchor} : null);
   const tool = (sketchApi.toolList || SKETCH_TOOLS).find(([, k]) => k.toLowerCase() === e.key.toLowerCase());
-  if (tool && !a?.closest?.(".side")) sketchApi.tool(tool[0]);
+  if (tool && !a?.closest?.(".side")) {
+    sketchApi.tool(tool[0]);
+    // On the toolbar, the keyboard follows to the tool: Enter then uses it, not the button it was on.
+    if (a?.closest?.(".dtools")) document.querySelector(`.dtools [data-tool="${tool[0]}"]`)?.focus();
+  }
   else if ((e.key === "Delete" || e.key === "Backspace") && target) sketchApi.remove(target);
+  else if (e.key === "Enter" && ADD_TOOLS.has(sketchTool) && !a?.closest?.(".side") && (!a?.closest?.(".dtools") || a.dataset.tool === sketchTool)) placeByKey(focused);
   else if ((e.key === "Enter" || e.key === "F2") && target && !a?.closest?.(".side, .dtools")) sketchApi.rename(target);
   else if (e.key === "Escape") {
     if (document.querySelector(".dpop, .dedit")) return;
@@ -6589,7 +6658,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     if (x.kind === "column") {
       const [table, column] = split(x.id), col = v.tables.find((tb) => tb.node === table)?.columns.find((c) => c.name === column) || {};
       const initial = [column, col.type, col.key].filter(Boolean).join(" ");
-      return editText(e, initial, t("colPlaceholder"), {onDone: (val) => {
+      return columnCard(e, initial, t("colEdit"), (val) => {
         if (!val || val === initial) return;
         const {name, type, key} = parseCol(val);
         if (name.includes(".")) return showProblem(t("colDot"));
@@ -6601,7 +6670,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
           return setOps(list.map((o) => (o === added ? {...base, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})} : o.table === table && o.column === column ? {...o, column: name} : o)));
         }
         setOps(editCol(list, x.id, {...(name !== column ? {name} : {}), type, key: key ?? (col.key && !val.toLowerCase().includes(String(col.key).toLowerCase()) ? "" : col.key ?? "")}));
-      }});
+      });
     }
     const g = (v.groups || []).find((z) => z.label === x.id) || {}, label = e.querySelector(".erframe-label") || e;
     boxCard(label.getBoundingClientRect(), {name: x.id, what: g.note, icon: g.icon}, {
@@ -6754,7 +6823,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
     if (!card) return;
     const li = el("li", "dr-add dtemp", " ");
     card.querySelector("ul").append(li);
-    editText(li, typed, t("colPlaceholder"), {onDone: (val) => {
+    columnCard(li, typed, t("colNew"), (val, why) => {
       li.remove();
       if (!val) {
         sketchTool = "select";
@@ -6772,10 +6841,11 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
         return requestAnimationFrame(() => sketchApi?.addColumnTo?.(table, val));
       }
       const list = ops();
-      sketchTool = "column";
+      // Enter goes on to the next column, as when typing a schema; a click elsewhere ends the list.
+      sketchTool = why === "enter" ? "column" : "select";
       setOps([...list, {id: newOpId(list), op: "addColumn", table, column: name, ...(type ? {type} : {}), ...(key ? {key} : {})}], roomFor(table, 32));
-      requestAnimationFrame(() => sketchApi?.addColumnTo?.(table));
-    }});
+      if (why === "enter") requestAnimationFrame(() => sketchApi?.addColumnTo?.(table));
+    });
   };
   grid.classList.add("sketch");
   grid.addEventListener("pointerdown", (e) => {

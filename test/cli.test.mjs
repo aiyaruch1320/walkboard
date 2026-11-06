@@ -51,7 +51,23 @@ test("a review reaches poll with the picture's geometry, view included", async (
   const r = await run("poll", dir, "--timeout", "5");
   const got = JSON.parse(r.stdout.trim());
   assert.equal(got.kind, "review");
-  assert.deepEqual(got.geometry, geometry);
+  assert.equal(got.view, "m");
+  assert.deepEqual(got.geometry, {moved: geometry.moved, outOfZone: geometry.outOfZone});
+  await fetch(`http://127.0.0.1:${s.port}/api/feedback?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({kind: "review", text: "check again", view: "m", geometry})});
+  const full = JSON.parse((await run("poll", dir, "--full", "--timeout", "5")).stdout.trim());
+  assert.deepEqual(full.geometry, geometry);
+});
+
+test("every reference a skill file links to exists", () => {
+  const root = new URL("../skills/walkboard/", import.meta.url).pathname;
+  const walk = (d) => fs.readdirSync(d, {withFileTypes: true}).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith(".md") ? [path.join(d, e.name)] : []));
+  const missing = [];
+  for (const f of [path.join(root, "SKILL.md"), ...walk(path.join(root, "references"))]) {
+    const text = fs.readFileSync(f, "utf8");
+    for (const [, to] of text.matchAll(/\]\(([^)#\s]+\.md)\)/g)) if (!fs.existsSync(path.resolve(path.dirname(f), to))) missing.push(`${f}: ${to}`);
+    for (const [, to] of text.matchAll(/`?(references\/[\w/-]+\.md)`?/g)) if (!fs.existsSync(path.join(root, to))) missing.push(`${f}: ${to}`);
+  }
+  assert.deepEqual(missing, []);
 });
 
 test("a reply that starts with text containing a slash is not taken for the folder", async (t) => {

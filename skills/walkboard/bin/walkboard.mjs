@@ -19,7 +19,7 @@ const USAGE = `walkboard <command> [options]
                                 step:build status=review confirmed=true node:job status=done approved=true
                                 (targets: plan, step:, node:, constraint:, option:, criterion:, source:<id>)
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
-  poll   [dir] [--full] [--timeout s]   wait for feedback from the page, print one JSON line per item, exit ([] after s seconds)
+  poll   [dir] [--full] [--timeout s]   wait for feedback from the page, print one short JSON line per item, exit ([] after s seconds)
   reply  [dir] [--node n] [--step s] [--option o [--criterion c]] <text>   show an agent reply on the page (or --dir d)
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
@@ -153,6 +153,19 @@ async function open() {
   if (!flags.noBrowser) openBrowser(urlOf(s));
 }
 
+// One short line per item keeps what the agent reads small; --full has everything: ids, times, the view, every box's place.
+// A review keeps its view (clearing the draft names it) and, of where things are on screen, only what is off.
+function brief({id, at, view, nodeName, ...rest}) {
+  if (rest.kind !== "review") return rest;
+  const out = {view, ...rest};
+  if (rest.geometry) {
+    const off = Object.entries(rest.geometry).filter(([k, x]) => ["moved", "outOfZone", "overlaps", "linesOverBoxes"].includes(k) && x?.length);
+    if (off.length) out.geometry = Object.fromEntries(off);
+    else delete out.geometry;
+  }
+  return out;
+}
+
 async function poll() {
   let gone = 0;
   // --timeout N: give up after N seconds with [] (for agents whose commands are killed after a while).
@@ -179,8 +192,7 @@ async function poll() {
       const items = await r.json();
       gone = 0;
       if (items.length) {
-        // One short line per item keeps what the agent reads small; --full adds ids, times and the view.
-        await new Promise((done) => process.stdout.write(items.map((i) => JSON.stringify(flags.full ? i : (({id, at, view, nodeName, ...rest}) => rest)(i))).join("\n") + "\n", done));
+        await new Promise((done) => process.stdout.write(items.map((i) => JSON.stringify(flags.full ? i : brief(i))).join("\n") + "\n", done));
         // Only now are they delivered: if this process is killed before here, the server hands them out again.
         await fetch(`http://127.0.0.1:${s.port}/api/ack?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ids: items.map((i) => i.id)})}).catch(() => {});
         return;

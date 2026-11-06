@@ -73,7 +73,7 @@
 - A sent message leaves the input at once. On a step's chat it could stay there: the message came back over the live stream before the send had finished, and the panel was drawn again with the text still in it.
 - A message the agent took and has not answered no longer looks like a failed send. The note says the agent has it, counts from the agent's last sign of life (a reply anywhere, a change to the plan), and can be hidden.
 - The conversations list (💬, top right) puts the newest message on top.
-- **A smaller skill.** An agent now loads only what it uses: one file per picture (`references/views/<kind>.md`) and per platform (`references/profiles/<profile>.md`, which replace `references/profiles.md`), the review guide (`review.md`) apart from the rarer messages, animation (`moves.md`) apart from the plan format. Drawing an AWS map and answering a review reads about 45% less than before.
+- **A smaller skill.** An agent now loads only what it uses: one file per picture (`references/views/<kind>.md`) and per platform (`references/profiles/<profile>.md`, which replace `references/profiles.md`), the review guide (`review.md`) apart from the rarer messages, animation (`moves.md`) apart from the plan format. Drawing an AWS map and answering a review reads about 60% less than before (62 KB to 26 KB).
 - `walkboard poll` keeps a review's `view`, which clearing the draft needs, and of where things sit on screen only what is off (`moved`, `outOfZone`, `overlaps`, `linesOverBoxes`). `--full` has every box's place.
 - Line labels on paper have no grey rectangle around them in PDF readers such as Preview.
 

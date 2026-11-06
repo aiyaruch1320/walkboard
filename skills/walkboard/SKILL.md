@@ -7,7 +7,7 @@ description: Show work as an interactive picture (flow, cloud or Kubernetes map,
 
 Long text loses people. You write `plan.json`; Walkboard draws it as a local page; what the user clicks or types there comes back to you.
 
-`WB` = `node <this skill's base directory>/bin/walkboard.mjs` (Node 18.18+, no install). Files named below are under `references/`: read one only when you reach it.
+`WB` = `node <this skill's base directory>/bin/walkboard.mjs` (Node 18.18+, no install): write it out or make a shell function; a variable holding it does not run in zsh. Files named below are under `references/`: read one only when you reach it.
 
 ## 0. Language, mode, questions, settings
 

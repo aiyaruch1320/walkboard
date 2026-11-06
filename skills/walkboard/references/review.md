@@ -4,19 +4,19 @@ The user asks you to check a picture. The message has `view` (for `WB draft … 
 
 ## Reply
 
-`WB reply <dir>` (whole plan) and change nothing yet: one short line per change or out-of-place box, by id ("o3fk2: the worker needs SG 6379 from the app subnet"), saying what it means for the plan (network, cost, a missing step, a broken constraint), then ask once whether to put them in the plan. Nothing out of place: say it matches, in one line. Mention an overlap or a crossing line only when it hides something; looks (balance, spacing) cannot be judged from numbers, so leave them out.
+`WB reply <dir>` (whole plan) and change nothing yet: one short line per change or out-of-place box, by id ("o3fk2: the worker needs SG 6379 from the app subnet"; changes that go together share a line), saying what it means for the plan (network, cost, a missing step, a broken constraint), then ask once whether to put them in the plan. Nothing out of place: say it matches, in one line. Mention an overlap or a crossing line only when it hides something; looks (balance, spacing) cannot be judged from numbers, so leave them out.
 
 Check each new box against those already there: a new "Redis sessions" next to an existing Redis is likely the same thing. A `remove` lists the lines that go with the box (`lines`).
 
 ## Their answer
 
-- Yes (all or some): write exactly those into plan.json: a node under `nodes` with a real id (short, lowercase, `redis-sessions`) for each `new:…`; its place in that view; links in that view; the `nodes` of the steps that build or change it. Then `WB check`, `WB draft <dir> clear <view> <op…>` for exactly those (it prints what is left), and reply with what changed. Leave `layout` alone.
+- Yes (all or some): write exactly those into plan.json with a small Edit or script (`WB set` does not add zones or lines; the shape is in views/<kind>.md): a node under `nodes` with a real id (short, lowercase, `redis-sessions`) for each `new:…`; its place in that view; links in that view; the `nodes` of the steps that build or change it. Then `WB check`, `WB draft <dir> clear <view> <op…>` for exactly those (it prints what is left), and reply with what changed, naming what stays in the draft. Leave `layout` alone.
 - No: change nothing; ask whether to clear the draft (`WB draft <dir> clear <view>`), or the user drops it on the page.
 - Explain mode never edits the project: agreed changes become `proposal`s. Design mode: agreed changes revise an option or make a new one (design.md), never a loose picture.
 
 ## In every picture's `changes`
 
-Oldest first, each with an `id` (`o` and a few letters) and names next to ids.
+In the order the user made them (one can name a zone added later in the list), each with an `id` (`o` and a few letters) and names next to ids.
 
 - A new box (`addBox`, `addNode`, `addTable`) or `editNode` can carry `what` (a note for whoever reads the plan: the node's `what`) and `icon` (picked by hand; `""`: back to the one from the name).
 - An edit has `was`: each field it changes as the plan has it now (`null` = not set).
@@ -27,11 +27,11 @@ Oldest first, each with an `id` (`o` and a few letters) and names next to ids.
 
 `geometry`, what is on their screen and left out when empty (never saved: it depends on the window): `moved` (dragged), `outOfZone` (on screen outside the zone the plan puts it in; zones as `z:<key>`), `overlaps` (boxes on each other), `linesOverBoxes`. `WB poll --full` adds every box's and zone's place; you rarely need it.
 
-- `addNode`, `editNode`, `remove` (`lines`); `addZone`, `editZone` (`label` = new name, `icon`, `note`; `""` takes one away), `removeZone`; `move`, `moveZone`, with `at` = a place in the zone counting from 0.
+- `addNode`, `editNode`, `remove` (`lines`); `addZone`, `editZone` (`label` = new name, `icon`, `note`; `""` takes one away), `removeZone`; `move`, `moveZone`. `at`: where it goes among what the zone holds by then, counting from 0; past the end is last. Order inside a zone is rarely worth more than a rough match.
 - `addLink`, `editLink`, `removeLink`. An `addLink` with `replaces` (`"API (api) → Aurora (db)"`) is a line whose end was dragged to another box: the `removeLink` of that line goes with it, so treat the two as one move.
 - `reverseLink`: the line `from` → `to` now points `to` → `from`, so who starts the connection changed; check rules and security groups on both ends. Later edits still name it by its old ends.
 - `zone`, `parent` and `to` name a zone by its `id`, else its label (`""` = the top).
-- An `addZone` with a `label` is a zone whose name is in use: write it with that `label` and `zone` as its `id`. An `editZone` whose new `label` another zone is known by keeps its key: give the zone `id` = the old key and the new `label`.
+- `addZone`: `zone` is its name. With a `label`, that name is in use: write it with that `label` and `zone` as its `id`. An `editZone` whose new `label` another zone is known by keeps its key: give the zone `id` = the old key and the new `label`.
 - Nodes, zones and links can carry `kind` (`aws:rds`, `aws:event`; `""` = none) with `kindName` (`Lambda (AWS)`), and `props`, the whole set rather than what changed: replace the node's `props` with it. When a box's kind changes, check what else says what it is (`what`, `in`/`out`, the step that builds it). See profiles/.
 
 A new box goes in the `nodes` of the step that will build it.

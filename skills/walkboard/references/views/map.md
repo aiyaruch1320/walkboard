@@ -21,6 +21,6 @@ On a cloud or platform, give boxes (`nodes.<id>.kind`), zones and links a `kind`
 - `"kind": "aws:rds"`, with that kind's fields in `props` (`{"engine":"postgres"}`, strings). The page draws its icon (unless `icon` says otherwise) and fields and tags the picture with the platform.
 - "in" is where a kind usually goes: the page warns, never blocks, when the nearest zone with a kind is another one; a zone without a kind says nothing. Look for no warnings from `WB check`.
 - A kind marked "also zone" can be either: make it a zone when something runs inside it (an EC2 with its containers).
-- Profiles mix: an EKS cluster in an AWS VPC is a `k8s:cluster` zone in an `aws:vpc` zone, with `k8s:namespace` zones and workloads in it.
+- Profiles mix: an EKS cluster in an AWS VPC is a `k8s:cluster` zone in an `aws:vpc` zone, with `k8s:namespace` zones and workloads in it (`aws:eks` is for a cluster drawn as one box).
 - A network policy or security group is a zone around what it covers; a config a workload reads is a `k8s:uses` line.
 - Anything no profile covers goes without a kind and is drawn as you write it.

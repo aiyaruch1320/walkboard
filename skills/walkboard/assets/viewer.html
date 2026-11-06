@@ -3721,6 +3721,9 @@ function crossChips(map, view, nodes, focus) {
   return rest;
 }
 
+// Many boxes or many zones: smaller boxes and zones side by side, on a wider page.
+const mapIsDense = (v) => new Set(KINDS.map.refs(v)).size > 12 || (v.zones || []).filter((x) => x && typeof x === "object").length >= 4;
+
 function renderMap(real, focus = null) {
   // The picture drawn is the plan with this view's draft in it; arranging (layout) stays on the real view.
   // Paper shows the plan as it is: a draft is not part of it yet.
@@ -3733,7 +3736,7 @@ function renderMap(real, focus = null) {
   if (states.length || uses) scroll.append(linkLegend(states, uses));
   // Many boxes or many zones: smaller boxes and zones side by side, so the whole system fits in one look.
   const tops = (v.zones || []).filter((x) => x && typeof x === "object");
-  const many = !!focus || new Set(KINDS.map.refs(v)).size > 12 || tops.length >= 4;
+  const many = !!focus || mapIsDense(v);
   const map = el("div", "map diagram" + ((v.links || []).length ? " linked" : "") + (many ? " dense" : ""));
   for (const z of tops) map.append(zoneEl(z, 0, many));
   const profRow = profileMarks(map, v);
@@ -7958,7 +7961,9 @@ function renderViewNow() {
   document.getElementById("view").replaceChildren(...(toDraft ? [toDraft] : []), pic);
   tidyGuesses(document.getElementById("view"));
   // A big picture may use the whole window.
-  document.body.classList.toggle("pic-wide", !!pic.querySelector?.(".map.dense"));
+  // Wide for the whole plan, not for the picture on screen: a page that changes width from one tab to the next rewraps
+  // everything above the picture and moves the tabs out from under the pointer.
+  document.body.classList.toggle("pic-wide", plan.views.some((x) => x.kind === "map" && mapIsDense(applyDraft(plan, draft, x.id).view)));
   try {
     kind?.after?.();
   } catch {}

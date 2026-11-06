@@ -64,7 +64,7 @@ Lines: `aws:event` Event or message, `aws:peering` VPC peering, `aws:iam` Permis
 |---|---|---|---|
 | `gcp:org` Organization | zone | anywhere |  |
 | `gcp:folder` Folder | zone | Organization, Folder |  |
-| `gcp:project` Project | zone | Organization, Folder |  |
+| `gcp:project` Project | zone | Organization, Folder, Shared VPC host project, VPC Service Controls perimeter |  |
 | `gcp:vpc` VPC network | zone | Project |  |
 | `gcp:region` Region | zone | Project, VPC network |  |
 | `gcp:zone` Zone | zone | Region |  |
@@ -94,7 +94,7 @@ Lines: `aws:event` Event or message, `aws:peering` VPC peering, `aws:iam` Permis
 | `gcp:gcs` Cloud Storage bucket | box | Region, Project | class: standard / nearline / coldline / archive |
 | `gcp:pubsub` Pub/Sub topic | box | Project, Region |  |
 | `gcp:dataflow` Dataflow | box | Region, Project |  |
-| `gcp:composer` Composer (Airflow) | box | Region, Project |  |
+| `gcp:composer` Managed Airflow (Composer) | box | Region, Project |  |
 | `gcp:scheduler` Cloud Scheduler | box | Region, Project | schedule |
 | `gcp:cloudtasks` Cloud Tasks | box | Region, Project |  |
 | `gcp:cloudbuild` Cloud Build | box | Region, Project |  |
@@ -104,7 +104,41 @@ Lines: `aws:event` Event or message, `aws:peering` VPC peering, `aws:iam` Permis
 | `gcp:logging` Cloud Logging | box | Project |  |
 | `gcp:monitoring` Cloud Monitoring | box | Project |  |
 | `gcp:artifactregistry` Artifact Registry | box | Region, Project |  |
-| `gcp:vertexai` Vertex AI | box | Region, Project |  |
+| `gcp:vertexai` Vertex AI / Agent Platform | box | Region, Project |  |
+| `gcp:sharedvpc` Shared VPC host project | zone | Organization, Folder |  |
+| `gcp:perimeter` VPC Service Controls perimeter | zone (rules look through it) | Organization, Folder |  |
+| `gcp:mig` Managed instance group | box, also a zone | Subnet, Zone, Region | min; max; type |
+| `gcp:disk` Persistent Disk / Hyperdisk | box | Zone, Region, Subnet | size; type |
+| `gcp:appengine` App Engine | box | Region, Project |  |
+| `gcp:batch` Batch | box | Region, Project, Subnet |  |
+| `gcp:vmwareengine` VMware Engine | box, also a zone | Region, VPC network, Project |  |
+| `gcp:apigateway` API Gateway | box | Region, Project |  |
+| `gcp:eventarc` Eventarc trigger | box | Region, Project |  |
+| `gcp:workflows` Workflows | box | Region, Project |  |
+| `gcp:clouddeploy` Cloud Deploy | box | Region, Project |  |
+| `gcp:sourcemanager` Secure Source Manager | box | Region, Project |  |
+| `gcp:router` Cloud Router | box | Region, VPC network |  |
+| `gcp:ncc` Network Connectivity Center | box | Project, Organization |  |
+| `gcp:ngfw` Cloud NGFW policy | box | VPC network, Project, Organization, Folder |  |
+| `gcp:ids` Cloud IDS | box | VPC network, Region |  |
+| `gcp:swp` Secure Web Proxy | box | VPC network, Region, Subnet |  |
+| `gcp:servicemesh` Cloud Service Mesh | box | Project, VPC network |  |
+| `gcp:bigtable` Bigtable | box | Region, Project, Zone | nodes |
+| `gcp:datastream` Datastream | box | Region, Project |  |
+| `gcp:dms` Database Migration Service | box | Region, Project |  |
+| `gcp:kafka` Managed Service for Apache Kafka | box | Region, VPC network, Subnet |  |
+| `gcp:dataproc` Managed Service for Apache Spark (Dataproc) | box | Region, Subnet, Project |  |
+| `gcp:datafusion` Cloud Data Fusion | box | Region, Project |  |
+| `gcp:dataform` Dataform | box | Region, Project |  |
+| `gcp:looker` Looker | box | Region, Project |  |
+| `gcp:netappvolumes` NetApp Volumes | box | Region, VPC network |  |
+| `gcp:backupdr` Backup and DR | box | Region, Project |  |
+| `gcp:certificatemanager` Certificate Manager | box | Project, Region |  |
+| `gcp:identityplatform` Identity Platform | box | Project |  |
+| `gcp:managedad` Managed Microsoft AD | box | VPC network, Project |  |
+| `gcp:scc` Security Command Center | box | Organization, Project |  |
+| `gcp:trace` Cloud Trace | box | Project |  |
+| `gcp:documentai` Document AI | box | Region, Project |  |
 
 Lines: `gcp:event` Event or message, `gcp:peering` VPC peering, `gcp:iam` Permission (IAM), `gcp:replication` Replication; without a kind a line is traffic.
 
@@ -141,7 +175,7 @@ Lines: `gcp:event` Event or message, `gcp:peering` VPC peering, `gcp:iam` Permis
 | `azure:sql` Azure SQL | box | Resource group, Region, Subnet, Virtual network | tier |
 | `azure:postgres` Database for PostgreSQL | box | Resource group, Subnet, Region | tier |
 | `azure:cosmosdb` Cosmos DB | box | Resource group, Region, Subnet, Virtual network | api: nosql / mongodb / cassandra / gremlin / table |
-| `azure:redis` Azure Cache for Redis | box | Resource group, Subnet, Region | tier |
+| `azure:redis` Azure Managed Redis | box | Resource group, Subnet, Region | tier |
 | `azure:storage` Storage account | box | Resource group, Region, Subnet, Virtual network | kind: blob / files / queue / table |
 | `azure:servicebus` Service Bus | box | Resource group, Region, Subnet, Virtual network |  |
 | `azure:eventhubs` Event Hubs | box | Resource group, Region, Subnet, Virtual network |  |
@@ -151,7 +185,53 @@ Lines: `gcp:event` Event or message, `gcp:peering` VPC peering, `gcp:iam` Permis
 | `azure:managedidentity` Managed identity | box | Resource group, Subscription |  |
 | `azure:monitor` Azure Monitor | box | Subscription, Resource group |  |
 | `azure:acr` Container Registry | box | Resource group, Region, Subnet, Virtual network |  |
-| `azure:openai` Azure OpenAI | box | Resource group, Region |  |
+| `azure:openai` Azure OpenAI / Foundry | box | Resource group, Region |  |
+| `azure:vmss` VM scale set | box, also a zone | Subnet | min; max; size |
+| `azure:disk` Managed disk | box | Resource group, Region, Availability Zone | size; sku |
+| `azure:aro` Azure Red Hat OpenShift | box, also a zone | Virtual network, Subnet, Resource group |  |
+| `azure:staticwebapps` Static Web Apps | box | Resource group, Region |  |
+| `azure:batch` Batch | box | Resource group, Subnet |  |
+| `azure:avd` Azure Virtual Desktop | box | Resource group, Subnet, Virtual network |  |
+| `azure:vmware` Azure VMware Solution | box, also a zone | Resource group, Region |  |
+| `azure:appconfig` App Configuration | box | Resource group, Region, Subnet |  |
+| `azure:sqlmi` SQL Managed Instance | box | Subnet, Virtual network | tier |
+| `azure:mysql` Database for MySQL | box | Resource group, Subnet, Region | tier |
+| `azure:documentdb` Azure DocumentDB (MongoDB) | box | Resource group, Region, Subnet, Virtual network |  |
+| `azure:files` Azure Files share | box | Resource group, Region, Subnet, Virtual network |  |
+| `azure:netappfiles` Azure NetApp Files | box | Subnet, Virtual network |  |
+| `azure:datalake` Data Lake Storage | box | Resource group, Region, Subnet, Virtual network |  |
+| `azure:datafactory` Data Factory | box | Resource group, Region |  |
+| `azure:synapse` Synapse Analytics | box | Resource group, Region |  |
+| `azure:databricks` Azure Databricks | box | Resource group, Virtual network |  |
+| `azure:fabric` Microsoft Fabric | box | Subscription, Resource group |  |
+| `azure:streamanalytics` Stream Analytics | box | Resource group, Region |  |
+| `azure:dataexplorer` Data Explorer | box | Resource group, Region, Subnet |  |
+| `azure:powerbi` Power BI | box | Subscription |  |
+| `azure:signalr` SignalR Service | box | Resource group, Region |  |
+| `azure:webpubsub` Web PubSub | box | Resource group, Region |  |
+| `azure:notificationhubs` Notification Hubs | box | Resource group, Region |  |
+| `azure:communication` Communication Services | box | Resource group, Region |  |
+| `azure:iothub` IoT Hub | box | Resource group, Region |  |
+| `azure:dns` Azure DNS zone | box | Resource group, Subscription |  |
+| `azure:trafficmanager` Traffic Manager | box | Resource group, Subscription |  |
+| `azure:waf` Web Application Firewall policy | box | Resource group, Subscription |  |
+| `azure:ddos` DDoS Protection plan | box | Resource group, Subscription, Virtual network |  |
+| `azure:vwan` Virtual WAN hub | box, also a zone | Resource group, Region, Subscription |  |
+| `azure:routeserver` Route Server | box | Subnet, Virtual network |  |
+| `azure:privatelinkservice` Private Link service | box | Subnet, Virtual network |  |
+| `azure:loganalytics` Log Analytics workspace | box | Resource group, Region |  |
+| `azure:appinsights` Application Insights | box | Resource group, Region |  |
+| `azure:grafana` Managed Grafana | box | Resource group, Region |  |
+| `azure:sentinel` Microsoft Sentinel | box | Resource group, Subscription |  |
+| `azure:defender` Defender for Cloud | box | Subscription |  |
+| `azure:backup` Backup vault | box | Resource group, Region |  |
+| `azure:siterecovery` Site Recovery | box | Resource group, Region |  |
+| `azure:arc` Azure Arc | box | Resource group, Subscription |  |
+| `azure:externalid` Entra External ID | box | Subscription |  |
+| `azure:aisearch` Azure AI Search | box | Resource group, Region, Subnet, Virtual network |  |
+| `azure:machinelearning` Azure Machine Learning | box | Resource group, Region |  |
+| `azure:documentintelligence` Document Intelligence | box | Resource group, Region |  |
+| `azure:devops` Azure DevOps / Pipelines | box | anywhere |  |
 
 Lines: `azure:event` Event or message, `azure:peering` VNet peering, `azure:iam` Permission (RBAC), `azure:replication` Replication; without a kind a line is traffic.
 
@@ -159,7 +239,7 @@ Lines: `azure:event` Event or message, `azure:peering` VNet peering, `azure:iam`
 
 | Kind | Is | Sits in | props |
 |---|---|---|---|
-| `huawei:region` Region | zone | anywhere |  |
+| `huawei:region` Region | zone | Enterprise project |  |
 | `huawei:vpc` VPC | zone | Region | cidr |
 | `huawei:az` Availability Zone | zone | VPC, Region |  |
 | `huawei:subnet` Subnet | zone | VPC, Availability Zone | cidr |
@@ -177,19 +257,55 @@ Lines: `azure:event` Event or message, `azure:peering` VNet peering, `azure:iam`
 | `huawei:waf` WAF | box | Region |  |
 | `huawei:cdn` CDN | box | anywhere |  |
 | `huawei:dns` DNS | box | anywhere |  |
-| `huawei:rds` RDS | box | Subnet, VPC | engine: mysql / postgres / sqlserver; flavor |
+| `huawei:rds` RDS | box | Subnet, VPC | engine: mysql / postgres / sqlserver / mariadb; flavor |
 | `huawei:gaussdb` GaussDB | box | Subnet, VPC |  |
-| `huawei:dcs` DCS (Redis) | box | Subnet, VPC |  |
+| `huawei:dcs` DCS (Redis / Memcached) | box | Subnet, VPC | engine: redis / memcached |
 | `huawei:obs` OBS bucket | box | Region |  |
-| `huawei:sfs` SFS | box | VPC, Subnet |  |
+| `huawei:sfs` Scalable File Service | box | VPC, Subnet | type: SFS / SFS Turbo |
 | `huawei:evs` EVS disk | box | Availability Zone, Subnet |  |
 | `huawei:smn` SMN topic | box | Region |  |
-| `huawei:dms` DMS (Kafka / RabbitMQ) | box | VPC, Subnet |  |
+| `huawei:dms` DMS (Kafka / RabbitMQ / RocketMQ) | box | VPC, Subnet | engine: kafka / rabbitmq / rocketmq |
 | `huawei:iam` IAM | box | anywhere |  |
-| `huawei:kms` KMS | box | Region |  |
+| `huawei:kms` KMS (Data Encryption Workshop) | box | Region |  |
 | `huawei:ces` Cloud Eye | box | Region |  |
 | `huawei:lts` Log Tank Service | box | Region |  |
 | `huawei:swr` SWR registry | box | Region |  |
+| `huawei:enterpriseproject` Enterprise project | zone | anywhere |  |
+| `huawei:flexus` Flexus instance | box, also a zone | Subnet | flavor; os |
+| `huawei:bms` Bare Metal Server | box, also a zone | Subnet | flavor; os |
+| `huawei:as` Auto Scaling group | box, also a zone | Subnet, VPC | min; max |
+| `huawei:gpu` GPU Accelerated Cloud Server | box | Subnet | flavor |
+| `huawei:cae` Cloud Application Engine | box | Region, VPC |  |
+| `huawei:servicestage` ServiceStage | box | Region, VPC |  |
+| `huawei:cse` Cloud Service Engine | box | VPC, Subnet |  |
+| `huawei:eip` Elastic IP | box | VPC, Region | bandwidth |
+| `huawei:vpcep` VPC Endpoint | box | VPC, Subnet |  |
+| `huawei:cloudconnect` Cloud Connect | box | Region |  |
+| `huawei:ga` Global Accelerator | box | Region |  |
+| `huawei:aad` Anti-DDoS | box | Region |  |
+| `huawei:cfw` Cloud Firewall | box | Region, VPC |  |
+| `huawei:hss` Host Security Service | box | Region |  |
+| `huawei:cbh` Cloud Bastion Host | box | Subnet, VPC |  |
+| `huawei:dbss` Database Security Service | box | Subnet, VPC |  |
+| `huawei:ccm` Cloud Certificate Manager | box | Region |  |
+| `huawei:secmaster` SecMaster | box | Region |  |
+| `huawei:taurusdb` TaurusDB | box | Subnet, VPC | flavor |
+| `huawei:geminidb` GeminiDB | box | Subnet, VPC | api: redis / cassandra / mongodb / influx |
+| `huawei:dds` Document Database Service | box | Subnet, VPC |  |
+| `huawei:ddm` Distributed Database Middleware | box | Subnet, VPC |  |
+| `huawei:drs` Data Replication Service | box | Region, VPC, Subnet |  |
+| `huawei:dws` Data Warehouse Service | box | Subnet, VPC |  |
+| `huawei:mrs` MapReduce Service | box | Subnet, VPC |  |
+| `huawei:dli` Data Lake Insight | box | Region |  |
+| `huawei:css` Cloud Search Service | box | Subnet, VPC |  |
+| `huawei:dataarts` DataArts Studio | box | Region |  |
+| `huawei:dis` Data Ingestion Service | box | Region |  |
+| `huawei:roma` ROMA Connect | box | Region, VPC |  |
+| `huawei:cbr` Cloud Backup and Recovery | box | Region |  |
+| `huawei:aom` Application Operations Management | box | Region |  |
+| `huawei:cts` Cloud Trace Service | box | Region |  |
+| `huawei:codearts` CodeArts Pipeline | box | Region |  |
+| `huawei:modelarts` ModelArts / MaaS | box | Region |  |
 
 Lines: `huawei:event` Event or message, `huawei:peering` VPC peering, `huawei:iam` Permission (IAM); without a kind a line is traffic.
 
@@ -199,34 +315,61 @@ Lines: `huawei:event` Event or message, `huawei:peering` VPC peering, `huawei:ia
 |---|---|---|---|
 | `onprem:datacenter` Data center | zone | anywhere |  |
 | `onprem:rack` Rack | zone | Data center |  |
-| `onprem:vlan` VLAN / network segment | zone | Data center, DMZ | id; cidr |
-| `onprem:dmz` DMZ | zone | Data center |  |
-| `onprem:server` Physical server | box, also a zone | Rack, Data center, VLAN / network segment, DMZ | cpu; memory; os |
-| `onprem:vm` Virtual machine | box, also a zone | Physical server, VLAN / network segment, Data center, DMZ | cpu; memory; os |
-| `onprem:firewall` Firewall | box | Data center, Rack, DMZ, VLAN / network segment | model |
-| `onprem:router` Router | box | Data center, Rack |  |
-| `onprem:switch` Switch | box | Data center, Rack, VLAN / network segment |  |
+| `onprem:vlan` VLAN / network segment | zone | Data center, DMZ, Site / office / branch | id; cidr |
+| `onprem:dmz` DMZ | zone | Data center, Site / office / branch |  |
+| `onprem:server` Physical server | box, also a zone | Rack, Data center, VLAN / network segment, DMZ, Site / office / branch | cpu; memory; os |
+| `onprem:vm` Virtual machine | box, also a zone | Physical server, VLAN / network segment, Data center, DMZ, Virtualization cluster, Hypervisor host | cpu; memory; os |
+| `onprem:firewall` Firewall | box | Data center, Rack, DMZ, VLAN / network segment, Site / office / branch | model |
+| `onprem:router` Router | box | Data center, Rack, Site / office / branch |  |
+| `onprem:switch` Switch | box | Data center, Rack, VLAN / network segment, Site / office / branch |  |
 | `onprem:loadbalancer` Load balancer | box | Data center, Rack, DMZ, VLAN / network segment | model |
-| `onprem:vpn` VPN gateway | box | Data center, DMZ |  |
+| `onprem:vpn` VPN gateway | box | Data center, DMZ, Site / office / branch |  |
 | `onprem:database` Database | box | Physical server, Virtual machine, VLAN / network segment, Data center | engine |
 | `onprem:storage` Storage (NAS / SAN) | box | Data center, Rack, VLAN / network segment | size |
 | `onprem:directory` Directory (AD / LDAP) | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:site` Site / office / branch | zone | anywhere |  |
+| `onprem:cluster` Virtualization cluster | zone | Data center, Rack, VLAN / network segment |  |
+| `onprem:hypervisor` Hypervisor host | box, also a zone | Rack, Data center, Virtualization cluster, VLAN / network segment | cpu; memory |
+| `onprem:appserver` Application server | box, also a zone | Physical server, Virtual machine, VLAN / network segment, Data center, DMZ | platform |
+| `onprem:proxy` Proxy (forward / reverse) | box | DMZ, VLAN / network segment, Data center, Physical server, Virtual machine |  |
+| `onprem:waf` Web application firewall | box | DMZ, Data center, Rack, VLAN / network segment |  |
+| `onprem:ids` IDS / IPS | box | Data center, Rack, DMZ, VLAN / network segment |  |
+| `onprem:dnsserver` DNS / DHCP server | box | Physical server, Virtual machine, VLAN / network segment, Data center, DMZ |  |
+| `onprem:mailserver` Mail server | box | Physical server, Virtual machine, VLAN / network segment, Data center, DMZ |  |
+| `onprem:fileserver` File server | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:objectstorage` Object storage | box | Data center, Rack, VLAN / network segment, Physical server, Virtual machine |  |
+| `onprem:backupserver` Backup server / tape | box | Data center, Rack, VLAN / network segment |  |
+| `onprem:cache` Cache | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:mq` Message queue | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:mainframe` Mainframe | box | Data center, Rack |  |
+| `onprem:siem` SIEM / log server | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:monitoring` Monitoring | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:bastion` Jump host / PAM | box | VLAN / network segment, DMZ, Data center, Physical server, Virtual machine |  |
+| `onprem:hsm` HSM | box | Data center, Rack |  |
+| `onprem:cicd` CI/CD server | box | Physical server, Virtual machine, VLAN / network segment, Data center |  |
+| `onprem:accesspoint` Wi-Fi access point | box | Site / office / branch, VLAN / network segment |  |
 
-Lines: `onprem:replication` Replication, `onprem:backup` Backup; without a kind a line is traffic.
+Lines: `onprem:replication` Replication, `onprem:backup` Backup, `onprem:wan` WAN / VPN link; without a kind a line is traffic.
 
 ## container (Container)
 
 | Kind | Is | Sits in | props |
 |---|---|---|---|
-| `container:host` Container host | zone | anywhere | runtime: docker / podman / containerd; os |
+| `container:host` Container host | zone | Swarm cluster | runtime: docker / podman / containerd; os |
 | `container:compose` Compose project | zone | Container host |  |
-| `container:network` Container network | zone | Container host, Compose project | driver: bridge / host / overlay |
-| `container:container` Container | box | Container host, Compose project, Container network | image; ports; replicas |
-| `container:volume` Volume | box | Container host, Compose project | mount |
+| `container:network` Container network | zone | Container host, Compose project | driver: bridge / host / overlay / macvlan / ipvlan |
+| `container:container` Container | box | Container host, Compose project, Container network, Podman pod, Swarm cluster | image; ports; replicas; restart: no / always / unless-stopped / on-failure |
+| `container:volume` Volume | box | Container host, Compose project, Swarm cluster | mount; driver |
 | `container:envfile` Env / config file | box | Container host, Compose project |  |
 | `container:registry` Image registry | box | anywhere |  |
+| `container:swarm` Swarm cluster | zone | anywhere |  |
+| `container:pod` Podman pod | box, also a zone | Container host, Container network |  |
+| `container:proxy` Reverse proxy | box | Container host, Compose project, Container network, Swarm cluster | ports |
+| `container:secret` Secret | box | Container host, Compose project, Swarm cluster |  |
+| `container:config` Config | box | Container host, Compose project, Swarm cluster |  |
+| `container:bindmount` Bind mount (host folder) | box | Container host, Compose project | path |
 
-Lines: `container:uses` Mounts or reads; without a kind a line is traffic.
+Lines: `container:uses` Mounts or reads, `container:depends` Starts after (depends_on), `container:publishes` Publishes a port; without a kind a line is traffic.
 
 ## k8s (Kubernetes)
 
@@ -237,11 +380,11 @@ Lines: `container:uses` Mounts or reads; without a kind a line is traffic.
 | `k8s:networkpolicy` Network policy | zone (rules look through it) | Namespace | rules |
 | `k8s:deployment` Deployment | box | Namespace | replicas; image; containers |
 | `k8s:statefulset` StatefulSet | box | Namespace | replicas; image; containers |
-| `k8s:daemonset` DaemonSet | box | Namespace | image; containers |
+| `k8s:daemonset` DaemonSet | box | Namespace, Node, Node pool | image; containers |
 | `k8s:cronjob` CronJob | box | Namespace | schedule; image; containers; suspended: yes / no |
 | `k8s:job` Job | box | Namespace | image; containers |
-| `k8s:pod` Pod | box | Namespace | image; containers |
-| `k8s:service` Service | box | Namespace | type: ClusterIP / NodePort / LoadBalancer; port |
+| `k8s:pod` Pod | box | Namespace, Node, Node pool | image; containers |
+| `k8s:service` Service | box | Namespace | type: ClusterIP / NodePort / LoadBalancer / ExternalName / Headless; port |
 | `k8s:ingress` Ingress | box | Namespace | host |
 | `k8s:configmap` ConfigMap | box | Namespace |  |
 | `k8s:secret` Secret | box | Namespace |  |
@@ -250,5 +393,22 @@ Lines: `container:uses` Mounts or reads; without a kind a line is traffic.
 | `k8s:hpa` HorizontalPodAutoscaler | box | Namespace | min; max |
 | `k8s:serviceaccount` ServiceAccount | box | Namespace |  |
 | `k8s:role` Role / RoleBinding | box | Namespace |  |
+| `k8s:nodepool` Node pool | zone | Cluster | size; machine |
+| `k8s:node` Node | box, also a zone | Cluster, Node pool | machine |
+| `k8s:mesh` Service mesh | zone (rules look through it) | Cluster, Namespace |  |
+| `k8s:replicaset` ReplicaSet | box | Namespace | replicas |
+| `k8s:operator` Operator / controller | box | Namespace |  |
+| `k8s:gateway` Gateway (Gateway API) | box | Namespace | class; listeners |
+| `k8s:route` Route (HTTPRoute, GRPCRoute…) | box | Namespace | type: HTTP / GRPC / TLS / TCP; host |
+| `k8s:pdb` PodDisruptionBudget | box | Namespace | minAvailable |
+| `k8s:vpa` VerticalPodAutoscaler | box | Namespace |  |
+| `k8s:scaledobject` ScaledObject (KEDA) | box | Namespace | trigger |
+| `k8s:resourcequota` ResourceQuota / LimitRange | box | Namespace |  |
+| `k8s:storageclass` StorageClass | box | Cluster | provisioner |
+| `k8s:clusterrole` ClusterRole / ClusterRoleBinding | box | Cluster |  |
+| `k8s:crd` CustomResourceDefinition | box | Cluster |  |
+| `k8s:certificate` Certificate (cert-manager) | box | Namespace |  |
+| `k8s:externalsecret` ExternalSecret | box | Namespace |  |
+| `k8s:gitopsapp` GitOps app (Argo CD / Flux) | box | Namespace, Cluster |  |
 
-Lines: `k8s:uses` Reads config or secret, `k8s:mounts` Mounts a volume, `k8s:selects` Selects pods, `k8s:routes` Routes to; without a kind a line is traffic.
+Lines: `k8s:uses` Reads config or secret, `k8s:mounts` Mounts a volume, `k8s:selects` Selects pods, `k8s:routes` Routes to, `k8s:scales` Scales; without a kind a line is traffic.

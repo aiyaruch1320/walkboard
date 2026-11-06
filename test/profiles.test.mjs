@@ -77,6 +77,13 @@ test("the kind search puts the platform of where it goes first, then the closest
   assert.equal(top("redis", {used: ["azure"]}), "azure:redis");
   assert.equal(top("", {around: ["k8s:namespace"]}).split(":")[0], "k8s");
   assert.deepEqual(searchKinds("zzzz"), []);
+  // Everyday words and newer names find the kinds added from each platform's product list.
+  assert.equal(top("airflow", {used: ["gcp"]}), "gcp:composer");
+  assert.equal(top("openshift", {used: ["azure"]}), "azure:aro");
+  assert.equal(top("mongodb", {used: ["huawei"]}), "huawei:dds");
+  assert.equal(top("httproute", {around: ["k8s:namespace"]}), "k8s:route");
+  assert.equal(top("traefik", {around: ["container:host"]}), "container:proxy");
+  assert.equal(top("splunk", {around: ["onprem:datacenter"]}), "onprem:siem");
 });
 
 test("across platforms, a kind warns unless the zone runs that platform (containers on a VM, Kubernetes in EKS)", () => {
@@ -84,7 +91,9 @@ test("across platforms, a kind warns unless the zone runs that platform (contain
   assert.equal(kindWarning("container:container", ["aws:ec2"]), null);
   assert.equal(kindWarning("k8s:namespace", ["aws:eks"]), null);
   assert.equal(kindWarning("k8s:cluster", ["aws:vpc"]), null);
-  assert.match(kindWarning("k8s:deployment", ["onprem:server"]).there, /On-prem/);
+  assert.match(kindWarning("k8s:deployment", ["onprem:datacenter"]).there, /On-prem/);
+  // Kubernetes on your own machines: a server or VM runs it.
+  assert.equal(kindWarning("k8s:namespace", ["onprem:server"]), null);
   assert.deepEqual(kindWarning("gcp:vpc", ["container:compose"]).usual, ["Project"]);
   assert.equal(kindWarning("gcp:cloudsql", ["gcp:subnet"]), null);
   assert.equal(kindWarning("azure:keyvault", ["azure:subnet"]), null);

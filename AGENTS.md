@@ -18,6 +18,7 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 | `skills/walkboard/assets/viewer.html` | The page script; `viewer.css` and `strings.js` (labels) beside it are inlined by the server, so the page is still one response with no network |
 | `skills/walkboard/assets/glossary.json` | Shared glossary, English and Thai |
 | `examples/` | Example plans; `npm test` validates all of them |
+| `evals/` | What agents do with the skill: `claude plugin eval`, see `evals/README.md`. Runs real agents on your account |
 | `scripts/` | Screenshots and the demo GIF (headless Chrome via DevTools, no dependencies) |
 | `.claude-plugin/` | Plugin and marketplace manifests, icon |
 

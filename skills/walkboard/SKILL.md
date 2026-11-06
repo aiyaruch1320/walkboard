@@ -17,7 +17,7 @@ Use the user's language for everything (questions, plan, replies, suggested comm
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 - **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [design.md](references/design.md), then section 3.
 
-No request at all (`/walkboard` alone): look through the repository briefly and offer 2-3 things from it, real names included (AskUserQuestion), explaining a real flow first: their own code as a picture shows what this does.
+`/walkboard` alone: look through the repository briefly and offer 2-3 things from it by name (AskUserQuestion), a real flow to explain first.
 
 If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`).
 
@@ -44,7 +44,7 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 
 ## 3. Show and listen
 
-1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see what it does and ask about it; "⋮" holds export, theme and settings.
+1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something).
 2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them). `[]` means the server stopped: `WB open` again. Start it again after each batch.
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
@@ -55,19 +55,19 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 
    Reply to every other message **on the page, where it was asked**, even in one line, even if you also act on it or say it in chat: asked on the page, answered on the page. If the answer belongs on another box or step, reply there and also, in one line, where it was asked with a link: `[[node:<id>]]`, `[[step:<id>]]`, `[[plan]]`.
 
-   A person reads every reply: use the names on the picture, never ids.
+   A person reads every reply: use the names and titles on the picture, never ids.
 
    No background commands that wake you when they end? `WB poll <dir> --timeout 240` in the foreground instead (`[]` = nothing yet, poll again). A killed poll loses nothing.
-3. Refer to steps by title. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
+3. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
 
 ## 4. Build (build)
 
 Not before `approved` is true. For each step:
 
 1. `WB set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
-2. `git status` to see what the step changed. `WB status <dir>` shows the current `settings`. Files changed: `"auto"` → small commits now, one context each; `"suggest"` → a suggested message (messages.md). Nothing changed (or not a repository): nothing to commit or suggest.
-3. `WB set <dir> step:<id> status=review node:<a> status=done …` (with the suggested message, in one call), and `WB reply <dir> --step <id>` with one line on what you built and the files touched, or that no files changed.
-4. Wait for the user, then `WB set <dir> step:<id> status=done` and start the next step: `next` (their go-ahead; on the last step, the end), or `commit` / `committed` (messages.md). `next` with `"all": true`: do the remaining steps without stopping.
+2. `git status`; `WB status <dir>` for the current `settings`. Files changed: `"auto"` → small commits now, one context each; `"suggest"` → a suggested message (messages.md). None changed, or no repository: neither.
+3. `WB set <dir> step:<id> status=review node:<a> status=done …` (the suggested message in the same call), and `WB reply <dir> --step <id>`: one line on what you built and the files touched, or that none changed.
+4. Wait. `next` (`commit`, `committed`: messages.md): `WB set <dir> step:<id> status=done`, then the next step. `"all": true`: the remaining steps without stopping. No reply needed.
 
 ## 4E. Walk through (explain)
 

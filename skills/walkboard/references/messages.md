@@ -34,7 +34,7 @@ When a step changed files, put the message on the step and wait (no files change
 
 The page shows them, editable, each with its files.
 
-- `commit` (with `commits` = the messages as the user left them): make those commits in order, each with only its files. Going on needs no other word from the user.
+- `commit` (with `commits` = the messages as the user left them): make those commits in order, each with only its files and that message word for word. Going on needs no other word from the user.
 - `committed`: the user committed; go on.
 
 Before the next step, `git status`: if this step's changes are still uncommitted, ask instead of going on, so steps never mix in one working tree.

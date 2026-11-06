@@ -136,6 +136,13 @@ body.side-open .side-inner{opacity:1;transform:none}
 #printout{font-size:12px}
 #printout .pview.landscape{width:1040px}
 #printout .pview{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin:0 0 12px;break-inside:avoid}
+.pdraft{margin:12px 0 0;padding:10px 12px;border:1px dashed var(--you-bd);border-radius:10px;font-size:12.5px;break-inside:avoid}
+.pdraft .dlist{display:block;margin:6px 0 0;padding:0;list-style:none;columns:2;column-gap:20px}
+.pdraft .drow{display:flex;gap:6px;align-items:baseline;padding:1px 0;border:0;border-radius:0;background:transparent;min-height:0;break-inside:avoid}
+.pdraft .dsign{flex:none;width:15px;height:15px;font-size:11px;line-height:15px}
+.pdword{display:flex;gap:6px;flex-wrap:wrap}
+.pdraft .dmain{font-weight:500}
+.pdraft .dsub{color:var(--muted)}
 #printout .pcap{font-size:12.5px;font-weight:600;margin:0 0 10px}
 #printout .pcap+.pmeta{margin:-6px 0 10px;color:var(--muted);font-size:11px}
 #scrim{display:none;position:fixed;inset:0;z-index:24;background:rgba(0,0,0,.35)}

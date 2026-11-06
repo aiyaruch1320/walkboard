@@ -85,4 +85,4 @@ Summarize in chat with the URL. `WB stop <dir>` unless the user wants the page k
 
 ## Other commands
 
-`WB set <dir> [plan | step: | node: | constraint: | option: | criterion: | source:<id>] key=value …` (`key=` removes one; JSON values allowed; `[skip ci] …` stays text). `WB export <dir> [--html file] [--no-code] [--with-chat]`: a read-only copy when the user asks to share the plan (PDF: the page's ⋮ → Export → PDF). `WB draft <dir> [clear [view] [change …]]`: what the user sketched / clear it once it is in the plan. `WB icons`: icon names. `WB <command> --help`: its options.
+`WB set <dir> [plan | step: | node: | constraint: | option: | criterion: | source:<id>] key=value …` (`key=` removes one; JSON values allowed; `[skip ci] …` stays text). `WB export <dir> [--html file] [--no-code] [--no-draft] [--with-chat]`: a read-only copy when the user asks to share the plan, draft changes marked (PDF: the page's ⋮ → Export → PDF). `WB draft <dir> [clear [view] [change …]]`: what the user sketched / clear it once it is in the plan. `WB icons`: icon names. `WB <command> --help`: its options.

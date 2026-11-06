@@ -49,6 +49,17 @@ test("code can be left out and the chat put in", async (t) => {
   assert.equal(data.thread[0].text, "why?");
 });
 
+test("what was sketched goes along when asked for", () => {
+  const {dir, plan} = planDir();
+  const draft = {version: 1, views: {m: {rev: 5, ops: [{id: "o1", op: "addNode", node: "new:c", name: "Cache", zone: "Data"}]}, empty: {ops: []}}};
+  const withIt = snapshot(dir, plan, {draft});
+  assert.equal(withIt.summary.draft, 1);
+  assert.deepEqual(embedded(withIt.html).draft, {version: 1, views: {m: {ops: draft.views.m.ops}}});
+  const without = snapshot(dir, plan, {draft: null});
+  assert.equal(without.summary.draft, 0);
+  assert.equal(embedded(without.html).draft, undefined);
+});
+
 test("the page's Export button downloads the same file", async (t) => {
   const {dir} = planDir();
   const s = await startServer(dir);

@@ -25,7 +25,7 @@ const USAGE = `walkboard <command> [options]
   status [dir]                  print the URL and queue state
   stop   [dir]                  stop the server
   serve  [dir]                  run the server in the foreground
-  export [dir] [--html file] [--no-code] [--with-chat]   write a read-only copy of the plan as one HTML file
+  export [dir] [--html file] [--no-code] [--no-draft] [--with-chat]   write a read-only copy of the plan as one HTML file, with what was sketched on it
   draft  [dir] [clear [view] [change …]]   print what the user sketched on the pictures, or clear it once it is in the plan
   icons                         list the icon names for "icon"
 
@@ -40,6 +40,7 @@ function parse(argv) {
     else if (a === "--full") flags.full = true;
     else if (a === "--no-code") flags.noCode = true;
     else if (a === "--with-chat") flags.withChat = true;
+    else if (a === "--no-draft") flags.noDraft = true;
     else if (a === "--html") flags.html = argv[++i] ?? "";
     else if (a === "--timeout") flags.timeout = argv[++i];
     else if (["--dir", "--node", "--step", "--option", "--criterion"].includes(a)) flags[a.slice(2)] = argv[++i];
@@ -288,11 +289,11 @@ function exportPlan() {
   // Never write over the plan, Walkboard's state or anything that is not an .html file.
   if (!/\.html?$/i.test(out)) fail(`${out}: the file name must end in .html`);
   if (out === path.resolve(p.plan) || out.split(path.sep).includes(".walkboard")) fail(`${out}: choose a file outside .walkboard and other than plan.json`);
-  const {html, summary} = snapshot(dir, plan, {code: !flags.noCode, chat: !!flags.withChat});
+  const {html, summary} = snapshot(dir, plan, {code: !flags.noCode, chat: !!flags.withChat, draft: flags.noDraft ? null : readDraft(dir)});
   const missing = flags.noCode ? [] : checkEvidence(plan, dir);
   fs.writeFileSync(out, html);
   console.log(out);
-  console.log(`${summary.steps} steps, ${summary.nodes} boxes; code from ${summary.files.length} files${summary.files.length ? ` (${summary.files.join(", ")})` : ""}; ${summary.chat ? `${summary.chat} chat messages` : "no chat"}`);
+  console.log(`${summary.steps} steps, ${summary.nodes} boxes;${summary.draft ? ` ${summary.draft} draft changes;` : ""} code from ${summary.files.length} files${summary.files.length ? ` (${summary.files.join(", ")})` : ""}; ${summary.chat ? `${summary.chat} chat messages` : "no chat"}`);
   for (const m of missing) console.log(`left out: ${m}`);
 }
 

@@ -43,7 +43,7 @@ function lines(file) {
 
 // A read-only copy of a plan in one file: the page, the plan, the glossary and the code it points at, opened anywhere without a server.
 // No token, no address of this machine, no way to send anything; the chat only when asked for.
-export function snapshot(dir, plan, {code = true, chat = false} = {}) {
+export function snapshot(dir, plan, {code = true, chat = false, draft = null} = {}) {
   const sources = {};
   if (code) {
     for (const [id, n] of Object.entries(plan.nodes || {})) {
@@ -66,7 +66,10 @@ export function snapshot(dir, plan, {code = true, chat = false} = {}) {
   delete shared.root;
   delete shared.roots;
   if (Array.isArray(plan.links)) shared.links = plan.links.filter((l) => l && !local(l.url));
-  const data = {plan: shared, glossary: JSON.parse(read(assets, "glossary.json")), sources, thread, exportedAt: new Date().toISOString()};
+  // What was sketched goes along when asked for: the copy is how a sketch gets talked over with people.
+  const sketched = Object.fromEntries(Object.entries(draft?.views || {}).filter(([, v]) => v?.ops?.length).map(([k, v]) => [k, {ops: v.ops}]));
+  const changes = Object.values(sketched).reduce((n, v) => n + v.ops.length, 0);
+  const data = {plan: shared, glossary: JSON.parse(read(assets, "glossary.json")), sources, thread, ...(changes ? {draft: {version: 1, views: sketched}} : {}), exportedAt: new Date().toISOString()};
   const module = (name) => "data:text/javascript;base64," + Buffer.from(moduleText(name)).toString("base64");
   // "<" escaped so nothing in the plan can close the script tag.
   const json = (x) => JSON.stringify(x).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
@@ -78,5 +81,5 @@ export function snapshot(dir, plan, {code = true, chat = false} = {}) {
     .replace("<title>Walkboard</title>", () => `<title>${String(plan.title || "Walkboard").replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"))} · Walkboard</title>`)
     .replace('<script type="module">', () => head + '<script type="module">');
   const files = [...new Set(Object.keys(sources).map((id) => String(plan.nodes[id].file).replace(/:\d+(-\d+)?$/, "")))];
-  return {html, summary: {steps: (plan.steps || []).length, nodes: Object.keys(plan.nodes || {}).length, files, chat: thread.length}};
+  return {html, summary: {steps: (plan.steps || []).length, nodes: Object.keys(plan.nodes || {}).length, files, chat: thread.length, draft: changes}};
 }

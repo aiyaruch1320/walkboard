@@ -235,7 +235,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       // The page's Export button: the same read-only file as `walkboard export`.
       const {plan, error} = readPlan(p.plan);
       if (error) return res.writeHead(409, {"content-type": "text/plain; charset=utf-8"}).end(error);
-      const {html} = snapshot(dir, plan, {code: url.searchParams.get("code") !== "0", chat: url.searchParams.get("chat") === "1"});
+      const {html} = snapshot(dir, plan, {code: url.searchParams.get("code") !== "0", chat: url.searchParams.get("chat") === "1", draft: url.searchParams.get("draft") === "0" ? null : readDraft(dir)});
       const name = exportName(plan, dir);
       res.writeHead(200, {"content-type": "text/html; charset=utf-8", "cache-control": "no-store", "content-disposition": `attachment; filename="${name.replace(/[^\w.-]/g, "_")}"; filename*=UTF-8''${encodeURIComponent(name)}`}).end(html);
     } else if (route === "GET /api/thread") {

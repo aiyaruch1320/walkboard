@@ -1618,7 +1618,7 @@ function nodeBox(id, family = null) {
 }
 
 function renderFlow(real) {
-  const drafted = applyDraft(plan, draftShown() ? draft : null, real.id), v = drafted.view, marks = drafted.marks;
+  const drafted = applyDraft(plan, draftDrawn() ? draft : null, real.id), v = drafted.view, marks = drafted.marks;
   const wrap = el("div", "flowview");
   drawnNodes = drafted.plan.nodes;
   (v.lanes || []).forEach((lane, li) => {
@@ -2356,7 +2356,7 @@ function routeLine(a, b, others, lanes = {}, o = (x, y) => `${x} ${y}`, want = n
 }
 
 // ---------- draft: changes sketched on a picture, kept in .walkboard/draft.json until the agent puts them in the plan
-let draft = {version: 1, views: {}};
+let draft = snapshot?.draft || {version: 1, views: {}};
 const draftOps = (viewId) => draft.views?.[viewId]?.ops || [];
 // Ids that two pages sketching at once never both pick.
 const randomId = () => Math.random().toString(36).slice(2, 8);
@@ -2686,6 +2686,10 @@ const flash = (e) => {
 };
 // Drafts are drawn on screen, on a picture's own tab: not on paper, not inside before / after.
 const draftShown = () => !printState && !drawingDiff;
+// On paper the draft goes along: a picture is sketched to be talked over, with the agent and with people. Export can leave
+// it out. Before / after compares the plan's own pictures, so never there.
+let printDraft = true;
+const draftDrawn = () => !drawingDiff && (!printState || printDraft);
 // The picture being sketched hands the side panel and the keyboard what they need (set by renderMap).
 let sketchApi = null;
 const ICON_PATHS = {
@@ -3327,6 +3331,23 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
   refresh();
   return {bar, refresh};
 }
+// What a picture's draft changes, in words, for whoever reads it away from the page: on paper and in an exported copy.
+function draftSummary(viewId) {
+  const rows = draftRows(viewId).filter((r) => !r.stale);
+  if (!rows.length) return null;
+  const box = el("div", "pdraft"), ul = el("ul", "dlist");
+  box.append(el("b", null, t("draftForPeople", rows.length)));
+  for (const r of rows) {
+    const li = el("li", "drow");
+    const text = el("span", "pdword");
+    text.append(el("span", "dmain", r.main), ...(r.sub ? [el("span", "dsub", r.sub)] : []));
+    li.append(el("span", "dsign s-" + ({"+": "add", "~": "change", "−": "remove", "↦": "move"}[r.sign] || "x"), r.sign), text);
+    ul.append(li);
+  }
+  box.append(ul);
+  return box;
+}
+
 function renderDraftPanel() {
   const title = document.getElementById("sideTitle"), p = document.getElementById("panel");
   const rows = draftRows(side.view || sketchApi?.view || viewId);
@@ -3463,7 +3484,7 @@ const timed = (fn) => (...a) => {
 function renderMap(real) {
   // The picture drawn is the plan with this view's draft in it; arranging (layout) stays on the real view.
   // Paper shows the plan as it is: a draft is not part of it yet.
-  const drafted = applyDraft(plan, draftShown() ? draft : null, real.id), v = drafted.view, marks = drafted.marks, lv = real;
+  const drafted = applyDraft(plan, draftDrawn() ? draft : null, real.id), v = drafted.view, marks = drafted.marks, lv = real;
   drawnNodes = drafted.plan.nodes;
   const scroll = el("div", "scroll");
   // "uses" lines (a config a workload reads, the way into a cluster) are drawn thin and are not lines to edit.
@@ -5702,7 +5723,7 @@ function renderGraph(v, {ids, edges, starts = [], shape, wrap = false, marks = n
 
 // A picture made of boxes and lines with its draft drawn in, its tools, and the pencil to sketch on it.
 function graphPicture(real, build) {
-  const drafted = applyDraft(plan, draftShown() ? draft : null, real.id), v = drafted.view;
+  const drafted = applyDraft(plan, draftDrawn() ? draft : null, real.id), v = drafted.view;
   const canMove = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
   const on = draftShown() && served && !snapshot;
   if (on && sketching && sketching !== real.id) sketching = null;
@@ -5894,7 +5915,7 @@ function renderTimeline(v) {
 // ---------- data model: tables, keys and relations between columns
 function renderDataModel(real) {
   // Drawn with its draft in it (not on paper); the arrangement (layout) stays on the real view.
-  const drafted = applyDraft(plan, draftShown() ? draft : null, real.id), v = drafted.view, marks = drafted.marks;
+  const drafted = applyDraft(plan, draftDrawn() ? draft : null, real.id), v = drafted.view, marks = drafted.marks;
   if (v !== real) Object.defineProperty(v, "layout", {get: () => real.layout, set: (x) => (real.layout = x), configurable: true});
   const cmark = (k) => marks.columns?.[k];
   const tables = (v.tables || []).filter((x) => x?.node);
@@ -7598,6 +7619,11 @@ function renderView() {
   const box = document.getElementById("view"), x = scrollX, y = scrollY, left = box?.querySelector(".scroll")?.scrollLeft || 0;
   if (box) box.style.minHeight = box.offsetHeight + "px";
   renderViewNow();
+  // An exported copy says in words what was sketched on this picture, as paper does.
+  if (snapshot?.draft && box) {
+    const v = plan.views.find((q) => q.id === viewId) || plan.views[0], words = v && v.kind !== "diff" ? draftSummary(v.id) : null;
+    if (words) box.append(words);
+  }
   if (scrollX !== x || scrollY !== y) scrollTo(x, y);
   const sc = box?.querySelector(".scroll");
   if (sc && left) sc.scrollLeft = left;
@@ -8625,7 +8651,7 @@ addEventListener("beforeprint", () => {
   pictureHook = null;
   linkObserver = null;
   const date = new Date().toLocaleDateString(dateLocale(), {dateStyle: "medium"});
-  const parts = [el("p", "pcover", [t("pill_" + (MODES_SHOWN.includes(plan.mode) ? plan.mode : "build")), date, steps().length && `${steps().length} ${t(plan.mode === "explain" ? "printStages" : "printSteps")}`, `${plan.views.length} ${t("printPictures")}`].filter(Boolean).join(" · "))];
+  const parts = [el("p", "pcover", [t("pill_" + (MODES_SHOWN.includes(plan.mode) ? plan.mode : "build")), date, steps().length && `${steps().length} ${t(plan.mode === "explain" ? "printStages" : "printSteps")}`, `${plan.views.length} ${t("printPictures")}`, printDraft && draftTotal() && t("printDraftN", draftTotal())].filter(Boolean).join(" · "))];
   if (steps().length) {
     const ol = el("ol", "psteps");
     steps().forEach((st, i) => {
@@ -8686,7 +8712,17 @@ addEventListener("beforeprint", () => {
     } catch (e) {
       pic = el("p", "drawfail", t("drawFail", v.title || v.id, e.message));
     }
+    // A map arranged by hand is laid out at the width it was arranged at, then scaled to the page: its boxes are placed
+    // relative to that layout, and laid out narrower they would land on each other.
+    if (v.kind === "map" && Object.keys(v.layout || {}).some((k) => !k.startsWith("@"))) {
+      const shown = document.getElementById("view"), at = parseFloat(shown.style.getPropertyValue("--held-w")) || shown.clientWidth;
+      if (at > 700) pic.style.width = at + "px";
+    }
     box.append(pic);
+    if (printDraft && v.kind !== "diff") {
+      const words = draftSummary(v.id);
+      if (words) box.append(words);
+    }
     parts.push(box);
     pics.push(box);
   }
@@ -8732,7 +8768,7 @@ addEventListener("beforeprint", () => {
   // is scaled to fit one page. Without lines a tall picture breaks between its rows.
   // What would come out too small takes a landscape page of its own: first choose (the lines redraw for the new width), then scale.
   const scaleOf = (pic, wide, room) => Math.min(1, wide / Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth)), pic.querySelector("svg.links") ? room / pic.getBoundingClientRect().height : 1);
-  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [box.lastElementChild]);
+  const partsOf = (box) => (box.querySelector(".diffview") ? [...box.querySelectorAll(".dhalf")] : [[...box.children].filter((x) => !x.classList.contains("pdraft")).at(-1)]);
   const worst = (box, wide, room) => Math.min(...partsOf(box).map((pic) => scaleOf(pic, wide, room)));
   const small = pics.filter((box) => partsOf(box).some((pic) => pic.querySelector("svg.links")) && worst(box, 676, 880) < 0.8).map((box) => [box, worst(box, 676, 880)]);
   small.forEach(([box]) => box.classList.add("landscape"));
@@ -8755,7 +8791,7 @@ addEventListener("beforeprint", () => {
     for (const pic of parts) {
       const w = Math.max(pic.scrollWidth, ...[...pic.querySelectorAll(".scroll, .diagram")].map((x) => x.scrollWidth));
       // A diff's list of changes shares the first page with its first picture.
-      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0) - (picsHead && box.contains(picsHead) ? picsHead.offsetHeight + 16 : 0);
+      let room = pageH - (diff && pic === parts[0] ? pic.getBoundingClientRect().top - box.getBoundingClientRect().top : 0) - (picsHead && box.contains(picsHead) ? picsHead.offsetHeight + 16 : 0) - (box.querySelector(":scope > .pdraft")?.offsetHeight || 0);
       // Unless that would make it too small: then the list keeps its page and the picture takes the next.
       if (diff && pic === parts[0] && room / pic.getBoundingClientRect().height < 0.6) {
         room = pageH;
@@ -8780,11 +8816,22 @@ addEventListener("afterprint", () => {
   document.body.classList.remove("printing");
   document.getElementById("printout").replaceChildren();
   printState = null;
+  printDraft = true;
 });
 
 // Export: a one-file copy to send (with or without the code and the chat), or a PDF through the browser's print window.
+const draftTotal = () => plan.views.reduce((n, v) => n + (v.kind === "diff" ? 0 : draftRows(v.id).filter((r) => !r.stale).length), 0);
 function openExport() {
   const parts = [el("b", null, t("exportTitle"))], row = el("div", "xrow");
+  let withDraft = null;
+  if (served && draftTotal()) {
+    const l = el("label", "xopt");
+    withDraft = el("input");
+    withDraft.type = "checkbox";
+    withDraft.checked = true;
+    l.append(withDraft, " " + t("exportDraft", draftTotal()));
+    parts.push(l);
+  }
   if (served) {
     const opt = (key, on) => {
       const l = el("label", "xopt"), c = el("input");
@@ -8797,7 +8844,7 @@ function openExport() {
     const html = el("button", "primary", t("exportHtml"));
     html.onclick = () => {
       const a = el("a");
-      a.href = `/api/export?code=${code.checked ? 1 : 0}&chat=${chat.checked ? 1 : 0}&token=${encodeURIComponent(token)}`;
+      a.href = `/api/export?code=${code.checked ? 1 : 0}&chat=${chat.checked ? 1 : 0}&draft=${withDraft?.checked === false ? 0 : 1}&token=${encodeURIComponent(token)}`;
       a.download = "";
       a.click();
       document.getElementById("toast").hidden = true;
@@ -8808,6 +8855,7 @@ function openExport() {
   const pdf = el("button", served ? null : "primary", t("exportPdf"));
   pdf.onclick = () => {
     document.getElementById("toast").hidden = true;
+    printDraft = withDraft?.checked !== false;
     setTimeout(() => print(), 50);
   };
   row.append(pdf);

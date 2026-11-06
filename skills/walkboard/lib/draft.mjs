@@ -27,6 +27,8 @@ export function viewList(p) {
 }
 export const draftable = (view) => !!DRAFT_OPS[view?.kind];
 export const emptyDraft = () => ({version: 1, views: {}});
+// How a map zone is known (in the draft, the layout and the page): its id, or its label when it has none.
+export const zoneKey = (z) => z?.id ?? z?.label;
 export const isNewId = (id) => typeof id === "string" && /^new:[A-Za-z0-9_-]{1,32}$/.test(id);
 
 const BAD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
@@ -53,7 +55,8 @@ const colRef = (x) => typeof x === "string" && /^[^.\s]+\.[^.\s]+$/.test(x) && x
 const SHAPES = {
   // kind: what it is on a platform ("aws:rds", lib/profiles.mjs; "" = none, drawn freely), props: that kind's fields.
   addNode: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), zone: label, at, kind: kindName, props: propsOk},
-  addZone: {zone: label, parent: (x) => x === "" || label(x), at, icon: (x) => optText(x, 60), note: (x) => optText(x, 120), kind: kindName, props: propsOk},
+  // zone: how the draft and the layout know it (its id); label: the name shown, when it is not that (a name in use).
+  addZone: {zone: label, label: (x) => x == null || label(x), parent: (x) => x === "" || label(x), at, icon: (x) => optText(x, 60), note: (x) => optText(x, 120), kind: kindName, props: propsOk},
   // replaces: the line it was before an end was dragged to another box (a removeLink of that line goes with it).
   addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName, replaces: (x) => isObj(x) && id(x.from) && id(x.to) && Object.keys(x).length === 2},
   editLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName},
@@ -185,7 +188,8 @@ export function applyDraft(plan, draft, viewId) {
   if (!Array.isArray(v.links)) v.links = [];
   const alias = new Map();
   const r = (x) => alias.get(x) ?? x;
-  const zone = (lbl) => walk(v).find((w) => w.z.label === lbl);
+  const zone = (k) => walk(v).find((w) => zoneKey(w.z) === k);
+  const parentKey = (w) => (w.parent ? zoneKey(w.parent) : "");
   const home = (nid) => walk(v).find((w) => Array.isArray(w.z.nodes) && w.z.nodes.includes(nid));
   const link = (from, to) => v.links.find((l) => isObj(l) && l.from === from && l.to === to);
   // A line the draft turned round is still found by the ends it had in the plan.
@@ -240,9 +244,10 @@ export function applyDraft(plan, draft, viewId) {
         const there = zone(op.zone);
         if (op.parent && !p && need(op, ["z:" + op.parent])) return;
         if (op.parent && !p) stale(op, `no zone "${op.parent}"`);
-        else if (there) (there.parent?.label ?? "") === (op.parent || "") && !marks.zones[op.zone] ? done(op) : stale(op, `a zone is already called "${op.zone}"`);
+        else if (there) parentKey(there) === (op.parent || "") && !marks.zones[op.zone] ? done(op) : stale(op, `a zone is already known as "${op.zone}"`);
         else {
-          insert(p ? (p.z.zones ||= []) : v.zones, {label: op.zone, ...(op.icon ? {icon: op.icon} : {}), ...(op.note ? {note: op.note} : {}), ...kindOfOp(op), nodes: []}, op.at);
+          const named = op.label != null && op.label !== op.zone ? {id: op.zone, label: op.label} : {label: op.zone};
+          insert(p ? (p.z.zones ||= []) : v.zones, {...named, ...(op.icon ? {icon: op.icon} : {}), ...(op.note ? {note: op.note} : {}), ...kindOfOp(op), nodes: []}, op.at);
           marks.zones[op.zone] = {mark: "add"};
           finished.add(op.id);
           wake("z:" + op.zone);
@@ -329,12 +334,11 @@ export function applyDraft(plan, draft, viewId) {
         break;
       }
       case "editZone": {
-        const w = zone(op.zone), renaming = op.label != null && op.label !== op.zone;
+        const w = zone(op.zone), renaming = op.label != null && op.label !== w?.z.label;
         if (!w && need(op, ["z:" + op.zone])) return;
         // The agent renamed it already.
-        if (!w && renaming && zone(op.label)) done(op);
+        if (!w && op.label != null && zone(op.label)) done(op);
         else if (!w) stale(op, `no zone "${op.zone}"`);
-        else if (renaming && zone(op.label)) stale(op, `a zone is already called "${op.label}"`);
         else {
           const changed = ["icon", "note", "kind"].filter((k) => op[k] != null && op[k] !== (w.z[k] ?? ""));
           if (op.props != null && JSON.stringify(op.props) !== JSON.stringify(w.z.props || {})) changed.push("props");
@@ -346,13 +350,17 @@ export function applyDraft(plan, draft, viewId) {
             if (op[k] === "" || (k === "props" && !Object.keys(op.props).length)) delete w.z[k];
             else w.z[k] = op[k];
           }
-          const now = renaming ? op.label : op.zone, m = marks.zones[op.zone];
+          // A zone without an id is known by its label, so a new name is a new key, unless another zone is known by
+          // that name: then it keeps its key as its id and only its label changes (two zones may share a label).
+          const rekey = renaming && w.z.id == null && !zone(op.label), wasLabel = w.z.label;
+          const now = rekey ? op.label : op.zone, m = marks.zones[op.zone];
           if (renaming) {
+            if (!rekey && w.z.id == null) w.z.id = op.zone;
             w.z.label = op.label;
-            delete marks.zones[op.zone];
+            if (rekey) delete marks.zones[op.zone];
           }
-          marks.zones[now] = m?.mark === "add" ? m : {...(m || {mark: "change"}), was: m?.was ?? op.zone};
-          if (renaming && marks.zones[now].mark === "move") marks.zones[now].renamedFrom = op.zone;
+          marks.zones[now] = m?.mark === "add" ? m : {...(m || {mark: "change"}), was: m?.was ?? wasLabel};
+          if (rekey && marks.zones[now].mark === "move") marks.zones[now].renamedFrom = op.zone;
         }
         break;
       }
@@ -388,8 +396,8 @@ export function applyDraft(plan, draft, viewId) {
         if (need(op, [...(w ? [] : ["n:" + n]), ...(to ? [] : ["z:" + op.to])])) return;
         if (!w) stale(op, `no box ${op.node}`);
         else if (!to) stale(op, `no zone "${op.to}"`);
-        else if (w.z.label === op.to) done(op);
-        else if (op.from != null && w.z.label !== op.from && marks.nodes[n]?.mark !== "move" && marks.nodes[n]?.mark !== "add") stale(op, `the plan now puts it in "${w.z.label}"`);
+        else if (zoneKey(w.z) === op.to) done(op);
+        else if (op.from != null && zoneKey(w.z) !== op.from && marks.nodes[n]?.mark !== "move" && marks.nodes[n]?.mark !== "add") stale(op, `the plan now puts it in "${zoneKey(w.z)}"`);
         else {
           const fromAt = w.z.nodes.indexOf(n);
           w.z.nodes.splice(fromAt, 1);
@@ -397,7 +405,7 @@ export function applyDraft(plan, draft, viewId) {
           const m = marks.nodes[n];
           if (m?.mark === "add") break;
           // Moved twice: it still came from where it was first.
-          marks.nodes[n] = m?.mark === "move" ? m : {...(m?.was ? {was: m.was} : {}), mark: "move", from: w.z.label, fromAt};
+          marks.nodes[n] = m?.mark === "move" ? m : {...(m?.was ? {was: m.was} : {}), mark: "move", from: zoneKey(w.z), fromAt};
           if (marks.nodes[n].from === op.to) delete marks.nodes[n];
         }
         break;
@@ -408,10 +416,10 @@ export function applyDraft(plan, draft, viewId) {
         if (!w) stale(op, `no zone "${op.zone}"`);
         else if (op.to && !to) stale(op, `no zone "${op.to}"`);
         else if (to && (to.z === w.z || walk({zones: [w.z]}).some((x) => x.z === to.z))) stale(op, "a zone cannot go inside itself");
-        else if ((w.parent?.label ?? "") === (op.to || "")) done(op);
-        else if (op.from != null && (w.parent?.label ?? "") !== op.from && marks.zones[op.zone]?.mark !== "move" && marks.zones[op.zone]?.mark !== "add") stale(op, `the plan now puts it in "${w.parent?.label ?? "the top"}"`);
+        else if (parentKey(w) === (op.to || "")) done(op);
+        else if (op.from != null && parentKey(w) !== op.from && marks.zones[op.zone]?.mark !== "move" && marks.zones[op.zone]?.mark !== "add") stale(op, `the plan now puts it in "${parentKey(w) || "the top"}"`);
         else {
-          const fromAt = w.list.indexOf(w.z), from = w.parent?.label ?? "";
+          const fromAt = w.list.indexOf(w.z), from = parentKey(w);
           w.list.splice(fromAt, 1);
           insert(to ? (to.z.zones ||= []) : v.zones, w.z, op.at);
           const m = marks.zones[op.zone];
@@ -920,11 +928,11 @@ export function describeDraft(plan, draft, viewId, profiles = null) {
   const linesOf = (n) => (Array.isArray(real?.links) ? real.links : []).filter((l) => l?.from === n || l?.to === n).map((l) => `${named(l.from)} → ${named(l.to)}${l.label ? ` ${l.label}` : ""}`);
   // Columns elsewhere that keep a copy of a column taken out.
   const copiesOf = (k) => (Array.isArray(real?.tables) ? real.tables : []).flatMap((tb) => (tb?.columns || []).filter((c) => c?.copy === k).map((c) => `${tb.node}.${c.name}`));
-  // A zone of the plan by its label, anywhere in the tree.
+  // A zone of the plan by its key (id, else label), anywhere in the tree.
   const zoneOf = (label, zs, depth = 0) => {
     for (const z of Array.isArray(zs) && depth < 9 ? zs : []) {
       if (!isObj(z)) continue;
-      if (z.label === label) return z;
+      if (zoneKey(z) === label) return z;
       const inner = zoneOf(label, z.zones, depth + 1);
       if (inner) return inner;
     }
@@ -935,7 +943,7 @@ export function describeDraft(plan, draft, viewId, profiles = null) {
     const keys = {editNode: ["name", "what", "icon", "kind", "props"], editLink: ["label", "state", "kind"], editZone: ["label", "note", "icon", "kind", "props"]}[o.op];
     const before = o.op === "editNode" ? plan?.nodes?.[o.node] : o.op === "editLink" ? (Array.isArray(real?.links) ? real.links : []).find((l) => l?.from === o.from && l?.to === o.to) : zoneOf(o.zone, real?.zones);
     if (!keys || !isObj(before)) return null;
-    const out = Object.fromEntries(keys.filter((k) => o[k] != null && !(o.op === "editZone" && k === "label")).map((k) => [k, before[k] ?? null]));
+    const out = Object.fromEntries(keys.filter((k) => o[k] != null && !(o.op === "editZone" && k === "label" && before.id == null)).map((k) => [k, before[k] ?? null]));
     return Object.keys(out).length ? out : null;
   };
   // "Lambda function (AWS)": the kind's name, for a box, zone or line.
@@ -982,7 +990,7 @@ export function draftLine(c) {
   const z = (x) => (x ? `"${x}"` : "the top");
   switch (c.op) {
     case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${kindWords(c)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
-    case "addZone": return `+ zone ${z(c.zone)} in ${z(c.parent)}${kindWords(c)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
+    case "addZone": return `+ zone ${c.label != null ? `${z(c.label)} (id ${z(c.zone)})` : z(c.zone)} in ${z(c.parent)}${kindWords(c)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}${c.kind ? ` kind ${c.kindName ? `${c.kindName}, ${c.kind}` : c.kind}` : ""}${c.replaces ? ` (instead of ${c.replaces})` : ""}`;
     case "reverseLink": return `⇄ line ${c.from} → ${c.to} turned round: now ${c.to} → ${c.from}`;
     case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}${wasWords(c, "label")}` : ""}${c.state ? ` [${c.state}]${wasWords(c, "state")}` : ""}${c.kind != null ? ` kind ${JSON.stringify(c.kind)}${c.kindName ? ` ${c.kindName}` : ""}${wasWords(c, "kind")}` : ""}`;

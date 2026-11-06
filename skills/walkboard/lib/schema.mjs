@@ -140,8 +140,13 @@ export const KINDS = {
     refs: (v) => [...zoneNodes(list(v.zones)), ...list(v.links).flatMap((l) => [l?.from, l?.to])],
     check: (v, p) => {
       const zones = (zs) => list(zs).filter(isObj).flatMap((z) => [z, ...zones(z.zones)]);
+      // A zone is known by its id, or its label when it has none: two zones may share a label ("VPC" in each region)
+      // when each has an id of its own.
+      const keys = zones(v.zones).map((z) => z.id ?? z.label), twice = [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))];
       return [
         ...(!list(v.zones).length ? ["map needs zones: [{\"label\", \"zones\", \"nodes\"}]"] : []),
+        ...zones(v.zones).filter((z) => z.id != null && (typeof z.id !== "string" || !z.id)).map((z) => `zone "${z.label}": id must be text`),
+        ...twice.map((k) => `two zones are known as "${k}": give each its own "id" (labels may repeat, ids may not)`),
         ...list(v.links).filter((l) => l?.state && !has(LINK_STATE, l.state)).map((l) => `link ${l.from}→${l.to}: unknown state "${l.state}" (ok, todo, blocked, standby)`),
         // Kinds from a profile: zones and boxes ("aws:subnet", "aws:rds") with their props, and kinds of line.
         ...(kindProblems ? [

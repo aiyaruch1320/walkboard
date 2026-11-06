@@ -515,7 +515,7 @@ export function mapWarnings(view, nodes) {
   const walk = (zs, around, depth) => (Array.isArray(zs) && depth < 9 ? zs : []).forEach((z) => {
     if (!z || typeof z !== "object") return;
     const w = z.kind ? kindWarning(z.kind, around) : null;
-    if (w) out.push({zone: z.label, ...w});
+    if (w) out.push({zone: z.id ?? z.label, ...w});
     const inner = [z.kind || null, ...around];
     for (const id of Array.isArray(z.nodes) ? z.nodes : []) {
       const k = nodes?.[id]?.kind, wn = k ? kindWarning(k, inner) : null;

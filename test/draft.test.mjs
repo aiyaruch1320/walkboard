@@ -363,3 +363,35 @@ test("a review says what an edit changes from, the names of kinds, which line a 
   assert.equal(bare.warnings, undefined);
   assert.match(validateDraft(draft({op: "addLink", from: "nat", to: "db", replaces: "api>db"})).join(), /bad replaces/);
 });
+
+test("two zones can share a name: a zone is known by its id, or its label when it has none", async () => {
+  const {validate} = await import("../skills/walkboard/lib/schema.mjs");
+  const p = plan();
+  p.views[0].zones.push({label: "Region 2", zones: [{label: "App", id: "app-2", nodes: []}]});
+  // The draft names zones by key: "App" is the first, "app-2" the second.
+  const r = applyDraft(p, draft(
+    {op: "addNode", node: "new:1", name: "Worker", zone: "app-2"},
+    {op: "addZone", zone: "Data (Region 2)", label: "Data", parent: "Region 2"},
+    {op: "move", node: "erp", to: "Data (Region 2)"},
+    {op: "editZone", zone: "On-prem", label: "App"},
+  ), "m");
+  assert.deepEqual(r.stale, []);
+  const region2 = r.view.zones.find((z) => z.label === "Region 2");
+  assert.deepEqual(region2.zones[0].nodes, ["new:1"]);
+  assert.deepEqual([region2.zones[1].id, region2.zones[1].label], ["Data (Region 2)", "Data"]);
+  // Renamed to a name another zone is known by: it keeps its key as its id, and moves nothing.
+  const onprem = r.view.zones.find((z) => z.id === "On-prem");
+  assert.equal(onprem.label, "App");
+  assert.equal(r.marks.zones["On-prem"].was, "On-prem");
+  // A name nobody uses becomes the key, as before.
+  const r2 = applyDraft(plan(), draft({op: "editZone", zone: "On-prem", label: "Office"}), "m");
+  assert.equal(r2.view.zones.find((z) => z.label === "Office").id, undefined);
+  assert.ok(r2.marks.zones.Office);
+  // The words name the new zone and its id.
+  const d = describeDraft(p, draft({op: "addZone", zone: "Data (Region 2)", label: "Data", parent: "Region 2"}), "m");
+  assert.match(draftLine(d.changes[0]), /\+ zone "Data" \(id "Data \(Region 2\)"\) in "Region 2"/);
+  // In the plan, labels may repeat when ids tell them apart.
+  assert.deepEqual(validate(p).filter((x) => /known as/.test(x)), []);
+  p.views[0].zones.push({label: "App", nodes: []});
+  assert.match(validate(p).join(), /two zones are known as "App"/);
+});

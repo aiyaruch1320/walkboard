@@ -1851,7 +1851,9 @@ function profileMarks(map, v) {
   }
   return row;
 }
-const zoneWords = (z) => z.dataset.zone;
+const zoneWords = (z) => z.dataset.name ?? z.dataset.zone;
+// How a map zone is known (draft, layout, page): its id, or its label when it has none. Labels may repeat, ids may not.
+const zoneKey = (z) => z?.id ?? z?.label;
 
 function renderSequence(v) {
   const actors = v.actors || [];
@@ -1976,7 +1978,8 @@ function renderTransform(v) {
 // ---------- map: zones inside zones, links routed between boxes on whichever sides face each other
 function zoneEl(z, depth, dense = false) {
   const box = el("div", `zone z${Math.min(depth, 3)}`);
-  box.dataset.zone = z.label || "";
+  box.dataset.zone = zoneKey(z) || "";
+  box.dataset.name = z.label || "";
   const head = el("div", "zhead");
   const ic = iconEl({name: z.label, icon: z.icon, kind: z.kind}, "", z.family || null);
   if (ic) head.append(ic);
@@ -2962,7 +2965,7 @@ function draftRows(viewId) {
   return draftOps(viewId).filter((o) => !drafted.done.includes(o.id)).map((o) => {
     const [sign, main, sub] = {
       addNode: ["+", o.name, top(o.zone)],
-      addZone: ["+", o.zone, top(o.parent)],
+      addZone: ["+", o.label ?? o.zone, top(o.parent)],
       addLink: ["+", `${nm(o.from)} → ${nm(o.to)}`, [o.label, o.state && o.state !== "ok" ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
       editLink: ["~", `${nm(o.from)} → ${nm(o.to)}`, [o.label != null ? o.label || "—" : "", o.state ? t("lk_" + o.state) : ""].filter(Boolean).join(" · ")],
       removeLink: ["−", `${nm(o.from)} → ${nm(o.to)}`, ""],
@@ -4035,11 +4038,20 @@ function renderMap(real) {
       onDone: (val) => (val ? editTo(id, val) : keepFocus(() => renderView())),
     });
   };
-  // The zone as the plan has it (before this draft), found by its label.
+  // The zone as the plan has it (before this draft), found by its key (id, else label).
+  // The zone as this picture draws it (with the draft), by its key.
+  const drawnZone = (k) => (function find(zs) {
+    for (const q of Array.isArray(zs) ? zs : []) {
+      if (q && zoneKey(q) === k) return q;
+      const f = find(q?.zones);
+      if (f) return f;
+    }
+    return null;
+  })(drafted.view?.zones);
   const realZone = (lbl) => {
     const go = (zs) => {
       for (const z of Array.isArray(zs) ? zs : []) {
-        if (z?.label === lbl) return z;
+        if (z && zoneKey(z) === lbl) return z;
         const f = go(z?.zones);
         if (f) return f;
       }
@@ -4049,23 +4061,24 @@ function renderMap(real) {
   };
   // A zone's name, note and icon as the card left them. A zone the draft added just changes; another gets one
   // editZone with what differs from the plan. A new name goes to the changes that name it, and to its place and size.
+  // A zone known by its label (no id) takes the new name as its key, and what names it follows; when another zone is
+  // known by that name it keeps its key (as its id) and only its label changes, so two zones can share a name.
   const zoneTo = (x, val) => {
-    const renaming = val.name !== x.id;
-    if (renaming && zoneNamed(val.name)) {
-      showProblem(t("zoneTaken", val.name));
-      return keepFocus(() => renderView());
-    }
+    const cur = drawnZone(x.id), renaming = val.name !== (cur?.label ?? x.id), other = zoneNamed(val.name);
+    const rekey = renaming && cur?.id == null && !(other && other.dataset.zone !== x.id);
     const list = ops(), added = addOp("zone", x.id);
-    const lay = renaming && Object.keys(layout()).length ? Object.fromEntries(Object.entries(layout()).map(([k, q]) => [k === "z:" + x.id ? "z:" + val.name : k, q?.in === x.id ? {...q, in: val.name} : q])) : undefined;
-    const fix = (o) => (renaming ? Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val.name : w])) : o);
+    const lay = rekey && Object.keys(layout()).length ? Object.fromEntries(Object.entries(layout()).map(([k, q]) => [k === "z:" + x.id ? "z:" + val.name : k, q?.in === x.id ? {...q, in: val.name} : q])) : undefined;
+    const fix = (o) => (rekey ? Object.fromEntries(Object.entries(o).map(([k, w]) => [k, ["zone", "parent", "to"].includes(k) && w === x.id && !(o.op === "editZone" && k === "zone") ? val.name : w])) : o);
     let next;
     if (added) {
-      const {icon: _i, note: _n, kind: _k, props: _p, ...base} = added;
-      next = list.map((o) => (o === added ? {...base, zone: val.name, ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {}), ...kindFields(val)} : fix(o)));
+      const {icon: _i, note: _n, kind: _k, props: _p, label: _l, ...base} = added;
+      const named = rekey ? {zone: val.name} : val.name !== base.zone ? {label: val.name} : {};
+      next = list.map((o) => (o === added ? {...base, ...named, ...(val.icon ? {icon: val.icon} : {}), ...(val.what ? {note: val.what} : {}), ...kindFields(val)} : fix(o)));
     } else {
-      const ed = list.find((o) => o.op === "editZone" && (o.label ?? o.zone) === x.id);
+      // Its edit so far: by the key it has in the plan, or by its new name when that became its key.
+      const ed = list.find((o) => o.op === "editZone" && (o.zone === x.id || (o.label === x.id && !zoneNamed(o.zone))));
       const from = ed ? ed.zone : x.id, orig = realZone(from) || {}, fields = {};
-      if (val.name !== from) fields.label = val.name;
+      if (val.name !== (orig.label ?? from)) fields.label = val.name;
       if ((val.icon || "") !== (orig.icon ?? "")) fields.icon = val.icon || "";
       if ((val.what || "") !== (orig.note ?? "")) fields.note = val.what || "";
       if ((val.kind || "") !== (orig.kind ?? "")) fields.kind = val.kind || "";
@@ -4096,15 +4109,8 @@ function renderMap(real) {
     const e = elOf(x);
     if (!e) return;
     if (x.kind === "node") return editBox(x.id, e);
-    const z = drafted.view && (function find(zs) {
-      for (const q of zs || []) {
-        if (q?.label === x.id) return q;
-        const f = find(q?.zones);
-        if (f) return f;
-      }
-      return null;
-    })(drafted.view.zones);
-    boxCard(e.getBoundingClientRect(), {name: x.id, what: z?.note ?? "", icon: z?.icon ?? ""}, {
+    const z = drawnZone(x.id);
+    boxCard(e.getBoundingClientRect(), {name: z?.label ?? x.id, what: z?.note ?? "", icon: z?.icon ?? ""}, {
       zone: true,
       kinds: {zone: true, value: z?.kind, props: z?.props, ...kindContext(e)},
       title: t("zoneEditTitle"),
@@ -4585,14 +4591,19 @@ function renderMap(real) {
           const spot = fixed ? relRect(tmp, z || map) : null, val = got?.name;
           tmp.remove();
           sketchTool = "select";
-          if (!val || zoneNamed(val)) draw();
-          if (!val) return refreshBar();
-          if (zoneNamed(val)) {
-            refreshBar();
-            return showProblem(t("zoneTaken", val));
+          if (!val) {
+            draw();
+            return refreshBar();
+          }
+          // A name in use ("VPC" in another region): the name stays as typed; the zone is known by it and where it is.
+          let key = val;
+          if (zoneNamed(key)) {
+            const base = `${val} (${z ? zoneWords(z) : t("topLevel")})`;
+            key = base;
+            for (let n = 2; zoneNamed(key) || ops().some((o) => o.op === "addZone" && o.zone === key); n++) key = `${base} ${n}`;
           }
           const list = ops();
-          setOps([...list, {id: nextId(list), op: "addZone", zone: val, parent: z ? z.dataset.zone : "", at, ...(got.icon ? {icon: got.icon} : {}), ...(got.what ? {note: got.what} : {}), ...kindFields(got)}], undefined, spot ? {...layout(), ["z:" + val]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
+          setOps([...list, {id: nextId(list), op: "addZone", zone: key, ...(key !== val ? {label: val} : {}), parent: z ? z.dataset.zone : "", at, ...(got.icon ? {icon: got.icon} : {}), ...(got.what ? {note: got.what} : {}), ...kindFields(got)}], undefined, spot ? {...layout(), ["z:" + key]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
         },
       });
       return;

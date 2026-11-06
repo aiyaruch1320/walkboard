@@ -50,6 +50,7 @@
 <div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
 <div id="scrim"></div>
 <aside class="side" id="side" inert>
+  <div id="sideGrip" class="side-grip" role="separator" aria-orientation="vertical" tabindex="0"></div>
   <div class="side-inner">
     <div class="side-head"><b id="sideTitle"></b><button id="sideWide">⤢</button><button id="sideClose" aria-label="Close">✕</button></div>
     <div class="panel" id="panel"></div>
@@ -99,6 +100,12 @@ function setLang(code) {
     b.title = label;
     b.setAttribute("aria-label", label);
   }
+  // The panel's buttons: their words change with the language too, whichever width it is at.
+  const wide = document.getElementById("sideWide"), grip = document.getElementById("sideGrip");
+  wide.title = t(document.body.classList.contains("side-wide") ? "narrowPanel" : "widePanel");
+  wide.setAttribute("aria-label", wide.title);
+  grip.title = t("resizePanel");
+  grip.setAttribute("aria-label", grip.title);
   document.getElementById("prev").textContent = "◀";
   document.getElementById("next").textContent = "▶";
   if (!timer) document.getElementById("play").textContent = t("playShort");
@@ -1330,8 +1337,18 @@ function closeSide() {
 // A panel with a conversation keeps the box's explanation at the top and the chat under it, each scrolling on its own,
 // so a long conversation never pushes the explanation away.
 // Narrow, details and chat each fold away under their heading (either or both; remembered), and a folded part says so.
-// Wide (⤢), the two sit side by side and nothing folds.
+// Wide, the two sit side by side and one can fold into a thin rail, the other taking the room. Each layout remembers its own.
 const folded = {info: store.get("walkboard.fold.info") === "1", chat: store.get("walkboard.fold.chat") === "1"};
+const foldedWide = {info: store.get("walkboard.foldw.info") === "1", chat: store.get("walkboard.foldw.chat") === "1"};
+const isWide = () => document.body.classList.contains("side-wide");
+function showFolds(p) {
+  if (!p?.classList.contains("split")) return;
+  const f = isWide() ? foldedWide : folded;
+  for (const which of ["info", "chat"]) {
+    p.classList.toggle("fold-" + which, f[which]);
+    p.querySelector(`.fold[data-fold="${which}"]`)?.setAttribute("aria-expanded", String(!f[which]));
+  }
+}
 // Fold or unfold smoothly: measure every part before and after, then slide each from one height to the other.
 // What is closing stays drawn (and fades) until it is gone; what opens grows from nothing.
 function morph(p, change) {
@@ -1385,21 +1402,28 @@ function fillPanel(p, parts) {
     b.append(el("span", "chev", "▾"), el("span", "lbl", label));
     b.append(el("span", "fhint", t("foldedHint")));
     b.onclick = () => {
+      if (isWide()) {
+        foldedWide[which] = !foldedWide[which];
+        // Side by side, one part always stays open: folding it while the other is folded swaps them.
+        const other = which === "info" ? "chat" : "info";
+        if (foldedWide[which]) foldedWide[other] = false;
+        store.set("walkboard.foldw.info", foldedWide.info ? "1" : "");
+        store.set("walkboard.foldw.chat", foldedWide.chat ? "1" : "");
+        return showFolds(p);
+      }
       folded[which] = !folded[which];
       store.set("walkboard.fold." + which, folded[which] ? "1" : "");
       b.setAttribute("aria-expanded", String(!folded[which]));
       morph(p, () => p.classList.toggle("fold-" + which, folded[which]));
     };
-    b.setAttribute("aria-expanded", String(!folded[which]));
     return b;
   };
   const a = el("div", "pcol pa"), b = el("div", "pcol pb");
   a.append(head("info", t("foldInfo")), info);
   b.append(head("chat", t("foldChat")), ...parts.slice(0, i).filter(act), ...parts.slice(i));
   p.classList.add("split");
-  p.classList.toggle("fold-info", folded.info);
-  p.classList.toggle("fold-chat", folded.chat);
   p.replaceChildren(a, b);
+  showFolds(p);
   // Fade the bottom edge while there is more explanation to scroll to.
   const more = () => info.classList.toggle("more", info.scrollTop + info.clientHeight < info.scrollHeight - 4);
   info.onscroll = more;
@@ -8272,30 +8296,80 @@ setLang(lang);
 setInterval(() => working().length && refreshThreads(), 30000);
 document.getElementById("sideClose").onclick = closeSide;
 document.getElementById("scrim").onclick = closeSide;
-// ⤢ widens the panel (the picture stays in sight on the left) and puts the details beside the chat; again to go back.
-const wideBtn = document.getElementById("sideWide");
+// The panel is as wide as you drag it (its left edge; a double-click goes back). From WIDE_AT on, details and chat sit
+// side by side. ⤢ jumps there and back. The picture stays in sight on the left and keeps its width, scrolling sideways.
+const WIDE_AT = 640, SIDE_MIN = 340;
+const wideBtn = document.getElementById("sideWide"), sideGrip = document.getElementById("sideGrip");
+const sideMax = () => Math.max(SIDE_MIN, innerWidth - 160);
+const sideWideW = () => Math.min(sideMax(), Math.max(WIDE_AT, Math.min(1200, Math.round(innerWidth * 0.62))));
+const savedW = Number(store.get("walkboard.sideW"));
+let sideW = savedW > 0 ? savedW : store.get("walkboard.wide") === "on" ? sideWideW() : null;
 const setWide = (on) => {
   // A chat at its newest message stays there by itself; one scrolled up to an older message keeps that message in view.
   const th = document.querySelector("#panel .thread");
   const top = th?.dataset.follow === "0" ? th.scrollTop : null;
   const keep = () => th && top != null && th.dataset.follow === "0" && (th.scrollTop = top);
   document.body.classList.toggle("side-wide", on);
+  showFolds(document.getElementById("panel"));
   keep();
   setTimeout(keep, 320);
   wideBtn.textContent = on ? "⤡" : "⤢";
   wideBtn.title = t(on ? "narrowPanel" : "widePanel");
   wideBtn.setAttribute("aria-label", wideBtn.title);
-  setTimeout(() => {
-    scrollHints();
-    linkDrawer?.();
-  }, 320);
 };
+const afterSideW = () => {
+  scrollHints();
+  linkDrawer?.();
+};
+// null is the panel's own size. Only a wide window takes a width: under 820 px the panel is a sheet from the bottom.
+function setSideW(w) {
+  sideW = w == null ? null : Math.round(Math.min(sideMax(), Math.max(SIDE_MIN, w)));
+  if (sideW == null) document.body.style.removeProperty("--side-w");
+  else document.body.style.setProperty("--side-w", sideW + "px");
+  sideGrip.setAttribute("aria-valuenow", String(sideW ?? document.getElementById("side").offsetWidth));
+  const on = innerWidth >= 820 && (sideW ?? 0) >= WIDE_AT;
+  if (on !== isWide()) setWide(on);
+}
+const keepSideW = () => store.set("walkboard.sideW", sideW == null ? "" : String(sideW));
 wideBtn.onclick = () => {
-  const on = !document.body.classList.contains("side-wide");
-  store.set("walkboard.wide", on ? "on" : "off");
-  setWide(on);
+  setSideW(isWide() ? null : sideWideW());
+  keepSideW();
+  setTimeout(afterSideW, 320);
 };
-setWide(store.get("walkboard.wide") === "on");
+sideGrip.onpointerdown = (e) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const x0 = e.clientX, w0 = document.getElementById("side").getBoundingClientRect().width;
+  sideGrip.setPointerCapture(e.pointerId);
+  document.body.classList.add("side-drag");
+  sideGrip.onpointermove = (m) => setSideW(w0 + x0 - m.clientX);
+  sideGrip.onlostpointercapture = () => {
+    sideGrip.onpointermove = sideGrip.onlostpointercapture = null;
+    document.body.classList.remove("side-drag");
+    keepSideW();
+    afterSideW();
+  };
+};
+sideGrip.ondblclick = () => {
+  setSideW(null);
+  keepSideW();
+  setTimeout(afterSideW, 320);
+};
+sideGrip.onkeydown = (e) => {
+  const by = {ArrowLeft: 24, ArrowRight: -24}[e.key];
+  if (!by) return;
+  e.preventDefault();
+  setSideW(document.getElementById("side").getBoundingClientRect().width + by);
+  keepSideW();
+  afterSideW();
+};
+// A smaller window can no longer hold the width that was picked: it gives way, and the saved one comes back with room.
+addEventListener("resize", () => {
+  const w = Number(store.get("walkboard.sideW"));
+  setSideW(w > 0 ? w : sideW);
+});
+setSideW(sideW);
+setWide(isWide());
 
 
 // A three-stop tour the first time someone opens walkboard in this browser; "?" shows it again.

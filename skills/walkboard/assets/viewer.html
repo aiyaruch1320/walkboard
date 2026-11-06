@@ -1276,13 +1276,20 @@ function openSide(ctx) {
 addEventListener("resize", () => document.getElementById("view")?.style.removeProperty("--held-w"));
 
 function closeSide() {
+  // The box that was open stays where it is on screen while the column widens back: the picture keeps its width until
+  // the panel is gone (else it is laid out narrow for a moment and the page jumps).
+  const open = document.querySelector("#view .active"), top0 = open?.getBoundingClientRect().top;
   side = null;
   nodeId = null;
   document.getElementById("side").inert = true;
   document.body.classList.remove("side-open");
-  document.getElementById("view").style.removeProperty("--held-w");
   highlight();
-  setTimeout(scrollHints, 320);
+  clearTimeout(closeSide.timer);
+  closeSide.timer = setTimeout(() => {
+    if (!document.body.classList.contains("side-open")) document.getElementById("view").style.removeProperty("--held-w");
+    if (open?.isConnected && top0 != null) scrollBy({top: open.getBoundingClientRect().top - top0, behavior: "instant"});
+    scrollHints();
+  }, 320);
 }
 
 // A panel with a conversation keeps the box's explanation at the top and the chat under it, each scrolling on its own,

@@ -375,6 +375,7 @@ function msgFor(m, holder) {
 
 function refreshThreads() {
   const open = snapshot ? [] : unanswered(), listening = connected && !waiting;
+  const queue = snapshot || !listening ? [] : thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings");
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
     // Like a chat: open on the newest message and stay there, also when the chat is unfolded, the panel widened
@@ -388,12 +389,14 @@ function refreshThreads() {
     const msgs = thread.filter((m, i) => inThread(m, c, i) && m.kind !== "settings");
     msgs.forEach((m) => m.from === "agent" && seen.add(m.id));
     const els = msgs.map((m) => msgFor(m, t)), have = [...t.children].filter((x) => !x.classList.contains("typing"));
-    if (els.length === have.length && els.every((x, i) => x === have[i])) t.querySelector(":scope > .typing")?.remove();
+    if (els.length === have.length && els.every((x, i) => x === have[i])) t.querySelectorAll(":scope > .typing").forEach((x) => x.remove());
     else t.replaceChildren(...els);
     const busy = open.findLast((m) => inCtx(m, c));
     const other = busy && thread.findLast((r) => r.from === "agent" && r.at > busy.at);
     if (other) hiddenNotes.has(busy.id) || t.append(elsewhereEl(busy, other));
     else if (busy && listening && !(quiet(busy) && hiddenNotes.has(busy.id))) t.append(typingEl(busy));
+    const waitingHere = queue.findLast((m) => inCtx(m, c));
+    if (waitingHere) t.append(queuedEl(waitingHere, queue, open));
     // Follow the conversation while you are at its end, as a chat does.
     if (end) t.scrollTop = t.scrollHeight;
     const lbl = t.closest(".pb")?.querySelector(".fold .lbl");
@@ -633,6 +636,19 @@ function hideBtn(m, d) {
   return hide;
 }
 
+// A message still waiting its turn, and what it waits for. queue: every message not yet taken, oldest first.
+function queuedEl(m, queue, open) {
+  const d = el("div", "msg agent typing stuck queued"), line = el("span");
+  const n = queue.indexOf(m) + 1, busy = open.findLast((x) => sideKey(sideOf(x)) !== sideKey(sideOf(m)) && !quiet(x)), doing = steps().find((s) => s.status === "doing");
+  line.append(`⏳ ${t("queued", n)} · `);
+  if (busy) line.append(t("queuedAnswering") + " ", talkLink(sideOf(busy)));
+  else if (open.some((x) => sideKey(sideOf(x)) === sideKey(sideOf(m)) && !quiet(x))) line.append(t("queuedSame"));
+  else if (doing) line.append(t("queuedBuilding") + " ", talkLink({kind: "step", id: doing.id}));
+  else line.append(t("queuedAway"));
+  d.append(line);
+  return d;
+}
+
 function typingEl(m) {
   const min = Math.floor((Date.now() - Date.parse(m.at)) / 60000);
   const stuck = quiet(m);
@@ -650,8 +666,9 @@ function renderBadges() {
   // A snapshot says when it was exported instead (set once in load).
   if (!snapshot) {
     conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
-    conn.textContent = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
-    conn.title = !connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip");
+    const inLine = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
+    conn.textContent = (!connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle")) + (inLine ? ` · ⏳ ${inLine}` : "");
+    conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "");
     conn.setAttribute("aria-label", conn.textContent + ". " + conn.title);
   }
   if (!plan) return;
@@ -8868,7 +8885,7 @@ document.getElementById("talks").onclick = (e) => {
   for (const {c, m} of conversations()) {
     const gone = c.kind === "node" && !inPlan(c.id);
     const row = el("button", "rtalk" + (isNew(c) ? " unread" : "") + (gone ? " gone" : ""));
-    row.append(el("span", "rt", (gone ? "🗑 " : "") + sideTitle(c) + (gone ? ` · ${t("goneTag")}` : "")), el("span", "rm", (m.from === "agent" ? t("agent") : t("you")) + ": " + plainRefs(m.text).replace(/\s+/g, " ").slice(0, 80)));
+    row.append(el("span", "rt", (gone ? "🗑 " : "") + sideTitle(c) + (gone ? ` · ${t("goneTag")}` : "")), el("span", "rm", (m.from !== "agent" && !m.delivered ? "⏳ " : "") + (m.from === "agent" ? t("agent") : t("you")) + ": " + plainRefs(m.text).replace(/\s+/g, " ").slice(0, 80)));
     row.onclick = () => goTalk(c);
     ul.append(row);
   }

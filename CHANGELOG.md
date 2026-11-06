@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Tabs stay where they are.** A plan with a big map changed the page's width from one picture to the next, so the text above rewrapped and the tabs moved. Now the width holds for the whole plan.
+- **You can see your message is in line.** While the agent is busy, a message it has not taken says so in its chat: its place, and what the agent is on, as a link. The top bar counts them and the conversations list marks them with ⏳.
 - **A zone resizes in height as it does in width.** Dragging its corner near the window's edge scrolls the page, so a zone can be made taller than the window, and it takes in the room left where a box was dragged away, down to what it holds. As small as it goes, the cursor says so.
 
 ## 0.9.0

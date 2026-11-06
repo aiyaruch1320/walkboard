@@ -50,14 +50,14 @@
     },
     {
       "id": "chat",
-      "title": "UI คุย: กล่องพิมพ์ ปุ่มด่วน ทวนต่อขั้น (เมื่อเปิด teachBack)",
+      "title": "UI คุย: กล่องพิมพ์เดียว ปุ่มเริ่มขั้นถัดไป",
       "status": "done",
       "nodes": [
         "viewer",
         "reply"
       ],
       "detail": "กล่องคุยบนทุกกล่อง ทุกขั้น และทั้งแผน",
-      "done": "ถาม ขอแก้ ทวน ส่งถึง agent ถูกชนิด"
+      "done": "ถาม ขอแก้ ส่งถึง agent และคำตอบกลับมาที่เดิม"
     },
     {
       "id": "views",
@@ -172,7 +172,7 @@
       "status": "done",
       "file": "skills/walkboard/assets/viewer.html",
       "in": "plan.json จาก /api/plan",
-      "out": "ภาพ flow, k8s, sequence, transform\nกล่องพิมพ์ + ปุ่ม เข้าใจแล้ว/ยังงง/ขอแก้ + คำตอบ agent\nช่องทวนต่อขั้น (เมื่อ teachBack เปิด)",
+      "out": "ภาพ flow, k8s, sequence, transform\nกล่องพิมพ์เดียว + คำตอบ agent\nช่องทวนต่อขั้น (เมื่อ teachBack เปิด)",
       "why": "ไฟล์เดียว ไม่โหลดอะไรจากภายนอก ใส่ข้อความด้วย textContent กันโค้ดแปลกปลอมจากเนื้อหาแผน"
     },
     "queue": {

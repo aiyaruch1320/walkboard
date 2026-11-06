@@ -28,7 +28,7 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 
 - **See it, don't scroll it.** Eleven kinds of picture (flow, map of a cloud, Kubernetes or network, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
 - **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
-- **You stay in charge.** Nothing is built before you press **Approve plan**. After each step you restate it in your own words and the agent corrects what you missed. Commit messages are suggested for you to edit, and proposed changes are drawn on the picture before anything is built.
+- **You stay in charge.** Nothing is built before you press **Approve plan**. After each step the agent stops until you start the next one. Commit messages are suggested for you to edit, only when the step changed files, and proposed changes are drawn on the picture before anything is built.
 - **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it or mark it not true.
 - **Sketch, then ask.** Press **✎ Draft changes** on a picture and change it yourself: add boxes, zones, tables, columns, lanes and lines, rename, take out, copy, drag between zones or lanes. Nothing changes in the plan and the agent is not woken until you press **Ask the agent to review**; it says in plain words what your sketch means (network, migration, a missing step) and puts in the plan only what you agree to.
 - **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Scores can show the figure behind them, such as a monthly price, and rows that rest on something not yet confirmed are marked ❓. Choosing an option turns it into a step-by-step plan.
@@ -41,7 +41,7 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 
 | Mode | Use it to | You get |
 |---|---|---|
-| **Plan** | build or change something | 3-8 small steps you approve, then follow as the agent builds them, restating each one |
+| **Plan** | build or change something | 3-8 small steps you approve, then follow as the agent builds them, one click at a time |
 | **Explain** | understand code that already exists | stages in order, each box tied to the real code, with notes on the lines that matter |
 | **Design** | choose how to build something new | 2-4 options drawn side by side, scored against your criteria with sources, and a recommendation |
 
@@ -49,11 +49,11 @@ The agent picks the mode from your request and asks up to three short questions 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/restate.gif" alt="A finished step waits for the user, who restates it in the side panel; the agent replies Correct and moves on to the next step"></td>
+    <td width="50%"><img src="docs/images/next.gif" alt="A finished step waits for the user; the agent says what it built, the user presses Start next step and the agent moves on"></td>
     <td width="50%"><img src="docs/images/design.gif" alt="Design mode: three ways to connect two VPCs scored with sources; changing two weights puts another option ahead, then that option's picture opens"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Plan: restate each step; the agent checks it</sub></td>
+    <td align="center"><sub>Plan: check each step, then start the next</sub></td>
     <td align="center"><sub>Design: compare options by your own weights</sub></td>
   </tr>
 </table>
@@ -71,7 +71,7 @@ Walkboard is young (0.9): built and tested with Claude Code on macOS. Other agen
 
 ## Use
 
-Type `/walkboard` and say what you want, or just ask in your own words:
+Type `/walkboard` and say what you want, or just ask in your own words. On its own, `/walkboard` looks through the repository and offers things to see first:
 
 ```
 /walkboard plan deploying this CronJob to staging
@@ -83,11 +83,11 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 
 1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
 2. It writes the plan and gives you a link to a page on your machine.
-3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **⋮** holds export, the theme and a short tour.
+3. Click a box to see what it does. Type in the chat to ask, or to say what to add, change or remove; paste or drop an image if that says it better. What to do next is always the button at the top right; **⋮** holds settings, export and the theme.
 4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the guide](docs/GUIDE.md#sketch-your-own-changes).
 
    <img src="docs/images/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
-5. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
+5. Switch who commits under **⋮**. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
 
 Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, profiles say what each box, zone and line is on those platforms (an RDS in a private subnet, a CronJob in a namespace) and warn when something sits where it usually does not.
 
@@ -97,7 +97,7 @@ More screens, FAQ and reference: **[docs/GUIDE.md](docs/GUIDE.md)**.
 
 ```
 agent ──writes──► plan.json ──► page (pictures + chat)
-  ▲                                   │ click / ask / restate
+  ▲                                   │ click / ask / start next
   └── wakes up ◄── local server ◄─────┘
 ```
 

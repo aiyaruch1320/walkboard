@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **The picture comes first.** The first box starts 215 px higher on a plan's first screen. The mode and who commits moved to **⋮**, the colours and how to read a picture to one **?**, the draft button beside the tabs. Status says itself once, as a dot when all is well.
+- **A first look instead of a tour.** The first time on a computer the picture draws itself along its arrows and one hint says to click a box. The old tour dimmed the page and came back on every plan, because each has its own port.
+- **One chat bar.** A bar at the bottom opens the conversation about what is on screen.
+- **`/walkboard` on its own** looks through the repository and offers things to see first.
+- **Start the next step with a button.** When a step is finished the agent stops; **Start next step** goes on, **Run the rest** does the remaining steps without stopping.
+- **Restating is gone.** It did not help in real use: the picture already explains. Old plans with `teachBack` or a step's `confirmed` still open, and the fields are ignored.
+- **A commit box only when there is something to commit.** The agent checks `git status`; a step that changed no files offers to go on instead of asking for a message.
+- **One box to ask or to say what to change.** The Ask and Propose switch is gone. **Still unclear** and **Go deeper** stay in explain mode only.
+- **Attach images to a message.** Paste, drop or pick up to five. A big image is scaled down before it is sent, so it costs less to send, store and read. Never SVG.
+
 ## 0.9.1
 
 - **Tabs stay where they are.** A plan with a big map changed the page's width from one picture to the next, so the text above rewrapped and the tabs moved. Now the width holds for the whole plan.

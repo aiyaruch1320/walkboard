@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Records docs/images/demo.gif (typing /walkboard in Claude Code to an answer on the page), restate.gif (restating a step)
+// The chat bar sits where the captions go, so it is left out.
+// Records docs/images/demo.gif (typing /walkboard in Claude Code to an answer on the page), next.gif (a finished step, then the next)
 // and design.gif (comparing options by your own weights).
 // The terminal is a plain mock-up; the walkboard page is real (a copy of examples/nightly-import).
 // Pages are captured at 2x and a camera crops and scales the captures, so zooming never touches the page layout.
@@ -22,7 +23,6 @@ const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import
 plan.approved = false;
 for (const s of plan.steps) {
   s.status = "todo";
-  delete s.confirmed;
 }
 fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
 const url = pv("open", dir, "--no-browser");
@@ -54,7 +54,7 @@ function save(name) {
 await page.send("Emulation.setEmulatedMedia", {features: [{name: "prefers-reduced-motion", value: "reduce"}]});
 // The first-visit tour would cover the page in every scene.
 await page.send("Page.enable");
-await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.tour", "done"); } catch {}`});
+await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.seen", "1"); } catch {} addEventListener("DOMContentLoaded", () => document.head.append(Object.assign(document.createElement("style"), {textContent: ".askbar{display:none!important}"})));`});
 const frames = [];
 const graphemes = (t) => [...new Intl.Segmenter("en", {granularity: "grapheme"}).segment(t)].map((s) => s.segment);
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
@@ -245,12 +245,11 @@ const CAPTIONS = [
   "Click a box and ask about it right where it is",
   "Your message wakes the agent in Claude Code",
   "The answer appears where you asked",
-  "Step finished: restate it in your own words",
-  "The agent checks it: ✓, or what you missed",
+  "Step finished: the agent stops and says what it built",
+  "One click and it goes on to the next step",
   "Each option is drawn and scored, with sources",
   "Change what matters to you: the totals follow",
   "Open any option to see how it would look",
-  "Confirmed ✓, on to the next step",
 ];
 // Clears the fake browser bar and the sticky status bar when scrolling to something.
 const TOP = 100;
@@ -335,31 +334,25 @@ try {
   await snap(2600);
   save("demo");
 
-  // restate.gif: a finished step waits for the user, who says it back; the agent confirms.
-  recording = "restate";
+  // next.gif: a finished step waits for the user, who starts the next one.
+  recording = "next";
   pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:cm", "status=done");
+  await api("/api/reply", {step: "manifests", from: "agent", text: "Manifests written: cronjob.yaml, configmap.yaml, networkpolicy.yaml. The CronJob stays suspended until the keys exist."});
+  listen();
   caption = CAPTIONS[6];
   await pageAt(`${url}&theme=dark&step=manifests`, shortUrl);
   await snap(1400);
-  await moveTo("#stepcard .turnbtn");
-  await click("#stepcard .turnbtn", {hold: 700});
-  await moveTo("#panel textarea", {dx: 0.2});
-  await click("#panel textarea", {hold: 150});
-  await typeInto("#panel textarea", "Manifests create the CronJob suspended until the keys exist", 8);
-  await moveTo("#panel .send button.primary");
-  await click("#panel .send button.primary", {hold: 1100});
-  await api("/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ Next step: add the BigQuery and API keys"});
-  listen();
-  await sleep(600);
-  caption = CAPTIONS[7];
+  await moveTo("#barExtra .progress");
+  await click("#barExtra .progress", {hold: 900});
   await zoomTo("#panel .msg.agent", 1.5, 2400);
   await zoomOut();
-  // Confirmed: the step turns ✓ and the panel follows the agent to the next one.
-  pv("set", dir, "step:manifests", "confirmed=true", "status=done", "step:secrets", "status=doing");
-  await sleep(1300);
-  caption = CAPTIONS[11];
-  await snap(2000);
-  save("restate");
+  caption = CAPTIONS[7];
+  await moveTo("#barExtra .nextbox .primary");
+  await click("#barExtra .nextbox .primary", {hold: 700});
+  pv("set", dir, "step:manifests", "status=done", "step:secrets", "status=doing");
+  await sleep(900);
+  await snap(2200);
+  save("next");
 
   // design.gif: options drawn and scored; the user's weights change the totals; another option's picture.
   recording = "design";

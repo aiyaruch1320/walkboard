@@ -19,7 +19,6 @@ function demoPlan() {
   const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
   const st = plan.steps.find((s) => s.id === "manifests");
   st.status = "review";
-  delete st.confirmed;
   plan.approved = true;
   fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
   return dir;
@@ -32,12 +31,14 @@ async function post(url, route, body) {
 
 // side: the shot is the side panel only (its own left and right edges), not the page's full width.
 // height: a taller window, for a shot whose toolbar floats at the window's bottom.
-async function shot(page, url, file, {select, pad = 12, prepare = "", side = false, height = 0}) {
+async function shot(page, url, file, {select, pad = 8, prepare = "", side = false, height = 0}) {
   // A side panel fills the window's height: a shorter window keeps its shot compact.
   await page.send("Emulation.setDeviceMetricsOverride", {width: 1200, height: side ? 640 : 900, deviceScaleFactor: 1, mobile: false});
   if (height) await page.send("Emulation.setDeviceMetricsOverride", {width: 1200, height, deviceScaleFactor: 1, mobile: false});
   await page.goto(url);
   await sleep(500);
+  // The chat bar floats over whatever the window ends on; a shot is about the picture.
+  await page.eval(`document.getElementById("askbar").style.visibility = "hidden";`);
   if (prepare) {
     await page.eval(prepare);
     await sleep(600);
@@ -76,8 +77,6 @@ const urls = {
 };
 await post(urls.demo, "/api/feedback", {node: "cronjob", kind: "confused", text: "Why keep it suspended for now?"});
 await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night, so it stays suspended until step 4 is done."});
-await post(urls.demo, "/api/feedback", {step: "manifests", kind: "teachback", text: "This step writes manifests so ArgoCD creates the CronJob suspended, with its ConfigMap and NetworkPolicy."});
-await post(urls.demo, "/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ One more thing: the NetworkPolicy does not open the route to BigQuery yet; that comes in step 4."});
 
 await post(urls.draft, "/api/feedback", {kind: "review", view: "v-peering", text: "I sketched changes on this picture. Please review what they mean for the plan."});
 await post(urls.draft, "/api/reply", {from: "agent", text: "You added a read replica in VPC B and opened a path to it.\n- **RDS replica**: [[node:appa]] reaches it over the peering, so VPC B's route table needs VPC A's range, and the security group must allow 5432 from it. Neither is in the plan yet.\n- **SG allows A on :443**: this narrows the rule to one port, so App A must only call App B on 443.\nPut these in the plan?"});
@@ -91,9 +90,9 @@ const gotDraft = await (await fetch(`${ud.origin}/api/poll${qd}`)).json();
 await post(urls.draft, "/api/ack", {ids: gotDraft.map((i) => i.id)});
 
 const page = await launch();
-// No first-visit tour over the shots.
+// No first look over the shots.
 await page.send("Page.enable");
-await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.tour", "done"); } catch {}`});
+await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.seen", "1"); } catch {}`});
 try {
   const at = (u, q) => `${u}&theme=dark&${q}`;
   await shot(page, at(urls.build, "step=manifests"), "build-overview.png", {select: ["#bar", "main > .top", "#stepcard", "#view"]});
@@ -106,18 +105,12 @@ try {
     pad: 0,
     prepare: `document.querySelector('#panel .pb')?.remove(); document.querySelector('#panel .pa .fold')?.remove(); document.querySelector('#panel .pa').style.maxHeight = 'none';`,
   });
-  await shot(page, at(urls.explain, "step=verify"), "explain-overview.png", {select: ["#bar", "main > .top", "#badges", "#stepcard", "#view .lane"]});
+  await shot(page, at(urls.explain, "step=verify"), "explain-overview.png", {select: ["#bar", "main > .top", "#stepcard", "#view .lane"]});
   await shot(page, at(urls.demo, "step=manifests&node=cronjob"), "chat.png", {
     select: ["#side .side-head", "#panel"],
     side: true,
     pad: 0,
     prepare: `document.querySelector('#panel .fold[data-fold="info"]').click(); setTimeout(() => (document.querySelector('#panel .thread').scrollTop = 0), 400);`,
-  });
-  await shot(page, at(urls.demo, "step=manifests"), "teachback.png", {
-    select: ["#side .side-head", "#panel"],
-    side: true,
-    pad: 0,
-    prepare: `document.querySelector('#stepcard .turnbtn').click();`,
   });
   // Draft mode: the toolbar at the bottom, the changes drawn on the map and listed beside it.
   await shot(page, at(urls.draft, "view=v-peering&step=all"), "draft.png", {
@@ -130,7 +123,7 @@ try {
     select: ["#side .side-head", "#panel"],
     side: true,
     pad: 0,
-    prepare: `document.getElementById('planTalk')?.click() ?? document.getElementById('talks').click(); await new Promise((r) => setTimeout(r, 300)); document.getElementById('toast').hidden = true; document.querySelector('.fresh')?.remove();`,
+    prepare: `document.getElementById('talks').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.rtalk').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.fresh')?.remove();`,
   });
 } finally {
   page.close();

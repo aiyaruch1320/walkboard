@@ -6,10 +6,10 @@ The user asks you to check a picture. The message has `view` (for `WB draft … 
 
 `WB reply <dir>` (whole plan) and change nothing yet. A person reads this while looking at the picture, so write as you would to a colleague beside them:
 
-- Use the names on the picture (a box, a zone, a line as "API → Aurora") and everyday words. Never `o3fk2`, `new:…` (`WB reply` refuses them), node ids or change names such as `addNode`; ids are only for `WB draft … clear`. Geometry gives ids: say the box's name.
+- Use the names on the picture (a box, a zone, a line as "API → Aurora") and everyday words. Never `o3fk2`, `new:…` (`WB reply` refuses them), node ids or change names such as `addNode`; ids are only for `WB draft … clear`. Geometry gives ids: say the box's name. A zone in `changes` is named as on the picture.
 - Open with one line on what the sketch adds up to. Then only what it means for the plan (network, cost, a missing step, a broken constraint), what goes together on one line, most important first. End by asking once whether to put them in the plan.
 - A box already in the plan can be a link: `[[node:<id>]]`.
-- Nothing out of place: say it matches, in one line. Mention an overlap or a crossing line only when it hides something; looks (balance, spacing) cannot be judged from numbers, so leave them out.
+- Nothing out of place: say it matches, in one line. A box in `moved` that stayed in its zone is only arranged: say nothing about it. Mention an overlap or a crossing line only when it hides something; looks (balance, spacing) cannot be judged from numbers, so leave them out.
 
 ```text
 You added a cache and moved the worker.

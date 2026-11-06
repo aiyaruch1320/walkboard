@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version 0.8.0" src="https://img.shields.io/badge/version-0.8.0-7f77dd"></a>
+  <a href="CHANGELOG.md"><img alt="version 0.9.0" src="https://img.shields.io/badge/version-0.9.0-7f77dd"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-1d9e75"></a>
   <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-ef9f27">
 </p>
@@ -30,10 +30,10 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 - **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
 - **You stay in charge.** Nothing is built before you press **Approve plan**. After each step you restate it in your own words and the agent corrects what you missed. Commit messages are suggested for you to edit, and proposed changes are drawn on the picture before anything is built.
 - **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you confirm it or mark it not true.
-- **Sketch, then ask.** Press **✎ Draft changes** on a picture and change it yourself: add boxes, zones, tables, columns, lanes and lines, rename, take out, drag between zones or lanes. Nothing changes in the plan and the agent is not woken until you press **Ask the agent to review**; it says what each change means (network, migration, a missing step) and puts in the plan only what you agree to.
+- **Sketch, then ask.** Press **✎ Draft changes** on a picture and change it yourself: add boxes, zones, tables, columns, lanes and lines, rename, take out, copy, drag between zones or lanes. Nothing changes in the plan and the agent is not woken until you press **Ask the agent to review**; it says in plain words what your sketch means (network, migration, a missing step) and puts in the plan only what you agree to.
 - **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Scores can show the figure behind them, such as a monthly price, and rows that rest on something not yet confirmed are marked ❓. Choosing an option turns it into a step-by-step plan.
 - **Lighter than a hand-written explainer.** The agent writes a small JSON file once and updates it with one-line commands, while the page does the drawing. A four-picture plan is about 7 KB of JSON instead of 26–43 KB of HTML rewritten on every change ([numbers](docs/GUIDE.md#light-on-tokens)).
-- **Easy to pass on.** Export a plan as one HTML file that anyone opens offline, read only, or print it to PDF: a design opens with the decision and why, and every step, picture and box is laid out for paper.
+- **Easy to pass on.** Export a plan as one HTML file that anyone opens offline, read only, or print it to PDF: a design opens with the decision and why, and your sketch goes along, marked as not in the plan yet. A picture too big for one page prints as an overview and parts you can read.
 - **For the whole team.** A product owner can compare options without reading code; a new developer can follow a plan step by step; a senior can check claims against the code.
 - **Private and simple.** Everything stays on your machine: a zero-dependency Node server on 127.0.0.1 behind a random token, no telemetry. The agent plans in the language you write in, and the page's labels follow (English and Thai).
 
@@ -67,7 +67,7 @@ The agent picks the mode from your request and asks up to three short questions 
 
 Needs Node.js 18.18 or newer. Nothing else.
 
-Walkboard is young (0.8): built and tested with Claude Code on macOS. Other agents and systems should work but are not tested yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
+Walkboard is young (0.9): built and tested with Claude Code on macOS. Other agents and systems should work but are not tested yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
 
 ## Use
 
@@ -84,7 +84,7 @@ Type `/walkboard` and say what you want, or just ask in your own words:
 1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
 2. It writes the plan and gives you a link to a page on your machine.
 3. Click a box to see what it is, ask about it, or propose a change. 👉 and a purple bar mean it is your turn; **⋮** holds export, the theme and a short tour.
-4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom (keys V, B, Z, L, R, D; Escape leaves). Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture: moving a box to another zone or group, and asking the agent, belong to draft mode. On a map, **Auto | By hand** over the picture chooses whether the page lays it out or everything stays where you put it, and the corner of a zone resizes it.
+4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the guide](docs/GUIDE.md#sketch-your-own-changes).
 
    <img src="docs/images/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
 5. Switch restating and commits under **Agent settings** at the top of the page. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.

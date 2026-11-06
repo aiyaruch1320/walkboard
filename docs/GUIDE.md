@@ -4,6 +4,7 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 
 - [The plan page](#the-plan-page)
 - [Pictures](#pictures)
+- [Sketch your own changes](#sketch-your-own-changes)
 - [Talking on the page](#talking-on-the-page)
 - [Explain existing code](#explain-existing-code)
 - [Light on tokens](#light-on-tokens)
@@ -21,7 +22,7 @@ Everything beyond the [README](../README.md): a tour of the page, explain mode, 
 | Agent settings | Switch restating each step on or off and choose whether the agent commits or only suggests messages; each card says what the current choice means. Saved to the plan at once without waking the agent, which reads it before its next step. Defaults for every plan: `~/.walkboard/config.json`, e.g. `{"teachBack": true, "commit": "suggest"}`. |
 | Step bar | Choose a step: everything it does not touch fades and the page switches to a picture that shows it. ✓ restated and confirmed, 👉 your turn. ⏵ Play walks through the steps once. The address keeps the step, picture and box, so a reload or a shared link opens the same place. |
 | Step card | What the step does, its status and how we know it is done. When it is your turn, a purple bar opens the side panel. |
-| Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; a sheet from the bottom on narrow screens. |
+| Side panel | Everything you answer or decide: a box's details and conversation, restating, the suggested commits, approval. Opens when you click a box or a "your turn" bar, slides away with ✕, Esc or a second click on the same box; drag its left edge for the width you want; a sheet from the bottom on narrow screens. |
 | Boxes | An icon for what the box is (cloud services in their provider's colours), its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
 | Dotted words | Glossary: tap for a plain explanation (inside a box, hover; a tap opens the box). |
 | Mode pill | Next to the logo: plan, explain or design. Click it for one line on what this mode does; click again to close. |
@@ -36,6 +37,31 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 
 ![Transform view](images/transform.png)
 
+On a map, a profile says what a box, zone or line is on a platform (`aws:rds`, `k8s:deployment`): its icon and fields come from the kind, and a small amber ⚠ marks something that usually sits elsewhere. It is a hint, nothing is blocked. **Auto | By hand** over a map chooses whether the page lays it out or everything stays where you put it.
+
+## Sketch your own changes
+
+![Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom](images/draft.png)
+
+**✎ Draft changes** above a map, data model, flow, state, decision or impact picture opens a toolbar. Your changes stay out of the plan until the agent puts them in, and sketching does not wake it.
+
+| To | Do |
+|---|---|
+| Add a box, zone, table, group or lane | Pick the tool (B, Z, the data model's C for a column), then click where it goes, or press Enter for the first free place in sight |
+| Draw a line | L, then drag from one box to another. Near the window's edge the page scrolls with you |
+| Edit or take out | R or double-click to edit, D or Delete to take out; both work on lines too |
+| Move | Drag between zones, groups or lanes. On a flow, drag a lane's title to reorder |
+| Copy | ⌘C ⌘V, or ⌘D to duplicate (Ctrl on other systems). A zone comes with what it holds |
+| Go back | ⌘Z ⇧⌘Z; × on one change in the list; **Start over from the plan** for all of it; Escape leaves |
+
+Outside draft mode a drag only arranges the picture. **↺ Arrange again** lays it out from the plan, keeping what you drew where you put it.
+
+**Ask the agent to review** sends the sketch. The agent says what it means for the plan, in the names on the picture, and asks once before changing anything:
+
+![The agent's review in the whole plan's chat, in plain words, with a link to a box](images/review.png)
+
+What it puts in the plan stays where you placed it, and what you turned down stays in your draft.
+
 ## Talking on the page
 
 | Ask on a box; the answer appears in the side panel | Restate a step; the agent confirms it |
@@ -44,7 +70,8 @@ How data changes shape, with empty values (∅) and stray spaces (␠) made visi
 
 - **Still unclear · Go deeper** send at once.
 - **Ask** or **Propose** (add after a box, change it, remove it) choose what the text you type is sent as. The agent decides whether a proposal just corrects the picture, changes a plan not yet approved, or is drawn as a proposal. **Restate** appears when it is your turn (and on every stage in explain mode).
-- The first visit shows a three-stop tour; **⋮ → Shortcuts** lists the shortcuts (← → steps, Esc closes the panel, Enter sends, Shift+Enter starts a new line) and shows the tour again. In the side panel the details sit above the chat and the box you type in stays at the bottom, as in a chat. Click **▾ Details** or **▾ Chat** to fold it away, either or both; its arrow turns, the part slides shut and "folded" shows quietly beside the name; the choice is remembered. **⤢** widens the panel, keeping the picture on the left, and puts the details beside the chat; **⤡** goes back.
+- The first visit shows a three-stop tour; **⋮ → Shortcuts** lists the shortcuts (← → steps, Esc closes the panel, Enter sends, Shift+Enter starts a new line) and shows the tour again. In the side panel the details sit above the chat and the box you type in stays at the bottom, as in a chat. Click **▾ Details** or **▾ Chat** to fold it away, either or both; its arrow turns, the part slides shut and "folded" shows quietly beside the name; the choice is remembered. Drag the panel's left edge for any width, or **⤢** to jump to a wide one and back: from 640 px the details sit beside the chat, and each folds into a thin rail so the other has the room.
+- A message answered on another box says so with a link to it. A message with no answer yet says the agent has it, and you can hide the note.
 - **Approve plan** lets the agent start building. Nothing is built before.
 - **Agent commits these, then goes on** / **I committed, go on** appear under the suggested commit message of a finished step when commits are only suggested; you can edit the message first. The agent waits for one of them before the next step.
 
@@ -76,7 +103,10 @@ For something not built yet ("what should we use to connect EC2 across two accou
 **⋮ → Export** in the top bar, or `walkboard export <folder>`:
 
 - **HTML**: one file that opens anywhere, offline and read only: every picture, step and box, and in explain mode the code each box points at (untick it, or `--no-code`). The chat stays out unless you tick it (`--with-chat`). No server address, token or path on your machine goes into it, and the file cannot load anything from the network.
-- **PDF**: the browser's print window with a layout for paper: every step, every picture one after another (scaled to the page when wider), then the boxes. Choose **Save as PDF**.
+- **PDF**: the browser's print window with a layout for paper: every step, every picture one after another, then the boxes. Choose **Save as PDF**.
+- **Your sketch goes along in both**, drawn on the pictures and listed in words as not in the plan yet. Untick it in Export to leave it out (`--no-draft`). Before / after pictures stay the plan's own.
+
+On paper a picture whose names would come out under 7 pt prints as an overview, then parts at a size to read. A map goes by zone, and a line that leaves a part is a label on its box (`→ Aurora · 5432 · Part 3`). Other pictures go on sheets cut along the gaps between boxes, and their lines stop at the edge of the sheet. The overview numbers them.
 
 Look at what the file contains before you send it: it is your plan and, unless left out, your code.
 
@@ -92,7 +122,7 @@ The page does the explaining, so the agent spends tokens on content once and ver
 | Common terms | explain each time | ~95 ship with Walkboard, in English and Thai |
 | Each message from the page | — | one compact line, ~100–150 bytes |
 | Switching restating or commits on the page | — | nothing: the agent is not woken; it reads the setting with its next message or step |
-| Instructions loaded with the skill | — | SKILL.md ~7.5 KB; schema, pictures, design and rarer messages in references (2–6 KB each) read only when needed; icon names from `walkboard icons` |
+| Instructions loaded with the skill | — | SKILL.md ~8.5 KB; the plan format, each picture, each platform, the review guide and rarer messages in small files read only when needed. An AWS map and a review read 27 KB in all; icon names from `walkboard icons` |
 
 Every message from the page wakes the agent once, which re-reads the conversation (mostly from cache). That is why "Got it" was removed and settings never wake it: only clicks that need an answer cost a turn.
 
@@ -125,7 +155,8 @@ Not through Walkboard. The agent itself works as Claude Code normally does.
 - One machine, one viewer: no sharing or multi-user editing.
 - Each message is delivered once; if the agent dies right after receiving it, ask again.
 - Built and tested on macOS with Chrome and the Claude desktop app; Linux should work; Windows is untested.
-- Kubernetes pictures with thousands of links redraw slowly.
+- Pictures with thousands of lines redraw slowly.
+- A very large picture's overview on paper is only for its shape: read its parts.
 
 ## Reference
 
@@ -138,10 +169,11 @@ Run from the repository root (the skill runs them for you).
 | `node skills/walkboard/bin/walkboard.mjs check <dir>` | Validate `plan.json`; in explain mode, also that every `file:line` exists and still holds its `anchor` |
 | `… set <dir> [plan \| step: \| node: \| constraint: \| option: \| criterion: \| source:<id>] key=value …` | Change fields in place; `key=` removes one, `settings.commit=auto` reaches inside, `what='"0042"'` keeps digits as text |
 | `… open <dir> [--no-browser]` | Start or reuse the server and print the link |
-| `… poll <dir>` | Wait for the page; one JSON line per message |
-| `… reply <dir> [--node id \| --step id \| --option id [--criterion id]] <text>` | Answer on the page, in that box's, step's or design cell's thread |
+| `… poll <dir> [--full] [--timeout s]` | Wait for the page; one short JSON line per message (`--full`: ids, times, every box's place) |
+| `… reply <dir> [--node id \| --step id \| --option id [--criterion id]] <text>` | Answer on the page, in that box's, step's or design cell's thread. `[[node:id]]`, `[[step:id]]`, `[[option:id]]`, `[[plan]]` link to a place |
 | `… status <dir>` / `… stop <dir>` | Show the link and queue / stop the server |
-| `… export <dir> [--html file] [--no-code] [--with-chat]` | Write a read-only copy of the plan as one HTML file (see below) |
+| `… draft <dir> [clear [view] [change …]]` | Print what was sketched, or clear it once it is in the plan |
+| `… export <dir> [--html file] [--no-code] [--no-draft] [--with-chat]` | Write a read-only copy of the plan as one HTML file |
 | `… icons` | List the icon names for `icon` |
 
 ### Links into a page

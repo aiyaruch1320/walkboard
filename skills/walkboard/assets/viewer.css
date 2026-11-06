@@ -423,6 +423,8 @@ svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important
 .dempty{color:var(--muted)}
 @keyframes dflash{0%,100%{box-shadow:none}30%{box-shadow:0 0 0 6px color-mix(in srgb,var(--you-bd) 45%,transparent)}}
 .map .dflash{animation:dflash .9s ease 2}
+/* A soft shadow goes to paper as a grey rectangle in some PDF readers (Preview). */
+@media print{.elabel{box-shadow:none}}
 @media print{.dtools,.dpop,.dedit,.ltools,.dtip,svg .dend,svg .dsidedot{display:none!important}}
 .ltool{width:30px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
 .ltool svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}

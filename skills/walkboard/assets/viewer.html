@@ -3127,7 +3127,8 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
   document.body.append(bar, tip);
   const refresh = () => {
     picture.dataset.tool = sketchTool;
-    tip.textContent = hints[sketchTool] || "";
+    // With the select tool: the keys that copy, paste and duplicate what is selected.
+    tip.textContent = (hints[sketchTool] || "") + (sketchTool === "select" && hints.select ? ` · ${t("copyKeys", mac ? "⌘" : "Ctrl+")}` : "");
     tip.hidden = !tip.textContent;
     bar.querySelectorAll("[data-tool]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tool === sketchTool)));
     const h = tools.history();
@@ -6563,9 +6564,44 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
   grid.addEventListener("pointerleave", () => grid.querySelectorAll(".erframe").forEach((x) => x.classList.remove("dhover")));
   const {refresh} = sketchBar(real, tools, grid, MODEL_TOOLS, hintsFor("model", MODEL_TOOLS));
   if (sketchSel) requestAnimationFrame(() => select(sketchSel));
+  // ---- copy and paste a table with its columns. A table's name is its name in the database, so a copy is "<name>_copy";
+  // its foreign keys point where the original's do (one to the original itself points to the copy).
+  const copyTable = (x) => {
+    if (x?.kind !== "node") return false;
+    const card = elOf(x), tb = v.tables.find((q) => q.node === x.id);
+    if (!card || !tb) return false;
+    clipboard = {kind: "datamodel", id: x.id, ...pick(drafted.plan.nodes[x.id], ["name", "what", "icon"]), name: drafted.plan.nodes[x.id]?.name ?? x.id,
+      columns: (tb.columns || []).filter((c) => c?.name).map((c) => pick(c, ["name", "type", "key", "ref"])),
+      group: (v.groups || []).find((g) => g?.tables?.includes(x.id))?.label ?? null, h: card.offsetHeight};
+    flash(card);
+    return true;
+  };
+  const pasteTable = (dup) => {
+    const c = clipboard;
+    if (c?.kind !== "datamodel") return false;
+    const list = ops(), node = newNode(), orig = elOf({kind: "node", id: c.id});
+    let name = `${c.name}_copy`;
+    for (let n = 2; tableTaken(name) || list.some((o) => o.op === "addTable" && same(o.name, name)); n++) name = `${c.name}_copy${n}`;
+    const g = grid.getBoundingClientRect(), under = !dup && pastePt ? frameAt(...pastePt, null) : null;
+    const group = dup ? c.group : under?.dataset.group ?? (pastePt ? null : c.group);
+    const [x, y] = dup || !pastePt ? (orig ? [orig.offsetLeft + orig.offsetWidth + 24, orig.offsetTop] : [0, 0]) : [pastePt[0] - g.left - grid.clientLeft, pastePt[1] - g.top - grid.clientTop];
+    const out = [...list, {id: newOpId(list), op: "addTable", node, name, ...pick(c, ["what", "icon"]), ...(group ? {group} : {}), copyOf: c.id}];
+    for (const col of c.columns) {
+      const ref = col.ref && col.ref.split(".")[0] === c.id ? `${node}.${col.ref.split(".").slice(1).join(".")}` : col.ref;
+      out.push({id: newOpId(out), op: "addColumn", table: node, column: col.name, ...pick(col, ["type", "key"]), ...(ref ? {ref} : {})});
+    }
+    sketchSel = {kind: "node", id: node};
+    setOps(out, placeTable(node, x, y, group, c.h));
+    requestAnimationFrame(() => flash(elOf(sketchSel)));
+    return true;
+  };
+  grid.addEventListener("pointermove", (e) => (pastePt = [e.clientX, e.clientY]));
+  grid.addEventListener("pointerleave", () => (pastePt = null));
   sketchApi = {
     view: real.id,
     toolList: MODEL_TOOLS,
+    copy: copyTable,
+    paste: pasteTable,
     addColumnTo,
     tool(name, clear = false) {
       sketchTool = name;
@@ -6712,7 +6748,31 @@ function sketchKit(real, tools, container) {
         },
       });
     },
+    // Copy a box (name, note, icon), and paste it on the same kind of picture; placeFor(copied, dup) says where:
+    // {fields} of its addBox (a lane), {spot} on a picture that holds its boxes still.
+    copyBox(id) {
+      const e = box(id), n = nodeOfDrafted(real, id);
+      if (!e || !n) return false;
+      clipboard = {kind: "box:" + real.kind, id, name: n.name ?? id, ...pick(n, ["what", "icon"]), w: e.offsetWidth, h: e.offsetHeight};
+      flash(e);
+      return true;
+    },
+    pasteBox(dup, placeFor) {
+      const c = clipboard;
+      if (c?.kind !== "box:" + real.kind) return false;
+      const {fields = {}, spot = null} = placeFor(c, dup) || {};
+      const list = ops(), node = kit.newNode();
+      sketchSel = {kind: "node", id: node};
+      kit.setOps([...list, {id: newOpId(list), op: "addBox", node, name: c.name, ...pick(c, ["what", "icon"]), ...fields, copyOf: c.id}], undefined, spot ? {[node]: spot} : null);
+      requestAnimationFrame(() => {
+        kit.select(sketchSel);
+        flash(box(node));
+      });
+      return true;
+    },
     api(extra) {
+      container.addEventListener("pointermove", (e) => (pastePt = [e.clientX, e.clientY]));
+      container.addEventListener("pointerleave", () => (pastePt = null));
       return {
         view: real.id,
         tool(name, clear = false) {
@@ -7007,7 +7067,15 @@ function sketchLinks({real, v, drafted, container, tools}) {
   lightLines(container);
   const {refresh} = sketchBar(real, tools, container, LINK_TOOLS, hintsFor(v.kind, LINK_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));
-  sketchApi = kit.api({toolList: LINK_TOOLS, refresh, saved: refresh});
+  sketchApi = kit.api({toolList: LINK_TOOLS, refresh, saved: refresh,
+    copy: (x) => x?.kind === "node" && kit.copyBox(x.id),
+    paste: (dup) => kit.pasteBox(dup, (c) => {
+      const hold = container.hold, o = kit.box(c.id);
+      if (!hold) return {};
+      const r = container.getBoundingClientRect();
+      const [x, y] = dup || !pastePt ? (o ? [o.offsetLeft, o.offsetTop + o.offsetHeight + 24] : [24, 24]) : [pastePt[0] - r.left - c.w / 2, pastePt[1] - r.top - c.h / 2];
+      return {spot: hold.spotFor(Math.max(0, x), Math.max(0, y), c.w, c.h)};
+    })});
 }
 
 function sketchFlow({real, v, drafted, wrap, tools}) {
@@ -7187,7 +7255,17 @@ function sketchFlow({real, v, drafted, wrap, tools}) {
   });
   const {refresh} = sketchBar(real, tools, wrap, FLOW_TOOLS, hintsFor("flow", FLOW_TOOLS));
   if (sketchSel) requestAnimationFrame(() => kit.select(sketchSel));
-  sketchApi = kit.api({toolList: FLOW_TOOLS, refresh, saved: refresh});
+  sketchApi = kit.api({toolList: FLOW_TOOLS, refresh, saved: refresh,
+    copy: (x) => x?.kind === "node" && kit.copyBox(x.id),
+    paste: (dup) => kit.pasteBox(dup, (c) => {
+      // The lane the original is in (the one it was selected in, when it is in several), or the one under the pointer.
+      const o = (sketchSel?.lane != null ? laneEls()[sketchSel.lane]?.querySelector(`[data-anchor="${CSS.escape(c.id)}"]`) : null) || kit.box(c.id);
+      const under = !dup && pastePt ? laneAt(...pastePt) : null, lane = under || o?.closest("[data-lane]");
+      if (!lane) return {};
+      const li = Number(lane.dataset.lane), row = [...lane.querySelectorAll("[data-anchor]")];
+      const at = under ? indexAt(lane, pastePt[0]) : o && lane.contains(o) ? row.indexOf(o) + 1 : row.length;
+      return {fields: {lane: li, ...(v.lanes[li]?.title ? {laneTitle: v.lanes[li].title} : {}), at}};
+    })});
 }
 
 // ---------- before / after: two pictures side by side, with what was added, removed or changed marked

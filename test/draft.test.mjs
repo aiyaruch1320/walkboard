@@ -395,3 +395,27 @@ test("two zones can share a name: a zone is known by its id, or its label when i
   p.views[0].zones.push({label: "App", nodes: []});
   assert.match(validate(p).join(), /two zones are known as "App"/);
 });
+
+test("a pasted copy keeps the name of what it came from, says so, and is not taken for it", () => {
+  const p = plan();
+  const d = draft(
+    {op: "addNode", node: "new:c", name: "API", zone: "App", copyOf: "api"},
+    {op: "addZone", zone: "App (AWS)", label: "App", parent: "AWS", copyOf: "App"},
+    {op: "addNode", node: "new:d", name: "API", zone: "App (AWS)", copyOf: "api"},
+  );
+  assert.deepEqual(validateDraft(d), []);
+  const r = applyDraft(p, d, "m");
+  // Same name, same zone as the original: still a new box (before, it was taken as the agent having added it).
+  assert.deepEqual(r.view.zones[0].zones[0].nodes, ["api", "nat", "new:c"]);
+  assert.deepEqual(r.marks.nodes["new:c"], {mark: "add"});
+  assert.deepEqual(r.view.zones[0].zones.at(-1).nodes, ["new:d"]);
+  const words = describeDraft(p, d, "m").changes;
+  assert.equal(words[0].copyOf, "API (api)");
+  assert.match(draftLine(words[0]), /\(copy of API \(api\)\)/);
+  assert.match(draftLine(words[1]), /\(copy of "App"\)/);
+  // Once the agent puts a copy in the plan under a real id, the draft change is done.
+  const later = plan();
+  later.nodes.api2 = {name: "API"};
+  later.views[0].zones[0].zones[0].nodes.push("api2");
+  assert.deepEqual(applyDraft(later, draft({op: "addNode", node: "new:c", name: "API", zone: "App", copyOf: "api"}), "m").done.length, 1);
+});

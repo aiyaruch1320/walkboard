@@ -18,6 +18,9 @@ const view = plan.views.find((v) => v.kind === "map");
 
 const server = await startServer(dir);
 const page = await launch({width: 1440, height: 1000, port: 9334});
+// No first look over this run, and no mark left in the home folder that it was seen.
+await page.send("Page.enable");
+await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.seen", "1"); } catch {}`});
 const stats = (xs) => {
   const s = [...xs].sort((a, b) => a - b), at = (q) => s[Math.min(s.length - 1, Math.floor(q * s.length))] ?? 0;
   return {n: s.length, p50: +at(0.5).toFixed(1), p95: +at(0.95).toFixed(1), max: +(s.at(-1) ?? 0).toFixed(1)};

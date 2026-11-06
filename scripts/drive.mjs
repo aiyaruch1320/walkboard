@@ -27,6 +27,9 @@ if (!url || !file) {
 const actions = JSON.parse(file === "-" ? fs.readFileSync(0, "utf8") : fs.readFileSync(file, "utf8"));
 const width = +opt("--width", 1440), height = +opt("--height", 1000);
 const page = await launch({width, height, port: +opt("--port", 9340)});
+// No first look over this run, and no mark left in the home folder that it was seen.
+await page.send("Page.enable");
+await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localStorage.setItem("walkboard.seen", "1"); } catch {}`});
 const errors = [];
 await page.send("Runtime.enable");
 await page.send("Log.enable");

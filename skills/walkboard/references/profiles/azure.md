@@ -1,0 +1,92 @@
+# azure (Azure)
+
+Each line: kind and name; `zone` or `also zone` (else a box); in = where it usually sits; props. How to use them: views/map.md.
+
+- `azure:subscription` Subscription · zone · in Management group
+- `azure:managementgroup` Management group · zone · in Management group
+- `azure:resourcegroup` Resource group · zone · in Subscription
+- `azure:region` Region · zone · in Subscription, Resource group
+- `azure:vnet` Virtual network · zone · in Resource group, Region, Subscription · cidr
+- `azure:availabilityzone` Availability Zone · zone · in Region, Virtual network
+- `azure:subnet` Subnet · zone · in Virtual network · cidr
+- `azure:nsg` Network security group · zone (rules look through it) · in Virtual network, Subnet · rules
+- `azure:vm` Virtual machine · also zone · in Subnet · size; os
+- `azure:aks` AKS cluster · also zone · in Virtual network, Subnet, Resource group
+- `azure:appservice` App Service · in Resource group, Region, Subnet · plan
+- `azure:functions` Functions · in Resource group, Region · runtime
+- `azure:containerapps` Container Apps · in Resource group, Region, Subnet
+- `azure:aci` Container Instances · in Resource group, Subnet
+- `azure:logicapps` Logic Apps · in Resource group, Region
+- `azure:appgateway` Application Gateway · in Subnet, Virtual network
+- `azure:loadbalancer` Load Balancer · in Subnet, Virtual network, Resource group · scheme: public / internal
+- `azure:frontdoor` Front Door · in Subscription, Resource group
+- `azure:firewall` Azure Firewall · in Subnet, Virtual network
+- `azure:privateendpoint` Private endpoint · in Subnet
+- `azure:privatednszone` Private DNS zone · in Resource group, Virtual network
+- `azure:bastion` Bastion · in Subnet, Virtual network
+- `azure:natgateway` NAT Gateway · in Subnet, Virtual network
+- `azure:vpngateway` VPN Gateway · in Subnet, Virtual network
+- `azure:expressroute` ExpressRoute · in Resource group, Region, Subscription
+- `azure:apim` API Management · in Resource group, Subnet
+- `azure:sql` Azure SQL · in Resource group, Region, Subnet, Virtual network · tier
+- `azure:postgres` Database for PostgreSQL · in Resource group, Subnet, Region · tier
+- `azure:cosmosdb` Cosmos DB · in Resource group, Region, Subnet, Virtual network · api: nosql / mongodb / cassandra / gremlin / table
+- `azure:redis` Azure Managed Redis · in Resource group, Subnet, Region · tier
+- `azure:storage` Storage account · in Resource group, Region, Subnet, Virtual network · kind: blob / files / queue / table
+- `azure:servicebus` Service Bus · in Resource group, Region, Subnet, Virtual network
+- `azure:eventhubs` Event Hubs · in Resource group, Region, Subnet, Virtual network
+- `azure:eventgrid` Event Grid · in Resource group, Region
+- `azure:keyvault` Key Vault · in Resource group, Region, Subnet, Virtual network
+- `azure:entra` Entra ID · in Subscription
+- `azure:managedidentity` Managed identity · in Resource group, Subscription
+- `azure:monitor` Azure Monitor · in Subscription, Resource group
+- `azure:acr` Container Registry · in Resource group, Region, Subnet, Virtual network
+- `azure:openai` Azure OpenAI / Foundry · in Resource group, Region
+- `azure:vmss` VM scale set · also zone · in Subnet · min; max; size
+- `azure:disk` Managed disk · in Resource group, Region, Availability Zone · size; sku
+- `azure:aro` Azure Red Hat OpenShift · also zone · in Virtual network, Subnet, Resource group
+- `azure:staticwebapps` Static Web Apps · in Resource group, Region
+- `azure:batch` Batch · in Resource group, Subnet
+- `azure:avd` Azure Virtual Desktop · in Resource group, Subnet, Virtual network
+- `azure:vmware` Azure VMware Solution · also zone · in Resource group, Region
+- `azure:appconfig` App Configuration · in Resource group, Region, Subnet
+- `azure:sqlmi` SQL Managed Instance · in Subnet, Virtual network · tier
+- `azure:mysql` Database for MySQL · in Resource group, Subnet, Region · tier
+- `azure:documentdb` Azure DocumentDB (MongoDB) · in Resource group, Region, Subnet, Virtual network
+- `azure:files` Azure Files share · in Resource group, Region, Subnet, Virtual network
+- `azure:netappfiles` Azure NetApp Files · in Subnet, Virtual network
+- `azure:datalake` Data Lake Storage · in Resource group, Region, Subnet, Virtual network
+- `azure:datafactory` Data Factory · in Resource group, Region
+- `azure:synapse` Synapse Analytics · in Resource group, Region
+- `azure:databricks` Azure Databricks · in Resource group, Virtual network
+- `azure:fabric` Microsoft Fabric · in Subscription, Resource group
+- `azure:streamanalytics` Stream Analytics · in Resource group, Region
+- `azure:dataexplorer` Data Explorer · in Resource group, Region, Subnet
+- `azure:powerbi` Power BI · in Subscription
+- `azure:signalr` SignalR Service · in Resource group, Region
+- `azure:webpubsub` Web PubSub · in Resource group, Region
+- `azure:notificationhubs` Notification Hubs · in Resource group, Region
+- `azure:communication` Communication Services · in Resource group, Region
+- `azure:iothub` IoT Hub · in Resource group, Region
+- `azure:dns` Azure DNS zone · in Resource group, Subscription
+- `azure:trafficmanager` Traffic Manager · in Resource group, Subscription
+- `azure:waf` Web Application Firewall policy · in Resource group, Subscription
+- `azure:ddos` DDoS Protection plan · in Resource group, Subscription, Virtual network
+- `azure:vwan` Virtual WAN hub · also zone · in Resource group, Region, Subscription
+- `azure:routeserver` Route Server · in Subnet, Virtual network
+- `azure:privatelinkservice` Private Link service · in Subnet, Virtual network
+- `azure:loganalytics` Log Analytics workspace · in Resource group, Region
+- `azure:appinsights` Application Insights · in Resource group, Region
+- `azure:grafana` Managed Grafana · in Resource group, Region
+- `azure:sentinel` Microsoft Sentinel · in Resource group, Subscription
+- `azure:defender` Defender for Cloud · in Subscription
+- `azure:backup` Backup vault · in Resource group, Region
+- `azure:siterecovery` Site Recovery · in Resource group, Region
+- `azure:arc` Azure Arc · in Resource group, Subscription
+- `azure:externalid` Entra External ID · in Subscription
+- `azure:aisearch` Azure AI Search · in Resource group, Region, Subnet, Virtual network
+- `azure:machinelearning` Azure Machine Learning · in Resource group, Region
+- `azure:documentintelligence` Document Intelligence · in Resource group, Region
+- `azure:devops` Azure DevOps / Pipelines
+
+Lines: `azure:event` Event or message, `azure:peering` VNet peering, `azure:iam` Permission (RBAC), `azure:replication` Replication; without a kind a line is traffic.

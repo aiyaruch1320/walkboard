@@ -61,7 +61,7 @@ test("map draft changes carry a kind and its fields; edits change or clear them"
   assert.match(words[2], /props \{"engine":"postgres"\}/);
 });
 
-test("references/profiles.md is written from lib/profiles.mjs", async () => {
+test("references/profiles/ is written from lib/profiles.mjs", async () => {
   const {execFileSync} = await import("node:child_process");
   execFileSync(process.execPath, [new URL("../scripts/profiles-doc.mjs", import.meta.url).pathname, "--check"]);
 });

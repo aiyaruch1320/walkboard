@@ -7,29 +7,28 @@ description: Show work as an interactive picture (flow, cloud or Kubernetes map,
 
 Long text loses people. You write `plan.json`; Walkboard draws it as a local page; what the user clicks or types there comes back to you.
 
-`WB` = `node <this skill's base directory>/bin/walkboard.mjs` (Node 18.18+, no install).
+`WB` = `node <this skill's base directory>/bin/walkboard.mjs` (Node 18.18+, no install). Files named below are under `references/`: read one only when you reach it.
 
 ## 0. Language, mode, questions, settings
 
-Use the user's language for everything (questions, plan, replies, suggested commit messages) and set `"lang"` (`"en"`, `"th"`, …). Code, ids and paths stay as they are. Readers build software: keep technical terms as the team says them (config, deploy, Secret, egress, batch) instead of translating them or inventing a word; say what a thing is or does, not a vague label. Hard terms are explained on hover (common ones ship with Walkboard, `glossary` for the project's).
+Use the user's language for everything (questions, plan, replies, suggested commit messages) and set `"lang"`. Code, ids and paths stay as they are. Readers build software: keep technical terms as the team says them (config, deploy, Secret, egress, batch), never translated or invented; say what a thing is or does, not a vague label. Hard terms are explained on hover (`glossary` for the project's own).
 
 - **build**: something new or changed. Sections 1, 3, 4.
 - **explain**: understand existing code. Sections 2E, 3, 4E.
-- **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [references/design.md](references/design.md), then section 3.
+- **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [design.md](references/design.md), then section 3.
 
-If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, together with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`) for the user to confirm.
+If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`).
 
-`settings`, first match wins: the request ("no restating", "commit for me") · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
+`settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config. Never ask about restating: `teachBack` is on unless `false`, and the user switches it on the page.
 
 ## 1. Write the plan (build)
 
-Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Read [references/schema.md](references/schema.md) the first time.
+Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Fields: [schema.md](references/schema.md).
 
 - 3-8 **steps**, each reviewable in minutes: `title`, `detail`, `done` (how we know), `nodes`.
-- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong (`WB icons` lists them).
-- **views**: `title` each one, it is the tab's label. Leave views out for a plain flow. When a picture explains better, pick one or two from the "Which picture" table in [references/views.md](references/views.md).
+- **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong.
+- **views**: leave out for a plain flow. When a picture explains better, pick one or two from [views.md](references/views.md).
 - **glossary**: only project terms. No secrets, tokens or real customer data.
-- Only where the flow itself is the hard part, add `moves` to that step ([references/schema.md](references/schema.md)). Most steps need none.
 - `WB check <dir>` until ok.
 
 ## 2E. Write the explanation (explain)
@@ -37,32 +36,35 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Rea
 1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
 2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there.
 3. Every code box has `file` = `path:line` or `path:from-to` and `anchor` = a short piece of that code (`"function send("`), so `check` notices when the code moves; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …". A box that is not code (a user, an outside system, a managed service you only call) has `"status": "ext"` and no `file`: never borrow a line for it.
-4. Only where the flow itself is hard to follow, add `moves` to that stage ([references/schema.md](references/schema.md)). Most stages need none.
-5. `WB check <dir>` until ok (it fails when a file or line does not exist).
+4. `WB check <dir>` until ok (it fails when a file or line does not exist).
+
+Only where the flow itself is the hard part, add `moves` to that step or stage ([moves.md](references/moves.md)). Most need none.
 
 ## 3. Show and listen
 
 1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "⋮" holds export, theme and the tour.
-2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, waking you with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen). `[]` means the server stopped: `WB open` again.
+2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen). `[]` means the server stopped: `WB open` again. Start it again after each batch.
    - `question` / `confused`: `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `teachback`: say what is right, correct the rest; when it matches, `WB set <dir> step:<id> confirmed=true`.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
    - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `wrong: true` = the user says it is not true: ask what is, or find out, then fix it the same way.
-   - `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`, `review`: [references/messages.md](references/messages.md) the first time; `decide`: references/design.md.
+   - `review`: [review.md](references/review.md). `propose`, `withdraw`, `plan`, `apply`, `commit`, `committed`: [messages.md](references/messages.md). `decide`: design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
-   Reply to every other message, even in one line: the page shows you typing until you reply or poll again.
-   No background commands that wake you when they end (agents other than Claude Code)? Run `WB poll <dir> --timeout 240` in the foreground instead (`[]` after 240 s = nothing yet, poll again); handle what it prints, then poll again. A batch is only marked read once poll has printed it, so a killed poll loses nothing.
-3. Refer to steps by title. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why; its conversation stays readable on the page. Start `WB poll` again. The user may also answer in chat.
+
+   Reply to every other message **on the page, where it was asked**, even in one line, even if you also act on it or say it in chat: the page shows the user no answer until you do.
+
+   No background commands that wake you when they end? `WB poll <dir> --timeout 240` in the foreground instead (`[]` = nothing yet, poll again). A killed poll loses nothing.
+3. Refer to steps by title. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
 
 ## 4. Build (build)
 
 Not before `approved` is true. For each step:
 
 1. `WB set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
-2. `WB set <dir> step:<id> status=review node:<a> status=done …`, and `WB reply <dir> --step <id>` with one line on what you built and the files touched, so the user has something to check or restate.
+2. `WB set <dir> step:<id> status=review node:<a> status=done …`, and `WB reply <dir> --step <id>` with one line on what you built and the files touched.
 3. `WB status <dir>` shows the current `settings`. Teach-back on: wait for `confirmed` (skip only if the user asks).
-4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (references/messages.md).
+4. Commit: `"auto"` → small commits, one context each, then go on; `"suggest"` → suggest the message on the page and wait (messages.md).
 5. `WB set <dir> step:<id> status=done`, next step. Teach-back off and `"auto"`: nothing waits.
 
 ## 4E. Walk through (explain)
@@ -79,15 +81,6 @@ Answer from the code, reading more when needed; prefer new boxes or stages over 
 
 Summarize in chat with the URL. `WB stop <dir>` unless the user wants the page kept. If permission prompts interrupt, suggest allowing `node <skill dir>/bin/walkboard.mjs` and edits under `~/.walkboard/`; do not change their settings yourself.
 
-| Command | Does |
-|---|---|
-| `WB check <dir>` | Validate; problems exit 1, warnings are advice |
-| `WB set <dir> [plan \| step: \| node: \| constraint: \| option: \| criterion: \| source:<id>] key=value …` | Change fields in place (`key=` removes one; JSON values allowed; `[skip ci] …` stays text) |
-| `WB open <dir> [--no-browser]` | Start or reuse the server, print the URL |
-| `WB poll <dir> [--full] [--timeout s]` / `WB reply <dir> [--node id \| --step id] <text>` | Wait for the page (`[]` after s seconds; `--full` adds ids, times and the view) / answer on it |
-| `WB status <dir>` / `WB stop <dir>` | URL, queue, settings / stop the server |
-| `WB export <dir> [--html file] [--no-code] [--with-chat]` | A read-only copy as one HTML file, when the user asks to share or send the plan (PDF: the page's ⋮ → Export → PDF) |
-| `WB draft <dir> [clear [view] [change …]]` | What the user sketched on the pictures / clear it once it is in the plan |
-| `WB icons` | Icon names for `icon` |
+## Other commands
 
-`WB <command> --help` prints that command's options.
+`WB set <dir> [plan | step: | node: | constraint: | option: | criterion: | source:<id>] key=value …` (`key=` removes one; JSON values allowed; `[skip ci] …` stays text). `WB export <dir> [--html file] [--no-code] [--with-chat]`: a read-only copy when the user asks to share the plan (PDF: the page's ⋮ → Export → PDF). `WB draft <dir> [clear [view] [change …]]`: what the user sketched / clear it once it is in the plan. `WB icons`: icon names. `WB <command> --help`: its options.

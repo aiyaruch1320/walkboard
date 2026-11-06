@@ -1,134 +1,19 @@
 # Views
 
-Every view has `id`, `kind` and `title`; the `title` is its tab, so give it words a reader knows, not an id. Every box is a node id, so a click opens the same details and chat.
+Every view has `id`, `kind` and `title`; the `title` is its tab, so give it words a reader knows, not an id. Every box is a node id, so a click opens the same details and chat. One or two pictures that answer the question; more is noise. Use made-up values, never real customer data.
 
-## Which picture
-
-| The reader asks | Picture |
+| The reader asks | Picture: read its file before writing it |
 |---|---|
-| What are the steps, in order? | `flow` (default, built from the steps) |
-| What sits inside what, on which platform (AWS account › VPC › subnet, cluster › namespace › pods, a host and its containers)? | `map`, with profile kinds |
-| Who calls whom, in what order, and what if it fails? | `sequence` |
-| What does the data look like before and after? | `transform` |
-| What happens to one piece of data along the way? | `journey` |
-| Which states can it be in, and what moves it? | `state` |
-| If this, then what? (rules, routing, validation) | `decision` |
-| When and how long? (retries, timeouts, cron) | `timeline` |
-| What are the tables, keys and relations? | `datamodel` |
-| If this goes down, what breaks? | `impact` |
-| What changes between now and after? | `diff` |
+| What are the steps, in order? | `flow` (default, built from the steps; [file](views/flow.md) only for your own lanes) |
+| What sits inside what, on which platform (AWS account › VPC › subnet, cluster › namespace › pods, a host and its containers)? | [`map`](views/map.md), with profile kinds |
+| Who calls whom, in what order, and what if it fails? | [`sequence`](views/sequence.md) |
+| What does the data look like before and after? | [`transform`](views/transform.md) |
+| What happens to one piece of data along the way? | [`journey`](views/journey.md) |
+| Which states can it be in, and what moves it? | [`state`](views/state.md) |
+| If this, then what? (rules, routing, validation) | [`decision`](views/decision.md) |
+| When and how long? (retries, timeouts, cron) | [`timeline`](views/timeline.md) |
+| What are the tables, keys and relations? | [`datamodel`](views/datamodel.md) |
+| If this goes down, what breaks? | [`impact`](views/impact.md) |
+| What changes between now and after? | [`diff`](views/diff.md) |
 
-One or two pictures that answer the question; more is noise. The user can sketch changes on map, datamodel, flow, state, decision and impact pictures (draft mode); they reach you as `review` (references/messages.md), never in plan.json. Use made-up values, never real customer data.
-
-## flow
-
-```json
-{"id":"flow","kind":"flow","lanes":[{"title":"CI","nodes":["commit","build","tagjob"]},
- {"title":"Before enabling","nodes":["secret","egress"],"arrows":false}]}
-```
-
-Lanes of boxes, left to right. `"arrows": false` makes a lane a checklist.
-
-## sequence
-
-```json
-{"id":"run","kind":"sequence","actors":["cronjob","db","warehouse"],"messages":[
- {"from":"cronjob","to":"db","text":"read the checkpoint","step":"run"},
- {"from":"cronjob","to":"warehouse","text":"query new customers"},
- {"from":"warehouse","to":"cronjob","text":"rows","reply":true},
- {"from":"cronjob","to":"cronjob","text":"split into batches of 200"},
- {"from":"cronjob","to":"db","text":"retry once","group":"If the write fails"}]}
-```
-
-`reply` draws a dashed return; `from == to` a note. Consecutive messages with the same `group` are framed: one group per alternative path. `step` fades the message on other steps; `node` is what a click opens (default: the receiver). `text` under ~8 words. In explain mode, give every message a `step`.
-
-## transform
-
-```json
-{"id":"data","kind":"transform","stages":[
- {"node":"warehouse","label":"query result","columns":["CUSTOMER_NO","JOINED"],"rows":[["0001042  ","202305"],["0001043",null]],"notes":["all values are text"]},
- {"node":"cronjob","label":"after mapping","columns":["id","joined_at"],"rows":[["0001042","2023-05-01"],["0001043",null]]},
- {"node":"api","label":"request body","text":"{\"items\":[{\"id\":\"0001042\"}]}"}]}
-```
-
-Each stage has `columns` + `rows` (rows as long as `columns`) or `text`. Empty and `null` show as `∅`, edge spaces as `␠`.
-
-## map
-
-```json
-{"id":"net","kind":"map","zones":[{"label":"ap-southeast-1","icon":"aws:region","zones":[
-  {"label":"Account A","zones":[{"label":"VPC A","icon":"aws:vpc","note":"10.0.0.0/16","nodes":["ec2a"]}]},
-  {"label":"Link","nodes":["pcx"]},
-  {"label":"Account B","zones":[{"label":"VPC B","icon":"aws:vpc","note":"10.1.0.0/16","nodes":["ec2b"]}]}]}],
- "links":[{"from":"ec2a","to":"pcx","state":"ok","label":"route 10.1.0.0/16"},{"from":"pcx","to":"ec2b"}]}
-```
-
-Zones nest (`label`, `icon`, `note`, `zones`, `nodes`), up to eight levels. Two zones may share a label ("VPC" in each region) when each has an `id` of its own (`{"id": "vpc-sg", "label": "VPC"}`); a zone is known by its `id`, or its label when it has none, and that is what the draft and the layout name it by; three or four read best. On a cloud or platform, give boxes, zones and lines a `kind` from a profile (`"kind": "aws:subnet"`, `props`: its fields): the page draws its icon and fields, tags the picture with the platform and warns where a kind does not usually sit. The kinds are in references/profiles.md (AWS, Google Cloud, Azure, Huawei Cloud, on-prem, containers, Kubernetes); read it before drawing one of them. Profiles mix: an EKS cluster in an AWS VPC is a `k8s:cluster` zone in an `aws:vpc` zone, with `k8s:namespace` zones and workloads in it. A network policy or security group is a zone around what it covers; a config a workload reads is a `k8s:uses` line. Anything a profile does not cover goes without a kind. `"stack": true` stacks what a zone holds top to bottom (`false` keeps it side by side). A whole system (over 12 boxes, or 4+ top-level zones) gets smaller boxes, top-level zones in one row and zones of only boxes stacked: read left to right, outside first, one column per site or provider, at most 5. The user can drag boxes and zones, resize zones, switch the picture to placed by hand, sketch changes in draft mode, then ask you to review (`review`); never write `layout` or the draft. A shared box with no line reads as floating: put such boxes in a zone named for it ("Shared"). `links`: `{"from", "to", "label", "state", "kind"}`; `state` is `ok` (solid green), `todo` (dashed orange), `blocked` (dotted red) or `standby` (dotted blue, a backup path); `label` (usually the port) sits on the box it reaches. Always show blocked and not-yet-open paths.
-
-## journey
-
-```json
-{"id":"trip","kind":"journey","item":"question #42","stops":[
- {"node":"send","note":"The page adds where you asked","data":"{\"kind\":\"question\",\"node\":\"cronjob\"}"},
- {"node":"route","note":"The server adds an id","data":"{\"kind\":\"question\",\"node\":\"cronjob\",\"id\":\"7f3c…\"}"}]}
-```
-
-An envelope travels stop by stop; lines that changed are highlighted. 3-9 stops; a node may repeat. `data` short; `note` says what the stop did.
-
-## state
-
-```json
-{"id":"life","kind":"state","start":"created","end":["delivered","cancelled"],
- "states":["created","paid","delivered","cancelled"],
- "transitions":[{"from":"created","to":"paid","label":"paid"},{"from":"created","to":"cancelled","label":"30 min unpaid"},
-  {"from":"paid","to":"delivered","label":"received"},{"from":"paid","to":"paid","label":"retry"}]}
-```
-
-States are node ids; loops are fine.
-
-## decision
-
-```json
-{"id":"rule","kind":"decision","start":"hasEmail","edges":[{"from":"hasEmail","to":"consent","label":"yes"},
- {"from":"hasEmail","to":"admin","label":"no"},{"from":"consent","to":"send","label":"yes"}]}
-```
-
-Boxes with two or more ways out are drawn as questions, one as a step, none as an end; name questions as questions. `"shapes": {"admin": "end"}` sets what a box is when its lines do not show it (the user can choose it in draft mode).
-
-## timeline
-
-```json
-{"id":"retry","kind":"timeline","unit":"s","marks":[{"at":20,"label":"give up"}],
- "lanes":[{"node":"worker","events":[{"at":0,"to":3,"label":"wait (timeout 3 s)","state":"todo"},
-  {"at":3,"label":"fail #1","state":"blocked"},{"at":5,"label":"retry #1"}]}]}
-```
-
-A lane per box; `to` makes a span; `marks` cross all lanes.
-
-## datamodel
-
-```json
-{"id":"schema","kind":"datamodel","tables":[
- {"node":"users","columns":[{"name":"id","type":"bigint","key":"pk"},{"name":"email","type":"text"}]},
- {"node":"orders","columns":[{"name":"id","type":"uuid","key":"pk"},{"name":"user_id","type":"bigint","key":"fk","ref":"users.id"}]}]}
-```
-
-`ref` draws N:1; `relations: [{"from":"a.x","to":"b.y","kind":"1:1"}]` for others. A column with `ref` or that is a relation's `from` shows FK, also beside PK when a table shares another's key (1:1); a composite key needs one relation per column. `copy: "users.email"` marks a column that stores the same data again (⧉): the page counts the copies and shows where each one comes from on hover; add `"keep": true` for a copy kept on purpose (price at the time of sale). Only the columns that matter.
-
-`groups: [{"label":"Push side","note":"one database","icon":"database","tables":["push_state","push_log"]}]` frames tables that belong together (a table in one group at most; `note` and `icon` are optional, as on a zone); add them when the user asks to group tables. On state, decision and impact pictures the user can drag boxes too, and `layout` works the same way; a box there may also carry `sides`, which side of it the user wants each line to meet. The user can drag tables and groups; the page saves where they put them in `layout`. Never write or change `layout`.
-
-## impact
-
-```json
-{"id":"deps","kind":"impact","edges":[{"from":"web","to":"api"},{"from":"api","to":"db"},{"from":"worker","to":"db"}]}
-```
-
-`from` depends on `to`. A click turns what depends on it red, what it needs blue.
-
-## diff
-
-```json
-{"id":"change","kind":"diff","before":"old","after":"new","changed":{"api":"publishes to the queue instead of sending"}}
-```
-
-Two existing views side by side; added, removed and changed boxes are marked, and links only on one side are listed. `changed` is a list of ids, or ids with what changed.
+The user can arrange map, datamodel, state, decision and impact pictures; the page saves that in `layout` (a box may also carry `sides`, the side each line meets). Never write `layout`. They can also sketch changes on those and on flows (draft mode), kept apart from plan.json; these reach you as `review` ([review.md](review.md)).

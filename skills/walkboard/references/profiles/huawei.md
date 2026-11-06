@@ -1,0 +1,73 @@
+# huawei (Huawei Cloud)
+
+Each line: kind and name; `zone` or `also zone` (else a box); in = where it usually sits; props. How to use them: views/map.md.
+
+- `huawei:region` Region · zone · in Enterprise project
+- `huawei:vpc` VPC · zone · in Region · cidr
+- `huawei:az` Availability Zone · zone · in VPC, Region
+- `huawei:subnet` Subnet · zone · in VPC, Availability Zone · cidr
+- `huawei:sg` Security group · zone (rules look through it) · in VPC, Subnet, Availability Zone · rules
+- `huawei:ecs` ECS · also zone · in Subnet · flavor; os
+- `huawei:cce` CCE cluster · also zone · in VPC, Subnet
+- `huawei:cci` CCI container · in Region, Subnet
+- `huawei:functiongraph` FunctionGraph · in Region
+- `huawei:elb` ELB · in Subnet, VPC
+- `huawei:nat` NAT Gateway · in VPC, Subnet
+- `huawei:vpn` VPN · in VPC, Region
+- `huawei:directconnect` Direct Connect · in Region
+- `huawei:er` Enterprise Router · in Region
+- `huawei:apig` API Gateway · in Region, VPC
+- `huawei:waf` WAF · in Region
+- `huawei:cdn` CDN
+- `huawei:dns` DNS
+- `huawei:rds` RDS · in Subnet, VPC · engine: mysql / postgres / sqlserver / mariadb; flavor
+- `huawei:gaussdb` GaussDB · in Subnet, VPC
+- `huawei:dcs` DCS (Redis / Memcached) · in Subnet, VPC · engine: redis / memcached
+- `huawei:obs` OBS bucket · in Region
+- `huawei:sfs` Scalable File Service · in VPC, Subnet · type: SFS / SFS Turbo
+- `huawei:evs` EVS disk · in Availability Zone, Subnet
+- `huawei:smn` SMN topic · in Region
+- `huawei:dms` DMS (Kafka / RabbitMQ / RocketMQ) · in VPC, Subnet · engine: kafka / rabbitmq / rocketmq
+- `huawei:iam` IAM
+- `huawei:kms` KMS (Data Encryption Workshop) · in Region
+- `huawei:ces` Cloud Eye · in Region
+- `huawei:lts` Log Tank Service · in Region
+- `huawei:swr` SWR registry · in Region
+- `huawei:enterpriseproject` Enterprise project · zone
+- `huawei:flexus` Flexus instance · also zone · in Subnet · flavor; os
+- `huawei:bms` Bare Metal Server · also zone · in Subnet · flavor; os
+- `huawei:as` Auto Scaling group · also zone · in Subnet, VPC · min; max
+- `huawei:gpu` GPU Accelerated Cloud Server · in Subnet · flavor
+- `huawei:cae` Cloud Application Engine · in Region, VPC
+- `huawei:servicestage` ServiceStage · in Region, VPC
+- `huawei:cse` Cloud Service Engine · in VPC, Subnet
+- `huawei:eip` Elastic IP · in VPC, Region · bandwidth
+- `huawei:vpcep` VPC Endpoint · in VPC, Subnet
+- `huawei:cloudconnect` Cloud Connect · in Region
+- `huawei:ga` Global Accelerator · in Region
+- `huawei:aad` Anti-DDoS · in Region
+- `huawei:cfw` Cloud Firewall · in Region, VPC
+- `huawei:hss` Host Security Service · in Region
+- `huawei:cbh` Cloud Bastion Host · in Subnet, VPC
+- `huawei:dbss` Database Security Service · in Subnet, VPC
+- `huawei:ccm` Cloud Certificate Manager · in Region
+- `huawei:secmaster` SecMaster · in Region
+- `huawei:taurusdb` TaurusDB · in Subnet, VPC · flavor
+- `huawei:geminidb` GeminiDB · in Subnet, VPC · api: redis / cassandra / mongodb / influx
+- `huawei:dds` Document Database Service · in Subnet, VPC
+- `huawei:ddm` Distributed Database Middleware · in Subnet, VPC
+- `huawei:drs` Data Replication Service · in Region, VPC, Subnet
+- `huawei:dws` Data Warehouse Service · in Subnet, VPC
+- `huawei:mrs` MapReduce Service · in Subnet, VPC
+- `huawei:dli` Data Lake Insight · in Region
+- `huawei:css` Cloud Search Service · in Subnet, VPC
+- `huawei:dataarts` DataArts Studio · in Region
+- `huawei:dis` Data Ingestion Service · in Region
+- `huawei:roma` ROMA Connect · in Region, VPC
+- `huawei:cbr` Cloud Backup and Recovery · in Region
+- `huawei:aom` Application Operations Management · in Region
+- `huawei:cts` Cloud Trace Service · in Region
+- `huawei:codearts` CodeArts Pipeline · in Region
+- `huawei:modelarts` ModelArts / MaaS · in Region
+
+Lines: `huawei:event` Event or message, `huawei:peering` VPC peering, `huawei:iam` Permission (IAM); without a kind a line is traffic.

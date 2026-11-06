@@ -1,0 +1,83 @@
+# gcp (Google Cloud)
+
+Each line: kind and name; `zone` or `also zone` (else a box); in = where it usually sits; props. How to use them: views/map.md.
+
+- `gcp:org` Organization · zone
+- `gcp:folder` Folder · zone · in Organization, Folder
+- `gcp:project` Project · zone · in Organization, Folder, Shared VPC host project, VPC Service Controls perimeter
+- `gcp:vpc` VPC network · zone · in Project
+- `gcp:region` Region · zone · in Project, VPC network
+- `gcp:zone` Zone · zone · in Region
+- `gcp:subnet` Subnet · zone · in VPC network, Region · cidr
+- `gcp:firewall` Firewall rule · zone (rules look through it) · in VPC network, Subnet · rules
+- `gcp:gce` Compute Engine VM · also zone · in Subnet, Zone · type; os
+- `gcp:gke` GKE cluster · also zone · in VPC network, Region, Subnet · mode: autopilot / standard
+- `gcp:cloudrun` Cloud Run · in Region, Project, Subnet, VPC network · cpu; memory
+- `gcp:functions` Cloud Functions · in Region, Project, Subnet, VPC network · runtime
+- `gcp:loadbalancer` Load balancer · in Project, VPC network, Region · scheme: external / internal
+- `gcp:psc` Private Service Connect endpoint · in Subnet, VPC network
+- `gcp:iap` Identity-Aware Proxy · in Project
+- `gcp:apigee` Apigee · in Project, Region
+- `gcp:armor` Cloud Armor · in Project, Region
+- `gcp:cdn` Cloud CDN · in Project
+- `gcp:dns` Cloud DNS · in Project
+- `gcp:nat` Cloud NAT · in Region, VPC network
+- `gcp:vpn` Cloud VPN · in Region, VPC network
+- `gcp:interconnect` Cloud Interconnect · in Region, Project
+- `gcp:cloudsql` Cloud SQL · in Region, VPC network, Project, Subnet · engine: postgres / mysql / sqlserver; tier; ha: yes / no
+- `gcp:spanner` Spanner · in Region, Project
+- `gcp:firestore` Firestore · in Region, Project
+- `gcp:memorystore` Memorystore · in VPC network, Region, Subnet, Project · engine: redis / valkey / memcached; size
+- `gcp:alloydb` AlloyDB · in VPC network, Region, Subnet
+- `gcp:filestore` Filestore · in VPC network, Region, Zone
+- `gcp:bigquery` BigQuery · in Region, Project
+- `gcp:gcs` Cloud Storage bucket · in Region, Project · class: standard / nearline / coldline / archive
+- `gcp:pubsub` Pub/Sub topic · in Project, Region
+- `gcp:dataflow` Dataflow · in Region, Project
+- `gcp:composer` Managed Airflow (Composer) · in Region, Project
+- `gcp:scheduler` Cloud Scheduler · in Region, Project · schedule
+- `gcp:cloudtasks` Cloud Tasks · in Region, Project
+- `gcp:cloudbuild` Cloud Build · in Region, Project
+- `gcp:secretmanager` Secret Manager · in Project
+- `gcp:kms` Cloud KMS · in Region, Project
+- `gcp:iam` Service account · in Project
+- `gcp:logging` Cloud Logging · in Project
+- `gcp:monitoring` Cloud Monitoring · in Project
+- `gcp:artifactregistry` Artifact Registry · in Region, Project
+- `gcp:vertexai` Vertex AI / Agent Platform · in Region, Project
+- `gcp:sharedvpc` Shared VPC host project · zone · in Organization, Folder
+- `gcp:perimeter` VPC Service Controls perimeter · zone (rules look through it) · in Organization, Folder
+- `gcp:mig` Managed instance group · also zone · in Subnet, Zone, Region · min; max; type
+- `gcp:disk` Persistent Disk / Hyperdisk · in Zone, Region, Subnet · size; type
+- `gcp:appengine` App Engine · in Region, Project
+- `gcp:batch` Batch · in Region, Project, Subnet
+- `gcp:vmwareengine` VMware Engine · also zone · in Region, VPC network, Project
+- `gcp:apigateway` API Gateway · in Region, Project
+- `gcp:eventarc` Eventarc trigger · in Region, Project
+- `gcp:workflows` Workflows · in Region, Project
+- `gcp:clouddeploy` Cloud Deploy · in Region, Project
+- `gcp:sourcemanager` Secure Source Manager · in Region, Project
+- `gcp:router` Cloud Router · in Region, VPC network
+- `gcp:ncc` Network Connectivity Center · in Project, Organization
+- `gcp:ngfw` Cloud NGFW policy · in VPC network, Project, Organization, Folder
+- `gcp:ids` Cloud IDS · in VPC network, Region
+- `gcp:swp` Secure Web Proxy · in VPC network, Region, Subnet
+- `gcp:servicemesh` Cloud Service Mesh · in Project, VPC network
+- `gcp:bigtable` Bigtable · in Region, Project, Zone · nodes
+- `gcp:datastream` Datastream · in Region, Project
+- `gcp:dms` Database Migration Service · in Region, Project
+- `gcp:kafka` Managed Service for Apache Kafka · in Region, VPC network, Subnet
+- `gcp:dataproc` Managed Service for Apache Spark (Dataproc) · in Region, Subnet, Project
+- `gcp:datafusion` Cloud Data Fusion · in Region, Project
+- `gcp:dataform` Dataform · in Region, Project
+- `gcp:looker` Looker · in Region, Project
+- `gcp:netappvolumes` NetApp Volumes · in Region, VPC network
+- `gcp:backupdr` Backup and DR · in Region, Project
+- `gcp:certificatemanager` Certificate Manager · in Project, Region
+- `gcp:identityplatform` Identity Platform · in Project
+- `gcp:managedad` Managed Microsoft AD · in VPC network, Project
+- `gcp:scc` Security Command Center · in Organization, Project
+- `gcp:trace` Cloud Trace · in Project
+- `gcp:documentai` Document AI · in Region, Project
+
+Lines: `gcp:event` Event or message, `gcp:peering` VPC peering, `gcp:iam` Permission (IAM), `gcp:replication` Replication; without a kind a line is traffic.

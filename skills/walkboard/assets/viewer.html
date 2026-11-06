@@ -1820,13 +1820,17 @@ function profileMarks(map, v) {
     const w = PROF.kindWarning(e.dataset.kind, around(e));
     if (!w) continue;
     // Another platform's zone around it: that is what is wrong, not the kind of zone ("a GCE VM in an AWS subnet").
-    // Two words on the sign; what it means in one line on hover or click.
-    // In another platform's zone, the sign names the platform it is of ("Google Cloud" on a VM in an AWS subnet).
-    const sign = el("span", "g-warn kwarn", w.cross ? w.platform : t("kindWarn"));
-    sign.title = w.cross ? t("kindWarnCloudTip", w.kind, w.platform, w.cross) : t("kindWarnTip", w.kind, w.usual.join(", "));
+    // A small amber sign by its name, not an error: drawing quickly is fine. Pointed at (or clicked) it says what is off:
+    // in another platform's zone, the platform it is of ("Google Cloud" on a VM in an AWS subnet).
+    const sign = el("span", "kwarn");
+    sign.append(svgIcon("warn"));
+    sign.dataset.head = w.cross ? w.platform : t("kindWarn");
+    sign.dataset.tip = w.cross ? t("kindWarnCloudTip", w.kind, w.platform, w.cross) : t("kindWarnTip", w.kind, w.usual.join(", "));
+    sign.setAttribute("aria-label", `${sign.dataset.head}: ${sign.dataset.tip}`);
     sign.tabIndex = 0;
     sign.setAttribute("role", "button");
-    (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(sign);
+    // On the line that says its kind (the warning is about the kind), else by its name.
+    (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e.querySelector(":scope > .kindline") || e.querySelector(":scope > .nhead .name") || e).append(sign);
   }
   for (const l of v.links || []) {
     const k = PROF.lineKindOf(l.kind);
@@ -2519,14 +2523,34 @@ let sketching = null, sketchTool = "select", sketchSel = null, boxDragging = fal
 // pastePt: where the pointer last was over the picture (⌘V puts it there).
 let clipboard = null, pastePt = null;
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o?.[k] != null && o[k] !== "").map((k) => [k, o[k]]));
-// A warning sign opens what it means beside it: a tooltip may never show, and the words on the sign are cut short.
-const openWarn = (sign) => popover(0, 0, [el("div", "dphead", sign.textContent), el("div", "dwarntext", sign.title), el("div", "dhint", t("kindWarnOk"))], {beside: sign.getBoundingClientRect()});
+// A warning sign says what it means beside it while pointed at; a click (or Enter) keeps it open. It never takes the
+// place of a card being filled in.
+let warnPop = null, warnTimer = 0;
+const openWarn = (sign, pinned) => {
+  const open = document.querySelector(".dpop");
+  if (open && open !== warnPop) return;
+  if (warnPop?.isConnected && warnPop.sign === sign) return void (warnPop.pinned ||= pinned);
+  warnPop = popover(0, 0, [el("div", "dphead", sign.dataset.head), el("div", "dwarntext", sign.dataset.tip), el("div", "dhint", t("kindWarnOk"))], {beside: sign.getBoundingClientRect()});
+  warnPop.classList.add("dwarnpop");
+  Object.assign(warnPop, {sign, pinned});
+};
+addEventListener("pointerover", (e) => {
+  const sign = e.target.closest?.(".kwarn");
+  if (!sign) return;
+  clearTimeout(warnTimer);
+  warnTimer = setTimeout(() => openWarn(sign, false), 150);
+});
+addEventListener("pointerout", (e) => {
+  if (!e.target.closest?.(".kwarn")) return;
+  clearTimeout(warnTimer);
+  warnTimer = setTimeout(() => warnPop?.isConnected && !warnPop.pinned && warnPop.close("away"), 150);
+});
 for (const type of ["pointerdown", "click", "keydown"]) addEventListener(type, (e) => {
   const sign = e.target.closest?.(".kwarn");
   if (!sign || (type === "keydown" && e.key !== "Enter" && e.key !== " ") || (type === "pointerdown" && e.button !== 0)) return;
   e.preventDefault();
   e.stopPropagation();
-  if (type !== "click") openWarn(sign);
+  if (type !== "click") openWarn(sign, true);
 }, true);
 const flash = (e) => {
   if (!e) return;
@@ -2558,6 +2582,7 @@ const ICON_PATHS = {
   // Laid out by the page: boxes in a row that flows on; placed by hand: a pin.
   autolayout: ["M3 4h7v6H3z", "M14 4h7v6h-7z", "M3 14h7v6H3z", "M14 17h6", "M17.5 14.5 20 17l-2.5 2.5"],
   pin: ["M9 3h6", "M10 3v5.5L7 13h10l-3-4.5V3", "M12 13v8"],
+  warn: ["M12 4 2.8 19.5h18.4z", "M12 10v4.2", "M12 17h.01"],
 };
 function svgIcon(name) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

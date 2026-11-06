@@ -348,8 +348,6 @@ button.danger{background:var(--warn-bd);color:#fff;border-color:var(--warn-bd)}
 .ldraft span{font-weight:700}
 .dtools .dsend:disabled{opacity:.4;cursor:default}
 .map.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
-/* Room for the frame: the picture's scroll box would cut its sides off. */
-.scroll:has(>.map.sketch){padding:10px}
 /* Where the box or zone tool would put it; nowhere: the cursor says so. */
 /* What a click would land in, and what a drag would drop into: the same on every picture. */
 .map .zone.dhover,.lane.dhover,.er .erframe.dhover{outline:2px dashed var(--you-bd);outline-offset:2px;background:color-mix(in srgb,var(--you-bg) 45%,var(--card))}
@@ -607,8 +605,9 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .elabel.dr-change{border:1px dashed #14a3b8}
 .elabel.dr-remove{text-decoration:line-through;opacity:.6}
 .flowview.sketch,.graph.sketch,.k8s.sketch{outline:2px solid var(--you-bd);outline-offset:6px;border-radius:12px}
-/* Room for the frame: a scroll box would cut its sides off. */
-.scroll:has(>.sketch){padding:10px}
+/* Room for the frame (a scroll box would cut its sides off), taken from around the scroll box rather than from the
+   picture: the picture stays exactly where it was when draft mode opens or closes. */
+.scroll:has(>.sketch){padding:10px;margin:-10px -10px 4px}
 /* Where the box or table tool would put it. */
 .sketch[data-tool="box"],.sketch[data-tool="box"] *,.sketch[data-tool="lane"],.sketch[data-tool="lane"] *{cursor:crosshair}
 .graph.sketch[data-tool="box"] [data-anchor],.graph.sketch[data-tool="box"] [data-anchor] *,.k8s.sketch[data-tool="box"] [data-anchor]:not([data-anchor="#namespace"]),.k8s.sketch[data-tool="box"] [data-anchor]:not([data-anchor="#namespace"]) *{cursor:not-allowed}

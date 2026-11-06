@@ -54,9 +54,10 @@ const colName = (x) => text(x, 60) && !x.includes(".");
 const colRef = (x) => typeof x === "string" && /^[^.\s]+\.[^.\s]+$/.test(x) && x.length <= 120 && !x.split(".").some((k) => BAD_KEYS.has(k));
 const SHAPES = {
   // kind: what it is on a platform ("aws:rds", lib/profiles.mjs; "" = none, drawn freely), props: that kind's fields.
-  addNode: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), zone: label, at, kind: kindName, props: propsOk},
+  addNode: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), zone: label, at, kind: kindName, props: propsOk, copyOf: (x) => x == null || label(x)},
   // zone: how the draft and the layout know it (its id); label: the name shown, when it is not that (a name in use).
-  addZone: {zone: label, label: (x) => x == null || label(x), parent: (x) => x === "" || label(x), at, icon: (x) => optText(x, 60), note: (x) => optText(x, 120), kind: kindName, props: propsOk},
+  // copyOf (on what can be added): what it was copied from, so the agent can set it up the same way.
+  addZone: {zone: label, label: (x) => x == null || label(x), parent: (x) => x === "" || label(x), at, icon: (x) => optText(x, 60), note: (x) => optText(x, 120), kind: kindName, props: propsOk, copyOf: (x) => x == null || label(x)},
   // replaces: the line it was before an end was dragged to another box (a removeLink of that line goes with it).
   addLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName, replaces: (x) => isObj(x) && id(x.from) && id(x.to) && Object.keys(x).length === 2},
   editLink: {from: id, to: id, label: (x) => optText(x, 40), state: (x) => x == null || LINK_STATES.includes(x), kind: kindName},
@@ -70,7 +71,7 @@ const SHAPES = {
   removeZone: {zone: label},
   move: {node: id, to: label, from: (x) => x == null || label(x), at},
   moveZone: {zone: label, to: (x) => x === "" || label(x), from: (x) => x == null || x === "" || label(x), at},
-  addTable: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), group: (x) => x == null || label(x), at},
+  addTable: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), group: (x) => x == null || label(x), at, copyOf: (x) => x == null || label(x)},
   addColumn: {table: id, column: colName, type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x), at},
   editColumn: {table: id, column: colName, name: (x) => x == null || colName(x), type: (x) => optText(x, 40), key: (x) => optText(x, 12), ref: (x) => x == null || x === "" || colRef(x)},
   removeColumn: {table: id, column: colName},
@@ -88,7 +89,7 @@ const SHAPES = {
   // What a decision box is: a question, a step or an end ("" = drawn from its lines again).
   setShape: {node: id, shape: (x) => ["question", "step", "end", ""].includes(x)},
   // A lane is named by its title when it has one (laneTitle): its number shifts when another page adds or moves lanes.
-  addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at},
+  addBox: {node: isNewId, name: text, what: (x) => optText(x, DRAFT_MAX_NOTE), icon: (x) => optText(x, 60), lane: (x) => x == null || (Number.isInteger(x) && x >= 0 && x < 200), laneTitle: optText, at, copyOf: (x) => x == null || label(x)},
   // fromLane / fromLaneTitle: the lane it is taken from, since a box may sit in several (a plan of steps: several steps touch it).
   moveBox: {node: id, lane: (x) => Number.isInteger(x) && x >= 0 && x < 200, laneTitle: optText, fromLane: (x) => Number.isInteger(x) && x >= 0 && x < 200, fromLaneTitle: optText, at},
   addLane: {title: text, at},
@@ -99,7 +100,7 @@ const SHAPES = {
   removeEdge: {from: id, to: id},
   reverseEdge: {from: id, to: id},
 };
-const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "fromLane", "fromLaneTitle", "note", "kind", "props", "replaces"]);
+const OPTIONAL = new Set(["what", "icon", "at", "label", "state", "name", "from", "group", "type", "key", "ref", "laneTitle", "fromLane", "fromLaneTitle", "note", "kind", "props", "replaces", "copyOf"]);
 
 // Problems with a draft (an empty list: fine). Shapes only; whether a change still fits the plan is applyDraft's job.
 export function validateDraft(d) {
@@ -225,7 +226,8 @@ export function applyDraft(plan, draft, viewId) {
         else if (Object.hasOwn(nodes, op.node)) stale(op, `id ${op.node} is taken`);
         else {
           // The agent added it under a real id: the zone now holds a box of that name.
-          const same = (w.z.nodes || []).find((n) => !isNewId(n) && nameOf(n) === op.name.trim().toLowerCase());
+          // A copy has the name of the box it came from: that box (or one another copy found) is not it.
+          const same = (w.z.nodes || []).find((n) => !isNewId(n) && n !== op.copyOf && ![...alias.values()].includes(n) && nameOf(n) === op.name.trim().toLowerCase());
           if (same) {
             alias.set(op.node, same);
             done(op);
@@ -470,7 +472,7 @@ function applyTables(v, nodes, ops, result) {
     const n = r(op.node ?? op.table);
     switch (op.op) {
       case "addTable": {
-        const same = v.tables.find((tb) => !isNewId(tb.node) && String(nodes[tb.node]?.name ?? tb.node).trim().toLowerCase() === op.name.trim().toLowerCase());
+        const same = v.tables.find((tb) => !isNewId(tb.node) && tb.node !== op.copyOf && ![...alias.values()].includes(tb.node) && String(nodes[tb.node]?.name ?? tb.node).trim().toLowerCase() === op.name.trim().toLowerCase());
         if (Object.hasOwn(nodes, op.node)) stale(op, `id ${op.node} is taken`);
         else if (same) {
           alias.set(op.node, same.node);
@@ -958,6 +960,7 @@ export function describeDraft(plan, draft, viewId, profiles = null) {
     if (was) c.was = was;
     if (kindName) c.kindName = kindName;
     if (o.replaces) c.replaces = `${named(o.replaces.from)} → ${named(o.replaces.to)}`;
+    if (o.copyOf != null && o.op !== "addZone") c.copyOf = named(o.copyOf);
     if (o.op === "remove" && linesOf(o.node).length) return {...c, lines: linesOf(o.node)};
     if (o.op === "removeColumn" && copiesOf(`${o.table}.${o.column}`).length) return {...c, copies: copiesOf(`${o.table}.${o.column}`)};
     // The lane a box left is said only when it changed lanes, as the draft stands now.
@@ -981,6 +984,7 @@ export function describeDraft(plan, draft, viewId, profiles = null) {
 // " (aws:rds, engine postgres)": a kind and its fields in a change's words.
 const kindWords = (c) => (c.kind ? ` (${[c.kindName ? `${c.kindName}, ${c.kind}` : c.kind, ...Object.entries(c.props || {}).map(([k, w]) => `${k} ${w}`)].join(", ")})` : "");
 // " (was "Old name")": what an edit changes from.
+const copyWords = (c) => (c.copyOf != null ? ` (copy of ${c.op === "addZone" ? `"${c.copyOf}"` : c.copyOf})` : "");
 const wasWords = (c, k) => (c.was && k in c.was ? ` (was ${JSON.stringify(c.was[k])})` : "");
 // "lane 2 "Build"" (step build): numbers count from 1 here, from 0 in the JSON.
 const laneWords = (c) => `lane ${(c.lane ?? 0) + 1}${c.laneTitle ? ` "${c.laneTitle}"` : ""}${c.step ? ` (step ${c.step})` : ""}`;
@@ -989,8 +993,8 @@ const laneWords = (c) => `lane ${(c.lane ?? 0) + 1}${c.laneTitle ? ` "${c.laneTi
 export function draftLine(c) {
   const z = (x) => (x ? `"${x}"` : "the top");
   switch (c.op) {
-    case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${kindWords(c)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
-    case "addZone": return `+ zone ${c.label != null ? `${z(c.label)} (id ${z(c.zone)})` : z(c.zone)} in ${z(c.parent)}${kindWords(c)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
+    case "addNode": return `+ box ${c.name} (${c.node}) in ${z(c.zone)}${copyWords(c)}${kindWords(c)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
+    case "addZone": return `+ zone ${c.label != null ? `${z(c.label)} (id ${z(c.zone)})` : z(c.zone)} in ${z(c.parent)}${copyWords(c)}${kindWords(c)}${c.note ? ` (${JSON.stringify(c.note)})` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addLink": return `+ line ${c.from} → ${c.to}${c.label ? ` ${c.label}` : ""}${c.state ? ` [${c.state}]` : ""}${c.kind ? ` kind ${c.kindName ? `${c.kindName}, ${c.kind}` : c.kind}` : ""}${c.replaces ? ` (instead of ${c.replaces})` : ""}`;
     case "reverseLink": return `⇄ line ${c.from} → ${c.to} turned round: now ${c.to} → ${c.from}`;
     case "editLink": return `~ line ${c.from} → ${c.to}${c.label != null ? ` label ${JSON.stringify(c.label)}${wasWords(c, "label")}` : ""}${c.state ? ` [${c.state}]${wasWords(c, "state")}` : ""}${c.kind != null ? ` kind ${JSON.stringify(c.kind)}${c.kindName ? ` ${c.kindName}` : ""}${wasWords(c, "kind")}` : ""}`;
@@ -1001,7 +1005,7 @@ export function draftLine(c) {
     case "removeZone": return `− zone ${z(c.zone)}`;
     case "move": return `↦ box ${c.node} → ${z(c.to)}`;
     case "moveZone": return `↦ zone ${z(c.zone)} → ${z(c.to)}`;
-    case "addTable": return `+ table ${c.name} (${c.node})${c.group ? ` in group "${c.group}"` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
+    case "addTable": return `+ table ${c.name} (${c.node})${c.group ? ` in group "${c.group}"` : ""}${copyWords(c)}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "addColumn": return `+ column ${c.table}: ${c.column}${c.type ? ` ${c.type}` : ""}${c.key ? ` [${c.key}]` : ""}`;
     case "editColumn": return `~ column ${c.table}: ${c.column} ${["name", "type", "key", "ref"].filter((k) => c[k] != null).map((k) => (k === "ref" ? (c.ref ? `→ ${c.ref} (foreign key)` : "foreign key taken out") : `${k} ${JSON.stringify(c[k])}`)).join(", ")}`;
     case "removeColumn": return `− column ${c.table}: ${c.column}${c.copies?.length ? ` (copies kept in ${c.copies.join(", ")})` : ""}`;
@@ -1014,7 +1018,7 @@ export function draftLine(c) {
     case "setShape": return `~ ${c.node}: ${c.shape ? `a ${c.shape === "end" ? "way it ends" : c.shape}` : "shape from its lines"}`;
     case "editRelation": return `~ line ${c.from} → ${c.to}: ${c.kind}`;
     case "removeRelation": return `− line ${c.from} → ${c.to}`;
-    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
+    case "addBox": return `+ box ${c.name} (${c.node})${c.lane != null ? ` in ${laneWords(c)}` : ""}${copyWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}${c.what ? `: ${JSON.stringify(c.what)}` : ""}${c.icon ? ` icon "${c.icon}"` : ""}`;
     case "moveBox": return `↦ box ${c.node} → ${laneWords(c)}${c.at != null ? `, place ${c.at + 1}` : ""}${c.fromLaneTitle != null ? `, out of "${c.fromLaneTitle}"${c.fromStep ? ` (step ${c.fromStep})` : ""}` : ""}`;
     case "addLane": return `+ lane "${c.title}"${c.at != null ? ` at place ${c.at + 1}` : ""}`;
     case "editLane": return `~ ${laneWords(c)} → "${c.title}"`;

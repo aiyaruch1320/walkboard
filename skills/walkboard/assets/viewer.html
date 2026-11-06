@@ -2510,6 +2510,16 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
 }
 // ---------- sketching: draft mode on a picture. Tools, not text: an icon for each, the words in the tooltip.
 let sketching = null, sketchTool = "select", sketchSel = null, boxDragging = false, drawingDiff = false;
+// What draft mode copied (⌘C), kept while the page is open: a snapshot, so a paste works after the original is gone.
+// pastePt: where the pointer last was over the picture (⌘V puts it there).
+let clipboard = null, pastePt = null;
+const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o?.[k] != null && o[k] !== "").map((k) => [k, o[k]]));
+const flash = (e) => {
+  if (!e) return;
+  e.classList.remove("dflash");
+  void e.offsetWidth;
+  e.classList.add("dflash");
+};
 // Drafts are drawn on screen, on a picture's own tab: not on paper, not inside before / after.
 const draftShown = () => !printState && !drawingDiff;
 // The picture being sketched hands the side panel and the keyboard what they need (set by renderMap).
@@ -3195,6 +3205,21 @@ addEventListener("keydown", (e) => {
     else if (side) closeSide();
     else leaveSketch();
   } else return;
+  e.preventDefault();
+  e.stopPropagation();
+}, true);
+
+// Copy, paste and duplicate in draft mode: ⌘C, ⌘V, ⌘D (Ctrl on other systems) on the selected (or focused) box or zone.
+// Typing in a field, a card open or text selected: the browser's own copy and paste.
+addEventListener("keydown", (e) => {
+  if (!sketching || !sketchApi?.copy || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+  const a = document.activeElement, k = e.key.toLowerCase();
+  if (!["c", "v", "d"].includes(k) || /^(TEXTAREA|INPUT|SELECT)$/.test(a?.tagName) || a?.isContentEditable || document.querySelector(".dpop, .dedit")) return;
+  if (k === "c" && String(getSelection?.() || "").trim()) return;
+  const focused = a?.closest?.("#view [data-anchor]");
+  const target = sketchSel || (focused ? {kind: "node", id: focused.dataset.anchor} : null);
+  const ok = k === "c" ? !!target && sketchApi.copy(target) : k === "v" ? sketchApi.paste(false) : !!target && sketchApi.copy(target) && sketchApi.paste(true);
+  if (!ok) return;
   e.preventDefault();
   e.stopPropagation();
 }, true);
@@ -4665,8 +4690,109 @@ function renderMap(real) {
     ({bar, refresh: refreshBar} = sketchBar(lv, tools, map, SKETCH_TOOLS, Object.fromEntries(SKETCH_TOOLS.map(([k]) => [k, t("hint_" + k)]))));
     if (sketchSel) requestAnimationFrame(() => select(sketchSel));
   }
+  // ---- copy and paste: a box, or a zone with all it holds and the lines between those. A paste is new boxes, zones and
+  // lines in the draft (copyOf: where each came from), one undo. Lines to things left behind are not copied.
+  const copyIt = (x) => {
+    const e = elOf(x);
+    if (!e) return false;
+    const nodesIn = [], zoneKeys = [];
+    const snapNode = (id) => (nodesIn.push(id), {id, ...pick(drafted.plan.nodes[id], ["name", "what", "icon", "kind", "props"])});
+    const snapZone = (z) => (zoneKeys.push(zoneKey(z)), {key: zoneKey(z), ...pick(z, ["label", "icon", "note", "kind", "props"]),
+      zones: (z.zones || []).filter((q) => q && typeof q === "object").map(snapZone), nodes: (z.nodes || []).map(snapNode)});
+    const z0 = x.kind === "zone" ? drawnZone(x.id) : null;
+    if (x.kind === "zone" && !z0) return false;
+    const item = z0 ? snapZone(z0) : snapNode(x.id), inSet = new Set(nodesIn), lay = layout();
+    const keys = [...nodesIn, ...zoneKeys.map((k) => "z:" + k)].filter((k) => lay[k]);
+    const r = e.getBoundingClientRect();
+    clipboard = {kind: "map", type: x.kind, item, home: homeOf(e), size: {w: r.width, h: r.height},
+      links: (drafted.view.links || []).filter((l) => inSet.has(l?.from) && inSet.has(l?.to)).map((l) => pick(l, ["from", "to", "label", "state", "kind"])),
+      layout: Object.fromEntries(keys.map((k) => [k, lay[k]]))};
+    flash(e);
+    return true;
+  };
+  // dup (⌘D): beside the original. Else (⌘V) into the zone under the pointer; a box needs a zone, so with none there it
+  // goes where the original was.
+  const pasteIt = (dup) => {
+    const c = clipboard;
+    if (c?.kind !== "map") return false;
+    const topOld = c.type === "zone" ? "z:" + c.item.key : c.item.id, orig = c.type === "zone" ? zoneNamed(c.item.key) : map.querySelector(`[data-anchor="${CSS.escape(c.item.id)}"]`);
+    const home = c.home ? zoneNamed(c.home) : null;
+    let target = dup ? home : pastePt ? zoneAt(...pastePt) : home;
+    if (c.type === "node" && !target) target = home || zoneEls()[0];
+    if (c.type === "node" && !target) return false;
+    const tKey = target ? target.dataset.zone : "", body = target ? target.querySelector(":scope > .zbody") : map;
+    // Its place among the others: right after the original, or where the pointer is.
+    let at;
+    if (dup && orig && body.contains(orig)) at = [...body.children].filter((k) => (c.type === "zone" ? k.matches(".zone:not(.ghost)") : k.matches("[data-anchor]"))).indexOf(orig) + 1;
+    else if (!dup && pastePt) at = indexAt(body, ...pastePt, c.type === "zone");
+    const list = ops(), out = [...list], ids = new Map();
+    const used = new Set([...Object.keys(plan.nodes), ...Object.keys(drafted.plan.nodes), ...list.filter((o) => o.op === "addNode").map((o) => o.node)]);
+    const nodeId = () => {
+      let id;
+      do id = "new:" + randomId();
+      while (used.has(id));
+      used.add(id);
+      return id;
+    };
+    // A zone keeps its name; when the name is in use it is known by its name and where it is (as a new zone is).
+    const taken = (k) => !!zoneNamed(k) || out.some((o) => o.op === "addZone" && o.zone === k);
+    const keyFor = (label, where) => {
+      if (!taken(label)) return label;
+      const base = `${label} (${where || t("topLevel")})`;
+      let k = base;
+      for (let n = 2; taken(k); n++) k = `${base} ${n}`;
+      return k;
+    };
+    const addN = (n, zone, i) => {
+      const id = nodeId();
+      ids.set(n.id, id);
+      out.push({id: nextId(out), op: "addNode", node: id, name: n.name, ...pick(n, ["what", "icon", "kind", "props"]), zone, ...(i != null ? {at: i} : {}), copyOf: n.id});
+    };
+    const addZ = (z, parent, where, i) => {
+      const k = keyFor(z.label, where);
+      ids.set("z:" + z.key, "z:" + k);
+      out.push({id: nextId(out), op: "addZone", zone: k, ...(k !== z.label ? {label: z.label} : {}), parent, ...(i != null ? {at: i} : {}), ...pick(z, ["icon", "note", "kind", "props"]), copyOf: z.key});
+      for (const q of z.zones) addZ(q, k, z.label);
+      for (const n of z.nodes) addN(n, k);
+    };
+    if (c.type === "zone") addZ(c.item, tKey, target ? zoneWords(target) : "", at);
+    else addN(c.item, tKey, at);
+    for (const l of c.links) out.push({id: nextId(out), op: "addLink", from: ids.get(l.from), to: ids.get(l.to), ...pick(l, ["label", "kind"]), ...(l.state && l.state !== "ok" ? {state: l.state} : {})});
+    if (out.length > 300) {
+      showProblem(t("pasteTooBig", out.length - list.length));
+      return true;
+    }
+    // Placed by hand: the copy sits where it was pasted (or under the original), clear of what is there, and what it
+    // holds where it was in the original.
+    let nextLayout;
+    if (fixed) {
+      const lay = {...layout()}, newKey = (k) => ids.get(k) ?? ids.get("z:" + k);
+      for (const [k, q] of Object.entries(c.layout)) if (k !== topOld && ids.get(k)) lay[ids.get(k)] = {...q, in: newKey(q.in)?.replace(/^z:/, "") ?? q.in};
+      const tmp = el("div", c.type === "zone" ? "zone dtemp" : "node dtemp"), r = orig?.getBoundingClientRect();
+      tmp.style.width = c.size.w + "px";
+      tmp.style.height = c.size.h + "px";
+      body.append(tmp);
+      const [px, py] = dup && r ? [r.left + 16, r.bottom + 28] : pastePt || (r ? [r.left + 16, r.bottom + 28] : [0, 0]);
+      pinAt(tmp, target || map, px, py);
+      const spot = relRect(tmp, target || map);
+      tmp.remove();
+      const old = c.layout[topOld] || {};
+      lay[ids.get(topOld)] = {x: spot.x, y: spot.y, ...(c.type === "zone" && Number.isFinite(old.w) ? {w: old.w, h: old.h} : {}), in: tKey};
+      nextLayout = lay;
+    }
+    sketchSel = {kind: c.type, id: ids.get(topOld).replace(/^z:/, "")};
+    setOps(out, undefined, nextLayout);
+    requestAnimationFrame(() => flash(elOf(sketchSel)));
+    return true;
+  };
+  if (isSketch) {
+    map.addEventListener("pointermove", (e) => (pastePt = [e.clientX, e.clientY]));
+    map.addEventListener("pointerleave", () => (pastePt = null));
+  }
   if (isSketch) sketchApi = {
     view: lv.id,
+    copy: copyIt,
+    paste: pasteIt,
     saved() {
       if (!bar) return;
       const count = bar.querySelector(".dcount");

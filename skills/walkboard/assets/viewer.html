@@ -1820,8 +1820,9 @@ function profileMarks(map, v) {
     const w = PROF.kindWarning(e.dataset.kind, around(e));
     if (!w) continue;
     // Another platform's zone around it: that is what is wrong, not the kind of zone ("a GCE VM in an AWS subnet").
-    const sign = el("span", "g-warn kwarn", w.cross ? t("kindWarnCloud", w.cross, w.platform) : t("kindWarn", w.usual.slice(0, 2).join(", ") + (w.usual.length > 2 ? "…" : "")));
-    sign.title = w.cross ? t("kindWarnCloudTip", w.kind, w.platform, w.there) : t("kindWarnTip", w.kind, w.there, w.usual.join(", "));
+    // Two words on the sign; what it means in one line on hover or click.
+    const sign = el("span", "g-warn kwarn", t(w.cross ? "kindWarnCloud" : "kindWarn"));
+    sign.title = w.cross ? t("kindWarnCloudTip", w.kind, w.platform, w.cross) : t("kindWarnTip", w.kind, w.usual.join(", "));
     sign.tabIndex = 0;
     sign.setAttribute("role", "button");
     (e.classList.contains("zone") ? e.querySelector(":scope > .zhead") : e).append(sign);
@@ -2518,7 +2519,7 @@ let sketching = null, sketchTool = "select", sketchSel = null, boxDragging = fal
 let clipboard = null, pastePt = null;
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => o?.[k] != null && o[k] !== "").map((k) => [k, o[k]]));
 // A warning sign opens what it means beside it: a tooltip may never show, and the words on the sign are cut short.
-const openWarn = (sign) => popover(0, 0, [el("div", "dphead", t("kindWarnHead")), el("div", "dwarntext", sign.title)], {beside: sign.getBoundingClientRect()});
+const openWarn = (sign) => popover(0, 0, [el("div", "dphead", sign.textContent), el("div", "dwarntext", sign.title), el("div", "dhint", t("kindWarnOk"))], {beside: sign.getBoundingClientRect()});
 for (const type of ["pointerdown", "click", "keydown"]) addEventListener(type, (e) => {
   const sign = e.target.closest?.(".kwarn");
   if (!sign || (type === "keydown" && e.key !== "Enter" && e.key !== " ") || (type === "pointerdown" && e.button !== 0)) return;

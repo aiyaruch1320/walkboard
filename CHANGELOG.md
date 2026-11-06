@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.1
 
 - **Tabs stay where they are.** A plan with a big map changed the page's width from one picture to the next, so the text above rewrapped and the tabs moved. Now the width holds for the whole plan.
 - **You can see your message is in line.** While the agent is busy, a message it has not taken says so in its chat: its place, and what the agent is on, as a link. The top bar counts them and the conversations list marks them with ⏳.

@@ -79,10 +79,16 @@ await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The 
 await post(urls.demo, "/api/feedback", {step: "manifests", kind: "teachback", text: "This step writes manifests so ArgoCD creates the CronJob suspended, with its ConfigMap and NetworkPolicy."});
 await post(urls.demo, "/api/reply", {step: "manifests", from: "agent", text: "Correct ✓ One more thing: the NetworkPolicy does not open the route to BigQuery yet; that comes in step 4."});
 
+await post(urls.draft, "/api/feedback", {kind: "review", view: "v-peering", text: "I sketched changes on this picture. Please review what they mean for the plan."});
+await post(urls.draft, "/api/reply", {from: "agent", text: "You added a read replica in VPC B and opened a path to it.\n- **RDS replica**: [[node:appa]] reaches it over the peering, so VPC B's route table needs VPC A's range, and the security group must allow 5432 from it. Neither is in the plan yet.\n- **SG allows A on :443**: this narrows the rule to one port, so App A must only call App B on 443.\nPut these in the plan?"});
+
 // The agent has read them: messages show as received, not waiting.
 const u = new URL(urls.demo), q = `?token=${u.searchParams.get("token")}`;
 const got = await (await fetch(`${u.origin}/api/poll${q}`)).json();
 await post(urls.demo, "/api/ack", {ids: got.map((i) => i.id)});
+const ud = new URL(urls.draft), qd = `?token=${ud.searchParams.get("token")}`;
+const gotDraft = await (await fetch(`${ud.origin}/api/poll${qd}`)).json();
+await post(urls.draft, "/api/ack", {ids: gotDraft.map((i) => i.id)});
 
 const page = await launch();
 // No first-visit tour over the shots.
@@ -119,6 +125,12 @@ try {
     pad: 8,
     height: 1240,
     prepare: `document.querySelector('.lsketch').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.dtools .dcount').click();`,
+  });
+  await shot(page, at(urls.draft, "view=v-peering&step=all"), "review.png", {
+    select: ["#side .side-head", "#panel"],
+    side: true,
+    pad: 0,
+    prepare: `document.getElementById('planTalk')?.click() ?? document.getElementById('talks').click(); await new Promise((r) => setTimeout(r, 300)); document.getElementById('toast').hidden = true; document.querySelector('.fresh')?.remove();`,
   });
 } finally {
   page.close();

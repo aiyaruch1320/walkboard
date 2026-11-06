@@ -12,7 +12,6 @@
 <div class="layout">
 <main>
   <div class="bar" id="bar">
-    <button id="modePill" class="modepill" hidden></button>
     <span class="brand"><svg viewBox="0 0 128 128" width="22" height="22" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#26215c"/><path d="M51 40 H71" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M84 52 C84 62 78 66 70 68" fill="none" stroke="#e4e1fb" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="1 7"/><rect x="18" y="28" width="33" height="24" rx="8" fill="#5dcaa5"/><rect x="71" y="28" width="33" height="24" rx="8" fill="#ef9f27"/><path d="M38 66 H90 a9 9 0 0 1 9 9 V92 a9 9 0 0 1 -9 9 H56 L42 111 L45 101 H38 a9 9 0 0 1 -9 -9 V75 a9 9 0 0 1 9 -9 Z" fill="#afa9ec"/><circle cx="51" cy="83.5" r="4" fill="#26215c"/><circle cx="64" cy="83.5" r="4" fill="#26215c"/><circle cx="77" cy="83.5" r="4" fill="#26215c"/></svg><b>Walkboard</b></span>
     <button id="talks" class="talksbtn" hidden></button>
     <button id="more" class="helpbtn"></button>
@@ -22,7 +21,6 @@
   <div class="top">
     <div><h1 id="title">Walkboard</h1><p class="goal" id="goal"></p></div>
   </div>
-  <div class="badges" id="badges"></div>
   <div id="banner" class="banner" hidden></div>
   <div id="problems" class="problems" hidden></div>
   <div id="toast" class="toast" hidden></div>
@@ -32,22 +30,20 @@
   <div class="stepnav">
     <div class="stepbar" id="stepbar"></div>
     <div class="controls">
-      <button id="planTalk" class="talklink"></button>
       <button id="prev"></button>
       <button id="play"></button>
       <button id="next"></button>
     </div>
   </div>
   <div id="stepcard"></div>
-  <div class="tabs" id="tabs"></div>
-  <details class="legendbox" id="legendbox"><summary id="legendSum"></summary><div class="legend" id="legend"></div></details>
+  <div class="viewbar"><div class="tabs" id="tabs"></div><div class="viewtools" id="viewTools"></div></div>
   <div id="view"></div>
   <div id="printout"></div>
   <div id="compare"></div>
   <details id="sources" class="sources" hidden></details>
   <footer class="foot"><a href="https://github.com/aiyaruch1320/walkboard" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="5.5" r="2.2"/><circle cx="6" cy="18.5" r="2.2"/><circle cx="18" cy="8" r="2.2"/><path d="M6 7.7v8.6M18 10.2c0 4-6 3-11 6.5"/></svg>github.com/aiyaruch1320/walkboard</a></footer>
 </main>
-<div id="tour" class="tour" hidden><div class="spot"></div><div class="tcard" role="dialog" aria-live="polite"><p id="tourText"></p><div class="trow"><span id="tourStep"></span><button id="tourSkip"></button><button id="tourNext" class="primary"></button></div></div></div>
+<button id="askbar" class="askbar" type="button" hidden></button>
 <div id="scrim"></div>
 <aside class="side" id="side" inert>
   <div id="sideGrip" class="side-grip" role="separator" aria-orientation="vertical" tabindex="0"></div>
@@ -263,16 +259,16 @@ function tidyGuesses(root) {
   root.prepend(el("p", "assumednote", t("assumedMany", marks.length)));
 }
 
-function renderLegend() {
-  document.getElementById("legendSum").textContent = t("legendSum");
+// What the colours and marks mean, in the card behind "?".
+function legendItems() {
   if (plan.mode === "design") {
     const marks = BASIS_KEYS.filter((k) => Object.values(plan.nodes || {}).some((n) => n?.basis === k));
-    return document.getElementById("legend").replaceChildren(...marks.map((k) => el("span", null, `${t("b_" + k)} ${t("lb_" + k)}`)), el("span", null, t("talkLegend")));
+    return [...marks.map((k) => el("span", null, `${t("b_" + k)} ${t("lb_" + k)}`)), el("span", null, t("talkLegend"))];
   }
   const items = plan.mode === "explain"
     ? [["done", t("lg_code")], ["new", t("lg_focus")], ["ext", t("lg_ext")]]
     : [["done", t("lg_done")], ["new", t("lg_new")], ["todo", t("lg_todo")], ["ext", t("lg_ext")]];
-  document.getElementById("legend").replaceChildren(...items.map(([c, label]) => {
+  return [...items.map(([c, label]) => {
     const sp = el("span");
     sp.append(el("i", "sw " + c, (plan.mode === "explain" ? EXPLAIN_MARK : MARK)[c]), label);
     return sp;
@@ -280,7 +276,7 @@ function renderLegend() {
     const sp = el("span");
     sp.append(el("i", "sw prop-" + k), t("lg_" + k));
     return sp;
-  }), el("span", null, t("talkLegend")));
+  }), el("span", null, t("talkLegend"))];
 }
 
 let termRe = null;
@@ -457,10 +453,26 @@ function refreshThreads() {
   }
   freshReply = null;
   drawCounts();
-  const planTalk = document.getElementById("planTalk");
-  planTalk.textContent = t("talkPlan", thread.filter((m) => inCtx(m, {}) && m.kind !== "settings").length);
-  planTalk.onclick = () => openSide({kind: "plan"});
+  renderAskBar();
   renderBadges();
+}
+
+// One way in to every conversation, at the bottom of the page: it talks about what is on screen and opens the panel to type in.
+function renderAskBar() {
+  const bar = document.getElementById("askbar");
+  if (snapshot || !plan) return;
+  const opt = isDesign() ? shownOption() : null, step = curStep();
+  const c = opt ? {option: opt.id} : step ? {step: step.id} : {};
+  const n = thread.filter((m) => inCtx(m, c) && m.kind !== "settings").length;
+  const words = opt ? t("askOption", opt.title) : step ? t(plan.mode === "explain" ? "askStage" : "askStep") : t("askPlan");
+  const label = el("span", "asklabel", words);
+  bar.replaceChildren(el("span", "askicon", "💬"), label, ...(n ? [el("span", "askn", String(n))] : []));
+  bar.setAttribute("aria-label", words);
+  bar.hidden = false;
+  bar.onclick = () => {
+    openSide(opt ? {kind: "option", id: opt.id} : step ? {kind: "step", id: step.id} : {kind: "plan"});
+    requestAnimationFrame(() => document.querySelector("#panel textarea")?.focus());
+  };
 }
 
 async function send(c, kind, text, extra = {}) {
@@ -640,7 +652,6 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
 }
 
 async function saveSetting(change) {
-  document.querySelectorAll(".settings button").forEach((b) => (b.disabled = true));
   try {
     const r = await fetch("/api/settings?token=" + encodeURIComponent(token), {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(change)});
     if (!r.ok) throw new Error(await r.text());
@@ -743,54 +754,17 @@ function renderBadges() {
   const busy = working().some((m) => !quiet(m) && !thread.some((r) => r.from === "agent" && r.at > m.at)), building = !!plan && steps().some((x) => x.status === "doing");
   // A snapshot says when it was exported instead (set once in load).
   if (!snapshot) {
-    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle");
+    const inLineN = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
+    // A dot while all is well; words when something is off or waiting.
+    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle") + (connected && !inLineN ? " dot" : "");
     const inLine = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
-    conn.textContent = (!connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle")) + (inLine ? ` · ⏳ ${inLine}` : "");
+    const connWords = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
+    conn.textContent = !connected ? connWords : inLine ? `⏳ ${inLine}` : "";
     conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "");
-    conn.setAttribute("aria-label", conn.textContent + ". " + conn.title);
+    conn.setAttribute("aria-label", connWords + ". " + conn.title);
   }
   if (!plan) return;
   updateTitle();
-  const s = plan.settings || {};
-  const explain = plan.mode === "explain";
-  // The mode is always in sight, next to the logo.
-  const mode = MODES_SHOWN.includes(plan.mode) ? plan.mode : "build";
-  const pill = document.getElementById("modePill");
-  pill.hidden = false;
-  pill.className = "modepill " + mode;
-  pill.textContent = t("pill_" + mode);
-  pill.title = t("pillTip_" + mode);
-  const items = [];
-  if (plan.mode === "design") {
-    document.getElementById("badges").replaceChildren(...items);
-    return renderBar();
-  }
-  // One small box per setting; what the current value means is in its tooltip.
-  const box = el("div", "settings");
-  box.append(el("span", "slabel", t("agentSettings")));
-  const card = (name, control, fx) => {
-    const c = el("span", "setting");
-    c.title = fx;
-    c.append(el("span", "sname", name), control);
-    box.append(c);
-  };
-  if (!explain) {
-    const opts = el("span", "opts");
-    opts.setAttribute("role", "group");
-    opts.setAttribute("aria-label", t("commits"));
-    for (const [v, label] of [["auto", t("commitAuto")], ["suggest", t("commitOnly")]]) {
-      const b = el("button", null, label);
-      b.setAttribute("aria-pressed", String(s.commit === v));
-      b.onclick = () => s.commit !== v && saveSetting({commit: v});
-      opts.append(b);
-    }
-    const seg = el("span", "seg");
-    seg.append(opts);
-    card(t("commits"), seg, s.commit === "auto" ? t("commitAutoFx") : t("commitOnlyFx"));
-  }
-  for (const b of box.querySelectorAll("button")) b.disabled = !connected;
-  if (!explain) items.push(plan.approved ? el("span", "ok", t("approved")) : el("span", "wait", t("awaiting")), box);
-  document.getElementById("badges").replaceChildren(...items);
   renderBar();
 }
 
@@ -808,13 +782,18 @@ function renderBar() {
       const i = list.indexOf(a) + 1, review = a && a.status !== "doing" && !answered(a);
       const more = list.filter((s) => yourTurn(s) && !answered(s)).length - (review ? 1 : 0);
       const b = el("button", "progress " + (all ? "done" : review ? "review" : "doing"),
-        all ? t("progDone", list.length) : t(review ? "progReview" : "progDoing", i, list.length, a.title) + (more > 0 ? ` (+${more})` : ""));
+        all ? t("progDone", list.length) : t(review ? "progReview" : "progDoing", i, list.length) + (more > 0 ? ` (+${more})` : ""));
       if (a) b.onclick = () => {
         selectStep(a.id);
         if (review) openSide({kind: "step", id: a.id});
       };
       extra.push(b);
       if (review && yourTurn(a) === "turnNext" && connected) extra.push(nextButtons(a));
+      if (review && yourTurn(a) === "turnCommit") {
+        const c = el("button", "primary", t("checkCommit"));
+        c.onclick = b.onclick;
+        extra.push(c);
+      }
     }
   }
   renderTalksBtn();
@@ -960,70 +939,22 @@ function renderStepCard() {
   const card = document.getElementById("stepcard");
   if (isDesign()) return renderOptionCard();
   const step = curStep();
-  const talk = (ctx, label, n) => {
-    const b = el("button", "talklink", label);
-    b.onclick = () => openSide(ctx);
-    return b;
-  };
   if (!step) {
-    const approve = (plan.mode ?? "build") === "build" && !plan.approved;
-    const waitingStep = steps().find((s) => yourTurn(s));
-    if (!approve && waitingStep) {
-      const c = el("div", "stepcard review");
-      const b = el("button", "turnbtn", `👉 ${unit(true)} ${steps().indexOf(waitingStep) + 1}: ${waitingStep.title} · ${t(yourTurn(waitingStep), unit())}`);
-      b.onclick = () => {
-        selectStep(waitingStep.id);
-        openSide({kind: "step", id: waitingStep.id});
-      };
-      c.append(b);
-      card.replaceChildren(c);
-      return refreshThreads();
-    }
-    if (!approve) {
-      card.replaceChildren();
-      return refreshThreads();
-    }
-    const c = el("div", "stepcard review");
-    const b = el("button", "turnbtn", "👉 " + t("turnApprove"));
-    b.onclick = () => openSide({kind: "plan"});
-    c.append(b);
-    card.replaceChildren(c);
+    card.replaceChildren();
     return refreshThreads();
   }
-  const explain = plan.mode === "explain";
-  const turn = yourTurn(step);
-  const c = el("div", "stepcard " + (turn ? "review" : ""));
-  const h = el("h3", null, `${unit(true)} ${steps().indexOf(step) + 1}: ${step.title}`);
-  // Before approval every step is only proposed: no status to show yet.
-  const st = !explain && (plan.approved || (plan.mode ?? "build") !== "build") && (turn ? "review" : step.status === "done" ? "done" : step.status === "doing" ? "doing" : step.status ? "todo" : null);
-  if (st) h.append(el("span", "sbadge " + st, (st === "done" ? "✓ " : "") + t("sb_" + st)));
-  c.append(h);
-  if (st === "doing") {
-    const line = el("div", "implementing");
-    const dots = el("span", "dots");
-    dots.append(el("i"), el("i"), el("i"));
-    line.append(dots, t("implementing"));
-    c.append(line);
-  }
+  const c = el("div", "stepcard");
   if (step.detail) c.append(richEl("p", "detail", step.detail));
-  if (step.done) c.append(richEl("p", "donewhen", (explain ? t("understoodWhen") : t("doneWhen")) + step.done));
-  if (turn) {
-    const b = el("button", "turnbtn", answered(step) ? "✓ " + t("sentWait") : "👉 " + t(turn, unit()));
-    b.onclick = () => openSide({kind: "step", id: step.id});
-    c.append(b);
-  } else {
-    const n = thread.filter((m) => inCtx(m, {step: step.id}) && m.kind !== "settings").length;
-    c.append(talk({kind: "step", id: step.id}, t("talkStep", n, unit())));
-    if (stepMoves(step).length) {
-      const again = el("button", "talklink mv-again", "↻ " + t("replayStep"));
-      again.onclick = () => {
-        stop();
-        startStory();
-      };
-      c.append(again);
-    }
+  if (step.done) c.append(richEl("p", "donewhen", t(plan.mode === "explain" ? "understoodWhen" : "doneWhen") + step.done));
+  if (stepMoves(step).length) {
+    const again = el("button", "talklink mv-again", "↻ " + t("replayStep"));
+    again.onclick = () => {
+      stop();
+      startStory();
+    };
+    c.append(again);
   }
-  card.replaceChildren(c);
+  card.replaceChildren(...(c.childElementCount ? [c] : []));
   refreshThreads();
 }
 
@@ -1219,10 +1150,7 @@ function renderOptionCard() {
     const acts = el("div", "acts");
     const go = el("button", "primary", t("choose"));
     go.onclick = () => openSide({kind: "decide", id: o.id});
-    const ask = el("button", "talklink", "💬 " + t("askOption", o.title).replace(/…$/, ""));
-    ask.style.marginTop = "0";
-    ask.onclick = () => openSide({kind: "option", id: o.id});
-    acts.append(go, ask);
+    acts.append(go);
     c.append(acts);
   }
   card.replaceChildren(c);
@@ -1914,26 +1842,28 @@ function anchored(id, elx = nodeBox(id)) {
   return elx;
 }
 
-function linkLegend(states, uses) {
-  const lg = el("div", "linklegend");
-  if (uses) lg.append(el("span", null, t("usesLegend")));
-  lg.append(el("span", null, t("viaLegend")));
+// The picture on screen says what its "?" card explains. On paper there is no card: the lines' key stays on the page.
+let pictureHelp = null;
+function lineWords(states, uses) {
+  const out = [];
+  if (uses) out.push(el("span", null, t("usesLegend")));
+  out.push(el("span", null, t("viaLegend")));
   const color = {ok: "var(--done-bd)", todo: "var(--new-bd)", blocked: "var(--warn-bd)", standby: "var(--ext-bd)"};
   for (const st of states) {
     const sp = el("span", null, (st === "ok" ? "━ " : "╍ ") + t("lk_" + st));
     sp.style.color = color[st];
-    lg.append(sp);
+    out.push(sp);
   }
-  // How to read a line, for whoever has not read these pictures before.
-  const help = el("button", "lhelp", "?");
-  help.title = t("lineHelp");
-  help.setAttribute("aria-label", t("lineHelp"));
-  help.onclick = (e) => {
-    e.stopPropagation();
-    readHelp(help, "lines");
-  };
-  lg.append(help);
-  return lg;
+  return out;
+}
+function linkLegend(states, uses) {
+  if (printState) {
+    const lg = el("div", "linklegend");
+    lg.append(...lineWords(states, uses));
+    return lg;
+  }
+  pictureHelp = {kind: "lines", words: lineWords(states, uses)};
+  return document.createDocumentFragment();
 }
 // A line drawn as the picture draws it, short: cls as on the picture ("l-ok", "l-ok dr-add"…).
 function lineSample(cls, blocked = false) {
@@ -1950,35 +1880,25 @@ function lineSample(cls, blocked = false) {
   }
   return svg;
 }
-// A "?" over a picture that has no line legend: how to read this kind of picture.
 function readLine(kind) {
-  const lg = el("div", "linklegend rhline");
-  const help = el("button", "lhelp", "?");
-  help.title = t("readHow");
-  help.setAttribute("aria-label", t("readHow"));
-  const open = (e) => {
-    e.stopPropagation();
-    readHelp(help, kind);
-  };
-  help.onclick = open;
-  const words = el("button", "rhword", t("readHow"));
-  words.onclick = open;
-  lg.append(help, words);
-  return lg;
+  pictureHelp = {kind};
+  return document.createDocumentFragment();
 }
 // The card behind "?". kind "lines" (maps, Kubernetes): which way a line points, its label, its kinds.
 // Otherwise the picture's own kind (state, decision, impact, flow, datamodel): what its boxes and lines say.
 // Then what draft mode draws, and for pictures with lines, why a line may change its route.
 // It hangs under the button, on the page (not the window), so it scrolls with it.
 const READ_LINES = {state: ["rh_state_label", "rh_state_loop"], decision: ["rh_decision_label"], impact: ["rh_impact_click"], flow: ["rh_flow_lane", "rh_flow_order"], datamodel: ["rh_model_fk", "rh_model_keys", "rh_model_group"]};
-function readHelp(button, kind) {
+function readHelp(button, kind, words = []) {
   const row = (sample, text) => {
     const r = el("div", "lhrow");
     r.append(sample, el("span", null, text));
     return r;
   };
   const arrows = kind === "lines" || ["state", "decision", "impact"].includes(kind);
-  const parts = [el("div", "dphead", t(kind === "lines" ? "lineHelp" : "readHow"))];
+  const key = el("div", "legend");
+  key.append(...legendItems(), ...words);
+  const parts = [el("div", "dphead", t("readHow")), key];
   if (arrows) {
     const dir = el("div", "lhdir");
     dir.append(el("span", "lhbox", "A"), lineSample(kind === "lines" ? "l-ok" : "l-flow"), el("span", "lhbox", "B"), el("span", null, t(kind === "lines" ? "lh_dir" : `rh_${kind}_dir`)));
@@ -1998,7 +1918,7 @@ function readHelp(button, kind) {
     for (const x of ["question", "step", "end"]) parts.push(row(el("span", "lhshape " + GRAPH_SHAPE[x], t("shape_" + x)), t("shapeTip_" + x)));
     parts.push(el("div", "lhtext", t("rh_decision_how")));
   }
-  if (!snapshot) {
+  if (!snapshot && kind) {
     parts.push(el("div", "lhsub", t(kind === "lines" ? "lh_draft" : "rh_draft")));
     if (kind !== "lines") for (const m of ["add", "change", "remove", ...(kind === "flow" || kind === "datamodel" ? ["move"] : [])]) {
       const sign = el("span", "lhsign dr-" + m);
@@ -7989,6 +7909,19 @@ function diffPencil(v) {
   row.append(pencil);
   return row;
 }
+// The picture's own tools and its "?" sit on the tabs' row, so nothing stands between the tabs and the picture.
+function placeViewTools() {
+  const own = [...document.querySelectorAll("#view .ltools")].find((x) => !x.closest(".dhalf"));
+  const help = el("button", "lhelp", "?");
+  help.title = t("readHow");
+  help.setAttribute("aria-label", t("readHow"));
+  const about = pictureHelp;
+  help.onclick = (e) => {
+    e.stopPropagation();
+    readHelp(help, about?.kind, about?.words?.map((x) => x.cloneNode(true)));
+  };
+  document.getElementById("viewTools").replaceChildren(...(own ? [own] : []), help);
+}
 function renderView() {
   const t0 = performance.now();
   // The picture is built again after every change: the page stays where it was. The new picture may only get its
@@ -8009,6 +7942,8 @@ function renderView() {
   window.__wbRender?.push(performance.now() - t0);
 }
 function renderViewNow() {
+  pictureHelp = null;
+  document.getElementById("view").classList.remove("intro");
   document.querySelectorAll(".dtools, .dtip").forEach((e) => e.remove());
   document.querySelector(".dpop")?.remove();
   document.body.classList.remove("sketching");
@@ -8071,6 +8006,7 @@ function renderViewNow() {
   try {
     kind?.after?.();
   } catch {}
+  placeViewTools();
   if (side?.kind === "node" && nodeId && !inPlan(nodeId) && !thread.some((m) => m.node === nodeId)) closeSide();
   drawCounts();
   highlight();
@@ -8599,7 +8535,6 @@ function draw(p) {
   updateTitle();
   document.getElementById("title").textContent = plan.title || "Walkboard";
   setGlossary(plan.glossary);
-  renderLegend();
   renderProposals();
   renderConstraints();
   document.getElementById("goal").replaceChildren(rich(plan.goal || ""));
@@ -8622,7 +8557,14 @@ function draw(p) {
   refreshThreads();
   if (!rendered) {
     rendered = true;
-    if (served && !store.get("walkboard.tour")) setTimeout(startTour, 700);
+    if (served && !store.get("walkboard.seen")) {
+      store.set("walkboard.seen", "1");
+      fetch("/api/first?token=" + encodeURIComponent(token)).then((r) => r.json()).then(({first}) => {
+        if (!first) return;
+        firstLook();
+        fetch("/api/first?token=" + encodeURIComponent(token), {method: "POST"}).catch(() => {});
+      }).catch(() => {});
+    }
     // Links may open a given step, picture or box: ?step=…&view=…&node=…
     if (plan.views.some((v) => v.id === params.get("view"))) {
       viewId = params.get("view");
@@ -8844,52 +8786,43 @@ setSideW(sideW);
 setWide(isWide());
 
 
-// A three-stop tour the first time someone opens walkboard in this browser; "?" shows it again.
-function startTour() {
-  const x = plan?.mode === "explain" ? "x" : "";
-  const stops = (isDesign() ? [["#view", "tour1d"], ["#tabs", "tour2d"], ["#compare .cmp", "tour3d"]] : [["#view", "tour1" + x], ["#stepbar", "tour2" + x], ["#view [data-id]", "tour3"]])
-    .filter(([sel]) => document.querySelector(sel));
-  // Nothing drawn yet: a tour of empty bars explains nothing.
-  if (!stops.length || !document.querySelector("#view [data-id]")) return;
-  const tour = document.getElementById("tour");
-  let i = 0;
-  const end = () => {
-    tour.hidden = true;
-    scrollTo({top: 0, behavior: "smooth"});
-    store.set("walkboard.tour", "seen");
-    removeEventListener("resize", place);
-  };
-  function place() {
-    const [sel, key] = stops[i];
-    const target = document.querySelector(sel);
-    const r = target.getBoundingClientRect();
-    const pad = 6, spot = tour.querySelector(".spot"), card = tour.querySelector(".tcard");
-    const top = Math.max(8, r.top - pad), height = Math.min(r.height + pad * 2, innerHeight - top - 8);
-    Object.assign(spot.style, {left: r.left - pad + "px", top: top + "px", width: r.width + pad * 2 + "px", height: height + "px"});
-    document.getElementById("tourText").textContent = t(key);
-    document.getElementById("tourStep").textContent = t("tourStep", i + 1, stops.length);
-    document.getElementById("tourNext").textContent = t(i === stops.length - 1 ? "tourDone" : "tourNext");
-    document.getElementById("tourSkip").textContent = t("tourSkip");
-    document.getElementById("tourSkip").hidden = i === stops.length - 1;
-    const below = top + height + 12, h = card.offsetHeight || 140;
-    card.style.top = (below + h < innerHeight ? below : Math.max(8, top - h - 12)) + "px";
-    card.style.left = Math.max(16, Math.min(r.left, innerWidth - card.offsetWidth - 16)) + "px";
+// The first time anyone opens Walkboard on this computer: the picture draws itself along its arrows, then one hint says
+// what to do with it. Only opacity and a brief ring move, in one run, so even a big map stays smooth.
+function firstLook() {
+  const view = document.getElementById("view");
+  const parts = [...view.querySelectorAll("[data-id], .arrow")];
+  if (!parts.length) return;
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const gap = Math.min(90, 1500 / parts.length), total = still ? 0 : gap * parts.length;
+  if (!still) {
+    parts.forEach((x, i) => (x.style.animationDelay = Math.round(i * gap) + "ms"));
+    view.style.setProperty("--lines-at", Math.round(total * 0.6) + "ms");
+    view.classList.add("intro");
+    setTimeout(() => {
+      view.classList.remove("intro");
+      parts.forEach((x) => (x.style.animationDelay = ""));
+    }, total + 800);
   }
-  const show = () => {
-    document.querySelector(stops[i][0]).scrollIntoView({block: "nearest"});
-    requestAnimationFrame(place);
+  setTimeout(showFirstHint, total + 150);
+}
+function showFirstHint() {
+  document.querySelector(".firsthint")?.remove();
+  const box = document.querySelector("#view [data-id]");
+  if (!box || document.body.classList.contains("side-open")) return;
+  const hint = el("div", "firsthint", t("firstHint"));
+  const r = box.getBoundingClientRect();
+  hint.style.left = r.left + scrollX + 8 + "px";
+  hint.style.top = r.bottom + scrollY + 10 + "px";
+  document.body.append(hint);
+  const gone = () => {
+    hint.remove();
+    removeEventListener("pointerdown", gone, true);
+    removeEventListener("keydown", gone, true);
+    removeEventListener("resize", gone);
   };
-  document.getElementById("tourNext").onclick = () => (++i < stops.length ? show() : end());
-  document.getElementById("tourSkip").onclick = end;
-  const esc = (e) => {
-    if (e.key !== "Escape") return;
-    removeEventListener("keydown", esc);
-    if (!tour.hidden) end();
-  };
-  addEventListener("keydown", esc);
-  tour.hidden = false;
-  addEventListener("resize", place);
-  show();
+  addEventListener("pointerdown", gone, true);
+  addEventListener("keydown", gone, true);
+  addEventListener("resize", gone);
 }
 
 function openHelp() {
@@ -8899,10 +8832,10 @@ function openHelp() {
     li.append(el("kbd", null, k), " " + what);
     ul.append(li);
   }
-  const again = el("button", "primary", t("replayTour"));
+  const again = el("button", "primary", t("replayIntro"));
   again.onclick = () => {
     document.getElementById("toast").hidden = true;
-    startTour();
+    firstLook();
   };
   showCard(document.getElementById("more"), "helpcard", el("b", null, t("helpTitle")), ul, ...(snapshot ? [] : [again]));
 }
@@ -9317,27 +9250,39 @@ moreBtn.onclick = (e) => {
   themes.append(seg);
   const exportIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"/></svg>';
   const helpIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1V9.6"/><circle cx="8" cy="11.6" r=".4" fill="currentColor"/></svg>';
-  showCard(moreBtn, "menucard", item(exportIcon, t("exportTitle"), openExport), themes, item(helpIcon, t("helpTitle"), openHelp));
-};
-
-// The mode pill says which mode this page is in; clicking it says, in one line, what this mode does.
-document.getElementById("modePill").onclick = (e) => {
-  e.stopPropagation();
   const cur = MODES_SHOWN.includes(plan?.mode) ? plan.mode : "build";
-  showCard(e.currentTarget, "tipcard", el("span", null, t("pillTip_" + cur)));
+  const mode = el("div", "mmode");
+  mode.append(el("b", null, t("pill_" + cur)), el("span", null, t("pillTip_" + cur)));
+  const rows = [mode];
+  if (plan && cur === "build" && !snapshot) {
+    const commits = el("div", "mthemes"), opts = el("div", "seg words");
+    commits.append(el("span", null, t("commits")));
+    for (const [v, label, fx] of [["auto", t("commitAuto"), t("commitAutoFx")], ["suggest", t("commitOnly"), t("commitOnlyFx")]]) {
+      const b = el("button", plan.settings?.commit === v ? "on" : null, label);
+      b.title = fx;
+      b.disabled = !connected;
+      b.onclick = (ev) => {
+        ev.stopPropagation();
+        if (plan.settings?.commit === v) return;
+        opts.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+        saveSetting({commit: v});
+      };
+      opts.append(b);
+    }
+    commits.append(opts);
+    rows.push(commits);
+  }
+  showCard(moreBtn, "menucard", ...rows, item(exportIcon, t("exportTitle"), openExport), themes, item(helpIcon, t("helpTitle"), openHelp));
 };
 
 document.addEventListener("keydown", (e) => {
-  if (e.metaKey || e.ctrlKey || e.altKey || /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName || "") || !document.getElementById("tour").hidden) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName || "")) return;
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     stop();
     step(e.key === "ArrowLeft" ? -1 : 1);
   }
 });
 
-const legendBox = document.getElementById("legendbox");
-legendBox.open = store.get("walkboard.legend") === "open";
-legendBox.ontoggle = () => store.set("walkboard.legend", legendBox.open ? "open" : "closed");
 renderBadges();
 load();
 </script>

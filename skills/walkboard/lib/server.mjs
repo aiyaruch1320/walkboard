@@ -1,6 +1,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
@@ -279,6 +280,14 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       // A name never changes its bytes: the page need not fetch it twice.
       res.writeHead(200, {"content-type": IMAGE_TYPES[name.split(".").pop()], "x-content-type-options": "nosniff", "cache-control": "private, max-age=86400, immutable"});
       fs.createReadStream(path.join(p.images, name)).pipe(res);
+    } else if (route === "GET /api/first" || route === "POST /api/first") {
+      // Whether anyone has opened Walkboard on this computer yet. Not the browser's storage: every plan has its own port.
+      const seen = path.join(os.homedir(), ".walkboard", ".first-look-seen");
+      if (route === "POST /api/first") {
+        fs.mkdirSync(path.dirname(seen), {recursive: true});
+        fs.writeFileSync(seen, "");
+      }
+      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({first: !fs.existsSync(seen)}));
     } else if (route === "GET /api/events") {
       res.writeHead(200, {"content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive"});
       res.write("retry: 2000\n\n");

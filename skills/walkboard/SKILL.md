@@ -17,6 +17,8 @@ Use the user's language for everything (questions, plan, replies, suggested comm
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 - **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [design.md](references/design.md), then section 3.
 
+No request at all (`/walkboard` alone): look through the repository briefly and offer 2-3 things from it, real names included (AskUserQuestion), explaining a real flow first: their own code as a picture shows what this does.
+
 If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`).
 
 `settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config.
@@ -42,7 +44,7 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 
 ## 3. Show and listen
 
-1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see, ask or propose; 👉 and a purple bar mean their turn; "⋮" holds export, theme and the tour.
+1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). The first time, add one line: click a box to see what it does and ask about it; "⋮" holds export, theme and settings.
 2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them). `[]` means the server stopped: `WB open` again. Start it again after each batch.
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.

@@ -35,7 +35,7 @@
 @font-face{font-family:"WB Thai";src:local("Thonburi"),local("Leelawadee UI"),local("Noto Sans Thai Looped"),local("Sarabun"),local("Tahoma");unicode-range:U+0E00-0E7F;font-weight:400}
 @font-face{font-family:"WB Thai";src:local("Thonburi-Bold"),local("Thonburi Bold"),local("Leelawadee UI Bold"),local("Noto Sans Thai Looped Bold"),local("Sarabun Bold"),local("Tahoma Bold");unicode-range:U+0E00-0E7F;font-weight:600 700}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "WB Thai",-apple-system,"Noto Sans Thai","Sarabun",system-ui,sans-serif}
-main{max-width:1120px;margin:0 auto;padding:20px 16px 48px}
+main{max-width:1120px;margin:0 auto;padding:20px 16px 88px}
 h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .goal{color:var(--muted);margin:2px 0 12px}
 .top{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
@@ -50,15 +50,10 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .bar button.primary{font-weight:500}
 .bar #barExtra{display:contents}
 .brand{display:inline-flex;align-items:center;gap:7px;margin-right:auto;font-size:14px;letter-spacing:.2px;order:-2}
-.modepill{order:-1;margin-right:auto;margin-left:-4px;font-size:12.5px;font-weight:600;border:1.5px solid;border-radius:999px;padding:2px 11px;cursor:pointer}
-.bar .brand{margin-right:10px}
+.bar .brand{order:-1;margin-right:auto}
 .toast.exportcard{display:grid;gap:6px;width:auto;min-width:0}
 .toast.exportcard .xrow{display:flex;gap:6px;margin-top:4px}
 .xopt{display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
-.toast.tipcard{max-width:300px;font-size:13px;padding:8px 12px}
-.modepill.build{color:var(--new-tx);background:var(--new-bg);border-color:var(--new-bd)}
-.modepill.explain{color:var(--done-tx);background:var(--done-bg);border-color:var(--done-bd)}
-.modepill.design{color:var(--you-tx);background:var(--you-bg);border-color:var(--you-bd)}
 .brand b{font-weight:600}
 .foot{display:flex;justify-content:flex-end;margin-top:28px;padding-top:12px;border-top:1px solid var(--line);font-size:12px}
 .foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
@@ -167,10 +162,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .nextbox .quiet:hover{color:var(--text);text-decoration:underline}
 .nextbox.inpanel{display:flex;flex-wrap:wrap;margin:0 0 8px}
 @media (min-width:821px){.nextbox.inpanel{display:none}}
-.turnbtn{display:flex;width:100%;align-items:center;gap:8px;margin-top:10px;text-align:left;background:var(--you-bg);color:var(--you-tx);border:1.5px solid var(--you-bd);border-radius:9px;padding:7px 12px;font-weight:500}
-.turnbtn::after{content:"→";margin-left:auto}
 .talklink{margin-top:10px;font-size:12.5px;padding:3px 10px;border-radius:999px;color:var(--muted)}
-.controls .talklink{margin:0 6px 0 0;font-size:12px;color:var(--text)}
 #stepcard:empty{display:none}
 /* Proposals: things the user wants added, changed or removed, drawn on the picture until they become a plan. */
 .propbar{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;margin:0 0 12px;padding:8px 12px;border:1.5px dashed var(--you-bd);border-radius:10px;background:color-mix(in srgb,var(--you-bg) 55%,var(--card));color:var(--you-tx);font-size:13px}
@@ -200,16 +192,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .proplist small{display:block;color:var(--muted);font-size:12px}
 .helpbtn{width:26px;height:26px;padding:0;border-radius:50%;font-weight:600;font-size:13px;display:inline-grid;place-items:center;line-height:1}
 .helpbtn svg{display:block}
-.legendbox{margin:0 0 10px;font-size:13px}
-.legendbox summary{cursor:pointer;color:var(--muted);width:max-content}
-.legendbox .legend{margin:8px 0 4px}
 .thread:empty::before{content:attr(data-empty);display:block;font-size:12.5px;color:var(--muted);line-height:1.5}
-.tour{position:fixed;inset:0;z-index:40}
-.tour .spot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 0 2px var(--you-bd);transition:all .25s ease;pointer-events:none}
-.tour .tcard{position:fixed;width:min(360px,calc(100vw - 32px));background:var(--card);color:var(--text);border:1.5px solid var(--you-bd);border-radius:12px;padding:12px 14px;box-shadow:0 12px 36px rgba(0,0,0,.35);transition:top .25s ease,left .25s ease}
-.tour .tcard p{margin:0 0 10px;font-size:14px;line-height:1.55}
-.tour .trow{display:flex;align-items:center;gap:8px}
-.tour #tourStep{font-size:12px;color:var(--muted);margin-right:auto}
 .helpcard kbd{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg)}
 .helpcard ul{list-style:none;padding:0;margin:8px 0 10px}
 .helpcard li{margin:4px 0}
@@ -219,7 +202,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .cons .cchip{border:1.5px solid var(--done-bd);background:var(--done-bg);color:var(--done-tx);border-radius:999px;padding:1px 10px;font-size:12.5px}
 .cons .cchip.assumed{border-style:dashed;border-color:var(--new-bd);background:transparent;color:var(--new-tx)}
 .stepnav.nosteps .stepbar,.stepnav.nosteps #prev,.stepnav.nosteps #play,.stepnav.nosteps #next{display:none}
-.stepnav.nosteps{justify-content:flex-end}
+.stepnav.nosteps{display:none}
 .tabs .rec{color:var(--you-tx)}
 .tabs .pct{font-size:11.5px;color:var(--muted);margin-left:6px}
 .optcard .orec{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:0 9px;margin-left:8px;background:var(--you-bd);color:var(--card);vertical-align:2px}
@@ -354,6 +337,25 @@ body.side-open .side-inner{opacity:1;transform:none}
 .ltools{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 6px}
 .ltools[hidden],.ltools [hidden]{display:none}
 .ltools .talklink{margin:0 0 0 4px}
+.viewbar{display:flex;align-items:flex-start;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;margin-bottom:10px}
+.viewbar .tabs{margin:0;flex:1 1 auto;min-width:0}
+.viewtools{display:flex;align-items:center;gap:8px;margin-left:auto;min-height:32px}
+.viewtools .ltools{margin:0}
+.viewtools .lhelp{width:26px;height:26px;font-size:13px}
+.askbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:14;display:flex;align-items:center;gap:10px;width:min(680px,calc(100vw - 32px));padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:14px;text-align:left;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.askbar:hover{border-color:var(--you-bd);color:var(--text)}
+.askbar .asklabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.askbar .askn{font-size:12px;font-weight:600;min-width:20px;padding:0 6px;text-align:center;border-radius:999px;background:var(--you-bg);color:var(--you-tx)}
+.askbar[hidden],body.side-open .askbar,body.sketching .askbar,body.snapshot .askbar{display:none}
+.firsthint{position:absolute;z-index:16;padding:7px 12px;border-radius:9px;background:var(--you-bd);color:var(--card);font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.3);animation:hintin .25s ease both}
+.firsthint::before{content:"";position:absolute;left:20px;top:-5px;width:11px;height:11px;background:inherit;transform:rotate(45deg)}
+@keyframes hintin{from{opacity:0}}
+@keyframes boxin{from{opacity:0}45%{box-shadow:0 0 0 3px var(--you-bd)}}
+@keyframes linesin{from{opacity:0}}
+#view.intro [data-id],#view.intro .arrow{animation:boxin .55s ease backwards}
+#view.intro svg.links{animation:linesin .7s ease backwards;animation-delay:var(--lines-at,0ms)}
+.mmode{display:grid;gap:2px;max-width:300px;padding:6px 10px 8px;margin-bottom:2px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--line)}
+.mmode b{font-size:13px;color:var(--text);font-weight:600}
 .dpop .dgo{align-self:stretch;text-align:left;white-space:normal;line-height:1.35}
 .dpop .dgo:disabled{opacity:.5;cursor:not-allowed}
 .lsketch{display:inline-flex;align-items:center;gap:5px;margin-left:6px;font-size:12.5px;padding:3px 12px 3px 9px;border-radius:999px}
@@ -727,13 +729,9 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .jdata .jnew{background:color-mix(in srgb,var(--done-bd) 28%,transparent);border-radius:3px}
 @media (prefers-reduced-motion:reduce){.jpacket.ready{transition:none}}
 .chip{border:1.5px solid;border-radius:999px;padding:3px 12px;font-size:13px;cursor:pointer;background:var(--card);color:inherit}
-.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
-@media (prefers-reduced-motion:no-preference){.chip.doing::before,.sbadge.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
+.chip.doing::before,.bar .progress.doing::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--new-bd);margin-right:6px;vertical-align:1px}
+@media (prefers-reduced-motion:no-preference){.chip.doing::before,.bar .progress.doing::before{animation:blink 1.4s ease-in-out infinite}}
 @keyframes blink{50%{opacity:.25}}
-.sbadge{display:inline-block;font-size:12px;font-weight:500;border:1px solid;border-radius:999px;padding:0 9px;margin-left:8px;vertical-align:2px}
-.sbadge.todo{border-style:dashed}
-.implementing{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--new-tx);background:var(--new-bg);border:1px solid var(--new-bd);border-radius:8px;padding:5px 10px;margin:2px 0 8px}
-.implementing .dots i{background:var(--new-bd)}
 .bar .progress{font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text)}
 .bar .progress.doing{border-color:var(--new-bd);color:var(--new-tx);background:var(--new-bg)}
 .bar .progress.review{border-color:var(--you-bd);color:var(--you-tx);background:var(--you-bg)}
@@ -741,8 +739,6 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .chip.sel{outline:2px solid var(--text);outline-offset:1px}
 .chip.all{border-color:var(--line);color:var(--muted)}
 .chip.review{background:var(--you-bg);border-color:var(--you-bd);color:var(--you-tx)}
-.stepcard.review{border-color:var(--you-bd);border-left:5px solid var(--you-bd)}
-.stepcard.review .turn{font-weight:500}
 .commitbox{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
 .commitbox .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
 .commitbox textarea{width:100%;min-height:52px;resize:vertical;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
@@ -757,7 +753,6 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .commitbox .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .commitbox .note{font-size:12px;color:var(--muted)}
 .chip.plain{border-color:var(--line)}
-.stepcard .turn{display:inline-block;font-size:12px;border-radius:6px;padding:0 8px;margin-bottom:6px;background:var(--you-bd);color:var(--card)}
 .stepcard .detail{margin:0 0 4px;font-size:14px}
 .stepcard .donewhen{margin:0;font-size:13px;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
@@ -848,20 +843,16 @@ button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px
 button:hover{border-color:var(--muted)}
 .quick button,.send button,.acts button,.xrow button,.commitbox button,.decideform button{min-height:30px;border-radius:8px}
 button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
-.badges{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px;font-size:12px;color:var(--muted)}
-.badges{align-items:center}
-.badges>span{border:1px solid var(--line);border-radius:999px;padding:1px 10px}
-.badges>.mode{border:0;padding:0 4px 0 0;font-size:13px;color:var(--text);font-weight:500}
-.settings{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px}
-.settings .slabel{color:var(--muted);font-weight:500;margin-right:2px}
-.setting{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--you-bd);background:color-mix(in srgb,var(--you-bg) 55%,var(--card));color:var(--you-tx);border-radius:9px;padding:2px 10px}
-.setting .sname{font-weight:600}
 .seg{display:inline-flex;align-items:center;gap:7px}
 .seg .opts{display:inline-flex;border:1px solid var(--you-bd);border-radius:7px;overflow:hidden}
 .seg .opts button{border:0;border-radius:0;padding:1px 10px;font-size:12px;background:transparent;color:inherit}
 .seg .opts button+button{border-left:1px solid var(--you-bd)}
 .seg .opts button[aria-pressed="true"]{background:var(--you-bd);color:var(--card);font-weight:600}
 .conn.work{color:var(--you-tx);background:var(--you-bg);border-color:var(--you-bd)}
+.conn.dot{width:9px;height:9px;padding:0;border:0;border-radius:50%;background:var(--muted)}
+.conn.dot.on{background:var(--done-bd)}
+.conn.dot.work{background:var(--you-bd)}
+.conn.dot.idle{background:var(--new-bd)}
 .msg.typing{display:flex;align-items:center;gap:8px;color:var(--muted)}
 .msg.typing .who{display:inline}
 .dots{display:inline-flex;gap:4px}
@@ -874,10 +865,9 @@ button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
 .typing-x:hover{color:var(--text)}
 .msglink{display:inline;padding:0;border:0;background:transparent;color:var(--you-tx);font:inherit;text-decoration:underline;cursor:pointer}
 .msglink:hover{background:transparent;color:var(--text)}
-.badges .ok{border-color:var(--done-bd);color:var(--done-tx);background:var(--done-bg)}
-.badges .wait{border-color:var(--new-bd);color:var(--new-tx);background:var(--new-bg)}
 .stepcard{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
 .stepcard h3{margin:0 0 6px;font-size:15px;font-weight:500}
+.stepcard:not(.optcard){border:0;background:none;border-radius:0;padding:0 2px;margin:0 0 12px}
 .talk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .talk .thread{margin:0 0 10px}
 /* Side panel: details on top, the chat under them, each with a heading that folds it; the box you type in at the bottom. */
@@ -972,8 +962,7 @@ button:disabled{opacity:.5;cursor:wait}
 .erhead{border-radius:9px 9px 0 0}
 .plabel .count,.g-q>.count{position:static;margin-left:6px;box-shadow:none}
 .g-q>.count{align-self:flex-end;margin-top:4px}
-.count.unread,.badges button.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
-.badges button.unread{font-size:12px;padding:1px 10px;border-radius:999px}
+.count.unread{border-color:var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx)}
 .chip.unread::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn-bd);margin-left:6px;vertical-align:middle}
 @media (prefers-reduced-motion:no-preference){.msg.flash{animation:flash 1.6s ease-out}}
 @keyframes flash{0%{box-shadow:0 0 0 4px var(--ext-bd)}100%{box-shadow:0 0 0 0 transparent}}
@@ -1076,22 +1065,19 @@ svg.links.lsample{position:static;inset:auto;width:48px;height:12px;flex:none;ov
 .lhbox{border:1.5px solid var(--line);border-radius:6px;padding:1px 8px;font-weight:600}
 .lhsub{font-weight:600;color:var(--muted);margin-top:4px}
 .lhcard .via{flex:none}
-.rhline{align-items:center;gap:6px}
-.rhword{border:0;background:transparent;padding:0;font-size:12px;color:var(--muted)}
-.rhword:hover{color:var(--text)}
 .lhtext{line-height:1.45}
 .lhsign{flex:none;width:72px}
 .lhsign .ptag{position:static;box-shadow:none}
 .lhsign.dr-change .ptag{background:#14a3b8}.lhsign.dr-remove .ptag{background:var(--warn-bd)}.lhsign.dr-move .ptag{background:var(--copy-tx)}
-@media print{.lhelp,.rhline{display:none}}
+@media print{.lhelp{display:none}}
 .linklist{margin:0 0 14px;padding-left:18px;font-size:12.5px;color:var(--muted)}
 .scrollhint{font-size:12px;color:var(--muted);margin:0 0 4px;position:sticky;left:0;width:max-content}
 /* A snapshot (an exported file) is read only: nothing that would talk to an agent. */
-body.snapshot .settings,body.snapshot .turnbtn,body.snapshot .turn,body.snapshot .acts,body.snapshot .cmpnote button,body.snapshot #proposals button,body.snapshot #constraints button,body.snapshot .commitbox{display:none!important}
-body.snapshot:not(.with-chat) .talklink,body.snapshot:not(.with-chat) #planTalk,body.snapshot:not(.with-chat) #talks,body.snapshot:not(.with-chat) .side .pb{display:none!important}
+body.snapshot .turn,body.snapshot .acts,body.snapshot .cmpnote button,body.snapshot #proposals button,body.snapshot #constraints button,body.snapshot .commitbox{display:none!important}
+body.snapshot:not(.with-chat) .talklink,body.snapshot:not(.with-chat) #talks,body.snapshot:not(.with-chat) .side .pb{display:none!important}
 body.snapshot:not(.with-chat) .side .pa{max-height:none;flex:1 1 auto}
 body.snapshot .wbtn{pointer-events:none;cursor:default}
-body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important}
+body.snapshot .cmpnote button{display:none!important}
 .conn.snap{border-color:var(--line);color:var(--muted)}
 /* Printing (PDF): the whole plan on paper, in light colours whatever the screen uses, none of the controls. */
 @page{size:A4;margin:14mm 12mm}
@@ -1108,7 +1094,7 @@ body.snapshot .implementing,body.snapshot .cmpnote button{display:none!important
     --code:#f4f3ee;
   }
   body{background:#fff;color:var(--text);font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .bar,.stepnav,#stepcard,.tabs,.legendbox,.side,.foot,.badges,.settings,#banner,#problems,#toast,#tip,.tour,.scrollhint,#proposals button,#constraints button,.cmpnote button,.wbtn,.count,#more,#talks{display:none!important}
+  .bar,.stepnav,#stepcard,.tabs,.side,.foot,#banner,#problems,#toast,#tip,.viewbar,.askbar,.firsthint,.scrollhint,#proposals button,#constraints button,.cmpnote button,.wbtn,.count,#more,#talks{display:none!important}
   .layout{display:block}
   main{max-width:none;padding:0}
   .top h1{font-size:20px}
@@ -1207,6 +1193,7 @@ path.mv-on{stroke:var(--new-bd)!important;stroke-width:3.2!important;stroke-dash
 .mthemes{display:flex;align-items:center;gap:14px;justify-content:space-between;padding:4px 6px 4px 10px;font-size:13px}
 .mthemes .seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
 .mthemes .seg button{border:0;border-radius:6px;width:30px;height:24px;padding:0;margin:0;display:grid;place-items:center;background:transparent;color:var(--muted)}
+.mthemes .seg.words button{width:auto;padding:0 8px;font-size:12px;white-space:nowrap}
 .mthemes .seg button:hover{color:var(--text)}
 .mthemes .seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.25)}
 .mthemes .seg button:focus:not(:focus-visible),.mitem:focus:not(:focus-visible){outline:none}

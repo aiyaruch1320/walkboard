@@ -773,7 +773,8 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 :is(#view,#printout) .node.todo.dim{opacity:.45}
 :is(#view,#printout) .node.todo.instep{opacity:.9}
 :is(#view,#printout) .node.active,:is(#view,#printout) .stage.active{opacity:1;filter:none}
-.node.active{transform:translateY(-3px);opacity:1;outline:2px solid var(--text);outline-offset:2px}
+/* Selected stays where it is: moved, every line on the picture would be routed again on each click. */
+.node.active{opacity:1;outline:2px solid var(--text);outline-offset:2px}
 .gap{flex:0 0 12px}
 .arrow{flex:0 0 28px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
 .arrow svg{width:26px;height:14px}

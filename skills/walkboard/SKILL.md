@@ -7,7 +7,7 @@ description: Show work as an interactive picture (flow, cloud or Kubernetes map,
 
 Long text loses people. You write `plan.json`; Walkboard draws it as a local page; what the user clicks or types there comes back to you.
 
-`WB` = `node <this skill's base directory>/bin/walkboard.mjs` (Node 18.18+, no install): write it out or make a shell function; a variable holding it does not run in zsh. Files named below are under `references/`: read one only when you reach it.
+`WB` = `node <this skill's base directory>/bin/walkboard.mjs` (Node 18.18+, no install): write it out or make a shell function, `wb() { node <dir>/bin/walkboard.mjs "$@"; }`; a variable holding it does not run in zsh. Files named below are under `references/`: read one only when you reach it.
 
 ## 0. Language, mode, questions, settings
 
@@ -17,11 +17,11 @@ Use the user's language for everything (questions, plan, replies, suggested comm
 - **explain**: understand existing code. Sections 2E, 3, 4E.
 - **design**: choose how to build something that does not exist yet ("what should we use for…", "compare…"). Read [design.md](references/design.md), then section 3.
 
-`/walkboard` alone: look through the repository briefly and offer 2-3 things from it by name (AskUserQuestion), a real flow to explain first.
+`/walkboard` alone: look through the repository briefly and offer 2-3 things from it by name (a question tool if you have one, else in chat), a real flow to explain first.
 
 If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`): one short fact each (≤ 12 words), numbers and sources in `detail`; `ask` when it is not a yes or no ("How many services run there?").
 
-`settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config. No way to ask (a subagent, no user)? `suggest` / `overview`, and say so in one line.
+`settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (a question tool if you have one, else in chat): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config. No way to ask (a subagent, no user)? `suggest` / `overview`, and say so in one line.
 
 ## 1. Write the plan (build)
 
@@ -45,7 +45,8 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 ## 3. Show and listen
 
 1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). If it says a newer Walkboard is installed, tell the user in one line.
-2. Can you run a command in the background and be woken when it ends? Keep exactly one `WB poll <dir>` running that way. If not, do not wait on the page: tell the user in one line to click, ask or sketch there and then say "check the page" here; then `WB poll <dir> --now` reads what waits (`[]` = nothing), handled the same way. The page says so too. `WB poll` exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them). Without `--timeout`, `[]` means the server stopped: `WB open` again. Start it again after each batch.
+2. Give the user the URL with one line on what to do there, in their language: click a box to see it, type below to ask or say what to change, approve when ready (build).
+3. Listen. Can you run a command in the background and be woken when it ends? Keep exactly one `WB poll <dir>` running that way, the whole session, building included: it exits when the page sends something; start it again after each batch. Its `[]` means the server stopped: `WB open` again. If you cannot, never wait on the page: add to that line "then tell me here to check the page" (any words). When they do, `WB poll <dir> --now` prints what waits (`[]` = nothing yet), handled the same way; the page tells them too. Either way, one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them).
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
@@ -59,14 +60,14 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 
    Asked how Walkboard itself works (reading a picture, draft mode, export)? Answer in a line or two and give the page from https://aiyaruch1320.github.io/walkboard/ (`pictures/<kind>.html`, `platforms/<profile>.html`, `draft.html`, `share.html`, `faq.html`; Thai: `th/`). The page's ⋮ → Guide opens it too.
 
-3. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
+4. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
 
 ## 4. Build (build)
 
 Not before `approved` is true. For each step:
 
 1. `WB set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
-2. `git status`; `WB status <dir>` for the current `settings`. Files changed: `"auto"` → small commits now, one context each; `"suggest"` → a suggested message (messages.md). None changed, or no repository: neither.
+2. `git status`; `WB status <dir>` for the current `settings`. Files changed: `"auto"` → small commits now, one context each; `"suggest"` → a suggested message, `commitMessage=…` on the step (messages.md). None changed, or no repository: neither.
 3. `WB set <dir> step:<id> status=review node:<a> status=done …` (the suggested message in the same call), and `WB reply <dir> --step <id>`: one line on what you built and the files touched, or that none changed.
 4. Wait (not woken by the page: stop and say so). `next` (`commit`, `committed`: messages.md): `WB set <dir> step:<id> status=done`, then the next step. `"all": true`: the remaining steps without stopping. No reply needed.
 

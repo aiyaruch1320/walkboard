@@ -20,7 +20,8 @@ const USAGE = `walkboard <command> [options]
                                 step:build status=review node:job status=done approved=true
                                 (targets: plan, step:, node:, constraint:, option:, criterion:, source:<id>)
   open   [dir] [--no-browser]   start (or reuse) the server for dir/plan.json and print its URL
-  poll   [dir] [--full] [--timeout s]   wait for feedback from the page, print one short JSON line per item, exit ([] after s seconds)
+  poll   [dir] [--full] [--now | --timeout s]   wait for feedback from the page, print one short JSON line per item, exit
+                                (--now: what is waiting already, [] if nothing; --timeout: [] after s seconds)
   reply  [dir] [--node n] [--step s] [--option o [--criterion c]] <text>   show an agent reply on the page (or --dir d);
                                 [[node:id]], [[step:id]], [[option:id]], [[plan]] in the text link to that place
   status [dir]                  print the URL and queue state
@@ -44,6 +45,7 @@ function parse(argv) {
     else if (a === "--no-draft") flags.noDraft = true;
     else if (a === "--html") flags.html = argv[++i] ?? "";
     else if (a === "--timeout") flags.timeout = argv[++i];
+    else if (a === "--now") flags.now = true;
     else if (["--dir", "--node", "--step", "--option", "--criterion"].includes(a)) flags[a.slice(2)] = argv[++i];
     else rest.push(a);
   }
@@ -200,10 +202,11 @@ async function poll() {
     const s = readServer();
     try {
       if (!s) {
+        if (flags.now) fail(`server not running for ${dir}; run: walkboard open ${dir}`);
         if (!fs.existsSync(p.lock)) stopped();
         throw new Error("not running");
       }
-      const r = await fetch(`http://127.0.0.1:${s.port}/api/poll?token=${s.token}`, {signal: deadline?.signal});
+      const r = await fetch(`http://127.0.0.1:${s.port}/api/poll?token=${s.token}${flags.now ? "&now=1" : ""}`, {signal: deadline?.signal});
       if (r.status === 410) stopped();
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const items = await r.json();
@@ -214,6 +217,7 @@ async function poll() {
         await fetch(`http://127.0.0.1:${s.port}/api/ack?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ids: items.map((i) => i.id)})}).catch(() => {});
         return;
       }
+      if (flags.now) return console.log("[]");
     } catch (e) {
       // Ride out a restart; give up if the server stays away.
       if (++gone > 15) fail(`server not reachable for ${dir} (${e.message}); run: walkboard open ${dir}`);

@@ -22,6 +22,9 @@ export const paths = (dir) => {
     draft: path.join(state, "draft.json"),
     images: path.join(state, "images"),
     lock: path.join(state, "server.lock"),
+    // Present once an agent has waited on the page (a long poll): it is woken by clicks. Without it, messages wait
+    // until the user tells the agent in its own chat, and the page says so.
+    listens: path.join(state, "listens"),
   };
 };
 
@@ -155,7 +158,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   const broadcast = (event, data) => {
     for (const s of streams) s.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
-  const agentState = () => broadcast("agent", {waiting: waiters.length});
+  let listens = fs.existsSync(p.listens);
+  const agentState = () => broadcast("agent", {waiting: waiters.length, listens});
   // Settings switched on the page never wake the agent; they ride along with the next real message.
   let changedSettings = null;
   // Messages count as delivered only when the poll that took them says so (POST /api/ack). If it never does
@@ -264,7 +268,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
       const replies = readLines(p.replies);
-      res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify({items: [...feedback, ...replies], waiting: waiters.length}));
+      res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify({items: [...feedback, ...replies], waiting: waiters.length, listens}));
     } else if (route === "POST /api/image") {
       const chunks = [];
       let size = 0;
@@ -438,7 +442,19 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         broadcast("draft", {view: v.view});
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({rev: next}));
       }));
+    } else if (route === "GET /api/poll" && url.searchParams.get("now") === "1") {
+      // `poll --now`: what is waiting, at once, without waiting for more. For an agent that is not woken by the page:
+      // the user says "check the page" in its chat. Handed out and acknowledged like any other batch.
+      requeue();
+      if (!pending.length) return res.writeHead(200, {"content-type": "application/json"}).end("[]");
+      waiters.unshift((items) => res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(items)));
+      flush();
     } else if (route === "GET /api/poll") {
+      if (!listens) {
+        listens = true;
+        fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
+        fs.writeFileSync(p.listens, new Date().toISOString());
+      }
       let timer;
       const send = (items) => {
         clearTimeout(timer);
@@ -466,7 +482,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       agentState();
       flush();
     } else if (route === "GET /api/status") {
-      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, viewers: streams.size, version: VERSION, skill: SKILL_DIR}));
+      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, listens, viewers: streams.size, version: VERSION, skill: SKILL_DIR}));
     } else {
       res.writeHead(404).end();
     }

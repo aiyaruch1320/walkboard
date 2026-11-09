@@ -43,6 +43,35 @@ test("poll prints the batch and acknowledges it; --timeout gives up quietly", as
   assert.equal(empty.stdout.trim(), "[]");
 });
 
+test("poll --now reads what waits at once, and only a waiting poll makes the page say the agent listens", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir);
+  t.after(s.close);
+  const base = `http://127.0.0.1:${s.port}`;
+  const thread = async () => (await fetch(`${base}/api/thread?token=${s.token}`)).json();
+  // Nothing waits: [] right away, not after a wait.
+  const t0 = Date.now();
+  assert.equal((await run("poll", dir, "--now")).stdout.trim(), "[]");
+  assert.ok(Date.now() - t0 < 4000, "returns at once");
+  await fetch(`${base}/api/feedback?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({text: "hi"})});
+  await fetch(`${base}/api/feedback?token=${s.token}`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({text: "and this"})});
+  const r = await run("poll", dir, "--now");
+  assert.deepEqual(r.stdout.trim().split("\n").map((l) => JSON.parse(l).text), ["hi", "and this"]);
+  const after = await thread();
+  assert.ok(after.items.every((m) => m.delivered), "acknowledged like any batch");
+  // An agent that only ever reads with --now is not woken by clicks: the page tells the user to say so in chat.
+  assert.equal(after.listens, false);
+  assert.equal((await run("poll", dir, "--timeout", "1")).stdout.trim(), "[]");
+  assert.equal((await thread()).listens, true);
+  assert.ok(fs.existsSync(path.join(dir, ".walkboard", "listens")), "kept across restarts");
+});
+
+test("poll --now says so when the server is not running", async () => {
+  const r = await run("poll", planDir(), "--now");
+  assert.notEqual(r.code, 0);
+  assert.match(r.stderr, /not running/);
+});
+
 test("poll gives the agent an attached image as a path it can read", async (t) => {
   const dir = planDir();
   const s = await startServer(dir);

@@ -39,6 +39,11 @@ class Page {
         this.waiting.delete(m.id);
       }
     };
+    // Chrome gone (crashed, killed): say so instead of leaving every await hanging.
+    this.ws.onclose = () => {
+      for (const done of this.waiting.values()) done({error: {message: "Chrome closed the connection"}});
+      this.waiting.clear();
+    };
   }
   ready() {
     return new Promise((r) => (this.ws.onopen = () => r(this)));
@@ -46,7 +51,7 @@ class Page {
   send(method, params = {}) {
     const id = ++this.id;
     this.ws.send(JSON.stringify({id, method, params}));
-    return new Promise((r) => this.waiting.set(id, (m) => r(m.result)));
+    return new Promise((r, no) => this.waiting.set(id, (m) => (m.error ? no(new Error(`${method}: ${m.error.message}`)) : r(m.result))));
   }
   async eval(expr) {
     const r = await this.send("Runtime.evaluate", {expression: `(async () => { ${expr} })()`, awaitPromise: true, returnByValue: true});

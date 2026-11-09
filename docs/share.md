@@ -25,4 +25,4 @@ Look at what the file contains: it is your plan and, unless left out, your code.
 
 ## Sharing the plan itself
 
-`plan.json` in the plan's folder is the whole plan. Anyone with Walkboard can `walkboard open` a copy of that folder and get the live page on their own machine.
+`plan.json` in the plan's folder is the whole plan. If they have Walkboard, they can run `walkboard open` on a copy of that folder and get the live page on their own machine.

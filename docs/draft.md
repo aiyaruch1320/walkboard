@@ -14,14 +14,14 @@ Sometimes it is quicker to draw what you mean than to type it. Press **✎ Draft
 
 | To | Do |
 |---|---|
-| Add a box, zone, table, group or lane | Pick the tool (B, Z, the data model's C for a column), then click where it goes, or press Enter for the first free place in sight |
+| Add a box, zone, table, group or lane | Pick the tool on the toolbar (or press its key: B box, Z zone, C column on a data model), then click where it goes, or press Enter for the first free place in sight |
 | Draw a line | L, then drag from one box to another. Near the window's edge the page scrolls with you |
 | Edit or take out | R or double-click to edit, D or Delete to take out; both work on lines too |
 | Move | Drag between zones, groups or lanes. On a flow, drag a lane's title to reorder |
 | Copy | ⌘C ⌘V, or ⌘D to duplicate (Ctrl on other systems). A zone comes with what it holds |
 | Go back | ⌘Z ⇧⌘Z; × on one change in the list; **Start over from the plan** for all of it; Escape leaves |
 
-A box's card holds its name, a short note, its icon and, on a map, [what it is on a platform](platforms/README.md) (an RDS, a CronJob). A small amber ⚠ marks something placed where it does not usually sit; it is a hint, nothing is blocked.
+A box's card holds its name, a short note, its icon and, on a map, [what it is on a platform](platforms/README.md) (an RDS, a CronJob). A small amber ⚠ marks something placed where it does not usually sit. It is a hint, not an error: nothing is blocked.
 
 Each picture's **?** lists its own tools and what the signs mean.
 

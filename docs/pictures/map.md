@@ -24,6 +24,10 @@
 - A line may take another route when a box moves or the line is reversed: only the arrow, the colour and the dashes carry meaning.
 - A whole system (many boxes, or four or more top-level zones) is drawn smaller, with one column per site or provider: read left to right, outside first.
 
+## Drawing a system you already have
+
+Ask for it: "explain our AWS network from the Terraform in infra/", or "draw the Kubernetes setup in deploy/". The agent reads what the repository holds (Terraform, Kubernetes manifests, compose files, scripts) and draws the map from it. Anything it could not find there is drawn dashed with ❓, for you to answer. To change the picture, ask, or sketch it yourself in draft mode (below).
+
 ## Platforms
 
 A box, zone or line can say what it is on a platform, such as an RDS database or a Kubernetes CronJob. Its icon and fields come from that, the picture is tagged with the platform, and a small amber **⚠** marks something that usually sits elsewhere (an RDS outside a subnet). The ⚠ is a hint; nothing is blocked. Its card links to the platform's page, which lists every kind and where it usually goes: see [Platforms](../platforms/README.md).

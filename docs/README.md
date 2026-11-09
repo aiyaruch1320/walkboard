@@ -1,8 +1,20 @@
 # Walkboard docs
 
-Walkboard has your agent show its work as pictures on a page on your machine: a plan you approve step by step, an explanation of code that exists, or a comparison of designs. You click a box to ask about it, and the agent answers there.
+Walkboard is a skill for Claude Code. Your agent shows its work as pictures on a page on your machine: a plan you approve step by step, an explanation of code that exists, or a comparison of designs. You click a box to ask about it, and the agent answers there.
 
 **อ่านภาษาไทย:** [เริ่มใช้งาน Walkboard](th/README.md)
+
+![Typing a request in Claude Code, approving the plan page, asking about a box in the side panel, and the agent answering in place](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/demo.gif)
+
+**In 30 seconds:**
+
+1. In Claude Code you type `/walkboard explain how login works`.
+2. The agent gives you a link. It opens a page with pictures of the answer.
+3. You click a box and type a question. The agent answers on that box.
+
+[Try a finished page now, no install ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=map&step=all)
+
+**For** developers, architects and SREs, and anyone who has to follow or check an AI agent's plan. **Not for** a quick one-line answer: a normal chat is faster there.
 
 <!-- github only -->
 These pages are also a website, with every picture shown and a live example to click: [aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/).

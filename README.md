@@ -37,14 +37,14 @@ Then, in any repository:
 
 The agent asks a question or two, then gives you a link to a page on your machine. Click a box to ask about it; the agent answers there. Keep Claude Code open while you use the page: that is where the agent works.
 
-Walkboard is young (0.10): built and tested with Claude Code on macOS. Windows, Linux and other agents should work but are not tried by hand yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
+Walkboard is new (version 0.10): built and tested with Claude Code on macOS. Windows, Linux and other agents should work but are not tried by hand yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
 
 ## Why
 
-Long AI-written plans are hard to follow, and it is easy to lose the feeling that the work is yours. Walkboard has the agent show its work as pictures on a local page instead. Click a box, a step or a table cell to ask about it, and the agent answers right there.
+Long plans written by AI are hard to follow, and you stop feeling that the work is yours. Walkboard has the agent show its work as pictures on a local page instead. Click a box, a step or a table cell to ask about it, and the agent answers right there.
 
 - **See it, don't scroll it.** Eleven kinds of picture (flow, map of a cloud, Kubernetes or network, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
-- **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
+- **Ask on the spot.** Every box, step and comparison cell has its own thread. Your question goes straight to the agent, and its answer appears where you asked, not somewhere in a long chat.
 - **You stay in charge.** Nothing is built before you press **Approve plan**, and after each step the agent stops until you start the next one.
 - **Evidence, not guesses.** Explanations point at the real `file:line`, design scores cite a dated source, and anything the agent assumed is drawn dashed until you answer it in your own words.
 - **Sketch, then ask.** Press **✎ Draft changes** and change the picture yourself; the agent reviews your sketch and puts in the plan only what you agree to.
@@ -84,7 +84,7 @@ Type `/walkboard` and say what you want, or just ask in your own words. On its o
 
 <sub>If another command is already called `/walkboard`, use the full name `/walkboard:walkboard`.</sub>
 
-1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
+1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). It offers to remember your answers, so it does not ask again.
 2. It writes the plan and gives you a link to a page on your machine.
 3. Click a box to see what it does. Type in the chat to ask, or to say what to add, change or remove; paste or drop an image if that says it better. What to do next is always the button at the top right; **⋮** holds settings, export and the theme.
 4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the docs](https://aiyaruch1320.github.io/walkboard/draft.html).
@@ -94,7 +94,7 @@ Type `/walkboard` and say what you want, or just ask in your own words. On its o
 
 **Updates:** `/plugin` → **Marketplaces** → **walkboard** → **Enable auto-update** gets new versions by themselves (Claude Code leaves it off for marketplaces outside its own). A running session keeps the version it started with until `/reload-plugins` or a new session; Walkboard says so when it opens a page. The page shows its version at the bottom of **⋮**.
 
-Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, profiles say what each box, zone and line is on those platforms (an RDS in a private subnet, a CronJob in a namespace) and warn when something sits where it usually does not.
+Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, each box, zone and line can say what it is on those platforms (an RDS in a private subnet, a CronJob in a namespace), and a small ⚠ marks something that usually sits elsewhere: a hint, not an error. [Platforms](https://aiyaruch1320.github.io/walkboard/platforms/) lists them all.
 
 More screens, every picture and platform with live examples, FAQ and reference: **[aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/)** · [ภาษาไทย](https://aiyaruch1320.github.io/walkboard/th/).
 

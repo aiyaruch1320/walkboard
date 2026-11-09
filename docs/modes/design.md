@@ -16,6 +16,10 @@ The agent researches 2–4 options and draws each as its own picture tab, with i
 - **Assumptions.** Constraints in the bar above, and dashed boxes in the pictures, are guesses until you answer them: press **✎ Answer** and type what is true. Rows that rest on an unanswered guess are marked ❓.
 - **Choose this → write a plan** records the decision (why this one, why not the others) and starts a [plan](plan.md) in a new page, linked from the choice.
 
+## Your cloud accounts
+
+Design mode never changes anything. To see what exists, the agent uses only read-only commands (`describe`, `list`, `get`) and asks you before each one; otherwise it gives you the command to run and asks for the output. Facts it got this way say so, with the date.
+
 ## Sharing a decision
 
 Export or print the design and it opens with the decision and why: see [Send a plan to someone](../share.md).

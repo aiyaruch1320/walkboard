@@ -18,7 +18,7 @@
 | Chat bar | At the bottom: opens the conversation about what is on screen (the selected step, or the whole plan with **All** selected). |
 | Side panel | A box's details and its conversation. Opens when you click a box or the chat bar; closes with ✕, Esc or a second click on the same box. |
 | Boxes | An icon for what the box is, its status (✓ done, ● in progress, dashed = to do, ↗ external) and 💬 when there is a conversation on it. |
-| Dotted words | Glossary: tap for a plain explanation (inside a box, hover). |
+| Dotted words | Glossary: click a dotted word for a plain explanation. Inside a box, point at it instead (a click opens the box). |
 
 The address keeps the step, picture and box, so a reload or a link opens the same place.
 
@@ -31,8 +31,9 @@ Click a box and type; the answer appears in that box's conversation.
 - **One box takes everything:** a question, or what to add, change or remove. The agent decides whether a request just corrects the picture, changes a plan not yet approved, or is drawn as a proposal for you to accept.
 - **Images:** paste, drop or 📎, up to five per message, 10 MB each (PNG, JPEG, GIF, WebP). Big images are scaled down first, so one costs the agent about 1,500 tokens at most. They stay beside the plan in `.walkboard/images` and are left out of exports.
 - **Still unclear · Go deeper** (explain mode) send at once.
-- **A message waiting** says it is in line, with its place and what the agent is on (⏳ with a count in the top bar). A message answered on another box links to that box.
-- **Every message wakes the agent once.** Settings, arranging a picture and sketching never do, so they cost nothing.
+- **A message waiting** says it is in line, with its place in the line. The top bar shows ⏳ and how many are waiting.
+- **An answer given elsewhere:** when the agent answers on another box, your message links to that box.
+- **Every message reaches the agent and costs one turn.** Settings, arranging a picture and sketching do not reach it, so they cost nothing.
 
 ## The side panel
 

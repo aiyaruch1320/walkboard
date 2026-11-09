@@ -4,6 +4,10 @@
 
 **Answers:** if this, then what? Rules, routing, validation.
 
+![Two questions, has an email and bounced before, leading to send it or skip](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/decision.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=rule&step=all)
+
 ## How to read it
 
 - Start at the box marked **start**: the first question asked.

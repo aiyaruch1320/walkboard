@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The chat bar sits where the captions go, so it is left out.
-// Records docs/images/demo.gif (typing /walkboard in Claude Code to an answer on the page), next.gif (a finished step, then the next)
-// and design.gif (comparing options by your own weights).
+// Records demo.gif (typing /walkboard in Claude Code to an answer on the page), next.gif (a finished step, then the next)
+// and design.gif (comparing options by your own weights) into media/, or $WALKBOARD_MEDIA (see scripts/screenshots.mjs).
 // The terminal is a plain mock-up; the walkboard page is real (a copy of examples/nightly-import).
 // Pages are captured at 2x and a camera crops and scales the captures, so zooming never touches the page layout.
 // Needs Google Chrome and Node 22: node scripts/demo-gif.mjs   (DEMO_FRAMES=<dir> also writes every output frame as PNG)
@@ -44,7 +44,9 @@ let recording = "demo";
 // Each GIF is written when its scenes end; the next one starts from an empty frame list.
 function save(name) {
   const gif = encodeGif(frames);
-  fs.writeFileSync(path.join(repo, "docs/images", `${name}.gif`), gif);
+  const media = process.env.WALKBOARD_MEDIA || path.join(repo, "media");
+  fs.mkdirSync(media, {recursive: true});
+  fs.writeFileSync(path.join(media, `${name}.gif`), gif);
   const seconds = frames.reduce((n, f) => n + f.delay, 0) / 1000;
   console.log(`${name}.gif ${W}x${H}, ${frames.length} frames, ${seconds.toFixed(1)} s, ${(gif.length / 1024).toFixed(0)} KB`);
   frames.length = 0;

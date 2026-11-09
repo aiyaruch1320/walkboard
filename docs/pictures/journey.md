@@ -4,6 +4,10 @@
 
 **Answers:** what happens to one piece of data along the way? One request, message or record, followed stop by stop.
 
+![One email travelling from the API through the queue and the worker to SES and the log](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/journey.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=trip&step=all)
+
 ## How to read it
 
 - The stops sit in a row, 3–9 of them; a part may appear twice. An envelope ✉ shows where the data is now.

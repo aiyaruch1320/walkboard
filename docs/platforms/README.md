@@ -22,6 +22,10 @@ Each page lists every kind with where it usually sits, other names for it, and i
 - **A platform tag** on the picture, so a reader knows where they are.
 - **A warning when something sits in an unusual place.** A small amber **⚠** appears beside the name. Point at it to read why ("RDS usually sits in Subnet, VPC"), and follow its link to the kind on the platform's page. It is a hint, never a block: drawing quickly is fine, and some designs mean it.
 
+![An AWS map: the Bastion EC2 sits in the VPC rather than a subnet, so it carries a small amber ⚠](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/aws.png)
+
+[Try it: point at the ⚠ beside Bastion ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=aws&step=all)
+
 A zone without a kind says nothing about what is inside it, and anything no profile covers is drawn without a kind, as written.
 
 ## Mixing platforms

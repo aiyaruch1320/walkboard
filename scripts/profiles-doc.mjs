@@ -45,6 +45,11 @@ function peoplePage(p, pr) {
     "",
     `What boxes, zones and lines can be on ${pr.label}, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).`,
     "",
+    // The same small system drawn on this platform: examples/platforms, shot by scripts/screenshots.mjs.
+    `![A small web app with a database and a job, drawn with ${pr.label} kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/${p}.png)`,
+    "",
+    `[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=${p}&step=all)`,
+    "",
     "This page is generated from `skills/walkboard/lib/profiles.mjs`.",
     "",
     "## Zones",

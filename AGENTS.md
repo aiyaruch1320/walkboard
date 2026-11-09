@@ -18,7 +18,8 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 | `skills/walkboard/lib/profiles.mjs` | Profiles: kinds of box, zone and line on a platform (AWS…), their fields and where each usually sits. A new profile is one more entry; then `node scripts/profiles-doc.mjs` rewrites `references/profiles/` and `docs/platforms/` (npm test checks it) |
 | `skills/walkboard/assets/viewer.html` | The page script; `viewer.css` and `strings.js` (labels) beside it are inlined by the server, so the page is still one response with no network |
 | `skills/walkboard/assets/glossary.json` | Shared glossary, English and Thai |
-| `docs/` | Docs for people, linked from the page (⋮ → Guide, a picture's ?, a ⚠ card): `pictures/<kind>.md`, `platforms/<profile>.md` (generated), `th/README.md` in Thai. A new picture kind needs its page; npm test checks every link |
+| `docs/` | Docs for people, also the website https://aiyaruch1320.github.io/walkboard/ (`scripts/site.mjs`, `.github/workflows/pages.yml`), linked from the page (⋮ → Guide, a picture's ?, a ⚠ card): `pictures/<kind>.md`, `platforms/<profile>.md` (generated), `th/README.md` in Thai. A new picture kind needs its page and a view in `examples/pictures`; npm test checks every link and builds the site |
+| `media` branch | Every image and GIF of the README and docs, so installing Walkboard never downloads them. Linked as `https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/…`. Check it out at `media/` (ignored on main): `git worktree add media media` |
 | `.github/` | Tests on macOS, Windows and Linux; issue forms |
 | `examples/` | Example plans; `npm test` validates all of them |
 | `evals/` | What agents do with the skill: `claude plugin eval`, see `evals/README.md`. Runs real agents on your account |
@@ -44,11 +45,13 @@ npm test
 claude plugin validate .
 ```
 
-After a visible change, regenerate the images and look at them (needs Node 22 and Google Chrome; set `CHROME` to another Chromium binary if needed). If neither is available, leave `docs/images` as it is and say in your summary that the images were not regenerated:
+After a visible change, regenerate the images and look at them (needs Node 22 and Google Chrome; set `CHROME` to another Chromium binary if needed). They are written to `media/` (the `media` branch, see the map), never to main; commit them there and run the docs site workflow from the Actions tab. If neither is available, leave the images as they are and say in your summary that they were not regenerated:
 
 ```bash
 node scripts/screenshots.mjs && node scripts/demo-gif.mjs
 ```
+
+Preview the docs site: `node scripts/site.mjs` writes `site/` (with `media/` and the live examples), then serve that folder.
 
 `DEMO_FRAMES=<dir> node scripts/demo-gif.mjs` also writes every GIF frame as a PNG, which is the practical way to review the animation.
 

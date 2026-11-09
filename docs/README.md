@@ -4,6 +4,8 @@ Walkboard has your agent show its work as pictures on a page on your machine: a 
 
 **อ่านภาษาไทย:** [เริ่มใช้งาน Walkboard](th/README.md)
 
+These pages are also a website, with every picture shown and a live example to click: [aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/).
+
 ## Start here
 
 - [Getting started](getting-started.md): install, the first command, what happens next

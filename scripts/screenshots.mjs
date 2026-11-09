@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Regenerates docs/images from the examples: node scripts/screenshots.mjs
+// Regenerates the docs images from the examples: node scripts/screenshots.mjs
+// They go to media/ (a worktree of the `media` branch, see docs/README.md), or to $WALKBOARD_MEDIA; never to main.
 // Needs Google Chrome and Node 22 (built-in WebSocket). Starts and stops the example servers itself.
 import {execFileSync} from "node:child_process";
 import fs from "node:fs";
@@ -10,7 +11,7 @@ import {launch, sleep} from "./lib/chrome.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
-const out = path.join(repo, "docs/images");
+const out = process.env.WALKBOARD_MEDIA || path.join(repo, "media");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
 
 // A copy of the build example with a short conversation, so the chat can be shown.
@@ -49,6 +50,7 @@ async function shot(page, url, file, {select, pad = 8, prepare = "", side = fals
     const top = Math.min(...r.map((x) => x.top)) + scrollY, bottom = Math.max(...r.map((x) => x.bottom)) + scrollY;
     const left = ${side} ? Math.min(...r.map((x) => x.left)) : 0, right = ${side} ? Math.max(...r.map((x) => x.right)) : document.documentElement.clientWidth;
     return {x: left, y: Math.max(0, top - ${pad}), width: right - left, height: bottom - top + ${pad * 2}};`);
+  fs.mkdirSync(path.dirname(path.join(out, file)), {recursive: true});
   fs.writeFileSync(path.join(out, file), await page.png(box));
   console.log(`${file} ${box.width}x${Math.round(box.height)}`);
 }
@@ -74,6 +76,8 @@ const urls = {
   explain: pv("open", path.join(repo, "examples/explain-login"), "--no-browser"),
   demo: pv("open", demo, "--no-browser"),
   draft: pv("open", drafted, "--no-browser"),
+  pictures: pv("open", path.join(repo, "examples/pictures"), "--no-browser"),
+  platforms: pv("open", path.join(repo, "examples/platforms"), "--no-browser"),
 };
 await post(urls.demo, "/api/feedback", {node: "cronjob", kind: "confused", text: "Why keep it suspended for now?"});
 await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night, so it stays suspended until step 4 is done."});
@@ -96,9 +100,13 @@ await page.send("Page.addScriptToEvaluateOnNewDocument", {source: `try { localSt
 try {
   const at = (u, q) => `${u}&theme=dark&${q}`;
   await shot(page, at(urls.build, "step=manifests"), "build-overview.png", {select: ["#bar", "main > .top", "#stepcard", "#view"]});
-  await shot(page, at(urls.build, "view=k8s&step=all"), "k8s.png", {select: ["#view"]});
-  await shot(page, at(urls.explain, "view=seq&step=all"), "sequence.png", {select: ["#view"]});
-  await shot(page, at(urls.build, "view=data&step=all"), "transform.png", {select: ["#view"]});
+  // One picture of each kind for docs/pictures, and one map per platform for docs/platforms.
+  for (const v of JSON.parse(fs.readFileSync(path.join(repo, "examples/pictures/plan.json"), "utf8")).views) {
+    if (v.id !== "before") await shot(page, at(urls.pictures, `view=${v.id}&step=all`), `pictures/${v.kind}.png`, {select: ["#view"]});
+  }
+  for (const v of JSON.parse(fs.readFileSync(path.join(repo, "examples/platforms/plan.json"), "utf8")).views) {
+    await shot(page, at(urls.platforms, `view=${v.id}&step=all`), `platforms/${v.id}.png`, {select: ["#view"]});
+  }
   await shot(page, at(urls.explain, "node=service"), "explain-code.png", {
     select: ["#side .side-head", "#panel"],
     side: true,
@@ -128,7 +136,7 @@ try {
 } finally {
   page.close();
   for (const u of Object.values(urls)) {
-    const dir = u === urls.demo ? demo : u === urls.draft ? drafted : u === urls.build ? path.join(repo, "examples/nightly-import") : path.join(repo, "examples/explain-login");
-    pv("stop", dir);
+    const dir = {[urls.demo]: demo, [urls.draft]: drafted, [urls.build]: "examples/nightly-import", [urls.explain]: "examples/explain-login", [urls.pictures]: "examples/pictures", [urls.platforms]: "examples/platforms"}[u];
+    pv("stop", path.resolve(repo, dir));
   }
 }

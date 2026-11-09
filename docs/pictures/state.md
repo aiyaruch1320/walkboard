@@ -4,6 +4,10 @@
 
 **Answers:** which states can something be in, and what moves it from one to the next? An order, a job, an account.
 
+![An email moving from queued to sending, sent, waiting to retry, or gave up](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/state.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=life&step=all)
+
 ## How to read it
 
 - Each box is a state. A line from A to B means it can move from A to B.

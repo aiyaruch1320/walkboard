@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking about a box in the side panel, and the agent answering in place" width="100%">
+  <img src="https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking about a box in the side panel, and the agent answering in place" width="100%">
 </p>
 
 ## Try it
@@ -49,7 +49,7 @@ Long AI-written plans are hard to follow, and it is easy to lose the feeling tha
 - **Evidence, not guesses.** Explanations point at the real `file:line`, design scores cite a dated source, and anything the agent assumed is drawn dashed until you answer it in your own words.
 - **Sketch, then ask.** Press **✎ Draft changes** and change the picture yourself; the agent reviews your sketch and puts in the plan only what you agree to.
 
-Also: weigh options by your own priorities, export a plan as one HTML file or print it to PDF, and keep everything on your machine (127.0.0.1, random token, no telemetry). The page speaks English and Thai. A four-picture plan costs about 7 KB of JSON instead of 26–43 KB of hand-written HTML ([numbers](docs/reference.md#tokens)). Everything else is in the **[docs](docs/README.md)** ([ภาษาไทย](docs/th/README.md)).
+Also: weigh options by your own priorities, export a plan as one HTML file or print it to PDF, and keep everything on your machine (127.0.0.1, random token, no telemetry). The page speaks English and Thai. A four-picture plan costs about 7 KB of JSON instead of 26–43 KB of hand-written HTML ([numbers](https://aiyaruch1320.github.io/walkboard/reference.html#tokens)). Everything else is in the **[docs](https://aiyaruch1320.github.io/walkboard/)** ([ภาษาไทย](https://aiyaruch1320.github.io/walkboard/th/)).
 
 ## Three modes
 
@@ -63,8 +63,8 @@ The agent picks the mode from your request and asks up to three short questions 
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/next.gif" alt="A finished step waits for the user; the agent says what it built, the user presses Start next step and the agent moves on"></td>
-    <td width="50%"><img src="docs/images/design.gif" alt="Design mode: three ways to connect two VPCs scored with sources; changing two weights puts another option ahead, then that option's picture opens"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/next.gif" alt="A finished step waits for the user; the agent says what it built, the user presses Start next step and the agent moves on"></td>
+    <td width="50%"><img src="https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/design.gif" alt="Design mode: three ways to connect two VPCs scored with sources; changing two weights puts another option ahead, then that option's picture opens"></td>
   </tr>
   <tr>
     <td align="center"><sub>Plan: check each step, then start the next</sub></td>
@@ -87,16 +87,16 @@ Type `/walkboard` and say what you want, or just ask in your own words. On its o
 1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). Save your answers in `~/.walkboard/config.json` and they are not asked again.
 2. It writes the plan and gives you a link to a page on your machine.
 3. Click a box to see what it does. Type in the chat to ask, or to say what to add, change or remove; paste or drop an image if that says it better. What to do next is always the button at the top right; **⋮** holds settings, export and the theme.
-4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the docs](docs/draft.md).
+4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the docs](https://aiyaruch1320.github.io/walkboard/draft.html).
 
-   <img src="docs/images/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
+   <img src="https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
 5. Switch who commits under **⋮**. Switching does not wake the agent or cost tokens.
 
 **Updates:** `/plugin` → **Marketplaces** → **walkboard** → **Enable auto-update** gets new versions by themselves (Claude Code leaves it off for marketplaces outside its own). A running session keeps the version it started with until `/reload-plugins` or a new session; Walkboard says so when it opens a page. The page shows its version at the bottom of **⋮**.
 
 Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, profiles say what each box, zone and line is on those platforms (an RDS in a private subnet, a CronJob in a namespace) and warn when something sits where it usually does not.
 
-More screens, every picture and platform, FAQ and reference: **[docs](docs/README.md)** · [ภาษาไทย](docs/th/README.md).
+More screens, every picture and platform with live examples, FAQ and reference: **[aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/)** · [ภาษาไทย](https://aiyaruch1320.github.io/walkboard/th/).
 
 ## How it works
 

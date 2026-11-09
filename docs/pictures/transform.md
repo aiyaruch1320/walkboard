@@ -4,7 +4,9 @@
 
 **Answers:** what does the data look like before and after each stage?
 
-![How data changes shape, with empty values and stray spaces made visible](../images/transform.png)
+![An orders row, the queue message and the email, with an empty value and a trailing space made visible](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/transform.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=shape&step=all)
 
 ## How to read it
 

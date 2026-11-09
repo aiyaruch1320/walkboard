@@ -4,7 +4,9 @@
 
 **Answers:** what sits inside what, and on which platform? An AWS account › VPC › subnet, a cluster › namespace › pods, a host and its containers, and how they connect.
 
-![A Kubernetes map: what runs, what it uses, and where it may connect](../images/k8s.png)
+![An AWS map: an account, a region, a VPC with app and data subnets, managed services, and lines with ports](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/map.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=map&step=all)
 
 ## How to read it
 

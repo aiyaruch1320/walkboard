@@ -4,7 +4,7 @@
 
 Sometimes it is quicker to draw what you mean than to type it. Press **✎ Draft changes** above a picture and change it yourself; the agent reviews your sketch and puts in the plan only what you agree to.
 
-![Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom](images/draft.png)
+![Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/draft.png)
 
 ## Which pictures
 
@@ -38,7 +38,7 @@ Each picture's **?** lists its own tools and what the signs mean.
 
 Sketching does not wake the agent and does not change the plan. When you are ready, press **Ask the agent to review**. It says in plain words what your sketch means for the plan (the network, a migration, a missing step), using the names on the picture, and asks once before changing anything.
 
-![The agent's review in the whole plan's chat, in plain words, with a link to a box](images/review.png)
+![The agent's review in the whole plan's chat, in plain words, with a link to a box](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/review.png)
 
 What it puts in the plan stays where you placed it; what you turned down stays in your draft.
 

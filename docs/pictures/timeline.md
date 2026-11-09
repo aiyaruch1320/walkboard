@@ -4,6 +4,10 @@
 
 **Answers:** when, and for how long? Retries, timeouts, schedules.
 
+![Retries on a time axis: tries 1 to 3 fail with waits of 2, 4 and 8 minutes, try 4 is sent, and the give-up mark is at 30 minutes](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/timeline.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=retry&step=all)
+
 ## How to read it
 
 - One row per part of the system; time runs left to right in the unit shown (seconds, minutes, days).

@@ -4,6 +4,10 @@
 
 What boxes, zones and lines can be on Azure, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).
 
+![A small web app with a database and a job, drawn with Azure kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/azure.png)
+
+[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=azure&step=all)
+
 This page is generated from `skills/walkboard/lib/profiles.mjs`.
 
 ## Zones

@@ -4,7 +4,9 @@
 
 **Answers:** who calls whom, in what order, and what happens if it fails?
 
-![A call sequence with an alternative path framed](../images/sequence.png)
+![A sequence: the customer orders, the API saves and queues, the worker sends, with a framed retry path](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/sequence.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=calls&step=all)
 
 ## How to read it
 

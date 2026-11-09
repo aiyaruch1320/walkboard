@@ -4,7 +4,7 @@
 
 Use it to build or change something: `/walkboard plan deploying this CronJob to staging`.
 
-![Steps on top, the selected step and the flow picture](../images/build-overview.png)
+![Steps on top, the selected step and the flow picture](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/build-overview.png)
 
 ## How it goes
 
@@ -14,7 +14,7 @@ Use it to build or change something: `/walkboard plan deploying this CronJob to 
 4. **Approve plan.** Nothing is built before you press it.
 5. **One step at a time.** The agent builds a step, marks it for review and stops. Look at what it did, ask about it, then press **Start next step: …** at the top. The last one says **Finish**.
 
-![A finished step waits; the user presses Start next step and the agent moves on](../images/next.gif)
+![A finished step waits; the user presses Start next step and the agent moves on](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/next.gif)
 
 ## Commits
 

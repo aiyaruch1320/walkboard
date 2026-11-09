@@ -4,7 +4,7 @@
 
 Use it to understand code that already exists: `/walkboard explain how login works in project A`. Nothing is changed.
 
-![Explain mode: the login flow in stages](../images/explain-overview.png)
+![Explain mode: the login flow in stages](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/explain-overview.png)
 
 ## What you get
 
@@ -14,7 +14,7 @@ Use it to understand code that already exists: `/walkboard explain how login wor
 - **Checked against the code.** Each box carries a short piece of its code. `walkboard check` fails when the file or lines are gone or that piece is no longer there (and says where it went), and the page warns on the code itself when it changed since it was explained.
 - **Still unclear · Go deeper** ask the agent to explain a box again more simply, or in more depth.
 
-![A box showing its code excerpt and an editor link](../images/explain-code.png)
+![A box showing its code excerpt and an editor link](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/explain-code.png)
 
 ## Which code it can show
 

@@ -4,7 +4,7 @@
 
 Use it to choose how to build something new: `/walkboard compare ways to connect EC2 across two AWS accounts`.
 
-![Design mode: three ways to connect two VPCs scored with sources; changing two weights puts another option ahead](../images/design.gif)
+![Design mode: three ways to connect two VPCs scored with sources; changing two weights puts another option ahead](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/design.gif)
 
 ## What you get
 

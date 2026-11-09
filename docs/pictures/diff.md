@@ -4,6 +4,10 @@
 
 **Answers:** what changes between now and after the work?
 
+![Today and after side by side: the API calls SES directly today, and puts messages on a queue after](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/diff.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=change&step=all)
+
 ## How to read it
 
 - Two pictures side by side: how it is now, and how it will be.

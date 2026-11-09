@@ -4,6 +4,10 @@
 
 **Answers:** what are the tables, their keys, and how do they relate?
 
+![Three tables, customers, orders and email_log, with keys, a kept copy of the email, and a group](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/datamodel.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=tables&step=all)
+
 ## How to read it
 
 - Each box is a table with only the columns that matter, and their types.

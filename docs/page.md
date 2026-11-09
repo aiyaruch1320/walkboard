@@ -2,7 +2,7 @@
 
 [Docs](README.md) › The page
 
-![Steps on top, the selected step with what it does and how we know it is done, the tabs with the draft button, and the flow picture](images/build-overview.png)
+![Steps on top, the selected step with what it does and how we know it is done, the tabs with the draft button, and the flow picture](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/build-overview.png)
 
 ## Parts of the page
 
@@ -26,7 +26,7 @@ The address keeps the step, picture and box, so a reload or a link opens the sam
 
 Click a box and type; the answer appears in that box's conversation.
 
-![A question and the agent's answer](images/chat.png)
+![A question and the agent's answer](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/chat.png)
 
 - **One box takes everything:** a question, or what to add, change or remove. The agent decides whether a request just corrects the picture, changes a plan not yet approved, or is drawn as a proposal for you to accept.
 - **Images:** paste, drop or 📎, up to five per message, 10 MB each (PNG, JPEG, GIF, WebP). Big images are scaled down first, so one costs the agent about 1,500 tokens at most. They stay beside the plan in `.walkboard/images` and are left out of exports.

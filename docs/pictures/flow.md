@@ -4,7 +4,9 @@
 
 **Answers:** what are the steps, in order? Most plans have one, built from their steps.
 
-![A plan's flow picture under its steps](../images/build-overview.png)
+![The steps of the example plan in lanes: queues, send side, receive side, and a checklist](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/flow.png)
+
+[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=flow&step=all)
 
 ## How to read it
 

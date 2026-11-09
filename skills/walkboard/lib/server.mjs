@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import crypto from "node:crypto";
 import {excerpt} from "./source.mjs";
-import {updatePlan} from "./edit.mjs";
+import {updatePlan, replaceFile} from "./edit.mjs";
 import {pageHtml, snapshot, moduleText} from "./export.mjs";
 import {validateDraft, emptyDraft, draftable, viewList, isNewId} from "./draft.mjs";
 import {VERSION, SKILL_DIR} from "./version.mjs";
@@ -99,7 +99,7 @@ export function writeDraft(dir, d) {
   if (!Object.values(d.views).some((v) => v.ops.length)) return fs.rmSync(p.draft, {force: true});
   const tmp = `${p.draft}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(d), {mode: 0o600});
-  fs.renameSync(tmp, p.draft);
+  replaceFile(tmp, p.draft);
 }
 
 // Text that is only spaces or invisible characters is no message.

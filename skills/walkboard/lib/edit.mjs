@@ -63,10 +63,26 @@ export function savePlan(file, plan, before = "") {
   const indent = before.includes("\n ") || before.includes("\n\t") ? before.match(/\n([ \t]+)"/)?.[1] ?? 1 : before.trim() ? 0 : 1;
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(plan, null, indent) + "\n");
-  fs.renameSync(tmp, file);
+  replaceFile(tmp, file);
 }
 
 const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// Put tmp in file's place. Windows refuses while another process has file open for a moment (a page reading the plan,
+// another command reading it before its lock): try again for up to about a second, as other tools do there.
+export function replaceFile(tmp, file) {
+  for (let i = 0; ; i++) {
+    try {
+      return fs.renameSync(tmp, file);
+    } catch (e) {
+      if (i >= 40 || !["EPERM", "EACCES", "EBUSY"].includes(e.code)) {
+        fs.rmSync(tmp, {force: true});
+        throw e;
+      }
+      pause(25);
+    }
+  }
+}
 
 // Read, change and write plan.json while holding a lock, so the page's switches and `walkboard set` never overwrite each other.
 // change(plan, before) returns the plan to save, or throws to leave the file as it was.

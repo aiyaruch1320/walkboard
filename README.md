@@ -20,46 +20,48 @@
   <img src="https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking about a box in the side panel, and the agent answering in place" width="100%">
 </p>
 
-## Try it
+## Getting started
 
-In Claude Code (needs Node.js 18.18 or newer, nothing else):
+You need Claude Code and Node.js 18.18 or newer. Nothing else. In Claude Code, run:
 
 ```
 /plugin marketplace add aiyaruch1320/walkboard
 /plugin install walkboard@walkboard
 ```
 
-Then, in any repository:
+Start a new session, open one of your repositories, and try:
 
 ```
 /walkboard explain how this project starts up
 ```
 
-The agent asks a question or two, then gives you a link to a page on your machine. Click a box to ask about it; the agent answers there. Keep Claude Code open while you use the page: that is where the agent works.
+The agent may ask you a question or two. Then it sends you a link to a page on your machine. Click any box to ask about it, and the agent answers right there. Keep Claude Code open while you use the page, because that is where the agent does its work.
 
-Walkboard is new (version 0.10): built and tested with Claude Code on macOS. Windows, Linux and other agents should work but are not tried by hand yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
+Want to look before you install? [Open a live example](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=map&step=all) in your browser.
 
-## Why
+> Walkboard is new (version 0.10). It is built and used every day with Claude Code on macOS. Windows, Linux and other agents should work, but nobody has tried them by hand yet. [Issues](https://github.com/aiyaruch1320/walkboard/issues) are very welcome.
 
-Long plans written by AI are hard to follow, and you stop feeling that the work is yours. Walkboard has the agent show its work as pictures on a local page instead. Click a box, a step or a table cell to ask about it, and the agent answers right there.
+## Why Walkboard
 
-- **See it, don't scroll it.** Eleven kinds of picture (flow, map of a cloud, Kubernetes or network, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
-- **Ask on the spot.** Every box, step and comparison cell has its own thread. Your question goes straight to the agent, and its answer appears where you asked, not somewhere in a long chat.
-- **You stay in charge.** Nothing is built before you press **Approve plan**, and after each step the agent stops until you start the next one.
-- **Evidence, not guesses.** Explanations point at the real `file:line`, design scores cite a dated source, and anything the agent assumed is drawn dashed until you answer it in your own words.
-- **Sketch, then ask.** Press **✎ Draft changes** and change the picture yourself; the agent reviews your sketch and puts in the plan only what you agree to.
+Long plans written by AI are hard to follow, and after a while you stop feeling that the work is yours. Walkboard has the agent show its work as pictures instead, on a page you can click and talk to.
 
-Also: weigh options by your own priorities, export a plan as one HTML file or print it to PDF, and keep everything on your machine (127.0.0.1, random token, no telemetry). The page speaks English and Thai. A four-picture plan costs about 7 KB of JSON instead of 26–43 KB of hand-written HTML ([numbers](https://aiyaruch1320.github.io/walkboard/reference.html#tokens)). Everything else is in the **[docs](https://aiyaruch1320.github.io/walkboard/)** ([ภาษาไทย](https://aiyaruch1320.github.io/walkboard/th/)).
+- **Pictures instead of pages of text.** There are eleven kinds, from a simple flow to a map of your cloud network, a sequence of calls or a database model. The agent picks the one that answers your question.
+- **Ask where it matters.** Every box, step and comparison cell has its own conversation. You ask on the box, and the answer appears on the box, not somewhere up in a long chat.
+- **You stay in charge.** Nothing is built until you press **Approve plan**. After each step, the agent stops and waits for you to start the next one.
+- **Shows its evidence.** Explanations point at the real file and line. Design scores cite their sources, with the date they were read. Anything the agent had to guess is drawn dashed until you answer it.
+- **Draw it yourself.** Press **✎ Draft changes** to sketch a change on the picture. The agent reviews your sketch and puts into the plan only what you agree to.
+
+It also lets you weigh options by your own priorities, export a plan as one HTML file or a PDF, and keeps everything on your machine. The page is in English and Thai.
 
 ## Three modes
 
 | Mode | Use it to | You get |
 |---|---|---|
-| **Plan** | build or change something | 3-8 small steps you approve, then follow as the agent builds them, one click at a time |
-| **Explain** | understand code that already exists | stages in order, each box tied to the real code, with notes on the lines that matter |
-| **Design** | choose how to build something new | 2-4 options drawn side by side, scored against your criteria with sources, and a recommendation |
+| **Plan** | build or change something | 3–8 small steps that you approve, then watch the agent build one at a time |
+| **Explain** | understand code that already exists | the code's stages in order, with each box tied to the real code and notes on the lines that matter |
+| **Design** | choose how to build something new | 2–4 options drawn side by side, scored against your criteria with sources, and a recommendation |
 
-The agent picks the mode from your request and asks up to three short questions first if something would change the picture.
+The agent picks the mode from what you ask.
 
 <table>
   <tr>
@@ -72,31 +74,9 @@ The agent picks the mode from your request and asks up to three short questions 
   </tr>
 </table>
 
-## Use
+## Documentation
 
-Type `/walkboard` and say what you want, or just ask in your own words. On its own, `/walkboard` looks through the repository and offers things to see first:
-
-```
-/walkboard plan deploying this CronJob to staging
-/walkboard explain how login works in project A
-/walkboard compare ways to connect EC2 across two AWS accounts
-```
-
-<sub>If another command is already called `/walkboard`, use the full name `/walkboard:walkboard`.</sub>
-
-1. The agent asks what it needs to know (for a plan: commit for you, or only suggest messages?). It offers to remember your answers, so it does not ask again.
-2. It writes the plan and gives you a link to a page on your machine.
-3. Click a box to see what it does. Type in the chat to ask, or to say what to add, change or remove; paste or drop an image if that says it better. What to do next is always the button at the top right; **⋮** holds settings, export and the theme.
-4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the docs](https://aiyaruch1320.github.io/walkboard/draft.html).
-
-   <img src="https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
-5. Switch who commits under **⋮**. Switching does not wake the agent or cost tokens.
-
-**Updates:** `/plugin` → **Marketplaces** → **walkboard** → **Enable auto-update** gets new versions by themselves (Claude Code leaves it off for marketplaces outside its own). A running session keeps the version it started with until `/reload-plugins` or a new session; Walkboard says so when it opens a page. The page shows its version at the bottom of **⋮**.
-
-Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, each box, zone and line can say what it is on those platforms (an RDS in a private subnet, a CronJob in a namespace), and a small ⚠ marks something that usually sits elsewhere: a hint, not an error. [Platforms](https://aiyaruch1320.github.io/walkboard/platforms/) lists them all.
-
-More screens, every picture and platform with live examples, FAQ and reference: **[aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/)** · [ภาษาไทย](https://aiyaruch1320.github.io/walkboard/th/).
+Everything else is in the docs at **[aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/)**: every part of the page, every kind of picture with a live example, the cloud platforms, sketching, sharing, and answers to common questions. There is also [a start page in Thai](https://aiyaruch1320.github.io/walkboard/th/).
 
 ## How it works
 
@@ -106,11 +86,15 @@ agent ──writes──► plan.json ──► page (pictures + chat)
   └── wakes up ◄── local server ◄─────┘
 ```
 
-The agent writes `plan.json`; a fixed page draws it, so every plan looks familiar and the agent never writes HTML. What you click or type is queued on disk and handed to a background `walkboard poll`, which wakes the agent; `walkboard reply` puts its answer back on the page. The idea of a local page whose messages reach the agent through a waiting `poll` comes from [lavish-axi](https://github.com/kunchenguid/lavish-axi).
+The agent never writes HTML. It writes a small `plan.json`, and a fixed page draws it, so every plan looks familiar. When you click or type on the page, your message is queued on disk and handed to a `walkboard poll` waiting in the background, which wakes the agent. The agent answers with `walkboard reply`, and the answer appears on the page.
+
+Because the agent only writes data, Walkboard is light on tokens. A plan with four pictures is about 7 KB of JSON, where a hand-written page would be 26–43 KB of HTML ([the numbers](https://aiyaruch1320.github.io/walkboard/reference.html#tokens)).
+
+The idea of a local page whose messages reach the agent through a waiting `poll` comes from [lavish-axi](https://github.com/kunchenguid/lavish-axi).
 
 ## Security and privacy
 
-Everything stays on your machine: one zero-dependency Node server per plan, bound to 127.0.0.1 behind a random token, no network requests, no telemetry. What it reads, writes and runs, and how to report a problem: [SECURITY.md](SECURITY.md).
+Everything stays on your machine. Each plan gets its own small Node server with no dependencies. It listens only on 127.0.0.1, behind a random token, makes no network requests and sends no telemetry. [SECURITY.md](SECURITY.md) lists what it reads, writes and runs, and how to report a problem.
 
 ## For AI agents
 

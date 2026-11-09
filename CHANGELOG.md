@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.2
+
+- **Answer a guess in your own words.** Under every assumption there is a box to type what is true, beside **✓ Right**; "Not true" is gone. A guess that is not a yes or no (how many services, which size) can come as a question: `ask` on a constraint or an assumed box. The agent receives your words as `answer`.
+- **Constraints on one line.** The bar shows the first three still to confirm, cut to one line, then how many more and how many are confirmed. **Answer…** opens them all: open ones first, the confirmed ones folded. A constraint's numbers and sources go in its new `detail`, shown only there. Print still lists every constraint.
+- **A smaller ⋮ menu.** One line for the mode (what it means is a tooltip), shorter rows: about 190×160 px instead of 310×226.
+
 ## 0.10.1
 
 - **Which version a page runs** is the last line of **⋮**, small and grey, and in the connection dot's tooltip.

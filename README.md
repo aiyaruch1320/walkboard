@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version 0.10.1" src="https://img.shields.io/badge/version-0.10.1-7f77dd"></a>
+  <a href="CHANGELOG.md"><img alt="version 0.10.2" src="https://img.shields.io/badge/version-0.10.2-7f77dd"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-1d9e75"></a>
   <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-ef9f27">
 </p>

@@ -117,7 +117,13 @@ const alive = (pid) => {
 function takeLock(file) {
   for (let i = 0; i < 2; i++) {
     try {
-      fs.writeSync(fs.openSync(file, "wx", 0o600), String(process.pid));
+      // Closed at once: an open lock file cannot be taken out or made again on Windows until it is.
+      const fd = fs.openSync(file, "wx", 0o600);
+      try {
+        fs.writeSync(fd, String(process.pid));
+      } finally {
+        fs.closeSync(fd);
+      }
       return;
     } catch (e) {
       if (e.code !== "EEXIST") throw e;

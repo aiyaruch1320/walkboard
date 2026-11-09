@@ -639,6 +639,8 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
       if (sent) return sent();
       say(t(chatMode() ? "sentChat" : "sent"), "note");
       if (chatMode()) (live().closest(".composer")?.querySelector(".note") || note).append(" ", copyCheck());
+      // The message and what happens next sit at the panel's bottom: show them, wherever the panel was scrolled.
+      requestAnimationFrame(() => live().closest(".composer")?.scrollIntoView({block: "nearest"}));
     } catch (e) {
       if (typed.trim() && !live().value.trim()) live().value = drafts[key] = typed;
       pendingImages[key] = [...images, ...(pendingImages[key] || [])];
@@ -759,7 +761,7 @@ function queuedEl(m, queue, open) {
   if (busy) line.append(t("queuedAnswering") + " ", talkLink(sideOf(busy)));
   else if (open.some((x) => sideKey(sideOf(x)) === sideKey(sideOf(m)) && !quiet(x))) line.append(t("queuedSame"));
   // Not woken by the page: the user has to tell the agent, whatever step it is on.
-  else if (chatMode()) line.append(t("queuedChat"));
+  else if (chatMode()) line.append(t("queuedChat"), " ", copyCheck());
   else if (doing) line.append(t("queuedBuilding") + " ", talkLink({kind: "step", id: doing.id}));
   else line.append(t("queuedAway"));
   d.append(line);
@@ -2070,6 +2072,9 @@ function readHelp(button, kind, words = []) {
   pop.style.position = "absolute";
   pop.style.left = left + scrollX + "px";
   pop.style.top = b.bottom + 10 + scrollY + "px";
+  // Long cards scroll inside themselves rather than run under the draft toolbar or the chat bar.
+  pop.style.maxHeight = Math.max(160, innerHeight - (b.bottom + 10) - 96) + "px";
+  pop.style.overflowY = "auto";
   // The little pointer sits under the button, wherever the card had to move to stay on screen.
   pop.style.setProperty("--tip", b.left + b.width / 2 - left + "px");
 }
@@ -3655,7 +3660,8 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
       r.append(b.firstChild.cloneNode(true), el("span", null, b.title));
       return r;
     });
-    const pop = popover(0, 0, [el("div", "dphead", t("sketchHelp")), ...rows, el("div", "dhint", t("sketchHelpMore")), docLink(sketchDoc(), t("sketchDoc") + " ↗"), docLink("draft.md", t("draftDoc") + " ↗")], {beside: help.getBoundingClientRect()});
+    const how = [hints.select, t("copyKeys", mac ? "⌘" : "Ctrl+"), `${t("undo")} ${mac ? "⌘Z" : "Ctrl+Z"} · ${t("redo")} ${mac ? "⇧⌘Z" : "Ctrl+Y"}`].filter(Boolean).map((x) => el("div", "dhint", x));
+    const pop = popover(0, 0, [el("div", "dphead", t("sketchHelp")), ...rows, el("div", "dhint", t("sketchHelpMore")), ...how, docLink(sketchDoc(), t("sketchDoc") + " ↗"), docLink("draft.md", t("draftDoc") + " ↗")], {beside: help.getBoundingClientRect()});
     pop.classList.add("dhelpcard");
   };
   bar.append(count, send, help, exit);
@@ -5316,6 +5322,8 @@ function renderMap(real, focus = null) {
         removeEventListener("pointerup", up);
         line.remove();
         over?.classList.remove("dtarget");
+        // Let go on the box it started from, after a real drag: say why nothing was drawn.
+        if (!over && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) > 8 && document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("[data-anchor]") === from) return showProblem(t("lineSelf"));
         if (!over) return;
         const f = from.dataset.anchor, to = over.dataset.anchor;
         // A line that is there already opens it instead of drawing it twice.

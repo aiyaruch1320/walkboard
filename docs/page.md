@@ -16,7 +16,7 @@ From top to bottom, a page has:
 
 In the top right corner there are three more controls:
 
-- **The dot** shows what the agent is doing. Green means it is listening, purple means it is answering you, and orange means it is busy with something else. Hover over the dot to see this in words.
+- **The dot** shows what the agent is doing. Green means it is listening, purple means it is answering you, and orange means it is busy with something else. Grey means the agent is not woken by the page, so your messages wait until you tell it in its chat to check the page. This is how most agents other than Claude Code work, see [Use other agents](other-agents.md). Hover over the dot to see this in words.
 - **💬** lists every conversation on the page, newest first. It turns orange and says "new" when the agent has replied. Click a conversation to carry on.
 - **⋮** holds the settings: the mode, who commits, Export, the theme, this guide, the keyboard shortcuts and the version.
 

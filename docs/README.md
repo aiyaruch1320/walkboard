@@ -6,7 +6,7 @@ Welcome to the Walkboard docs.
 
 ## What is Walkboard?
 
-Walkboard is a skill for Claude Code. When you ask the agent to plan a change or explain some code, it answers with pictures on a page in your browser instead of a long block of text in the chat.
+Walkboard is a skill for coding agents, made first for Claude Code. When you ask the agent to plan a change or explain some code, it answers with pictures on a page in your browser instead of a long block of text in the chat.
 
 The page is not just something to look at. You can click any box to see what it is, ask a question about it, or say what should change. The agent answers right there on that box, so the conversation stays next to the thing it is about.
 
@@ -39,7 +39,7 @@ Walkboard has three modes. The agent picks one from what you ask, and you can ch
 The docs are organized into five sections:
 
 - **Getting Started** walks you through installing Walkboard, opening your first page, and the three modes.
-- **Guides** cover specific tasks, such as sketching a change yourself or sending a plan to a teammate.
+- **Guides** cover specific tasks, such as sketching a change yourself, sending a plan to a teammate, or using an agent other than Claude Code.
 - **Pictures** explains each of the eleven kinds of picture: how to read it and what you can do on it.
 - **Platforms** lists what boxes and zones mean on AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes, containers and on-prem.
 - **Reference** has the commands, the plan format and answers to common questions.

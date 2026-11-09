@@ -6,7 +6,7 @@ This page shows you how to install Walkboard, open your first page, and keep it 
 
 Before you begin, make sure you have:
 
-- Claude Code, in the terminal or the desktop app.
+- Claude Code, in the terminal or the desktop app. Using another agent, such as Codex or Gemini CLI? See [Use other agents](other-agents.md) instead.
 - Node.js 18.18 or newer. Run `node -v` to check.
 
 You do not need an account, an API key or any other package. Walkboard is free and open source (MIT licence). The work the agent does for you counts toward your normal Claude Code usage, like any other request.

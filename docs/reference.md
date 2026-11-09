@@ -11,7 +11,7 @@ All commands are run with `node skills/walkboard/bin/walkboard.mjs`, shortened t
 | `… check <dir>` | Checks `plan.json`. In explain mode, it also checks that every `file:line` still exists and still holds the code it pointed at |
 | `… set <dir> [plan \| step: \| node: \| constraint: \| option: \| criterion: \| source:<id>] key=value …` | Changes fields in place. `key=` removes a field, `settings.commit=auto` reaches inside an object, and `what='"0042"'` keeps digits as text |
 | `… open <dir> [--no-browser]` | Starts the server, or reuses a running one, and prints the link |
-| `… poll <dir> [--full] [--timeout s]` | Waits for messages from the page and prints one short JSON line for each. `--full` adds ids, times and where every box is |
+| `… poll <dir> [--full] [--now \| --timeout s]` | Waits for messages from the page and prints one short JSON line for each. `--now` prints what is already waiting, or `[]`, without waiting. `--full` adds ids, times and where every box is |
 | `… reply <dir> [--node id \| --step id \| --option id [--criterion id]] <text>` | Answers on the page, in the conversation of that box, step or design cell. `[[node:id]]`, `[[step:id]]`, `[[option:id]]` and `[[plan]]` become links |
 | `… status <dir>` | Shows the link and the messages waiting |
 | `… stop <dir>` | Stops the server |

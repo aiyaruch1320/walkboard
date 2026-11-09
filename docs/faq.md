@@ -62,7 +62,7 @@ Fewer than having the agent write an HTML page itself. The agent writes one smal
 
 ### Does it work with other agents?
 
-The page and the pictures work the same anywhere, but only Claude Code is tested. Other agents cannot be woken up by your clicks, so the agent has to sit and wait for them, and you cannot use its chat in the meantime. See [For AI agents](../README.md#for-ai-agents) in the README.
+Yes. Agents that read `SKILL.md` skills, such as Codex, Gemini CLI or Cursor, get the same pictures and page. The difference is that most of them cannot be woken up by a click, so your messages on the page wait until you tell the agent "check the page" in its chat. Only Claude Code is tested by hand so far. See [Use other agents](other-agents.md). See [For AI agents](../README.md#for-ai-agents) in the README.
 
 ## Limits
 

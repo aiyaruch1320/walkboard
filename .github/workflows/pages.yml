@@ -1,0 +1,46 @@
+name: docs site
+
+# Builds https://aiyaruch1320.github.io/walkboard/ from docs/ on main, the images on the media branch and the live
+# examples (scripts/site.mjs). Needs Settings → Pages → Source: GitHub Actions.
+# A push to media alone does not run it (this file is not on that branch): run it from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/checkout@v4
+        with:
+          ref: media
+          path: media
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - run: node scripts/site.mjs site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

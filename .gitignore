@@ -1,2 +1,6 @@
 .walkboard/
 evals/results/
+# The media branch, checked out here to regenerate the docs images (scripts/screenshots.mjs)
+/media/
+# The docs site, built by scripts/site.mjs
+/site/

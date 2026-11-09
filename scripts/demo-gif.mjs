@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // The chat bar sits where the captions go, so it is left out.
-// Records demo.gif (typing /walkboard in Claude Code to an answer on the page), next.gif (a finished step, then the next)
-// and design.gif (comparing options by your own weights) into media/, or $WALKBOARD_MEDIA (see scripts/screenshots.mjs).
+// Records demo.gif (typing /walkboard in Claude Code to an answer on the page), next.gif (a finished step, then the next),
+// design.gif (comparing options by your own weights) and sketch.gif (draft mode on a map, step by step) into media/, or
+// $WALKBOARD_MEDIA (see scripts/screenshots.mjs). DEMO_ONLY=sketch,design records only those.
 // The terminal is a plain mock-up; the walkboard page is real (a copy of examples/nightly-import).
 // Pages are captured at 2x and a camera crops and scales the captures, so zooming never touches the page layout.
 // Needs Google Chrome and Node 22: node scripts/demo-gif.mjs   (DEMO_FRAMES=<dir> also writes every output frame as PNG)
@@ -17,6 +18,9 @@ const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
 const W = 960, H = 600, SCALE = 2;
+const want = (name) => !process.env.DEMO_ONLY || process.env.DEMO_ONLY.split(",").includes(name);
+// As if an agent had waited on the page before: the status says it listens, not "tell your agent".
+const listens = (d) => (fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true}), fs.writeFileSync(path.join(d, ".walkboard", "listens"), "demo"));
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-"));
 const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
@@ -25,9 +29,11 @@ for (const s of plan.steps) {
   s.status = "todo";
 }
 fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
+listens(dir);
 const url = pv("open", dir, "--no-browser");
 const designDir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-design-"));
 fs.copyFileSync(path.join(repo, "examples/connect-vpcs/plan.json"), path.join(designDir, "plan.json"));
+listens(designDir);
 const designUrl = pv("open", designDir, "--no-browser");
 const designShort = `127.0.0.1:${new URL(designUrl).port}/?token=…`;
 const {origin, searchParams} = new URL(url);
@@ -124,7 +130,8 @@ function shoot(src, delay) {
   const x = Math.min(Math.max(0, cam.cx * SCALE - w / 2), W * SCALE - w), y = Math.min(Math.max(0, cam.cy * SCALE - h / 2), H * SCALE - h);
   const out = view(src, {x, y, w, h}, W, H);
   const cap = caption && captions.get(caption);
-  if (cap) overlay(out, cap, Math.round((W - cap.width) / 2), H - cap.height - 10);
+  // Draft mode's toolbar sits at the bottom, so its captions go at the top.
+  if (cap) overlay(out, cap, Math.round((W - cap.width) / 2), recording === "sketch" ? 46 : H - cap.height - 10);
   if (process.env.DEMO_FRAMES) fs.writeFileSync(path.join(process.env.DEMO_FRAMES, `${recording}-${String(frames.length).padStart(3, "0")}.png`), encodePng(out));
   frames.push({...out, delay});
   return out;
@@ -252,7 +259,52 @@ const CAPTIONS = [
   "Each option is drawn and scored, with sources",
   "Change what matters to you: the totals follow",
   "Open any option to see how it would look",
+  "Draft changes: sketch on the picture yourself",
+  "Pick Box (B), then click inside the zone where it goes",
+  "Pick Line (L), then drag from one box to another",
+  "Each change is drawn dashed and listed. The plan has not changed",
+  "Ready? Ask the agent to review your sketch",
+  "Stuck? The ? lists every tool, with a link to the docs",
 ];
+// sketch.gif: a copy of the pictures example, on its map.
+const sketchDir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-sketch-"));
+fs.copyFileSync(path.join(repo, "examples/pictures/plan.json"), path.join(sketchDir, "plan.json"));
+listens(sketchDir);
+const sketchUrl = pv("open", sketchDir, "--no-browser");
+const sketchShort = `127.0.0.1:${new URL(sketchUrl).port}/?token=…`;
+// Real pointer and keys, for the drawing tools (they listen to pointer events, not click()).
+const mouse = (type, x, y) => page.send("Input.dispatchMouseEvent", {type, x, y, button: "left", buttons: type === "mouseReleased" ? 0 : 1, clickCount: 1});
+async function moveToPoint(x, y, steps = 7, held = false) {
+  const from = {...cur};
+  cur.shown = true;
+  for (let i = 1; i <= steps; i++) {
+    const k = ease(i / steps);
+    cur.x = from.x + (x - from.x) * k;
+    cur.y = from.y + (y - from.y) * k;
+    if (held) await page.send("Input.dispatchMouseEvent", {type: "mouseMoved", x: cur.x, y: cur.y, button: "left", buttons: 1});
+    await ov(`__ov.cursor(${cur.x}, ${cur.y})`);
+    await snap(40);
+  }
+}
+async function pressAt(hold = 700) {
+  await ov(`__ov.ripple(${cur.x}, ${cur.y}, true)`);
+  await snap(140);
+  await page.send("Input.dispatchMouseEvent", {type: "mouseMoved", x: cur.x, y: cur.y});
+  await mouse("mousePressed", cur.x, cur.y);
+  await mouse("mouseReleased", cur.x, cur.y);
+  await sleep(400);
+  await ov(`__ov.ripple(0, 0, false)`);
+  await snap(hold);
+}
+async function key(k, code = k) {
+  await page.send("Input.dispatchKeyEvent", {type: "keyDown", key: k, code, windowsVirtualKeyCode: k === "Enter" ? 13 : 0});
+  await page.send("Input.dispatchKeyEvent", {type: "keyUp", key: k, code, windowsVirtualKeyCode: k === "Enter" ? 13 : 0});
+}
+const centre = async (sel) => {
+  const r = await rect(sel);
+  if (!r) throw new Error(`not found: ${sel}`);
+  return {x: r.x + r.w / 2, y: r.y + r.h / 2};
+};
 // Clears the fake browser bar and the sticky status bar when scrolling to something.
 const TOP = 100;
 const pageAt = async (u, short, x = 520, y = 330) => {
@@ -264,6 +316,7 @@ const pageAt = async (u, short, x = 520, y = 330) => {
 
 try {
   await renderCaptions(CAPTIONS);
+  if (want("demo")) {
 
   // demo.gif: the request in Claude Code, the plan page, a question on a box and its answer.
   await goto(terminalUrl, 700);
@@ -335,7 +388,9 @@ try {
   }, 5);
   await snap(2600);
   save("demo");
+  }
 
+  if (want("next")) {
   // next.gif: a finished step waits for the user, who starts the next one.
   recording = "next";
   pv("set", dir, "step:manifests", "status=review", "node:cronjob", "status=done", "node:cm", "status=done");
@@ -355,7 +410,9 @@ try {
   await sleep(900);
   await snap(2200);
   save("next");
+  }
 
+  if (want("design")) {
   // design.gif: options drawn and scored; the user's weights change the totals; another option's picture.
   recording = "design";
   // A poll is waiting, as in a real session: the page says the agent is listening.
@@ -383,8 +440,81 @@ try {
   await scrollTo("#tabs", TOP - 40);
   await snap(2600);
   save("design");
+  }
+
+  if (want("sketch")) {
+    // sketch.gif: draft mode on a map, one tool at a time.
+    recording = "sketch";
+    caption = CAPTIONS[11];
+    await pageAt(`${sketchUrl}&theme=dark&view=map&step=all`, sketchShort);
+    await scrollTo("#tabs", TOP - 30);
+    await snap(1200);
+    const draftBtn = await page.eval(`const b = [...document.querySelectorAll("#viewTools button")].find((x) => /Draft changes/.test(x.textContent)); b.id = "draftBtn"; return true;`);
+    if (!draftBtn) throw new Error("no Draft changes button");
+    await moveTo("#draftBtn");
+    await click("#draftBtn", {hold: 900});
+    await scrollTo(".zone.z1", TOP + 10);
+    await snap(800);
+
+    caption = CAPTIONS[12];
+    await moveTo('.dtools [data-tool="box"]');
+    await click('.dtools [data-tool="box"]', {hold: 500});
+    // An empty spot in the App subnets zone, under its boxes.
+    const spot = await page.eval(`
+      // The smallest zone that holds the words "App subnets" is that zone itself.
+      const zone = [...document.querySelectorAll(".zone")].filter((e) => e.textContent.includes("App subnets")).sort((x, y) => x.offsetWidth * x.offsetHeight - y.offsetWidth * y.offsetHeight)[0];
+      const r = zone.getBoundingClientRect();
+      const boxes = [...zone.querySelectorAll("[data-id]")].map((b) => b.getBoundingClientRect());
+      const below = Math.max(...boxes.map((b) => b.bottom));
+      return {x: r.left + 90, y: Math.min(r.bottom - 14, (below + r.bottom) / 2)};`);
+    await moveToPoint(spot.x, spot.y);
+    await pressAt(900);
+    await typeInto(".dpop .dname", "Redis cache", 3);
+    await snap(500);
+    await key("Enter");
+    await sleep(700);
+    await snap(1600);
+
+    caption = CAPTIONS[13];
+    await moveTo('.dtools [data-tool="connect"]');
+    await click('.dtools [data-tool="connect"]', {hold: 500});
+    const newBox = await page.eval(`const b = [...document.querySelectorAll("#view [data-id]")].find((e) => /Redis cache/.test(e.textContent)); b.id = "newBox"; return true;`);
+    if (!newBox) throw new Error("the new box is not on the map");
+    // The API calls the cache: the line starts at the side that opens the connection.
+    const a = await centre('#view [data-id="api"]'), b = await centre("#newBox");
+    await moveToPoint(a.x, a.y);
+    await ov(`__ov.ripple(${cur.x}, ${cur.y}, true)`);
+    await page.send("Input.dispatchMouseEvent", {type: "mouseMoved", x: cur.x, y: cur.y});
+    await mouse("mousePressed", cur.x, cur.y);
+    await snap(200);
+    await moveToPoint(b.x, b.y, 12, true);
+    await mouse("mouseReleased", cur.x, cur.y);
+    await ov(`__ov.ripple(0, 0, false)`);
+    await sleep(500);
+    await snap(700);
+    // The line's card: a label (the port), then Enter keeps it.
+    await typeInto(".dpop input", ":6379", 5);
+    await snap(500);
+    await key("Enter");
+    await sleep(600);
+    await snap(1600);
+
+    caption = CAPTIONS[14];
+    await moveTo(".dtools .dcount");
+    await click(".dtools .dcount", {hold: 2600});
+
+    caption = CAPTIONS[15];
+    await moveTo(".dtools .dsend");
+    await snap(1400);
+
+    caption = CAPTIONS[16];
+    await moveTo(".dtools .dhelp");
+    await click(".dtools .dhelp", {hold: 3200});
+    save("sketch");
+  }
 } finally {
   page.close();
   pv("stop", dir);
   pv("stop", designDir);
+  pv("stop", sketchDir);
 }

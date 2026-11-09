@@ -71,13 +71,19 @@ function draftPlan() {
 fs.mkdirSync(out, {recursive: true});
 const demo = demoPlan();
 const drafted = draftPlan();
+// As if an agent had waited on each page before: the status shows it listening, not "tell your agent".
+const open = (d) => {
+  fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true});
+  fs.writeFileSync(path.join(d, ".walkboard", "listens"), "screenshots");
+  return pv("open", d, "--no-browser");
+};
 const urls = {
-  build: pv("open", path.join(repo, "examples/nightly-import"), "--no-browser"),
-  explain: pv("open", path.join(repo, "examples/explain-login"), "--no-browser"),
-  demo: pv("open", demo, "--no-browser"),
-  draft: pv("open", drafted, "--no-browser"),
-  pictures: pv("open", path.join(repo, "examples/pictures"), "--no-browser"),
-  platforms: pv("open", path.join(repo, "examples/platforms"), "--no-browser"),
+  build: open(path.join(repo, "examples/nightly-import")),
+  explain: open(path.join(repo, "examples/explain-login")),
+  demo: open(demo),
+  draft: open(drafted),
+  pictures: open(path.join(repo, "examples/pictures")),
+  platforms: open(path.join(repo, "examples/platforms")),
 };
 await post(urls.demo, "/api/feedback", {node: "cronjob", kind: "confused", text: "Why keep it suspended for now?"});
 await post(urls.demo, "/api/reply", {node: "cronjob", from: "agent", text: "The Secret and the route to BigQuery are not ready yet. If it ran now, the Job would fail every night, so it stays suspended until step 4 is done."});

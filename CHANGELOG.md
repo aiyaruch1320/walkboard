@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Docs, one page per subject.** The guide is now [docs/](docs/README.md): getting started, the page, each mode, each of the eleven pictures, sketching, sharing, FAQ and reference, plus a start page in Thai. Each platform (AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes, container, on-prem) has a page generated from its profile, listing every kind with where it usually sits.
+- **The page links to them.** **⋮ → Guide** opens the docs (in Thai when the plan is), a picture's **?** ends with a link to that picture's page, and a ⚠ card links to its kind on the platform's page. The links open GitHub in a new tab; the page itself still loads nothing from the network.
+- **README:** install and a first command come first.
+- **Tests run on macOS, Windows and Linux**, with Node 18 and 22, on every push. Issue forms ask for the version, system and agent.
+
 ## 0.10.3
 
 - **Answering a guess is typed, and folded until you want it.** Each assumption shows a small **✎ Answer**; it opens a field like the chat's, with the send arrow inside. **✓ Right** is gone: say it in words. An empty field folds again when you leave it or press Esc.

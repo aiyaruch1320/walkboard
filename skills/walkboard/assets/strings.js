@@ -2,7 +2,7 @@
 const STRINGS = {
   en: {
     connOff: "○ Not connected", connecting: "○ Connecting…", connLost: "○ Reconnecting…", connOn: "● Agent is listening", connIdle: "◐ Agent is busy",
-    connLostTip: "The page cannot reach the local server", connOnTip: "Click or type: the agent sees it right away", connIdleTip: "The agent is working on something else; your message reaches it when it listens again",
+    connChat: "✉ Messages wait for your agent", connChatTip: "Your agent is not woken by this page. Click, ask or sketch here, then tell it in its own chat: \"check the page\"", queuedChat: "Tell your agent in its chat: \"check the page\"", connLostTip: "The page cannot reach the local server", connOnTip: "Click or type: the agent sees it right away", connIdleTip: "The agent is working on something else; your message reaches it when it listens again",
     banner: "This page was opened as a file, so it is not connected to the agent and clicks reach no one. Open it with walkboard open instead.",
     confused: "Still unclear", deeper: "Go deeper", approve: "Approve plan", send: "Send",
     imageAttach: "Attach an image (or paste or drop one here)", imageRemove: "Remove this image", imageAlt: "Attached image", imageKind: "Only PNG, JPEG, GIF or WebP images", imageBig: "Image too big (10 MB at most)", imageMany: (n) => `At most ${n} images in a message`, q_image: "See the attached image", imageLeftOut: "🖼 image not in this copy",
@@ -56,7 +56,7 @@ const STRINGS = {
   },
   th: {
     connOff: "○ ยังไม่เชื่อมต่อ", connecting: "○ กำลังเชื่อมต่อ…", connLost: "○ กำลังเชื่อมต่อใหม่…", connOn: "● agent กำลังฟังอยู่", connIdle: "◐ agent ติดงานอื่น",
-    connLostTip: "หน้าเว็บติดต่อ server ในเครื่องไม่ได้", connOnTip: "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที", connIdleTip: "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง",
+    connChat: "✉ ข้อความรอ agent อยู่", connChatTip: "agent ไม่ได้รอฟังหน้านี้ คลิก ถาม หรือร่างไว้ที่นี่ได้ แล้วพิมพ์บอก agent ในแชทว่า \"ดูหน้า walkboard\"", queuedChat: "พิมพ์บอก agent ในแชทว่า \"ดูหน้า walkboard\"", connLostTip: "หน้าเว็บติดต่อ server ในเครื่องไม่ได้", connOnTip: "คลิกหรือพิมพ์ได้เลย agent จะเห็นทันที", connIdleTip: "agent กำลังทำอย่างอื่นอยู่ ข้อความจะถึงเมื่อ agent กลับมาฟัง",
     banner: "หน้านี้เปิดจากไฟล์โดยตรง จึงไม่ได้เชื่อมต่อกับ agent คลิกแล้วข้อความจะไม่ถึงใคร เปิดผ่าน walkboard open แทน",
     confused: "ยังงง", deeper: "ขอละเอียดขึ้น", approve: "อนุมัติแผน", send: "ส่ง",
     imageAttach: "แนบรูป (หรือวางหรือลากรูปมาที่นี่)", imageRemove: "เอารูปนี้ออก", imageAlt: "รูปที่แนบ", imageKind: "แนบได้เฉพาะรูป PNG, JPEG, GIF หรือ WebP", imageBig: "รูปใหญ่เกินไป (ไม่เกิน 10 MB)", imageMany: (n) => `แนบได้ไม่เกิน ${n} รูปต่อข้อความ`, q_image: "ดูรูปที่แนบ", imageLeftOut: "🖼 รูปไม่ได้อยู่ในสำเนานี้",

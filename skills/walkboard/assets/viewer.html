@@ -110,6 +110,10 @@ let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
+// false while no agent has ever waited on this page: it is not woken by clicks, so messages wait until the user tells
+// it in its own chat ("check the page"). Servers before 0.11 do not say, and count as listening.
+let listens = true;
+const chatMode = () => connected && !waiting && !listens;
 // The Walkboard this page's code came from, for the menu and the connection dot; none for a snapshot or a copy without a version.
 let pageVersion = null;
 // Unsent text survives a reload of this tab.
@@ -734,6 +738,8 @@ function queuedEl(m, queue, open) {
   line.append(`⏳ ${t("queued", n)} · `);
   if (busy) line.append(t("queuedAnswering") + " ", talkLink(sideOf(busy)));
   else if (open.some((x) => sideKey(sideOf(x)) === sideKey(sideOf(m)) && !quiet(x))) line.append(t("queuedSame"));
+  // Not woken by the page: the user has to tell the agent, whatever step it is on.
+  else if (chatMode()) line.append(t("queuedChat"));
   else if (doing) line.append(t("queuedBuilding") + " ", talkLink({kind: "step", id: doing.id}));
   else line.append(t("queuedAway"));
   d.append(line);
@@ -758,11 +764,12 @@ function renderBadges() {
   if (!snapshot) {
     const inLineN = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
     // A dot while all is well; words when something is off or waiting.
-    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : busy || building ? "work" : "idle") + (connected && !inLineN ? " dot" : "");
+    const chat = chatMode() && !busy;
+    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : chat ? "chat" : busy || building ? "work" : "idle") + (connected && !inLineN ? " dot" : "");
     const inLine = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
-    const connWords = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
-    conn.textContent = !connected ? connWords : inLine ? `⏳ ${inLine}` : "";
-    conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "") + (pageVersion ? ` · Walkboard ${pageVersion}` : "");
+    const connWords = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : chat ? t("connChat") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
+    conn.textContent = !connected ? connWords : inLine ? `${chat ? "✉" : "⏳"} ${inLine}` : "";
+    conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : chat ? t("connChatTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "") + (pageVersion ? ` · Walkboard ${pageVersion}` : "");
     conn.setAttribute("aria-label", connWords + ". " + conn.title);
   }
   if (!plan) return;
@@ -8767,7 +8774,11 @@ async function load() {
     await fetchDraft();
     await fetchPlan();
     const r = await fetch("/api/thread?token=" + encodeURIComponent(token));
-    if (r.ok) ({items: thread, waiting} = await r.json());
+    if (r.ok) {
+      const j = await r.json();
+      ({items: thread, waiting} = j);
+      listens = j.listens !== false;
+    }
     if (!loadedThread) thread.forEach((m) => m.from === "agent" && seen.add(m.id));
     loadedThread = true;
     thread.sort((a, b) => a.at.localeCompare(b.at));
@@ -8826,7 +8837,10 @@ async function load() {
     if (!m.step && !m.node) approval();
   });
   on("delivered", ({ids}) => thread.forEach((m) => { if (ids.includes(m.id)) m.delivered = true; }));
-  on("agent", (a) => (waiting = a.waiting));
+  on("agent", (a) => {
+    waiting = a.waiting;
+    listens = a.listens !== false;
+  });
 }
 window.__walkboard = {get plan() { return plan; }, selectStep, selectNode, render};
 setLang(lang);

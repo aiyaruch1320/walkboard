@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.3
 
 - **Answering a guess is typed, and folded until you want it.** Each assumption shows a small **✎ Answer**; it opens a field like the chat's, with the send arrow inside. **✓ Right** is gone: say it in words. An empty field folds again when you leave it or press Esc.
 

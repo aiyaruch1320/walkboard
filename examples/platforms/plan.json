@@ -1,0 +1,67 @@
+{
+ "title": "One small system on each platform",
+ "goal": "The same web app with a database and a job, drawn with each platform's kinds (made-up example)",
+ "mode": "build",
+ "lang": "en",
+ "settings": {"commit": "suggest"},
+ "approved": false,
+ "steps": [
+  {"id": "look", "title": "Look at each platform", "status": "todo", "nodes": ["a_web", "g_run", "z_app", "h_ecs", "k_web", "c_web", "o_app"], "detail": "Each tab draws the same kind of system on one platform", "done": "You know which kinds each platform offers"}
+ ],
+ "views": [
+  {"id": "aws", "kind": "map", "title": "AWS", "zones": [{"label": "Production", "kind": "aws:account", "zones": [{"label": "ap-southeast-1", "kind": "aws:region", "zones": [
+    {"label": "VPC", "kind": "aws:vpc", "props": {"cidr": "10.0.0.0/16"}, "nodes": ["a_bastion"], "zones": [
+     {"id": "a_pub", "label": "Public subnet", "kind": "aws:subnet", "props": {"access": "public"}, "nodes": ["a_alb", "a_nat"]},
+     {"id": "a_priv", "label": "Private subnet", "kind": "aws:subnet", "props": {"access": "private"}, "nodes": ["a_web", "a_db"]}]},
+    {"label": "Regional", "nodes": ["a_s3", "a_job"]}]}]}],
+   "links": [{"from": "a_alb", "to": "a_web", "state": "ok", "label": "8080"}, {"from": "a_web", "to": "a_db", "state": "ok", "label": "5432"},
+    {"from": "a_job", "to": "a_s3", "state": "ok", "label": "put"}, {"from": "a_web", "to": "a_nat", "state": "ok", "label": "443"}, {"from": "a_bastion", "to": "a_db", "state": "blocked", "label": "5432"}]},
+  {"id": "gcp", "kind": "map", "title": "Google Cloud", "zones": [{"label": "shop-prod", "kind": "gcp:project", "zones": [
+    {"label": "asia-southeast1", "kind": "gcp:region", "nodes": ["g_lb", "g_run", "g_job", "g_gcs"]},
+    {"label": "shop-vpc", "kind": "gcp:vpc", "nodes": ["g_sql"]}]}],
+   "links": [{"from": "g_lb", "to": "g_run", "state": "ok", "label": "443"}, {"from": "g_run", "to": "g_sql", "state": "ok", "label": "5432"}, {"from": "g_job", "to": "g_gcs", "state": "ok", "label": "write"}]},
+  {"id": "azure", "kind": "map", "title": "Azure", "zones": [{"label": "Production", "kind": "azure:subscription", "zones": [{"label": "rg-shop", "kind": "azure:resourcegroup", "zones": [
+    {"label": "vnet-shop", "kind": "azure:vnet", "zones": [
+     {"label": "snet-app", "kind": "azure:subnet", "nodes": ["z_gw", "z_app"]},
+     {"label": "snet-data", "kind": "azure:subnet", "nodes": ["z_pe"]}]},
+    {"label": "Platform services", "nodes": ["z_sql", "z_func"]}]}]}],
+   "links": [{"from": "z_gw", "to": "z_app", "state": "ok", "label": "443"}, {"from": "z_app", "to": "z_pe", "state": "ok", "label": "1433"}, {"from": "z_pe", "to": "z_sql", "state": "ok"}, {"from": "z_func", "to": "z_sql", "state": "todo", "label": "1433"}]},
+  {"id": "huawei", "kind": "map", "title": "Huawei Cloud", "zones": [{"label": "ap-southeast-2", "kind": "huawei:region", "zones": [
+    {"label": "VPC", "kind": "huawei:vpc", "zones": [
+     {"label": "Web subnet", "kind": "huawei:subnet", "nodes": ["h_elb", "h_ecs"]},
+     {"label": "Data subnet", "kind": "huawei:subnet", "nodes": ["h_rds", "h_dcs"]}]},
+    {"label": "Regional", "nodes": ["h_obs"]}]}],
+   "links": [{"from": "h_elb", "to": "h_ecs", "state": "ok", "label": "80"}, {"from": "h_ecs", "to": "h_rds", "state": "ok", "label": "3306"}, {"from": "h_ecs", "to": "h_dcs", "state": "ok", "label": "6379"}, {"from": "h_ecs", "to": "h_obs", "state": "ok", "label": "put"}]},
+  {"id": "k8s", "kind": "map", "title": "Kubernetes", "zones": [{"label": "prod cluster", "kind": "k8s:cluster", "zones": [
+    {"label": "shop", "kind": "k8s:namespace", "nodes": ["k_ing", "k_svc", "k_web", "k_cm", "k_job"]},
+    {"label": "data", "kind": "k8s:namespace", "nodes": ["k_db"]}]}],
+   "links": [{"from": "k_ing", "to": "k_svc", "state": "ok", "label": "80"}, {"from": "k_svc", "to": "k_web", "state": "ok", "label": "8080"},
+    {"from": "k_web", "to": "k_cm", "kind": "k8s:uses"}, {"from": "k_web", "to": "k_db", "state": "ok", "label": "5432"}, {"from": "k_job", "to": "k_db", "state": "todo", "label": "5432"}]},
+  {"id": "container", "kind": "map", "title": "Containers", "zones": [{"label": "app-01", "kind": "container:host", "zones": [{"label": "shop", "kind": "container:compose", "nodes": ["c_proxy", "c_web", "c_db", "c_vol", "c_env"]}]}],
+   "links": [{"from": "c_proxy", "to": "c_web", "state": "ok", "label": "3000"}, {"from": "c_web", "to": "c_db", "state": "ok", "label": "5432"}, {"from": "c_db", "to": "c_vol", "state": "ok"}, {"from": "c_web", "to": "c_env", "state": "ok"}]},
+  {"id": "onprem", "kind": "map", "title": "On-prem", "zones": [{"label": "Bangkok DC", "kind": "onprem:datacenter", "zones": [
+    {"label": "DMZ", "kind": "onprem:dmz", "nodes": ["o_fw", "o_lb"]},
+    {"label": "VLAN 20 · apps", "kind": "onprem:vlan", "nodes": ["o_app"]},
+    {"label": "VLAN 30 · data", "kind": "onprem:vlan", "nodes": ["o_db", "o_nas"]}]}],
+   "links": [{"from": "o_fw", "to": "o_lb", "state": "ok", "label": "443"}, {"from": "o_lb", "to": "o_app", "state": "ok", "label": "8443"}, {"from": "o_app", "to": "o_db", "state": "ok", "label": "1521"}, {"from": "o_db", "to": "o_nas", "state": "ok", "label": "backup"}]}
+ ],
+ "nodes": {
+  "a_alb": {"name": "Load balancer", "kind": "aws:alb"}, "a_nat": {"name": "NAT Gateway", "kind": "aws:natgateway"},
+  "a_web": {"name": "Web app", "kind": "aws:fargate", "props": {"cpu": "0.5"}}, "a_db": {"name": "Orders DB", "kind": "aws:rds", "props": {"engine": "postgres"}},
+  "a_s3": {"name": "Reports", "kind": "aws:s3"}, "a_job": {"name": "Nightly report", "kind": "aws:lambda"},
+  "a_bastion": {"name": "Bastion", "what": "in the VPC, not a subnet", "kind": "aws:ec2"},
+  "g_lb": {"name": "Load balancer", "kind": "gcp:loadbalancer"}, "g_run": {"name": "Web app", "kind": "gcp:cloudrun"},
+  "g_sql": {"name": "Orders DB", "kind": "gcp:cloudsql"}, "g_job": {"name": "Nightly report", "kind": "gcp:functions"}, "g_gcs": {"name": "Reports", "kind": "gcp:gcs"},
+  "z_gw": {"name": "App Gateway", "kind": "azure:appgateway"}, "z_app": {"name": "Web app", "kind": "azure:appservice"},
+  "z_pe": {"name": "Private endpoint", "kind": "azure:privateendpoint"}, "z_sql": {"name": "Orders DB", "kind": "azure:sql"}, "z_func": {"name": "Nightly report", "kind": "azure:functions"},
+  "h_elb": {"name": "Load balancer", "kind": "huawei:elb"}, "h_ecs": {"name": "Web app", "kind": "huawei:ecs"},
+  "h_rds": {"name": "Orders DB", "kind": "huawei:rds"}, "h_dcs": {"name": "Cache", "kind": "huawei:dcs"}, "h_obs": {"name": "Reports", "kind": "huawei:obs"},
+  "k_ing": {"name": "shop ingress", "kind": "k8s:ingress"}, "k_svc": {"name": "web", "what": "ClusterIP", "kind": "k8s:service"},
+  "k_web": {"name": "web", "what": "3 replicas", "kind": "k8s:deployment"}, "k_cm": {"name": "web-config", "kind": "k8s:configmap"},
+  "k_job": {"name": "nightly-report", "kind": "k8s:cronjob"}, "k_db": {"name": "postgres", "kind": "k8s:statefulset"},
+  "c_proxy": {"name": "caddy", "kind": "container:proxy"}, "c_web": {"name": "web", "kind": "container:container"},
+  "c_db": {"name": "postgres", "kind": "container:container"}, "c_vol": {"name": "pgdata", "kind": "container:volume"}, "c_env": {"name": ".env", "kind": "container:envfile"},
+  "o_fw": {"name": "Edge firewall", "kind": "onprem:firewall"}, "o_lb": {"name": "Load balancer", "kind": "onprem:loadbalancer"},
+  "o_app": {"name": "Web app", "kind": "onprem:appserver"}, "o_db": {"name": "Orders DB", "kind": "onprem:database"}, "o_nas": {"name": "Backup NAS", "kind": "onprem:storage"}
+ }
+}

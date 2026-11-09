@@ -1,0 +1,97 @@
+{
+ "title": "Order emails through a queue",
+ "goal": "The shop API puts each confirmation email on a queue, and a worker sends it with retries, so a slow mail service never slows down checkout (made-up example with every kind of picture)",
+ "mode": "build",
+ "lang": "en",
+ "settings": {"commit": "suggest"},
+ "approved": true,
+ "constraints": [
+  {"id": "c1", "text": "About 2,000 orders a day", "detail": "From last month's dashboard, made up for this example", "confirmed": true},
+  {"id": "c2", "text": "An email may arrive up to 5 minutes late", "confirmed": false},
+  {"id": "c3", "text": "Which mail service do we keep?", "ask": "Which mail service do we keep: SES, or the one marketing uses?", "confirmed": false}
+ ],
+ "steps": [
+  {"id": "queue", "title": "Queue and dead-letter queue", "status": "done", "nodes": ["queue", "dlq"], "detail": "Create the queue, and a second queue for emails that fail five times", "done": "Both queues exist; a test message goes in and comes out"},
+  {"id": "api", "title": "API puts emails on the queue", "status": "review", "nodes": ["api", "queue", "db"], "detail": "After the order is saved, the API sends one message per email instead of calling the mail service", "done": "Checkout no longer waits for the mail service"},
+  {"id": "worker", "title": "Worker sends with retries", "status": "todo", "nodes": ["worker", "queue", "ses", "emaillog"], "detail": "A worker reads the queue, sends the email and records it; a failure is retried later", "done": "A test order's email arrives and email_log says sent"},
+  {"id": "watch", "title": "Alarm on the dead-letter queue", "status": "todo", "nodes": ["dlq", "alarm"], "detail": "An alarm tells the team when an email gave up", "done": "A message in the DLQ raises the alarm"}
+ ],
+ "views": [
+  {"id": "flow", "kind": "flow", "title": "Steps", "lanes": [
+   {"title": "Queues", "nodes": ["queue", "dlq"]},
+   {"title": "Send side", "nodes": ["api", "db", "queue"]},
+   {"id": "w", "title": "Receive side", "nodes": ["worker", "ses", "emaillog"]},
+   {"title": "Before switching on", "nodes": ["alarm", "dlq"], "arrows": false}]},
+  {"id": "map", "kind": "map", "title": "Where it runs", "zones": [{"label": "Shop account", "kind": "aws:account", "zones": [{"label": "ap-southeast-1", "kind": "aws:region", "zones": [
+    {"id": "vpc", "label": "Shop VPC", "kind": "aws:vpc", "props": {"cidr": "10.20.0.0/16"}, "zones": [
+     {"id": "app", "label": "App subnets", "kind": "aws:subnet", "props": {"access": "private"}, "nodes": ["api", "worker"]},
+     {"id": "data", "label": "Data subnets", "kind": "aws:subnet", "props": {"access": "private"}, "nodes": ["db"]}]},
+    {"label": "Managed services", "nodes": ["queue", "dlq", "ses", "alarm"]}]}]}],
+   "links": [{"from": "api", "to": "db", "state": "ok", "label": "5432"}, {"from": "api", "to": "queue", "state": "ok", "kind": "aws:event", "label": "send"},
+    {"from": "worker", "to": "queue", "state": "todo", "label": "poll"}, {"from": "worker", "to": "ses", "state": "todo", "label": "443"},
+    {"from": "worker", "to": "db", "state": "todo", "label": "5432"}, {"from": "queue", "to": "dlq", "state": "standby", "label": "after 5 tries"}]},
+  {"id": "before", "kind": "map", "title": "Today", "zones": [{"label": "Shop VPC", "kind": "aws:vpc", "zones": [
+    {"label": "App subnets", "kind": "aws:subnet", "nodes": ["api"]}, {"label": "Data subnets", "kind": "aws:subnet", "nodes": ["db"]}]}, {"label": "Managed services", "nodes": ["ses"]}],
+   "links": [{"from": "api", "to": "db", "state": "ok", "label": "5432"}, {"from": "api", "to": "ses", "state": "ok", "label": "443, during checkout"}]},
+  {"id": "change", "kind": "diff", "title": "Before and after", "before": "before", "after": "map", "changed": {"api": "puts a message on the queue instead of calling SES"}},
+  {"id": "calls", "kind": "sequence", "title": "Who calls whom", "actors": ["customer", "api", "db", "queue", "worker", "ses"], "messages": [
+   {"from": "customer", "to": "api", "text": "place order", "step": "api"},
+   {"from": "api", "to": "db", "text": "save order", "step": "api"},
+   {"from": "api", "to": "queue", "text": "email order 1042", "step": "api"},
+   {"from": "api", "to": "customer", "text": "thank you page", "reply": true, "step": "api"},
+   {"from": "worker", "to": "queue", "text": "next message", "step": "worker"},
+   {"from": "worker", "to": "ses", "text": "send email", "step": "worker"},
+   {"from": "worker", "to": "db", "text": "record sent", "step": "worker"},
+   {"from": "worker", "to": "worker", "text": "wait, then try again", "group": "If SES is slow or down", "step": "worker"},
+   {"from": "queue", "to": "queue", "text": "move to DLQ after 5 tries", "group": "If SES is slow or down", "step": "worker"}]},
+  {"id": "shape", "kind": "transform", "title": "Order to email", "stages": [
+   {"node": "db", "label": "orders row", "columns": ["id", "customer_id", "total", "email"], "rows": [["1042", "77", "1290.00", "dao@example.com "], ["1043", "78", "450.00", null]], "notes": ["1043 has no email: skipped"]},
+   {"node": "queue", "label": "queue message", "text": "{\"order\":1042,\"to\":\"dao@example.com\",\"template\":\"order-confirmed\"}"},
+   {"node": "ses", "label": "email", "columns": ["to", "subject"], "rows": [["dao@example.com", "Order 1042 is confirmed"]]}]},
+  {"id": "trip", "kind": "journey", "title": "One email's trip", "item": "email for order 1042", "stops": [
+   {"node": "api", "note": "The API builds the message after saving the order", "data": "{\"order\":1042}"},
+   {"node": "queue", "note": "The queue adds an id and holds it", "data": "{\"order\":1042,\n\"id\":\"m-7f3c\"}"},
+   {"node": "worker", "note": "The worker picks it up and fills the template", "data": "{\"order\":1042,\n\"id\":\"m-7f3c\",\n\"subject\":\"Order 1042 is confirmed\"}"},
+   {"node": "ses", "note": "SES accepts it and returns a message id", "data": "{\"order\":1042,\n\"id\":\"m-7f3c\",\n\"subject\":\"Order 1042 is confirmed\",\n\"sesId\":\"0100-abc\"}"},
+   {"node": "emaillog", "note": "The worker records it as sent", "data": "order 1042 · sent · 0100-abc"}]},
+  {"id": "life", "kind": "state", "title": "An email's states", "start": "queued", "end": ["sent", "gaveup"], "states": ["queued", "sending", "sent", "waiting", "gaveup"], "transitions": [
+   {"from": "queued", "to": "sending", "label": "worker picks it up"}, {"from": "sending", "to": "sent", "label": "SES accepts"},
+   {"from": "sending", "to": "waiting", "label": "SES fails"}, {"from": "waiting", "to": "sending", "label": "backoff over"},
+   {"from": "waiting", "to": "gaveup", "label": "5th failure"}]},
+  {"id": "rule", "kind": "decision", "title": "Send or not?", "start": "hasEmail", "edges": [
+   {"from": "hasEmail", "to": "bounced", "label": "yes"}, {"from": "hasEmail", "to": "skip", "label": "no"},
+   {"from": "bounced", "to": "skip", "label": "yes"}, {"from": "bounced", "to": "send", "label": "no"}]},
+  {"id": "retry", "kind": "timeline", "title": "Retries", "unit": "min", "marks": [{"at": 30, "label": "give up: to the DLQ"}], "lanes": [
+   {"node": "worker", "events": [{"at": 0, "label": "try 1", "state": "blocked"}, {"at": 0, "to": 2, "label": "2 min", "state": "todo"}, {"at": 2, "label": "try 2", "state": "blocked"}, {"at": 2, "to": 6, "label": "4 min", "state": "todo"}, {"at": 6, "label": "try 3", "state": "blocked"}, {"at": 6, "to": 14, "label": "8 min", "state": "todo"}, {"at": 14, "label": "try 4: sent", "state": "ok"}]},
+   {"node": "queue", "events": [{"at": 0, "to": 14, "label": "message hidden while it waits", "state": "standby"}]}]},
+  {"id": "tables", "kind": "datamodel", "title": "Tables", "tables": [
+   {"node": "customers", "columns": [{"name": "id", "type": "bigint", "key": "pk"}, {"name": "email", "type": "text"}, {"name": "bounced", "type": "bool"}]},
+   {"node": "orders", "columns": [{"name": "id", "type": "bigint", "key": "pk"}, {"name": "customer_id", "type": "bigint", "key": "fk", "ref": "customers.id"}, {"name": "total", "type": "numeric"}, {"name": "email", "type": "text", "copy": "customers.email", "keep": true}]},
+   {"node": "emaillog", "columns": [{"name": "id", "type": "bigint", "key": "pk"}, {"name": "order_id", "type": "bigint", "key": "fk", "ref": "orders.id"}, {"name": "status", "type": "text"}, {"name": "ses_id", "type": "text"}]}],
+   "groups": [{"label": "Email side", "note": "new in this plan", "tables": ["emaillog"]}]},
+  {"id": "deps", "kind": "impact", "title": "If it breaks", "edges": [
+   {"from": "api", "to": "db"}, {"from": "api", "to": "queue"}, {"from": "worker", "to": "queue"}, {"from": "worker", "to": "ses"}, {"from": "worker", "to": "db"}, {"from": "alarm", "to": "dlq"}, {"from": "dlq", "to": "queue"}]}
+ ],
+ "nodes": {
+  "customer": {"name": "Customer", "what": "on the shop site", "status": "ext"},
+  "api": {"name": "Shop API", "what": "ECS service", "kind": "aws:fargate", "status": "new", "in": "the order form", "out": "an order row and one queue message", "why": "Checkout should not wait for email"},
+  "db": {"name": "Orders DB", "what": "PostgreSQL", "kind": "aws:rds", "props": {"engine": "postgres"}, "status": "done"},
+  "queue": {"name": "Email queue", "kind": "aws:sqs", "status": "done", "why": "Keeps emails safe while SES is slow"},
+  "dlq": {"name": "Dead-letter queue", "what": "emails that gave up", "kind": "aws:sqs", "status": "done"},
+  "worker": {"name": "Email worker", "what": "Lambda", "kind": "aws:lambda", "status": "todo"},
+  "ses": {"name": "SES", "what": "sends the email", "icon": "aws:ses", "status": "ext", "basis": "assumed", "ask": "Do we keep SES, or move to the mail service marketing uses?"},
+  "emaillog": {"name": "email_log", "what": "one row per email", "status": "todo"},
+  "alarm": {"name": "DLQ alarm", "what": "CloudWatch", "status": "todo"},
+  "customers": {"name": "customers", "status": "done"},
+  "orders": {"name": "orders", "status": "done"},
+  "queued": {"name": "Queued"},
+  "sending": {"name": "Sending"},
+  "sent": {"name": "Sent"},
+  "waiting": {"name": "Waiting to retry"},
+  "gaveup": {"name": "Gave up", "what": "in the DLQ"},
+  "hasEmail": {"name": "Has an email?"},
+  "bounced": {"name": "Bounced before?"},
+  "send": {"name": "Send it"},
+  "skip": {"name": "Skip, log why"}
+ }
+}

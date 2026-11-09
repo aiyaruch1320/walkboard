@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {fileURLToPath} from "node:url";
 import {PROFILES, kindOf, kindNames, lineKindNames, kindWarning, kindProblems, searchKinds} from "../skills/walkboard/lib/profiles.mjs";
 import {knownIcon} from "../skills/walkboard/lib/icons.mjs";
 
@@ -63,7 +64,7 @@ test("map draft changes carry a kind and its fields; edits change or clear them"
 
 test("references/profiles/ is written from lib/profiles.mjs", async () => {
   const {execFileSync} = await import("node:child_process");
-  execFileSync(process.execPath, [new URL("../scripts/profiles-doc.mjs", import.meta.url).pathname, "--check"]);
+  execFileSync(process.execPath, [fileURLToPath(new URL("../scripts/profiles-doc.mjs", import.meta.url)), "--check"]);
 });
 
 test("the kind search puts the platform of where it goes first, then the closest name; aliases count", () => {

@@ -1,5 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {fileURLToPath} from "node:url";
 import {execFile} from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -7,7 +8,7 @@ import path from "node:path";
 import {promisify} from "node:util";
 import {startServer} from "../skills/walkboard/lib/server.mjs";
 
-const bin = new URL("../skills/walkboard/bin/walkboard.mjs", import.meta.url).pathname;
+const bin = fileURLToPath(new URL("../skills/walkboard/bin/walkboard.mjs", import.meta.url));
 const run = (...args) => promisify(execFile)(process.execPath, [bin, ...args]).catch((e) => e);
 
 const valid = (extra = {}) => ({title: "t", settings: {commit: "suggest"}, steps: [{id: "s", title: "S", nodes: ["a"]}], nodes: {a: {name: "A"}}, ...extra});
@@ -85,7 +86,7 @@ test("a reply is for a person: no draft ids, and its links lead somewhere", asyn
 });
 
 test("every reference a skill file links to exists", () => {
-  const root = new URL("../skills/walkboard/", import.meta.url).pathname;
+  const root = fileURLToPath(new URL("../skills/walkboard/", import.meta.url));
   const walk = (d) => fs.readdirSync(d, {withFileTypes: true}).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : e.name.endsWith(".md") ? [path.join(d, e.name)] : []));
   const missing = [];
   for (const f of [path.join(root, "SKILL.md"), ...walk(path.join(root, "references"))]) {
@@ -140,7 +141,7 @@ test("draft prints the sketch in words and clears it by picture or change", asyn
 // Another copy of the skill, as the plugin manager installs it: <version>/skills/walkboard beside <version>/.claude-plugin.
 function copyAt(version) {
   const root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-copy-")), version);
-  fs.cpSync(new URL("../skills/walkboard", import.meta.url).pathname, path.join(root, "skills", "walkboard"), {recursive: true});
+  fs.cpSync(fileURLToPath(new URL("../skills/walkboard", import.meta.url)), path.join(root, "skills", "walkboard"), {recursive: true});
   fs.mkdirSync(path.join(root, ".claude-plugin"));
   fs.writeFileSync(path.join(root, ".claude-plugin", "plugin.json"), JSON.stringify({version}));
   return (...args) => promisify(execFile)(process.execPath, [path.join(root, "skills", "walkboard", "bin", "walkboard.mjs"), ...args]).catch((e) => e);
@@ -156,7 +157,7 @@ test("open takes over a page an older copy serves, on the same address; a newer 
   const r = await run("open", dir, "--no-browser");
   assert.equal(r.stdout.trim(), first, "same address and token, so the open tab finds it");
   assert.notEqual(served(dir).version, "0.0.1");
-  assert.equal(served(dir).skill, new URL("../skills/walkboard", import.meta.url).pathname);
+  assert.equal(served(dir).skill, fileURLToPath(new URL("../skills/walkboard", import.meta.url)));
 
   await run("stop", dir);
   const newer = copyAt("99.0.0");

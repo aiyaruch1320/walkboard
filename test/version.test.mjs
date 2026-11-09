@@ -1,5 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
+import {fileURLToPath} from "node:url";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -34,5 +35,5 @@ test("a newer copy installed beside this one is found; an older one or a reposit
   const at = cache(["0.7.0", "0.9.1", "0.10.0"]);
   assert.equal(newerInstalled(at("0.9.1")), "0.10.0");
   assert.equal(newerInstalled(at("0.10.0")), null);
-  assert.equal(newerInstalled(new URL("../skills/walkboard", import.meta.url).pathname), null);
+  assert.equal(newerInstalled(fileURLToPath(new URL("../skills/walkboard", import.meta.url))), null);
 });

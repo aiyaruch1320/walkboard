@@ -20,22 +20,36 @@
   <img src="docs/images/demo.gif" alt="Typing a request in Claude Code, approving the plan page, asking about a box in the side panel, and the agent answering in place" width="100%">
 </p>
 
+## Try it
+
+In Claude Code (needs Node.js 18.18 or newer, nothing else):
+
+```
+/plugin marketplace add aiyaruch1320/walkboard
+/plugin install walkboard@walkboard
+```
+
+Then, in any repository:
+
+```
+/walkboard explain how this project starts up
+```
+
+The agent asks a question or two, then gives you a link to a page on your machine. Click a box to ask about it; the agent answers there. Keep Claude Code open while you use the page: that is where the agent works.
+
+Walkboard is young (0.10): built and tested with Claude Code on macOS. Windows, Linux and other agents should work but are not tried by hand yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
+
 ## Why
 
 Long AI-written plans are hard to follow, and it is easy to lose the feeling that the work is yours. Walkboard has the agent show its work as pictures on a local page instead. Click a box, a step or a table cell to ask about it, and the agent answers right there.
 
-### What you get
-
 - **See it, don't scroll it.** Eleven kinds of picture (flow, map of a cloud, Kubernetes or network, sequence, data journey, state, timeline and more) replace pages of text. The agent picks the one that answers your question.
 - **Ask on the spot.** Every box, step and comparison cell has its own thread. Your click wakes the agent, and its answer appears where you asked, not somewhere in a long chat.
-- **You stay in charge.** Nothing is built before you press **Approve plan**. After each step the agent stops until you start the next one. Commit messages are suggested for you to edit, only when the step changed files, and proposed changes are drawn on the picture before anything is built.
-- **Evidence, not guesses.** In explain mode every box points at the real `file:line`, the page shows that code with the important lines marked, and `walkboard check` notices when the code has moved since it was explained. In design mode every score cites a source with the date it was read. Anything the agent assumed is drawn dashed until you answer it in your own words.
-- **Sketch, then ask.** Press **✎ Draft changes** on a picture and change it yourself: add boxes, zones, tables, columns, lanes and lines, rename, take out, copy, drag between zones or lanes. Nothing changes in the plan and the agent is not woken until you press **Ask the agent to review**; it says in plain words what your sketch means (network, migration, a missing step) and puts in the plan only what you agree to.
-- **Decide with your own priorities.** Weigh what matters (cost, effort, scale), mark the must-haves, and the page tells you when your weights put a different option ahead of the agent's recommendation. Scores can show the figure behind them, such as a monthly price, and rows that rest on something not yet confirmed are marked ❓. Choosing an option turns it into a step-by-step plan.
-- **Lighter than a hand-written explainer.** The agent writes a small JSON file once and updates it with one-line commands, while the page does the drawing. A four-picture plan is about 7 KB of JSON instead of 26–43 KB of HTML rewritten on every change ([numbers](docs/GUIDE.md#light-on-tokens)).
-- **Easy to pass on.** Export a plan as one HTML file that anyone opens offline, read only, or print it to PDF: a design opens with the decision and why, and your sketch goes along, marked as not in the plan yet. A picture too big for one page prints as an overview and parts you can read.
-- **For the whole team.** A product owner can compare options without reading code; a new developer can follow a plan step by step; a senior can check claims against the code.
-- **Private and simple.** Everything stays on your machine: a zero-dependency Node server on 127.0.0.1 behind a random token, no telemetry. The agent plans in the language you write in, and the page's labels follow (English and Thai).
+- **You stay in charge.** Nothing is built before you press **Approve plan**, and after each step the agent stops until you start the next one.
+- **Evidence, not guesses.** Explanations point at the real `file:line`, design scores cite a dated source, and anything the agent assumed is drawn dashed until you answer it in your own words.
+- **Sketch, then ask.** Press **✎ Draft changes** and change the picture yourself; the agent reviews your sketch and puts in the plan only what you agree to.
+
+Also: weigh options by your own priorities, export a plan as one HTML file or print it to PDF, and keep everything on your machine (127.0.0.1, random token, no telemetry). The page speaks English and Thai. A four-picture plan costs about 7 KB of JSON instead of 26–43 KB of hand-written HTML ([numbers](docs/GUIDE.md#light-on-tokens)). Everything else is in the **[guide](docs/GUIDE.md)**.
 
 ## Three modes
 
@@ -58,19 +72,6 @@ The agent picks the mode from your request and asks up to three short questions 
   </tr>
 </table>
 
-## Install
-
-```
-/plugin marketplace add aiyaruch1320/walkboard
-/plugin install walkboard@walkboard
-```
-
-Needs Node.js 18.18 or newer. Nothing else.
-
-To get new versions by themselves: `/plugin` → **Marketplaces** → **walkboard** → **Enable auto-update** (Claude Code leaves it off for marketplaces outside its own). A session that is already running keeps the version it started with until `/reload-plugins` or a new session; Walkboard says so when it opens a page.
-
-Walkboard is young (0.10): built and tested with Claude Code on macOS. Other agents and systems should work but are not tested yet; [issues](https://github.com/aiyaruch1320/walkboard/issues) are welcome.
-
 ## Use
 
 Type `/walkboard` and say what you want, or just ask in your own words. On its own, `/walkboard` looks through the repository and offers things to see first:
@@ -89,7 +90,9 @@ Type `/walkboard` and say what you want, or just ask in your own words. On its o
 4. To change a picture yourself, press **✎ Draft changes** above it: a toolbar appears at the bottom. Your changes are drawn dashed with a sign (+ new, ~ edited, − out, ↦ moved) and listed; **Ask the agent to review** sends them. Outside draft mode a drag only arranges the picture. [All of it in the guide](docs/GUIDE.md#sketch-your-own-changes).
 
    <img src="docs/images/draft.png" alt="Draft mode on a map: a new RDS replica and a line drawn dashed with signs, the list of changes beside it and the toolbar at the bottom" width="720">
-5. Switch who commits under **⋮**. Switching does not wake the agent or cost tokens. Keep Claude Code open while you use the page: that is where the agent works.
+5. Switch who commits under **⋮**. Switching does not wake the agent or cost tokens.
+
+**Updates:** `/plugin` → **Marketplaces** → **walkboard** → **Enable auto-update** gets new versions by themselves (Claude Code leaves it off for marketplaces outside its own). A running session keeps the version it started with until `/reload-plugins` or a new session; Walkboard says so when it opens a page. The page shows its version at the bottom of **⋮**.
 
 Boxes carry icons for what they are, with AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes and on-prem parts in their own colours. On a map, profiles say what each box, zone and line is on those platforms (an RDS in a private subnet, a CronJob in a namespace) and warn when something sits where it usually does not.
 

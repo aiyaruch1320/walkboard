@@ -193,7 +193,8 @@ test("only one server runs per plan folder", async (t) => {
   t.after(s.close);
   assert.throws(() => startServer(dir), /already running/);
   assert.equal((await (await call(s, "/api/status")).json()).pid, process.pid);
-  assert.equal(fs.statSync(path.join(dir, ".walkboard", "session.json")).mode & 0o777, 0o600);
+  // The token file is for its owner only. Windows has no such mode bits (its folders' access lists do that job).
+  if (process.platform !== "win32") assert.equal(fs.statSync(path.join(dir, ".walkboard", "session.json")).mode & 0o777, 0o600);
 });
 
 test("a lock left by a dead process is taken over", async (t) => {

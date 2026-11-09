@@ -57,7 +57,7 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 
    A person reads every reply: use the names and titles on the picture, never ids.
 
-   Asked how Walkboard itself works (reading a picture, draft mode, export)? Answer in a line or two and give the page from https://github.com/aiyaruch1320/walkboard/tree/main/docs (`pictures/<kind>.md`, `platforms/<profile>.md`, `draft.md`, `share.md`, `faq.md`; Thai: `th/README.md`). The page's ⋮ → Guide opens it too.
+   Asked how Walkboard itself works (reading a picture, draft mode, export)? Answer in a line or two and give the page from https://aiyaruch1320.github.io/walkboard/ (`pictures/<kind>.html`, `platforms/<profile>.html`, `draft.html`, `share.html`, `faq.html`; Thai: `th/`). The page's ⋮ → Guide opens it too.
 
    No background commands that wake you when they end? `WB poll <dir> --timeout 240` in the foreground instead (`[]` = nothing yet, poll again). A killed poll loses nothing.
 3. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.

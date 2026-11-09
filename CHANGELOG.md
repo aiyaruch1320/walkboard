@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- **Docs, one page per subject.** The guide is now [docs/](docs/README.md): getting started, the page, each mode, each of the eleven pictures, sketching, sharing, FAQ and reference, plus a start page in Thai. Each platform (AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes, container, on-prem) has a page generated from its profile, listing every kind with where it usually sits.
-- **The page links to them.** **⋮ → Guide** opens the docs (in Thai when the plan is), a picture's **?** ends with a link to that picture's page, and a ⚠ card links to its kind on the platform's page. The links open GitHub in a new tab; the page itself still loads nothing from the network.
+- **A docs website: [aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/).** One page per subject: getting started, the page, each mode, each of the eleven pictures, sketching, sharing, FAQ and reference, plus a start page in Thai. Each platform (AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes, container, on-prem) has a page generated from its profile, listing every kind with where it usually sits.
+- **Shown, not only told.** Every picture and every platform page has a picture drawn by Walkboard and a live example to click (two new example plans, `examples/pictures` and `examples/platforms`, exported by the site build).
+- **The page links to them.** **⋮ → Guide** opens the docs (in Thai when the plan is), a picture's **?** ends with a link to that picture's page, and a ⚠ card links to its kind on the platform's page. The links open in a new tab; the page itself still loads nothing from the network.
+- **A smaller install.** The images and GIFs moved to the `media` branch, so installing no longer downloads them: about 20 MB on disk before, see below for after.
 - **README:** install and a first command come first.
 - **Tests run on macOS, Windows and Linux**, with Node 18 and 22, on every push. Issue forms ask for the version, system and agent.
 

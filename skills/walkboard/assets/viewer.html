@@ -1930,11 +1930,12 @@ function anchored(id, elx = nodeBox(id)) {
 
 // The picture on screen says what its "?" card explains. On paper there is no card: the lines' key stays on the page.
 let pictureHelp = null, pictureKind = null;
-// The docs on GitHub, opened in a new tab by a click: the page itself still loads nothing from the network.
-const DOCS = "https://github.com/aiyaruch1320/walkboard/blob/main/docs/";
+// The docs site, opened in a new tab by a click: the page itself still loads nothing from the network.
+// Pages are named as in docs/, with .html (README is index).
+const DOCS = "https://aiyaruch1320.github.io/walkboard/";
 function docLink(page, label, cls = "doclink") {
   const a = el("a", cls, label);
-  a.href = DOCS + page;
+  a.href = DOCS + page.replace(/(^|\/)README\.md$/, "$1").replace(/\.md\b/, ".html");
   a.target = "_blank";
   a.rel = "noopener noreferrer";
   return a;

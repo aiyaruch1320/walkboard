@@ -45,6 +45,8 @@ To choose which side of a box a line meets, click the line, or drag the dot at e
 
 ## Sketching on a map
 
+![Adding a box in App subnets, then a line from Shop API to it labelled :6379, both drawn dashed and listed](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/sketch.gif)
+
 In [draft mode](../draft.md) you have these tools:
 
 | Tool | What it does |

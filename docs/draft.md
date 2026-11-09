@@ -16,6 +16,10 @@ While you sketch, the plan stays as it is and the agent is not interrupted. Your
 
 ## Making changes
 
+Here is a whole sketch on a map, from the first box to asking for a review:
+
+![Draft changes, then Box: click inside App subnets and name it Redis cache; then Line: drag from Shop API to it and label it :6379; both changes listed, not in the plan yet; Ask the agent to review; the ? lists every tool](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/sketch.gif)
+
 Here is what you can do on most pictures. In draft mode, the **?** on the toolbar lists the tools of the picture you are on, and links to its page here, which shows them with pictures.
 
 | To | Do this |

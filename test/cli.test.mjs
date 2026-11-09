@@ -136,3 +136,33 @@ test("draft prints the sketch in words and clears it by picture or change", asyn
   await run("draft", dir, "clear");
   assert.equal(fs.existsSync(path.join(dir, ".walkboard", "draft.json")), false);
 });
+
+// Another copy of the skill, as the plugin manager installs it: <version>/skills/walkboard beside <version>/.claude-plugin.
+function copyAt(version) {
+  const root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-copy-")), version);
+  fs.cpSync(new URL("../skills/walkboard", import.meta.url).pathname, path.join(root, "skills", "walkboard"), {recursive: true});
+  fs.mkdirSync(path.join(root, ".claude-plugin"));
+  fs.writeFileSync(path.join(root, ".claude-plugin", "plugin.json"), JSON.stringify({version}));
+  return (...args) => promisify(execFile)(process.execPath, [path.join(root, "skills", "walkboard", "bin", "walkboard.mjs"), ...args]).catch((e) => e);
+}
+const served = (dir) => JSON.parse(fs.readFileSync(path.join(dir, ".walkboard", "server.json"), "utf8"));
+
+test("open takes over a page an older copy serves, on the same address; a newer copy's page stays", async (t) => {
+  const dir = planDir();
+  t.after(() => run("stop", dir));
+  const old = copyAt("0.0.1");
+  const first = (await old("open", dir, "--no-browser")).stdout.trim();
+  assert.equal(served(dir).version, "0.0.1");
+  const r = await run("open", dir, "--no-browser");
+  assert.equal(r.stdout.trim(), first, "same address and token, so the open tab finds it");
+  assert.notEqual(served(dir).version, "0.0.1");
+  assert.equal(served(dir).skill, new URL("../skills/walkboard", import.meta.url).pathname);
+
+  await run("stop", dir);
+  const newer = copyAt("99.0.0");
+  await newer("open", dir, "--no-browser");
+  const kept = await run("open", dir, "--no-browser");
+  assert.equal(served(dir).version, "99.0.0");
+  assert.match(kept.stderr, /newer than this session/);
+  await newer("stop", dir);
+});

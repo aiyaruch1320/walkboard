@@ -8672,6 +8672,21 @@ async function load() {
     refreshThreads();
   };
   events.onerror = () => setConn(false);
+  // Another copy of Walkboard took over the server (a newer install): this page is its old code. Reload, unless something is
+  // being typed, which a reload would lose: then say so.
+  let build = null;
+  events.addEventListener("hello", (e) => {
+    const b = JSON.parse(e.data).build;
+    if (build && b !== build) {
+      if (![...document.querySelectorAll("textarea, input")].some((x) => x.value.trim())) return location.reload();
+      const box = document.getElementById("toast"), go = el("button", "primary", t("reloadNow"));
+      go.onclick = () => location.reload();
+      box.className = "toast";
+      box.replaceChildren(el("span", null, t("newerPage") + " "), go);
+      box.hidden = false;
+    }
+    build = b;
+  });
   events.addEventListener("plan", () => {
     // A drag of ours saved a moment ago is not the agent at work.
     if (Date.now() - layoutSavedAt >= 2000) agentActiveAt = Date.now();

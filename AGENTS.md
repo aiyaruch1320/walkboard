@@ -11,6 +11,7 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 | `skills/walkboard/bin/walkboard.mjs` | CLI: `check`, `set`, `open`, `poll`, `reply`, `status`, `stop`, `serve` |
 | `skills/walkboard/lib/server.mjs` | Local server: token, queue on disk, long poll, SSE, code excerpts |
 | `skills/walkboard/lib/schema.mjs` | Validation shared by the CLI and the page (runs in Node and the browser: no Node imports) |
+| `skills/walkboard/lib/version.mjs` | Which copy is running: version from `.claude-plugin/plugin.json`, newer copies installed beside it |
 | `skills/walkboard/lib/source.mjs` | `file:line` lookups confined to declared roots |
 | `skills/walkboard/lib/edit.mjs` | `walkboard set` |
 | `skills/walkboard/lib/icons.mjs` | Box icons and how they are guessed from names (runs in Node and the browser) |

@@ -4,6 +4,7 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {startServer, paths, exportName, readDraft, writeDraft} from "../lib/server.mjs";
+import {VERSION, SKILL_DIR, cmpVersion, newerInstalled} from "../lib/version.mjs";
 import {carryPlaces, describeDraft, draftLine} from "../lib/draft.mjs";
 import * as profiles from "../lib/profiles.mjs";
 import {validate, lint, viewsOf} from "../lib/schema.mjs";
@@ -137,6 +138,17 @@ async function set() {
 async function open() {
   if (!fs.existsSync(p.plan)) fail(`no plan.json in ${dir}`);
   let s = await running();
+  // A server from another copy of Walkboard (an older install, a session started before an update) serves an older page:
+  // this copy takes over, on the same address, and the open page reloads. Never a newer one: that session stays as it is.
+  if (s && (s.status.skill !== SKILL_DIR || s.status.version !== VERSION)) {
+    const theirs = s.status.version;
+    if (theirs && VERSION && cmpVersion(VERSION, theirs) < 0) {
+      console.error(`walkboard: the page runs Walkboard ${theirs}, newer than this session's ${VERSION}; it stays as it is. Run /reload-plugins or start a new session to use ${theirs} here too.`);
+    } else {
+      await halt(s);
+      s = null;
+    }
+  }
   if (!s) {
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "serve", dir], {stdio: "ignore", detached: true});
     child.unref();
@@ -153,6 +165,8 @@ async function open() {
   }
   console.log(urlOf(s));
   if (!flags.noBrowser) openBrowser(urlOf(s));
+  const newer = newerInstalled();
+  if (newer) console.error(`walkboard: Walkboard ${newer} is installed, but this session runs ${VERSION}. Run /reload-plugins or start a new session to use it.`);
 }
 
 // One short line per item keeps what the agent reads small; --full has everything: ids, times, the view, every box's place.
@@ -241,6 +255,11 @@ async function status() {
   console.log(JSON.stringify({url: urlOf(s), pid: s.pid, ...s.status, settings}));
 }
 
+async function halt(s) {
+  process.kill(s.pid, "SIGTERM");
+  for (let i = 0; i < 30 && fs.existsSync(p.server); i++) await sleep(100);
+}
+
 async function stop() {
   const s = await running();
   if (!s) {
@@ -248,8 +267,7 @@ async function stop() {
     if (readServer()) fs.rmSync(p.server, {force: true});
     return console.log("not running");
   }
-  process.kill(s.pid, "SIGTERM");
-  for (let i = 0; i < 30 && fs.existsSync(p.server); i++) await sleep(100);
+  await halt(s);
   console.log("stopped");
 }
 

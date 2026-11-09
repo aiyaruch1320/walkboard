@@ -7,6 +7,7 @@ import {excerpt} from "./source.mjs";
 import {updatePlan} from "./edit.mjs";
 import {pageHtml, snapshot, moduleText} from "./export.mjs";
 import {validateDraft, emptyDraft, draftable, viewList, isNewId} from "./draft.mjs";
+import {VERSION, SKILL_DIR} from "./version.mjs";
 
 export const paths = (dir) => {
   const state = path.join(dir, ".walkboard");
@@ -290,7 +291,8 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({first: !fs.existsSync(seen)}));
     } else if (route === "GET /api/events") {
       res.writeHead(200, {"content-type": "text/event-stream", "cache-control": "no-store", connection: "keep-alive"});
-      res.write("retry: 2000\n\n");
+      // Which copy of Walkboard serves the page: a page served by an earlier server reloads when it changes.
+      res.write(`retry: 2000\n\nevent: hello\ndata: ${JSON.stringify({build: `${VERSION}|${SKILL_DIR}`})}\n\n`);
       streams.add(res);
       res.on("close", () => streams.delete(res));
     } else if (route === "POST /api/feedback" || route === "POST /api/reply") {
@@ -458,7 +460,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       agentState();
       flush();
     } else if (route === "GET /api/status") {
-      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, viewers: streams.size}));
+      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, viewers: streams.size, version: VERSION, skill: SKILL_DIR}));
     } else {
       res.writeHead(404).end();
     }
@@ -515,7 +517,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     });
     server.listen(preferred, "127.0.0.1");
     server.once("listening", () => {
-      info = {port: server.address().port, token, pid: process.pid, dir};
+      info = {port: server.address().port, token, pid: process.pid, dir, version: VERSION, skill: SKILL_DIR};
       fs.writeFileSync(p.server, JSON.stringify(info), {mode: 0o600});
       fs.writeFileSync(p.session, JSON.stringify({port: info.port, token}), {mode: 0o600});
       for (const f of [p.server, p.session]) fs.chmodSync(f, 0o600);

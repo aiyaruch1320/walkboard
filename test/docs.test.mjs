@@ -80,3 +80,7 @@ test("the docs site builds, and every link and image in it leads to a file of th
   fs.rmSync(out, {recursive: true, force: true});
   assert.deepEqual(broken, []);
 });
+
+test("each picture with draft mode has the #sketch anchor its draft help links to", () => {
+  for (const k of ["flow", "map", "state", "decision", "datamodel", "impact"]) assert.match(fs.readFileSync(path.join(root, "docs/pictures", k + ".md"), "utf8"), /<a id="sketch"><\/a>/, k);
+});

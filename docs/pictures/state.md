@@ -21,6 +21,8 @@ Drag boxes to arrange the picture. The rest of the picture holds still while you
 
 To choose which side of a box a line meets, click the line, or drag the dot at either end.
 
+<a id="sketch"></a>
+
 ## Sketching on a state picture
 
 In [draft mode](../draft.md) you can add states, draw lines between them, rename them and take them out.

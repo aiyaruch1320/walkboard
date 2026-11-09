@@ -41,6 +41,8 @@ Drag boxes and zones to arrange the map, and drag a zone's edge to resize it. Ab
 
 To choose which side of a box a line meets, click the line, or drag the dot at either end.
 
+<a id="sketch"></a>
+
 ## Sketching on a map
 
 In [draft mode](../draft.md) you have these tools:

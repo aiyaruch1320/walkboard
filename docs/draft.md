@@ -16,7 +16,7 @@ While you sketch, the plan stays as it is and the agent is not interrupted. Your
 
 ## Making changes
 
-Here is what you can do on most pictures. Each picture's **?** lists the tools it has.
+Here is what you can do on most pictures. In draft mode, the **?** on the toolbar lists the tools of the picture you are on, and links to its page here, which shows them with pictures.
 
 | To | Do this |
 |---|---|

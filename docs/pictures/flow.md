@@ -14,6 +14,8 @@ A lane without arrows is a checklist. Its boxes can be done in any order.
 
 When you choose a step in the step bar, the boxes it does not touch fade out.
 
+<a id="sketch"></a>
+
 ## Sketching on a flow
 
 In [draft mode](../draft.md) you can add boxes and lanes, rename them, take them out, and drag a box to another place or lane. To reorder the lanes, drag a lane by its title.

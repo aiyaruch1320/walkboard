@@ -26,6 +26,8 @@ Drag boxes to arrange the picture. The rest of the picture holds still while you
 
 To choose which side of a box a line meets, click the line, or drag the dot at either end.
 
+<a id="sketch"></a>
+
 ## Sketching on a decision
 
 To add a rule in [draft mode](../draft.md):

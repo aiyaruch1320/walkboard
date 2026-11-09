@@ -23,6 +23,8 @@ A frame groups tables that belong together, such as the tables of one service.
 
 Drag a table to arrange it. Drag it into or out of a frame to change its group. You can also move a selected table with the arrow keys, and hold Shift to move it further.
 
+<a id="sketch"></a>
+
 ## Sketching on a data model
 
 In [draft mode](../draft.md) you have these tools:

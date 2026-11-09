@@ -1,6 +1,6 @@
 {
   "name": "walkboard",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Show an agent's plan, an explanation of existing code, or a comparison of designs as clickable pictures; ask, correct or confirm right on the picture and the agent answers there.",
   "author": {
     "name": "Aiyaruch Phengthong"

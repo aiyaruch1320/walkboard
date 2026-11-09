@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.1
 
 - **Which version a page runs** is the last line of **⋮**, small and grey, and in the connection dot's tooltip.
 

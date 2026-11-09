@@ -35,6 +35,22 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 - Icons are Walkboard's own line drawings. Do not add vendor logos: their licences do not allow shipping them here.
 - Keep `SKILL.md` small and the plan format backward compatible; document new fields in `references/schema.md` (a picture's in `references/views/<kind>.md`; a draft change's in `references/review.md`) and `CHANGELOG.md`.
 
+## Writing the docs
+
+The pages in `docs/` are for people who have never seen Walkboard. Write them the way you would explain it to a colleague sitting next to you. The Next.js docs are the model.
+
+- **Start every page with what it is about**, in a sentence or two: what the thing is, and what the page will show you.
+- **Explain a word before you use it.** Put the term in bold the first time, with a plain sentence: "A **zone** is a frame that holds boxes."
+- **Headings name what the reader does or wants to know**: "Asking about a box", "Approving the plan". Not "Overview" or "Details".
+- **Whole sentences, one idea each.** Say "To do X, click Y." and "For example, …". Avoid chains of colons and semicolons, stacked brackets, and bold labels in front of every list item.
+- **Say why** when the reason is not obvious, in the same plain words.
+- **Tables are for looking things up** (keys, signs, tools). Explain things in sentences.
+- **A side note goes in a `> **Good to know:**` block** at the end of its section, not in brackets in the middle of a sentence.
+- **End with "Next steps"**: two or three pages, each with one line on why you would read it.
+- Use the labels exactly as the page shows them, and keep the page URLs: the page links to `pictures/<kind>`, `platforms/<profile>`, `draft`, `share`, `faq` and `th/`.
+
+`docs/th/` is written in Thai for Thai readers, not translated word for word. Use the Thai labels from `assets/strings.js`.
+
 ## Check your change
 
 ```bash

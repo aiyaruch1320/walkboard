@@ -66,3 +66,5 @@ a:hover{text-decoration-thickness:2px}
   .doc{padding-top:16px}
   .doc h1{font-size:28px}
 }
+/* Arriving from a ⚠ card: the kind it is about stands out. */
+.doc tr:has(a:target) td{background:var(--accent-bg)}

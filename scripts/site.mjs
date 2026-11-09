@@ -84,6 +84,14 @@ export function render(lines, from) {
       i++;
       continue;
     }
+    // An HTML comment is left out; "<!-- github only -->" also leaves out the paragraph after it (a note that only
+    // makes sense on github.com, such as "these pages are also a website").
+    if (l.startsWith("<!--")) {
+      const only = /github only/.test(l);
+      for (i++; only && i < lines.length && !lines[i].trim(); i++);
+      for (; only && i < lines.length && lines[i].trim(); i++);
+      continue;
+    }
     if (l.startsWith("```")) {
       const lang = l.slice(3).trim(), code = [];
       for (i++; i < lines.length && !lines[i].startsWith("```"); i++) code.push(lines[i]);
@@ -153,7 +161,7 @@ function layout(md, body) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(title)} · Walkboard docs</title>
+<title>${esc(/docs$/i.test(title) ? title : title + " · Walkboard docs")}</title>
 <link rel="icon" href="${up}logo/mark.svg">
 <link rel="stylesheet" href="${up}assets/site.css">
 </head>

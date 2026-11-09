@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.10.0
 
 - **The picture comes first.** The first box starts 215 px higher on a plan's first screen. The mode and who commits moved to **⋮**, the colours and how to read a picture to one **?**, the draft button beside the tabs. Status says itself once, as a dot when all is well.
 - **A first look instead of a tour.** The first time on a computer the picture draws itself along its arrows and one hint says to click a box. The old tour dimmed the page and came back on every plan, because each has its own port.

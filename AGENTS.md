@@ -15,9 +15,11 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 | `skills/walkboard/lib/source.mjs` | `file:line` lookups confined to declared roots |
 | `skills/walkboard/lib/edit.mjs` | `walkboard set` |
 | `skills/walkboard/lib/icons.mjs` | Box icons and how they are guessed from names (runs in Node and the browser) |
-| `skills/walkboard/lib/profiles.mjs` | Profiles: kinds of box, zone and line on a platform (AWS…), their fields and where each usually sits. A new profile is one more entry; then `node scripts/profiles-doc.mjs` rewrites `references/profiles/` (npm test checks it) |
+| `skills/walkboard/lib/profiles.mjs` | Profiles: kinds of box, zone and line on a platform (AWS…), their fields and where each usually sits. A new profile is one more entry; then `node scripts/profiles-doc.mjs` rewrites `references/profiles/` and `docs/platforms/` (npm test checks it) |
 | `skills/walkboard/assets/viewer.html` | The page script; `viewer.css` and `strings.js` (labels) beside it are inlined by the server, so the page is still one response with no network |
 | `skills/walkboard/assets/glossary.json` | Shared glossary, English and Thai |
+| `docs/` | Docs for people, linked from the page (⋮ → Guide, a picture's ?, a ⚠ card): `pictures/<kind>.md`, `platforms/<profile>.md` (generated), `th/README.md` in Thai. A new picture kind needs its page; npm test checks every link |
+| `.github/` | Tests on macOS, Windows and Linux; issue forms |
 | `examples/` | Example plans; `npm test` validates all of them |
 | `evals/` | What agents do with the skill: `claude plugin eval`, see `evals/README.md`. Runs real agents on your account |
 | `scripts/` | Screenshots and the demo GIF (headless Chrome via DevTools, no dependencies) |

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Other agents talk to you in their own chat.** An agent that cannot be woken by a background command no longer sits waiting on the page. Your clicks and questions wait; tell it "check the page" in its chat and it reads them with the new `walkboard poll --now` and answers on the page, where you asked. The page shows this with a grey dot, ✉ and the number waiting, and the waiting message says what to type. New guide: [Use other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html).
 - **A docs website: [aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/).** One page per subject: getting started, the page, each mode, each of the eleven pictures, sketching, sharing, FAQ and reference, plus a start page in Thai. Each platform (AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes, container, on-prem) has a page generated from its profile, listing every kind with where it usually sits.
 - **Shown, not only told.** Every picture and every platform page has a picture drawn by Walkboard and a live example to click (two new example plans, `examples/pictures` and `examples/platforms`, exported by the site build).
 - **The page links to them.** **⋮ → Guide** opens the docs (in Thai when the plan is), a picture's **?** ends with a link to that picture's page, and a ⚠ card links to its kind on the platform's page. The links open in a new tab; the page itself still loads nothing from the network.

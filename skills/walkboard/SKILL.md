@@ -45,7 +45,7 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 ## 3. Show and listen
 
 1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). If it says a newer Walkboard is installed, tell the user in one line.
-2. Keep exactly one `WB poll <dir>` running **in the background**. It exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them). Without `--timeout`, `[]` means the server stopped: `WB open` again. Start it again after each batch.
+2. Can you run a command in the background and be woken when it ends? Keep exactly one `WB poll <dir>` running that way. If not, do not wait on the page: tell the user in one line to click, ask or sketch there and then say "check the page" here; then `WB poll <dir> --now` reads what waits (`[]` = nothing), handled the same way. The page says so too. `WB poll` exits when the page sends something, with one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them). Without `--timeout`, `[]` means the server stopped: `WB open` again. Start it again after each batch.
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
@@ -59,7 +59,6 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 
    Asked how Walkboard itself works (reading a picture, draft mode, export)? Answer in a line or two and give the page from https://aiyaruch1320.github.io/walkboard/ (`pictures/<kind>.html`, `platforms/<profile>.html`, `draft.html`, `share.html`, `faq.html`; Thai: `th/`). The page's ⋮ → Guide opens it too.
 
-   No background commands that wake you when they end? `WB poll <dir> --timeout 240` in the foreground instead (`[]` = nothing yet, poll again). A killed poll loses nothing.
 3. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
 
 ## 4. Build (build)
@@ -69,7 +68,7 @@ Not before `approved` is true. For each step:
 1. `WB set <dir> step:<id> status=doing node:<a> status=new …`, then do only that step.
 2. `git status`; `WB status <dir>` for the current `settings`. Files changed: `"auto"` → small commits now, one context each; `"suggest"` → a suggested message (messages.md). None changed, or no repository: neither.
 3. `WB set <dir> step:<id> status=review node:<a> status=done …` (the suggested message in the same call), and `WB reply <dir> --step <id>`: one line on what you built and the files touched, or that none changed.
-4. Wait. `next` (`commit`, `committed`: messages.md): `WB set <dir> step:<id> status=done`, then the next step. `"all": true`: the remaining steps without stopping. No reply needed.
+4. Wait (not woken by the page: stop and say so). `next` (`commit`, `committed`: messages.md): `WB set <dir> step:<id> status=done`, then the next step. `"all": true`: the remaining steps without stopping. No reply needed.
 
 ## 4E. Walk through (explain)
 

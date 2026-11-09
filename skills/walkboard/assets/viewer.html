@@ -9274,7 +9274,9 @@ moreBtn.onclick = (e) => {
   const helpIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1V9.6"/><circle cx="8" cy="11.6" r=".4" fill="currentColor"/></svg>';
   const cur = MODES_SHOWN.includes(plan?.mode) ? plan.mode : "build";
   const mode = el("div", "mmode");
-  mode.append(el("b", null, t("pill_" + cur)), el("span", null, t("pillTip_" + cur)));
+  // One line; what the mode means is a tooltip, for whoever wonders.
+  mode.append(el("b", null, t("pill_" + cur)));
+  mode.title = t("pillTip_" + cur);
   const rows = [mode];
   if (plan && cur === "build" && !snapshot) {
     const commits = el("div", "mthemes"), opts = el("div", "seg words");

@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  A Claude Code skill that turns a plan, an explanation of existing code,<br>
+  A skill for Claude Code and other coding agents that turns a plan, an explanation of existing code,<br>
   or a comparison of designs into a page you can click and talk to.
 </p>
 
@@ -22,7 +22,7 @@
 
 ## Getting started
 
-You need Claude Code and Node.js 18.18 or newer. Nothing else. In Claude Code, run:
+You need Node.js 18.18 or newer and a coding agent. Nothing else. In Claude Code, run:
 
 ```
 /plugin marketplace add aiyaruch1320/walkboard
@@ -35,7 +35,9 @@ Start a new session, open one of your repositories, and try:
 /walkboard explain how this project starts up
 ```
 
-The agent may ask you a question or two. Then it sends you a link to a page on your machine. Click any box to ask about it, and the agent answers right there. Keep Claude Code open while you use the page, because that is where the agent does its work.
+The agent may ask you a question or two. Then it sends you a link to a page on your machine. Click any box to ask about it, and the agent answers right there. Keep the agent's session open while you use the page, because that is where it does its work.
+
+Using Codex, Gemini CLI or another agent that reads `SKILL.md` skills? See [Use other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html): you copy one folder, and you tell the agent "check the page" when you want it to read what you did on the page.
 
 Want to look before you install? [Open a live example](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=map&step=all) in your browser.
 

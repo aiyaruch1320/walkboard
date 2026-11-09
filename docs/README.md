@@ -14,7 +14,7 @@ The page is not just something to look at. You can click any box to see what it 
 
 A typical session goes like this:
 
-1. In Claude Code, you type `/walkboard explain how login works`.
+1. In Claude Code, you type `/walkboard explain how login works`. With other agents, you ask in your own words.
 2. The agent sends you a link. Open it, and you see the answer drawn as pictures.
 3. You click a box and type a question. The agent replies on that box.
 

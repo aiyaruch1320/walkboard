@@ -54,7 +54,7 @@ You can also attach images. Paste them, drop them on the chat, or press 📎. Yo
 
 If the agent is busy when you send a message, your message waits in line. The page shows its place in the line, and the top bar shows ⏳ with how many messages are waiting. Sometimes the agent answers on a different box than the one you asked on. When that happens, your message links to the box with the answer.
 
-> **Good to know:** Each message you send is one request to the agent, and it counts toward your Claude Code usage like any other. Changing settings, arranging a picture and sketching a draft stay on the page, so they cost nothing.
+> **Good to know:** Each message you send is one request to the agent, and it counts toward your agent's usage like any other. Changing settings, arranging a picture and sketching a draft stay on the page, so they cost nothing.
 
 ## Using the side panel
 

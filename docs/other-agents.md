@@ -22,28 +22,67 @@ Most other agents cannot be woken up from outside. So instead of waiting on the 
 check the page
 ```
 
-The agent reads everything that waited, your questions, an approval, a sketch to review, and answers each one on the page, where you asked.
+Any words work, in any language, for example "ดูหน้า walkboard". The agent reads everything that waited: your questions, an approval, a sketch to review. Then it answers each one on the page, where you asked, and goes back to its chat. Behind the scenes it runs `walkboard poll --now`, which hands over what waits and returns at once.
 
-You can tell which way a page works from the dot at the top right. A grey dot means messages wait for your agent. After you send one, it shows **✉** and how many are waiting, and the message itself reminds you to tell the agent.
+You can tell which way a page works from the status at the top right. It reads **✉ Not live: tell your agent**, and after you send something, how many messages are waiting. Click it for the words to copy into the chat. Each waiting message on the page says the same, with a **Copy** button.
 
-> **Good to know:** This also works in Claude Code. If the agent is busy building a step, you can say "check the page" to make it read your messages sooner.
+> **Good to know:** "Check the page" also works in Claude Code. If the agent is busy building a step, it makes the agent read your messages sooner.
 
 ## Installing
 
 You need Node.js 18.18 or newer. Run `node -v` to check.
 
-Clone the repository, then copy the whole `skills/walkboard` folder, not only `SKILL.md`, to the folder where your agent reads skills:
+Clone the repository, then copy the whole `skills/walkboard` folder, not only `SKILL.md`, to the folder where your agent reads skills. `~/.agents/skills` is where Codex looks, and several other agents read it too. If yours reads skills from another folder, its documentation names it.
+
+On macOS or Linux:
 
 ```bash
 git clone https://github.com/aiyaruch1320/walkboard.git
+mkdir -p ~/.agents/skills
 cp -R walkboard/skills/walkboard ~/.agents/skills/walkboard
 ```
 
-`~/.agents/skills` is where Codex looks, and several other agents read it too. If yours reads skills from another folder, its documentation names it.
+On Windows, in PowerShell:
 
-Start a new session. To check that it worked, ask the agent whether it has the walkboard skill, or ask for a picture in your own words, such as "show me how login works as a picture".
+```powershell
+git clone https://github.com/aiyaruch1320/walkboard.git
+New-Item -ItemType Directory -Force "$HOME\.agents\skills" | Out-Null
+Copy-Item -Recurse walkboard\skills\walkboard "$HOME\.agents\skills\walkboard"
+```
 
-> **Good to know:** The agent runs `node …/skills/walkboard/bin/walkboard.mjs` many times. Allow that command in your agent's permissions, or it will ask you each time.
+To check the copy, run its command line. It should print its usage:
+
+```bash
+node ~/.agents/skills/walkboard/bin/walkboard.mjs --help
+```
+
+## Starting it
+
+Start a new session in one of your repositories, and ask in your own words, for example "show me how login works as a picture" or "plan adding a health check, with walkboard". The agent picks the skill from its description.
+
+The agent writes the plan and gives you a link that starts with `http://127.0.0.1:`. Open it in your browser. If the agent does not mention the skill, ask it whether it has the walkboard skill. If not, check the folder above and start a new session.
+
+## Permissions and sandboxes
+
+The agent runs `node …/skills/walkboard/bin/walkboard.mjs` many times. Allow that command in your agent's settings, or it asks you each time.
+
+Walkboard needs to do two things that a strict sandbox may block:
+
+- write plans under `~/.walkboard/`, unless you ask for another folder
+- run a small server on 127.0.0.1, which your browser connects to
+
+If the agent reports that it cannot write there or cannot start the server, allow those in your agent's sandbox settings. The server never makes network requests of its own. [SECURITY.md](../SECURITY.md) lists everything it reads, writes and runs.
+
+## Updating and uninstalling
+
+To update, pull the repository and copy the folder again:
+
+```bash
+cd walkboard && git pull
+rm -rf ~/.agents/skills/walkboard && cp -R skills/walkboard ~/.agents/skills/walkboard
+```
+
+To uninstall, delete `~/.agents/skills/walkboard`. Your plans stay in `~/.walkboard/` until you delete that folder too.
 
 ## How well it is tested
 

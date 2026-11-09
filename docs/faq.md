@@ -16,15 +16,17 @@ You probably opened the HTML file instead of the link. Open the `http://127.0.0.
 
 ### The dot says the agent is busy
 
-The agent is doing something else, such as writing code or running tests. Your message waits in line and reaches the agent when it is free. To hurry it, type "check the page" in Claude Code.
+The agent is doing something else, such as writing code or running tests. Your message waits in line and reaches the agent when it is free. To hurry it, type "check the page" in the agent's chat.
+
+If the status says **✉ Not live: tell your agent** instead, your agent is not woken by the page at all. That is how most agents other than Claude Code work: tell it in its chat when you want it to read the page. See [Use other agents](other-agents.md).
 
 ### The page looks older than the version I installed
 
 A session that is already running keeps the version it started with. Run `/reload-plugins` or start a new session, then ask the agent to open the plan again. The page from the older copy is replaced. You can check the version at the bottom of the **⋮** menu.
 
-### Claude Code asks for permission on every update
+### The agent asks for permission on every update
 
-In your Claude Code permissions, allow `node …/skills/walkboard/bin/walkboard.mjs` commands and edits under `~/.walkboard/`.
+In your agent's permissions, allow `node …/skills/walkboard/bin/walkboard.mjs` commands and edits under `~/.walkboard/`.
 
 ### The server seems stuck, or the port is taken
 
@@ -36,7 +38,7 @@ Ask the agent to restart the Walkboard server. It runs `walkboard stop` and then
 
 Walkboard's page and server stay on your machine. The server listens only on 127.0.0.1, behind a random token. It makes no network requests and sends no telemetry.
 
-The agent itself works as it always does in Claude Code: what it reads to make a plan goes to the model, like in any other session. See [SECURITY.md](../SECURITY.md) for the details.
+The agent itself works as it always does: what it reads to make a plan goes to the model, like in any other session. See [SECURITY.md](../SECURITY.md) for the details.
 
 ### Does it touch my cloud accounts?
 
@@ -62,7 +64,7 @@ Fewer than having the agent write an HTML page itself. The agent writes one smal
 
 ### Does it work with other agents?
 
-Yes. Agents that read `SKILL.md` skills, such as Codex, Gemini CLI or Cursor, get the same pictures and page. The difference is that most of them cannot be woken up by a click, so your messages on the page wait until you tell the agent "check the page" in its chat. Only Claude Code is tested by hand so far. See [Use other agents](other-agents.md). See [For AI agents](../README.md#for-ai-agents) in the README.
+Yes. Agents that read `SKILL.md` skills, such as Codex, Gemini CLI or Cursor, get the same pictures and page. The difference is that most of them cannot be woken up by a click, so your messages on the page wait until you tell the agent "check the page" in its chat. Only Claude Code is tested by hand so far. [Use other agents](other-agents.md) shows how to install it and what to expect.
 
 ## Limits
 

@@ -9,7 +9,7 @@ Before you begin, make sure you have:
 - Claude Code, in the terminal or the desktop app. Using another agent, such as Codex or Gemini CLI? See [Use other agents](other-agents.md) instead.
 - Node.js 18.18 or newer. Run `node -v` to check.
 
-You do not need an account, an API key or any other package. Walkboard is free and open source (MIT licence). The work the agent does for you counts toward your normal Claude Code usage, like any other request.
+You do not need an account, an API key or any other package. Walkboard is free and open source (MIT licence). The work the agent does for you counts toward your agent's normal usage, like any other request.
 
 Walkboard is built and used every day on macOS, with Chrome, in the terminal and the desktop app. The automatic tests also run on Linux and Windows, but nobody has tried those by hand yet. If you do, we would love to hear how it went.
 
@@ -44,7 +44,7 @@ Here is what happens next:
 2. It writes the plan and sends you a link that looks like `http://127.0.0.1:…/?token=…`. Open it in your browser.
 3. Click a box to see what it does. To ask a question, or to say what to add, change or remove, type in the chat bar at the bottom of the page. It opens the side panel, where the conversation goes on.
 
-Keep Claude Code open while you use the page, because that is where the agent works. The dot at the top right of the page shows whether the agent is ready for your next message.
+Keep Claude Code open while you use the page, because that is where the agent works. The dot at the top right of the page shows whether the agent is ready for your next message: green when it is listening, purple while it answers you, orange while it is busy with something else.
 
 The agent chooses a mode from what you asked. You can read more about each one in [Plan mode](modes/plan.md), [Explain mode](modes/explain.md) and [Design mode](modes/design.md).
 

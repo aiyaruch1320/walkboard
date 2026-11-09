@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A first visit says what to do.** The first hint sits above its box when the chat bar would cover it, and mentions the bar. A sent message scrolls into view with what happens next.
+- **Draft mode explains itself.** A **?** on the toolbar lists the picture's tools, keys and moves, and links to that picture's sketching section in the docs, which now shows a whole sketch step by step (sketch.gif). A note about something refused while sketching links there too, and a line dropped back on its own box says why it was not drawn.
+- **SKILL.md:** the agent always tells the user what to do on the page when it gives the link; a waiting poll runs the whole session, building included; questions go to a question tool or the chat.
 - **Other agents talk to you in their own chat.** An agent that cannot be woken by a background command no longer sits waiting on the page. Your clicks and questions wait; tell it "check the page" in its chat and it reads them with the new `walkboard poll --now` and answers on the page, where you asked. The page shows this with a grey dot, ✉ and the number waiting, and the waiting message says what to type. New guide: [Use other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html).
 - **A docs website: [aiyaruch1320.github.io/walkboard](https://aiyaruch1320.github.io/walkboard/).** One page per subject: getting started, the page, each mode, each of the eleven pictures, sketching, sharing, FAQ and reference, plus a start page in Thai. Each platform (AWS, Google Cloud, Azure, Huawei Cloud, Kubernetes, container, on-prem) has a page generated from its profile, listing every kind with where it usually sits.
 - **Shown, not only told.** Every picture and every platform page has a picture drawn by Walkboard and a live example to click (two new example plans, `examples/pictures` and `examples/platforms`, exported by the site build).

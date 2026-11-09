@@ -8,7 +8,7 @@ This page shows you how to sketch a change and ask the agent to review it.
 
 ## Starting a sketch
 
-Press **✎ Draft changes** above the picture. A toolbar appears at the bottom, and a list beside the picture keeps track of every change you make.
+Press **✎ Draft changes** above the picture. A toolbar appears at the bottom. The **≡** count on it shows how many changes you made, and opens a list of them.
 
 You can sketch on six kinds of picture: [map](pictures/map.md), [data model](pictures/datamodel.md), [flow](pictures/flow.md), [state](pictures/state.md), [decision](pictures/decision.md) and [impact](pictures/impact.md). On a [before and after](pictures/diff.md) pair, press its pencil to choose which of the two pictures to sketch on. The other kinds have no draft mode, so ask for changes in the chat instead.
 
@@ -55,6 +55,8 @@ Until the agent puts your changes into the plan, they are marked on the picture:
 When your sketch is ready, press **Ask the agent to review**. The agent reads what you drew and explains in plain words what it means for the plan, using the names on your picture. For example, it might point out that a new database needs a migration, or that a line you drew opens a port between two networks.
 
 ![The agent's review in the whole plan's chat, in plain words, with a link to a box](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/review.png)
+
+> **Good to know:** With an agent other than Claude Code, the review waits on the page like any other message. Tell the agent "check the page" in its chat, and it reads your sketch then. See [Use other agents](other-agents.md).
 
 Before it changes the plan, the agent asks you which changes to keep. The ones you accept go into the plan and stay where you drew them. The ones you turn down stay in your sketch, so you can change them or throw them away.
 

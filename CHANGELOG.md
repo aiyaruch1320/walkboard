@@ -10,6 +10,8 @@
 - **Restating is gone.** It did not help in real use: the picture already explains. Old plans with `teachBack` or a step's `confirmed` still open, and the fields are ignored.
 - **A commit box only when there is something to commit.** The agent checks `git status`; a step that changed no files offers to go on instead of asking for a message.
 - **One box to ask or to say what to change.** The Ask and Propose switch is gone. **Still unclear** and **Go deeper** stay in explain mode only.
+- **A page never stays on old code.** Opening a plan that an older Walkboard still serves (a session started before an update) restarts it with the current one, on the same address, and the open tab reloads itself (or says so, when something is being typed). A newer one is left alone. `open` also says when a newer version is installed than the session runs.
+- **Back from the plan to the design.** A plan written from a design links back to it, to sketch or compare again.
 - **Attach images to a message.** Paste, drop or pick up to five. A big image is scaled down before it is sent, so it costs less to send, store and read. Never SVG.
 
 ## 0.9.1

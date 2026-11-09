@@ -110,6 +110,8 @@ let plan, viewId, stepId = null, nodeId = null, timer = null;
 const steps = () => plan.steps || [];
 const curStep = () => steps().find((s) => s.id === stepId) || null;
 let thread = [], waiting = 0, connected = false;
+// The Walkboard this page's code came from, for the menu and the connection dot; none for a snapshot or a copy without a version.
+let pageVersion = null;
 // Unsent text survives a reload of this tab.
 const draftKey = "walkboard.drafts." + token;
 const drafts = (() => {
@@ -760,7 +762,7 @@ function renderBadges() {
     const inLine = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
     const connWords = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
     conn.textContent = !connected ? connWords : inLine ? `⏳ ${inLine}` : "";
-    conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "");
+    conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "") + (pageVersion ? ` · Walkboard ${pageVersion}` : "");
     conn.setAttribute("aria-label", connWords + ". " + conn.title);
   }
   if (!plan) return;
@@ -8677,6 +8679,11 @@ async function load() {
   let build = null;
   events.addEventListener("hello", (e) => {
     const b = JSON.parse(e.data).build;
+    // The first build is this page's own code; a later one is a server that took over, whose code a reload brings.
+    if (!build) {
+      const v = String(b).split("|")[0];
+      if (/^\d+\.\d+\.\d+/.test(v)) (pageVersion = v), renderBadges();
+    }
     if (build && b !== build) {
       if (![...document.querySelectorAll("textarea, input")].some((x) => x.value.trim())) return location.reload();
       const box = document.getElementById("toast"), go = el("button", "primary", t("reloadNow"));
@@ -9287,7 +9294,7 @@ moreBtn.onclick = (e) => {
     commits.append(opts);
     rows.push(commits);
   }
-  showCard(moreBtn, "menucard", ...rows, item(exportIcon, t("exportTitle"), openExport), themes, item(helpIcon, t("helpTitle"), openHelp));
+  showCard(moreBtn, "menucard", ...rows, item(exportIcon, t("exportTitle"), openExport), themes, item(helpIcon, t("helpTitle"), openHelp), ...(pageVersion ? [el("div", "mversion", `Walkboard ${pageVersion}`)] : []));
 };
 
 document.addEventListener("keydown", (e) => {

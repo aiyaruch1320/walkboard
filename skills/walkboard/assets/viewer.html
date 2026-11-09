@@ -114,6 +114,25 @@ let thread = [], waiting = 0, connected = false;
 // it in its own chat ("check the page"). Servers before 0.11 do not say, and count as listening.
 let listens = true;
 const chatMode = () => connected && !waiting && !listens;
+// The words to type in the agent's chat, copied with one click.
+function copyCheck() {
+  const b = el("button", "copycheck", t("copyCheck"));
+  b.type = "button";
+  b.onclick = async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(t("checkPhrase"));
+      b.textContent = "✓ " + t("copied");
+    } catch {
+      b.textContent = t("checkPhrase");
+    }
+  };
+  return b;
+}
+function openChatCard() {
+  const conn = document.getElementById("conn");
+  showCard(conn, "chatcard", el("b", null, t("connChat")), el("p", null, t("chatHow")), copyCheck());
+}
 // The Walkboard this page's code came from, for the menu and the connection dot; none for a snapshot or a copy without a version.
 let pageVersion = null;
 // Unsent text survives a reload of this tab.
@@ -618,7 +637,8 @@ function talkBox(c, {placeholder, quick = [], extra = {}, to = c, prefix = "", s
       await send(to, kind, prefix + text, names.length ? {...extra, images: names} : extra);
       images.forEach((im) => URL.revokeObjectURL(im.url));
       if (sent) return sent();
-      say(t("sent"), "note");
+      say(t(chatMode() ? "sentChat" : "sent"), "note");
+      if (chatMode()) (live().closest(".composer")?.querySelector(".note") || note).append(" ", copyCheck());
     } catch (e) {
       if (typed.trim() && !live().value.trim()) live().value = drafts[key] = typed;
       pendingImages[key] = [...images, ...(pendingImages[key] || [])];
@@ -765,10 +785,16 @@ function renderBadges() {
     const inLineN = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
     // A dot while all is well; words when something is off or waiting.
     const chat = chatMode() && !busy;
-    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : chat ? "chat" : busy || building ? "work" : "idle") + (connected && !inLineN ? " dot" : "");
+    // Not woken by the page: words, never just a dot, and a click says what to do.
+    conn.className = "conn " + (!connected ? "off" : waiting ? "on" : chat ? "chat" : busy || building ? "work" : "idle") + (connected && !inLineN && !chat ? " dot" : "");
+    conn.onclick = chat ? (e) => (e.stopPropagation(), openChatCard()) : null;
+    conn.tabIndex = chat ? 0 : -1;
+    conn.onkeydown = chat ? (e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), openChatCard()) : null;
+    if (chat) conn.setAttribute("role", "button");
+    else conn.removeAttribute("role");
     const inLine = connected && !waiting ? thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings").length : 0;
     const connWords = !connected ? t(!served ? "connOff" : everConnected ? "connLost" : "connecting") : waiting ? t("connOn") : chat ? t("connChat") : busy ? t("connWorking") : building ? t("connBuilding") : t("connIdle");
-    conn.textContent = !connected ? connWords : inLine ? `${chat ? "✉" : "⏳"} ${inLine}` : "";
+    conn.textContent = !connected ? connWords : chat ? `✉ ${inLine ? inLine + " · " : ""}${t("connChatShort")}` : inLine ? `⏳ ${inLine}` : "";
     conn.title = (!connected ? t("connLostTip") : waiting ? t("connOnTip") : chat ? t("connChatTip") : busy ? t("connWorkingTip") : t("connIdleTip")) + (inLine ? `. ${t("queuedCount", inLine)}` : "") + (pageVersion ? ` · Walkboard ${pageVersion}` : "");
     conn.setAttribute("aria-label", connWords + ". " + conn.title);
   }
@@ -1940,6 +1966,8 @@ let pictureHelp = null, pictureKind = null;
 // The docs site, opened in a new tab by a click: the page itself still loads nothing from the network.
 // Pages are named as in docs/, with .html (README is index).
 const DOCS = "https://aiyaruch1320.github.io/walkboard/";
+// Where this picture's draft tools are explained (each picture's page has a "#sketch" anchor), and draft mode as a whole.
+const sketchDoc = () => (pictureKind ? `pictures/${pictureKind}.md#sketch` : "draft.md");
 function docLink(page, label, cls = "doclink") {
   const a = el("a", cls, label);
   a.href = DOCS + page.replace(/(^|\/)README\.md$/, "$1").replace(/\.md\b/, ".html");
@@ -2034,6 +2062,7 @@ function readHelp(button, kind, words = []) {
   if (["state", "decision", "impact", "lines"].includes(kind) && served && !snapshot) parts.push(el("div", "lhtext", t("rh_sides")));
   if (arrows) parts.push(el("div", "dhint", t("lh_shape")));
   if (pictureKind) parts.push(docLink(`pictures/${pictureKind}.md`, t("readMore") + " ↗"));
+  if (document.body.classList.contains("sketching")) parts.push(docLink(sketchDoc(), t("sketchDoc") + " ↗"));
   const pop = popover(0, 0, parts);
   pop.classList.add("lhcard");
   const b = button.getBoundingClientRect(), w = pop.offsetWidth;
@@ -2595,6 +2624,9 @@ const showProblem = (msg, action = null) => {
   box.hidden = false;
   box.dataset.brief = "1";
   const row = el("div", null, msg);
+  // A note while sketching: how this picture is drawn, one click away.
+  const sketching = !action && document.body.classList.contains("sketching");
+  if (sketching) row.append(" ", docLink(sketchDoc(), t("sketchDocShort") + " ↗"));
   if (action) {
     const go = el("button", "pact");
     go.append(svgIcon("pencil"), action.label);
@@ -2608,7 +2640,7 @@ const showProblem = (msg, action = null) => {
   box.replaceChildren(row);
   box.onclick = () => box.dataset.brief && (box.hidden = true);
   clearTimeout(problemTimer);
-  problemTimer = setTimeout(() => box.dataset.brief && (box.hidden = true), action ? 7000 : 4000);
+  problemTimer = setTimeout(() => box.dataset.brief && (box.hidden = true), action || sketching ? 7000 : 4000);
 };
 // Into draft mode on a picture, as its pencil does.
 const enterDraft = (id) => {
@@ -3613,7 +3645,20 @@ function sketchBar(lv, tools, picture, toolList, hints = {}) {
   };
   const exit = btn("close", `${t("exitSketch")} (Esc)`, "dexit");
   exit.onclick = () => leaveSketch();
-  bar.append(count, send, exit);
+  // ?: every tool of this picture in words, and where it is shown with pictures.
+  const help = el("button", "dtool dhelp", "?");
+  help.title = t("sketchHelp");
+  help.setAttribute("aria-label", help.title);
+  help.onclick = () => {
+    const rows = [...bar.querySelectorAll("[data-tool]")].map((b) => {
+      const r = el("div", "dhelprow");
+      r.append(b.firstChild.cloneNode(true), el("span", null, b.title));
+      return r;
+    });
+    const pop = popover(0, 0, [el("div", "dphead", t("sketchHelp")), ...rows, el("div", "dhint", t("sketchHelpMore")), docLink(sketchDoc(), t("sketchDoc") + " ↗"), docLink("draft.md", t("draftDoc") + " ↗")], {beside: help.getBoundingClientRect()});
+    pop.classList.add("dhelpcard");
+  };
+  bar.append(count, send, help, exit);
   const tip = el("div", "dtip");
   tip.setAttribute("role", "status");
   document.body.append(bar, tip);
@@ -8951,6 +8996,12 @@ function showFirstHint() {
   hint.style.left = r.left + scrollX + 8 + "px";
   hint.style.top = r.bottom + scrollY + 10 + "px";
   document.body.append(hint);
+  // Below the box unless the chat bar (or the window's edge) would cover it: then above, pointing down.
+  const ask = document.getElementById("askbar"), floor = ask && !ask.hidden ? ask.getBoundingClientRect().top - 8 : innerHeight - 8;
+  if (r.bottom + 10 + hint.offsetHeight > floor) {
+    hint.classList.add("above");
+    hint.style.top = r.top + scrollY - hint.offsetHeight - 10 + "px";
+  }
   const gone = () => {
     hint.remove();
     removeEventListener("pointerdown", gone, true);

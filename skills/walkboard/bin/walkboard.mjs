@@ -110,7 +110,8 @@ async function check() {
   for (const [id, n] of Object.entries(plan.nodes || {})) if (typeof n?.icon === "string" && !knownIcon(n.icon)) warnings.push(`node "${id}": unknown icon "${n.icon}" (walkboard icons lists them)`);
   for (const w of warnings.slice(0, 8)) console.log(`warning: ${w}`);
   if (warnings.length > 8) console.log(`warning: … ${warnings.length - 8} more`);
-  console.log(`ok: ${plan.steps?.length || 0} steps, ${viewsOf(plan).length} views, ${Object.keys(plan.nodes || {}).length} nodes`);
+  const n = (k, w) => `${k} ${w}${k === 1 ? "" : "s"}`;
+  console.log(`ok: ${n(plan.steps?.length || 0, "step")}, ${n(viewsOf(plan).length, "view")}, ${n(Object.keys(plan.nodes || {}).length, "node")}`);
 }
 
 async function set() {

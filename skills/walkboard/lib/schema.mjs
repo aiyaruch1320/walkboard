@@ -370,7 +370,7 @@ export function lint(p) {
   if (Array.isArray(p.views) && p.views.length > 1) for (const v of p.views) if (isObj(v) && v.id && !v.title) out.push(`view "${v.id}" has no title (its tab shows the id)`);
   for (const [id, n] of Object.entries(p.nodes)) {
     if (!isObj(n)) continue;
-    if (!shown.has(id)) out.push(`node "${id}" is in no picture`);
+    if (!shown.has(id)) out.push(`node "${id}" is in no picture: add it to a view${Array.isArray(p.views) ? "" : " or a step's nodes"}, or take it out`);
     if (String(n.name || "").length > 40) out.push(`node "${id}": name over 40 characters, shorten it`);
     if (p.mode === "explain" && n.status !== "ext" && !n.file && !n.proposal) out.push(`node "${id}" has no file (explain mode points at real code)`);
     if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" has no line (path:line)`);

@@ -1,0 +1,41 @@
+name: Something does not work
+description: The page, a picture, the agent or a command did something wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for trying Walkboard. Please do not paste plans, code or screenshots with real customer data, hostnames, keys or passwords: make them up or blur them.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead. A screenshot helps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Walkboard version
+      description: The bottom line of the ⋮ menu on the page, or the version in `/plugin`.
+      placeholder: "0.10.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: System
+      options: [macOS, Windows, Linux, Other]
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and Node.js
+      description: Which agent (and model, if you know), and the output of `node -v`.
+      placeholder: "Claude Code, Sonnet; v22.17.0"
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options: [Plan, Explain, Design, Not sure]

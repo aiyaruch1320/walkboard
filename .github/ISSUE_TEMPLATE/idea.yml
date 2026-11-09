@@ -1,0 +1,16 @@
+name: Idea or feedback
+description: Something that would help, felt confusing, or that you liked
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you would like, or what felt wrong
+      description: What were you trying to do? Plain words are fine, in English or Thai.
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: You are mostly a…
+      options: [Developer, Architect or SRE, Product or project person, Student, Other]

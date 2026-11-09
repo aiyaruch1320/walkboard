@@ -18,13 +18,15 @@ export const SITE = "https://aiyaruch1320.github.io/walkboard/";
 export const MEDIA = "https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/";
 const GITHUB = "https://github.com/aiyaruch1320/walkboard";
 
-// The menu: sections and their pages, in reading order. Titles come from each page's first heading.
+// The menu: sections and their pages, in reading order, as the Next.js docs do it: getting started in order, guides
+// for one task each, then what to look up. Titles come from each page's first heading. The pages keep their paths,
+// because the page and SKILL.md link to them.
 const NAV = [
-  ["Start", ["README.md", "getting-started.md", "page.md"]],
-  ["Modes", ["modes/plan.md", "modes/explain.md", "modes/design.md"]],
+  ["Getting started", ["README.md", "getting-started.md", "page.md", "modes/plan.md", "modes/explain.md", "modes/design.md"]],
+  ["Guides", ["draft.md", "existing.md", "share.md"]],
   ["Pictures", ["pictures/README.md", "pictures/flow.md", "pictures/map.md", "pictures/sequence.md", "pictures/transform.md", "pictures/journey.md", "pictures/state.md", "pictures/decision.md", "pictures/timeline.md", "pictures/datamodel.md", "pictures/impact.md", "pictures/diff.md"]],
   ["Platforms", ["platforms/README.md", "platforms/aws.md", "platforms/gcp.md", "platforms/azure.md", "platforms/huawei.md", "platforms/k8s.md", "platforms/container.md", "platforms/onprem.md"]],
-  ["More", ["draft.md", "share.md", "faq.md", "reference.md"]],
+  ["Reference", ["reference.md", "faq.md"]],
   ["ภาษาไทย", ["th/README.md"]],
 ];
 
@@ -140,7 +142,9 @@ export function render(lines, from) {
     }
     const para = [];
     for (; i < lines.length && lines[i].trim() && !(para.length && startsBlock(lines[i])); i++) para.push(lines[i].trim());
-    out.push(`<p>${inline(para.join("\n"), from)}</p>`);
+    // A paragraph that is only a link to a live example is drawn as a button.
+    const tryIt = para.length === 1 && /^\[[^\]]+\]\([^)\s]*examples\/[^)\s]*\)$/.test(para[0]);
+    out.push(`<p${tryIt ? ' class="try"' : ""}>${inline(para.join("\n"), from)}</p>`);
   }
   return out.join("\n");
 }
@@ -151,17 +155,24 @@ const pages = (dir = "") => fs.readdirSync(path.join(docs, dir), {withFileTypes:
 });
 const titleOf = (md) => fs.readFileSync(path.join(docs, md), "utf8").match(/^# (.+)$/m)?.[1] || md;
 
+const navTitle = (p) => (p.endsWith("README.md") && p !== "README.md" && p !== "th/README.md" ? "Overview" : titleOf(p));
+
 function layout(md, body) {
   const up = "../".repeat(md.split("/").length - 1);
   const th = md.startsWith("th/");
   const title = titleOf(md);
-  const nav = NAV.map(([head, list]) => `<div class="navsec"><div class="navhead">${esc(head)}</div>${list.map((p) => `<a href="${up}${htmlName(p)}"${p === md ? ' class="on" aria-current="page"' : ""}>${esc(p.endsWith("README.md") && p !== "README.md" && p !== "th/README.md" ? "Overview" : p === "README.md" ? "Docs home" : titleOf(p))}</a>`).join("")}</div>`).join("");
+  const nav = NAV.map(([head, list]) => `<div class="navsec"><div class="navhead">${esc(head)}</div>${list.map((p) => `<a href="${up}${htmlName(p)}"${p === md ? ' class="on" aria-current="page"' : ""}>${esc(navTitle(p))}</a>`).join("")}</div>`).join("");
+  // Previous and next page in the menu's order; the Thai page stands alone.
+  const order = NAV.flatMap(([, list]) => list).filter((p) => !p.startsWith("th/"));
+  const at = order.indexOf(md);
+  const pageLink = (p, cls, label) => `<a class="${cls}" href="${up}${htmlName(p)}"><span>${label}</span>${esc(navTitle(p) === "Overview" ? titleOf(p) : navTitle(p))}</a>`;
+  const pager = at < 0 ? "" : `<nav class="pager">${at > 0 ? pageLink(order[at - 1], "prev", "← Previous") : ""}${at < order.length - 1 ? pageLink(order[at + 1], "next", "Next →") : ""}</nav>`;
   return `<!doctype html>
 <html lang="${th ? "th" : "en"}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(/docs$/i.test(title) ? title : title + " · Walkboard docs")}</title>
+<title>${esc(md === "README.md" ? "Walkboard docs" : title + " · Walkboard docs")}</title>
 <link rel="icon" href="${up}logo/mark.svg">
 <link rel="stylesheet" href="${up}assets/site.css">
 </head>
@@ -172,6 +183,7 @@ function layout(md, body) {
 <aside class="side"><nav>${nav}</nav></aside>
 <main class="doc">
 ${body}
+${pager}
 <footer class="foot"><a href="${GITHUB}/blob/main/docs/${md}" target="_blank" rel="noopener">Edit this page on GitHub</a> · <a href="${GITHUB}/issues/new/choose" target="_blank" rel="noopener">Report a problem</a></footer>
 </main>
 </div>

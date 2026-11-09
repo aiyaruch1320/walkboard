@@ -1,0 +1,4 @@
+# Same bytes on every system: tests compare generated files, and the page is inlined as is.
+* text=auto eol=lf
+*.png binary
+*.gif binary

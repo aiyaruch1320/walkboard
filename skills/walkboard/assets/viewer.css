@@ -197,10 +197,22 @@ body.side-open .side-inner{opacity:1;transform:none}
 .helpcard ul{list-style:none;padding:0;margin:8px 0 10px}
 .helpcard li{margin:4px 0}
 /* design mode */
-.cons{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px;font-size:12.5px}
-.cons .clabel{color:var(--muted);margin-right:2px}
-.cons .cchip{border:1.5px solid var(--done-bd);background:var(--done-bg);color:var(--done-tx);border-radius:999px;padding:1px 10px;font-size:12.5px}
+.cons{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;margin:0 0 12px;font-size:12.5px;min-width:0}
+.cons .clabel{flex:none;color:var(--muted);margin-right:2px}
+.cons .cchip{flex:0 1 auto;min-width:3em;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;border:1.5px solid var(--done-bd);background:var(--done-bg);color:var(--done-tx);border-radius:999px;padding:1px 10px;font-size:12.5px}
 .cons .cchip.assumed{border-style:dashed;border-color:var(--new-bd);background:transparent;color:var(--new-tx)}
+.cons .ccount{flex:none;white-space:nowrap;color:var(--new-tx)}
+.cons .ccount.ok{color:var(--done-tx)}
+.cons .talklink{flex:none;margin:0}
+@media screen{.cons .cchip.more{display:none}}
+@media print{.cons{flex-wrap:wrap}.cons .cchip{max-width:none;white-space:normal}.cons .ccount,.cons .talklink{display:none}}
+.guess{display:flex;gap:6px;align-items:flex-start;margin:6px 0 0}
+.guess textarea{flex:1;min-width:0;min-height:30px;resize:none;field-sizing:content;max-height:120px;padding:5px 8px;font:inherit;font-size:13px}
+.guess button,.proplist .guess button{flex:none;width:auto;white-space:nowrap;display:inline-block;padding:5px 10px}
+.gask{margin:0;color:var(--text)}
+.gwas,.gdetail{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+.consdone{margin-top:6px}
+.consdone summary{cursor:pointer;color:var(--muted);font-size:12.5px;padding:4px 0}
 .stepnav.nosteps .stepbar,.stepnav.nosteps #prev,.stepnav.nosteps #play,.stepnav.nosteps #next{display:none}
 .stepnav.nosteps{display:none}
 .tabs .rec{color:var(--you-tx)}
@@ -240,8 +252,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .cmpnote{margin:10px 0 0;border:1.5px dashed var(--you-bd);border-radius:9px;padding:8px 12px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .cmpnote button{margin-left:auto}
 .unconf{margin:8px 0 0;padding:0;list-style:none}
-.unconf li{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0;color:var(--text)}
-.gbtns{flex:none;display:inline-flex;gap:6px;white-space:nowrap}
+.unconf li{padding:4px 0 6px;color:var(--text)}
 .side .panel:not(.split)>.warnbox{flex:0 1 auto;min-height:72px;overflow:auto}
 .side .panel:not(.split)>.warnbox:has(+.thread:not(:empty)){max-height:55%}
 .side .panel:not(.split)>.thread{flex:1 1 0;min-height:60px;overflow:auto;margin:0 0 8px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:10px}

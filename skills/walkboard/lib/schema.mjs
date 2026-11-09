@@ -255,6 +255,7 @@ export function validate(p) {
   if (mode === "design") out.push(...checkDesign(p));
   if (p.constraints != null && (!Array.isArray(p.constraints) || p.constraints.some((c) => !isObj(c) || !c.id || typeof c.text !== "string")))
     out.push('constraints must be [{"id": "…", "text": "…", "confirmed": false}]');
+  for (const c of list(p.constraints)) for (const k of ["ask", "detail"]) if (isObj(c) && !TEXT(c[k])) out.push(`constraint "${c.id}" ${k} must be text`);
   if (p.links != null && (!Array.isArray(p.links) || p.links.some((l) => !isObj(l) || typeof l.url !== "string" || !/^https?:\/\//.test(l.url))))
     out.push('links must be [{"title": "…", "url": "http://…"}]');
   if (p.glossary != null && (!isObj(p.glossary) || Object.values(p.glossary).some((x) => typeof x !== "string"))) out.push('glossary must be {"term": "explanation"}');
@@ -267,7 +268,7 @@ export function validate(p) {
       continue;
     }
     if (!n.name) out.push(`node "${id}" has no name`);
-    for (const k of ["name", "what", "in", "out", "why", "file", "anchor"]) if (!TEXT(n[k])) out.push(`node "${id}" ${k} must be text`);
+    for (const k of ["name", "what", "in", "out", "why", "file", "anchor", "ask"]) if (!TEXT(n[k])) out.push(`node "${id}" ${k} must be text`);
     if (n.icon != null && typeof n.icon !== "string") out.push(`node "${id}" icon must be a string`);
     if (n.highlight != null && !highlightOf(n.highlight)) out.push(`node "${id}" highlight must be lines like "12, 15-16", or {"12": "note"}`);
     if (n.basis != null && !BASIS.includes(n.basis)) out.push(`node "${id}" basis must be one of ${BASIS.join(", ")}`);

@@ -4,7 +4,7 @@ For something that does not exist yet: research options, draw each, compare, rec
 
 ## Research
 
-- Ask at most three questions that change the answer (scale, constraints, one-way or two-way…). Assumptions go into `constraints` with `"confirmed": false`.
+- Ask at most three questions that change the answer (scale, constraints, one-way or two-way…). Assumptions go into `constraints` with `"confirmed": false`: one short fact each, the numbers and sources in `detail`, a question in `ask` when it is not a yes or no.
 - Official documentation first. Every claim in `scores` cites `sources` (`id`, `title`, `url`, `checked` = date read). Prices change: link the page, never a bare figure. A score that is the author's judgment (operating effort, speed of delivery) has no document to cite: mark it `"basis": "judgment"` with a `note` saying why, instead of inventing a source.
 - The user's infrastructure code (Terraform, CloudFormation, manifests) is evidence: `file:line` as in explain mode, `"basis": "iac"`.
 - Live cloud state: read-only commands only (`describe`, `list`, `get`), asking before each; otherwise give the user the command and ask for the output. `"basis": "cli"`, `"checked"`.

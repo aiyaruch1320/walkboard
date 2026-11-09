@@ -1086,15 +1086,20 @@ function renderConstraints() {
   const list = (plan.constraints || []).filter((c) => c?.id);
   bar.hidden = !list.length;
   if (!list.length) return;
+  // One line on screen: the first few still to confirm, then counts; the side panel has them all. Print shows every chip.
+  const open = list.filter((c) => !c.confirmed), done = list.filter((c) => c.confirmed), SHOWN = 3;
+  const show = () => openSide({kind: "constraints"});
   const parts = [el("span", "clabel", t("constraintsLabel"))];
-  for (const c of list) {
-    const chip = el("span", "cchip" + (c.confirmed ? "" : " assumed"), (c.confirmed ? "✓ " : "❓ ") + c.text);
-    if (!c.confirmed) chip.title = t("assumedTip");
+  for (const c of [...open, ...done]) {
+    const chip = el("span", "cchip" + (c.confirmed ? "" : " assumed") + (c.confirmed || open.indexOf(c) >= SHOWN ? " more" : ""), (c.confirmed ? "✓ " : "❓ ") + c.text);
+    chip.title = c.text + (c.confirmed ? "" : `\n${t("assumedTip")}`);
+    chip.onclick = show;
     parts.push(chip);
   }
-  const check = el("button", "talklink", t("checkCons"));
-  check.style.marginTop = "0";
-  check.onclick = () => openSide({kind: "constraints"});
+  if (open.length > SHOWN) parts.push(el("span", "ccount", t("consMore", open.length - SHOWN)));
+  if (done.length) parts.push(el("span", "ccount ok", t("consDone", done.length)));
+  const check = el("button", "talklink", t(open.length ? "consAnswer" : "consAll"));
+  check.onclick = show;
   parts.push(check);
   bar.replaceChildren(...parts);
 }
@@ -1280,14 +1285,25 @@ function renderDesignPanel() {
   const parts = [];
   if (side.kind === "constraints") {
     title.textContent = t("consTitle");
+    // What waits for the user first; the confirmed ones folded below.
     const list = el("div", "proplist");
-    for (const c of (plan.constraints || []).filter((x) => x?.id)) {
+    const all = (plan.constraints || []).filter((x) => x?.id), done = all.filter((c) => c.confirmed);
+    for (const c of all.filter((x) => !x.confirmed)) {
       const row = el("div", "propcard");
-      row.append(el("p", null, (c.confirmed ? "✓ " : "❓ ") + c.text));
-      if (!c.confirmed) {
-        row.append(...answerGuess({}, c.text, {constraint: c.id}));
-      }
+      row.append(...guessText(c.ask, c.text, c.detail), ...answerGuess({}, c.ask || c.text, {constraint: c.id}));
       list.append(row);
+    }
+    if (done.length) {
+      const fold = el("details", "consdone");
+      fold.open = done.length === all.length;
+      fold.append(el("summary", null, t("consDoneFold", done.length)));
+      for (const c of done) {
+        const row = el("div", "propcard");
+        row.append(richEl("p", null, "✓ " + c.text));
+        if (c.detail) row.append(richEl("p", "gdetail", c.detail));
+        fold.append(row);
+      }
+      list.append(fold);
     }
     parts.push(list, talkBox({}, {placeholder: t("askPlan")}));
   } else if (side.kind === "cell") {
@@ -1319,12 +1335,12 @@ function renderDesignPanel() {
     const n = unconfirmed();
     if (n) {
       const warn = el("div", "warnbox", "⚠ " + t("decideWarn", n));
-      const items = [...(plan.constraints || []).filter((c) => c?.id && !c.confirmed).map((c) => [c.text, {}, {constraint: c.id}]),
-        ...Object.entries(plan.nodes || {}).filter(([, x]) => x?.basis === "assumed").map(([id, x]) => [x.name || id, {node: id}, {}])];
+      const items = [...(plan.constraints || []).filter((c) => c?.id && !c.confirmed).map((c) => [c.ask || c.text, {}, {constraint: c.id}]),
+        ...Object.entries(plan.nodes || {}).filter(([, x]) => x?.basis === "assumed").map(([id, x]) => [x.ask || x.name || id, {node: id}, {}])];
       const ul = el("ul", "unconf");
       for (const [text, c, extra] of items) {
-        const li = el("li", null, "❓ " + text + " ");
-        li.append(...answerGuess(c, text, extra));
+        const li = el("li");
+        li.append(richEl("span", null, "❓ " + text), ...answerGuess(c, text, extra));
         ul.append(li);
       }
       warn.append(ul);
@@ -1355,18 +1371,55 @@ function renderDesignPanel() {
   refreshThreads();
 }
 
-// A guess (an unconfirmed constraint or box) is either right or wrong; "wrong" asks the agent to find out what is true.
+// A guess (an unconfirmed constraint or box) is right, or the user types what is true: a yes or no does not answer
+// "how many services run there?". Typing hides "Right", so one button sends what is on screen.
 function answerGuess(c, text, extra) {
-  const ok = el("button", null, t("confirm")), no = el("button", null, t("wrongGuess"));
-  const go = (wrong) => async () => {
-    ok.disabled = no.disabled = true;
-    await send(c, "confirm", t(wrong ? "q_wrong" : "q_confirm", text), wrong ? {...extra, wrong: true} : extra).catch(() => (ok.disabled = no.disabled = false));
+  if (snapshot) return [];
+  const ta = el("textarea");
+  ta.rows = 1;
+  ta.placeholder = t("guessAnswer");
+  ta.dataset.key = "guess:" + JSON.stringify([c, extra]);
+  ta.value = drafts[ta.dataset.key] || "";
+  const ok = el("button", null, t("guessRight")), go = el("button", "primary", t("send"));
+  const sync = () => {
+    go.hidden = !ta.value.trim();
+    ok.hidden = !go.hidden;
   };
-  ok.onclick = go(false);
-  no.onclick = go(true);
-  const row = el("span", "gbtns");
-  row.append(ok, no);
+  const lock = (on) => (ok.disabled = go.disabled = ta.disabled = on);
+  ta.oninput = () => {
+    drafts[ta.dataset.key] = ta.value;
+    sync();
+  };
+  ok.onclick = async () => {
+    lock(true);
+    await send(c, "confirm", t("q_confirm", text), extra).catch(() => lock(false));
+  };
+  const answer = async () => {
+    const a = ta.value.trim();
+    if (!a || go.disabled) return;
+    lock(true);
+    await send(c, "confirm", t("q_answer", text, a), {...extra, answer: a}).then(() => delete drafts[ta.dataset.key], () => lock(false));
+  };
+  go.onclick = answer;
+  ta.onkeydown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      answer();
+    }
+  };
+  sync();
+  const row = el("div", "guess");
+  row.append(ta, ok, go);
   return [row];
+}
+
+// What a guess asks, then what was assumed: "How many services run there?" reads better than the box's name.
+function guessText(ask, text, detail) {
+  const parts = [];
+  if (ask) parts.push(richEl("p", "gask", "❓ " + ask), richEl("p", "gwas", `${t("assumedIs")} ${text}`));
+  else parts.push(richEl("p", "gask", "❓ " + text));
+  if (detail) parts.push(richEl("p", "gdetail", detail));
+  return parts;
 }
 
 let side = null;
@@ -8247,10 +8300,11 @@ function renderNodePanel(id) {
     const src = (plan.sources || []).find((x) => x?.id === n.source);
     if (src) line.append(sourceLink(src));
     if (n.checked) line.append(el("span", null, t("checkedOn", n.checked)));
-    if (n.basis === "assumed") {
-      line.append(...answerGuess({node: id}, n.name, {}));
-    }
     parts.push(line);
+    if (n.basis === "assumed") {
+      if (n.ask) parts.push(richEl("p", "gask", "❓ " + n.ask));
+      parts.push(...answerGuess({node: id}, n.ask || n.name, {}));
+    }
   }
   if (n.what) parts.push(richEl("p", "meta", n.what));
   // A table's columns that store data again: where each comes from, and why a kept one is kept.

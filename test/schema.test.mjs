@@ -293,3 +293,14 @@ test("design: a picture belongs to an option, or check says it cannot be chosen"
   plan.views[1].option = "nope";
   assert.ok(validate(plan).some((x) => /no option "nope"/.test(x)));
 });
+
+test("a guess can ask a question, and a constraint can carry its detail", () => {
+  const p = {...base(), constraints: [{id: "n", text: "About 10 services each", ask: "How many services run there?", detail: "Counted 6 on the first server", confirmed: false}]};
+  p.nodes.b = {...p.nodes.b, basis: "assumed", ask: "Which services run here?"};
+  assert.deepEqual(validate(p), []);
+  p.constraints[0].detail = {n: 6};
+  p.nodes.b.ask = ["x"];
+  const out = validate(p).join("\n");
+  assert.match(out, /constraint "n" detail must be text/);
+  assert.match(out, /node "b" ask must be text/);
+});

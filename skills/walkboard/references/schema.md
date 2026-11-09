@@ -23,7 +23,7 @@ One JSON object, written compact. `WB check <dir>` validates it with the page's 
 | `approved` | build: `true` once the user approved; build nothing before |
 | `root` / `roots` | explain: repository of the `file` paths (absolute or relative to the plan folder); more as `{"deploy": "/path"}`, used as `deploy:path:line` |
 | `start` | Step id to open on (default: first in `review`, else `doing`) |
-| `constraints` | `[{"id","text","confirmed":false}]`: assumptions the user should confirm; shown dashed until confirmed |
+| `constraints` | `[{"id","text","confirmed":false}]`: assumptions the user should confirm; shown dashed until confirmed. `text` is one short fact (≤ 12 words); the page shows the first three on one line. `detail`: the numbers and where they came from, shown in the side panel. `ask`: a question when the guess is not a yes or no ("How many services run on the TH server?"); the user types the answer |
 | `links` | Plans started from this page: `[{"title","url"}]` |
 | `glossary` | `{"term": "one-line explanation"}`, only project terms; ~95 common ones ship with Walkboard |
 | `steps` | Ordered steps (build) or stages (explain) |
@@ -49,6 +49,7 @@ Animation on a step (`moves`, `show`): [moves.md](moves.md), only where the flow
 | `icon` | Guessed from `name`; set when wrong: `aws:s3`, `gcp:bigquery`, `k8s:cronjob`, `database`, … (`WB icons` lists all), `"none"` |
 | `in` / `out` / `why` | One line each; a concrete example beats a description |
 | `basis` / `source` / `checked` | Where its facts come from: `iac`, `cli`, `doc`, `assumed` (dashed, confirmable), a `sources` id, the date seen |
+| `ask` | With `"basis": "assumed"`: what to ask the user about this box ("Which services run here, and how many?"); without it the page asks about the name |
 | `proposal` | `{"type":"add"\|"change"\|"remove","note"}`: drawn on the picture until planned or withdrawn |
 
 Explain mode with a `root`: every `file` must exist and its lines too.

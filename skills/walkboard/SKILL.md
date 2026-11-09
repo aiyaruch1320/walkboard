@@ -19,7 +19,7 @@ Use the user's language for everything (questions, plan, replies, suggested comm
 
 `/walkboard` alone: look through the repository briefly and offer 2-3 things from it by name (AskUserQuestion), a real flow to explain first.
 
-If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`).
+If the request leaves open something that changes the picture (scope, repository or service, environment, what "done" means), ask up to three short questions in one go before writing, with the settings question below. What you still assume goes on the page (`constraints` with `"confirmed": false`, or boxes with `"basis": "assumed"`): one short fact each (≤ 12 words), numbers and sources in `detail`; `ask` when it is not a yes or no ("How many services run there?").
 
 `settings`, first match wins: the request · existing `settings` · `~/.walkboard/config.json`. Still missing: ask once (AskUserQuestion when available): build → `"commit": "auto"|"suggest"`; explain → `"depth": "overview"|"detail"`. Offer to save it to the config.
 
@@ -49,7 +49,7 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
-   - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `wrong: true` = the user says it is not true: ask what is, or find out, then fix it the same way.
+   - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `answer` = what the user typed is true (or answers its `ask`): use it, fix it the same way. `wrong: true` (older pages): ask what is true, or find out.
    - `review`: [review.md](references/review.md). `withdraw`, `plan`, `apply`, `commit`, `committed`: [messages.md](references/messages.md). `decide`: design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
 

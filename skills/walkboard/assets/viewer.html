@@ -1371,46 +1371,77 @@ function renderDesignPanel() {
   refreshThreads();
 }
 
-// A guess (an unconfirmed constraint or box) is right, or the user types what is true: a yes or no does not answer
-// "how many services run there?". Typing hides "Right", so one button sends what is on screen.
+const ANSWER_ICON = '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.8 2.7a1.6 1.6 0 0 1 2.3 2.3L6 12.1l-3 .8.8-3z"/></svg>';
+const SEND_ICON = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M3.8 7.2 8 3l4.2 4.2"/></svg>';
+
+// A guess (an unconfirmed constraint or box) is answered in the user's own words: a yes or no does not answer
+// "how many services run there?", and "right" is a word too. The box stays folded behind one small button, so a list of
+// guesses reads as a list; an open box stays open across redraws while its draft exists.
 function answerGuess(c, text, extra) {
   if (snapshot) return [];
+  const key = "guess:" + JSON.stringify([c, extra]);
+  const open = el("button", "gopen");
+  open.type = "button";
+  open.innerHTML = ANSWER_ICON;
+  open.append(el("span", null, t("guessOpen")));
+  const field = el("div", "gfield");
   const ta = el("textarea");
   ta.rows = 1;
   ta.placeholder = t("guessAnswer");
-  ta.dataset.key = "guess:" + JSON.stringify([c, extra]);
-  ta.value = drafts[ta.dataset.key] || "";
-  const ok = el("button", null, t("guessRight")), go = el("button", "primary", t("send"));
-  const sync = () => {
-    go.hidden = !ta.value.trim();
-    ok.hidden = !go.hidden;
+  ta.dataset.key = key;
+  ta.value = drafts[key] || "";
+  const go = el("button", "gsend");
+  go.type = "button";
+  go.innerHTML = SEND_ICON;
+  go.title = t("send");
+  go.setAttribute("aria-label", go.title);
+  field.append(ta, go);
+  const show = (on) => {
+    field.hidden = !on;
+    open.hidden = on;
+    if (!on) delete drafts[key];
   };
-  const lock = (on) => (ok.disabled = go.disabled = ta.disabled = on);
+  const sync = () => (go.disabled = !ta.value.trim());
+  show(drafts[key] != null);
+  sync();
+  open.onclick = () => {
+    drafts[key] ??= "";
+    show(true);
+    ta.focus();
+  };
   ta.oninput = () => {
-    drafts[ta.dataset.key] = ta.value;
+    drafts[key] = ta.value;
     sync();
   };
-  ok.onclick = async () => {
-    lock(true);
-    await send(c, "confirm", t("q_confirm", text), extra).catch(() => lock(false));
-  };
+  // Leaving it empty folds it again.
+  ta.onblur = () => setTimeout(() => !ta.value.trim() && document.activeElement !== go && show(false), 120);
   const answer = async () => {
     const a = ta.value.trim();
-    if (!a || go.disabled) return;
-    lock(true);
-    await send(c, "confirm", t("q_answer", text, a), {...extra, answer: a}).then(() => delete drafts[ta.dataset.key], () => lock(false));
+    if (!a || ta.disabled) return;
+    ta.disabled = go.disabled = true;
+    await send(c, "confirm", t("q_answer", text, a), {...extra, answer: a}).then(
+      () => {
+        ta.value = "";
+        ta.disabled = false;
+        show(false);
+      },
+      () => (ta.disabled = go.disabled = false),
+    );
   };
   go.onclick = answer;
   ta.onkeydown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+    if (e.key === "Escape" && !ta.value.trim()) {
+      e.stopPropagation();
+      show(false);
+      open.focus();
+    } else if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       answer();
     }
   };
-  sync();
-  const row = el("div", "guess");
-  row.append(ta, ok, go);
-  return [row];
+  const box = el("div", "guess");
+  box.append(open, field);
+  return [box];
 }
 
 // What a guess asks, then what was assumed: "How many services run there?" reads better than the box's name.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Answering a guess is typed, and folded until you want it.** Each assumption shows a small **✎ Answer**; it opens a field like the chat's, with the send arrow inside. **✓ Right** is gone: say it in words. An empty field folds again when you leave it or press Esc.
+
 ## 0.10.2
 
 - **Answer a guess in your own words.** Under every assumption there is a box to type what is true, beside **✓ Right**; "Not true" is gone. A guess that is not a yes or no (how many services, which size) can come as a question: `ask` on a constraint or an assumed box. The agent receives your words as `answer`.

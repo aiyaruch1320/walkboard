@@ -97,7 +97,7 @@ For something not built yet ("what should we use to connect EC2 across two accou
 
 - **The table** scores every option on each criterion: ●●●●● is best for you (cheapest, easiest), ✓ / ✗ for things that work or do not. Click a cell for the reason and its sources; each source says when it was read. Click the weight dots under a criterion to say how much it matters; this saves at once and does not wake the agent.
 - **Must-haves** are marked "must": an option that fails one is greyed out and out of the running. When your weights put another option ahead of the agent's ★ recommendation, a note says so and offers **Ask the agent to re-check**.
-- **Assumptions** (constraints in the bar above, dashed boxes in the pictures) stay unconfirmed until you press **✓ Right** or type what is true; a guess that is not a yes or no comes as a question. The bar shows the first three on one line; **Answer…** lists them all, with the numbers behind each. Choosing an option lists the ones still open.
+- **Assumptions** (constraints in the bar above, dashed boxes in the pictures) stay unconfirmed until you answer them: press **✎ Answer** under one and type, "right" or what is true; a guess that is not a yes or no comes as a question. The bar shows the first three on one line; **Answer…** lists them all, with the numbers behind each. Choosing an option lists the ones still open.
 - **Choose this → write a plan** records the decision (why this one, why not the others) and starts a plan in a new page, linked from the choice.
 
 ## Send a plan to someone

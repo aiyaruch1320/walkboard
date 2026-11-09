@@ -49,7 +49,7 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
-   - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `answer` = what the user typed is true (or answers its `ask`): use it, fix it the same way. `wrong: true` (older pages): ask what is true, or find out.
+   - `confirm` (`constraint` or `node`): `WB set <dir> constraint:<id> confirmed=true` or the box's real `basis`; if corrected, update what depended on it (scores, `must`, the recommendation) and say what changed. `answer` = the user's own words (it is right, what is true instead, or the answer to its `ask`): act on them the same way. `wrong: true` (older pages): ask what is true, or find out.
    - `review`: [review.md](references/review.md). `withdraw`, `plan`, `apply`, `commit`, `committed`: [messages.md](references/messages.md). `decide`: design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
 

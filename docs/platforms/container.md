@@ -1,18 +1,16 @@
 # Container
 
-[Docs](../README.md) › [Platforms](README.md) › Container
+This page lists every Container kind that Walkboard knows: the boxes, zones and lines you can draw on a [map](../pictures/map.md), and where each one usually sits.
 
-What boxes, zones and lines can be on Container, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).
+When a box has one of these kinds, the map shows its icon and fields. If you put it somewhere other than the zones listed under "Usually in", a small amber ⚠ appears next to its name. It is only a hint, so if you mean it, that is fine. To learn how kinds work, see [Platforms](README.md).
 
 ![A small web app with a database and a job, drawn with Container kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/container.png)
 
-[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=container&step=all)
-
-This page is generated from `skills/walkboard/lib/profiles.mjs`.
+[Open this map in the live example and click a box to see its kind ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=container&step=all)
 
 ## Zones
 
-Frames that hold other things.
+A zone is a frame that holds boxes and other zones.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -22,6 +20,8 @@ Frames that hold other things.
 | <a id="swarm"></a>**Swarm cluster** `container:swarm` | anywhere |  | docker swarm, cluster |  |
 
 ## Boxes
+
+A box is one resource, such as a server, a database or a queue.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -37,10 +37,12 @@ Frames that hold other things.
 
 ## Lines
 
-A line without a kind is traffic: one part calling another.
+A line without a kind is plain traffic, one part calling another. These kinds are for lines that mean something else.
 
 | Kind | Means |
 |---|---|
 | <a id="line-uses"></a>`container:uses` | Mounts or reads |
 | <a id="line-depends"></a>`container:depends` | Starts after (depends_on) |
 | <a id="line-publishes"></a>`container:publishes` | Publishes a port |
+
+> **Good to know:** This page is generated from `skills/walkboard/lib/profiles.mjs`. To add a kind, change that file and run `node scripts/profiles-doc.mjs`.

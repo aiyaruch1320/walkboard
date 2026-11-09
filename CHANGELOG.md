@@ -6,7 +6,8 @@
 - **Shown, not only told.** Every picture and every platform page has a picture drawn by Walkboard and a live example to click (two new example plans, `examples/pictures` and `examples/platforms`, exported by the site build).
 - **The page links to them.** **⋮ → Guide** opens the docs (in Thai when the plan is), a picture's **?** ends with a link to that picture's page, and a ⚠ card links to its kind on the platform's page. The links open in a new tab; the page itself still loads nothing from the network.
 - **A smaller install.** The images and GIFs moved to the `media` branch, so installing no longer downloads them: about 20 MB on disk before, see below for after.
-- **README:** install and a first command come first.
+- **Docs in plain words.** Every page starts with what it is about, explains a word before using it, and ends with where to go next, in the manner of the Next.js docs. The menu is grouped as Getting started, Guides, Pictures, Platforms and Reference, with previous and next links at the bottom of each page. A new guide shows how to draw a system you already have from Terraform or Kubernetes files. The page addresses are unchanged.
+- **README:** install and a first command come first, in plainer words; the details moved to the docs.
 - **Tests run on macOS, Windows and Linux**, with Node 18 and 22, on every push. Issue forms ask for the version, system and agent.
 
 ## 0.10.3

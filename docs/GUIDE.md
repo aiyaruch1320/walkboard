@@ -1,13 +1,15 @@
 # Walkboard guide
 
-The guide is now split into pages: start at **[docs/README.md](README.md)**.
+The guide has moved. It is now split into shorter pages, starting at the [Introduction](README.md).
 
-Where each part went:
+If you followed an old link, here is where each part went:
 
-- The plan page, talking on the page → [page.md](page.md)
-- Pictures → [pictures/](pictures/README.md); platforms and profiles → [platforms/](platforms/README.md)
-- Sketch your own changes → [draft.md](draft.md)
-- Explain existing code → [modes/explain.md](modes/explain.md); compare designs → [modes/design.md](modes/design.md)
-- Send a plan to someone → [share.md](share.md)
-- Light on tokens, commands, links into a page, plan format, update or uninstall → [reference.md](reference.md)
-- FAQ and limitations → [faq.md](faq.md)
+- The plan page and talking to the agent on it: [The page](page.md)
+- The kinds of picture: [Pictures](pictures/README.md)
+- Platforms and profiles: [Platforms](platforms/README.md)
+- Sketching your own changes: [Sketch your own changes](draft.md)
+- Explaining existing code: [Explain mode](modes/explain.md)
+- Comparing designs: [Design mode](modes/design.md)
+- Sending a plan to someone: [Send a plan to someone](share.md)
+- Tokens, commands, links into a page, the plan format, updating and uninstalling: [Reference](reference.md)
+- Questions and limits: [FAQ and limits](faq.md)

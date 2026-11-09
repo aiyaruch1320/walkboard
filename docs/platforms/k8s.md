@@ -1,28 +1,28 @@
 # Kubernetes
 
-[Docs](../README.md) › [Platforms](README.md) › Kubernetes
+This page lists every Kubernetes kind that Walkboard knows: the boxes, zones and lines you can draw on a [map](../pictures/map.md), and where each one usually sits.
 
-What boxes, zones and lines can be on Kubernetes, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).
+When a box has one of these kinds, the map shows its icon and fields. If you put it somewhere other than the zones listed under "Usually in", a small amber ⚠ appears next to its name. It is only a hint, so if you mean it, that is fine. To learn how kinds work, see [Platforms](README.md).
 
 ![A small web app with a database and a job, drawn with Kubernetes kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/k8s.png)
 
-[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=k8s&step=all)
-
-This page is generated from `skills/walkboard/lib/profiles.mjs`.
+[Open this map in the live example and click a box to see its kind ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=k8s&step=all)
 
 ## Zones
 
-Frames that hold other things.
+A zone is a frame that holds boxes and other zones.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
 | <a id="cluster"></a>**Cluster** `k8s:cluster` | anywhere |  | kubernetes, k8s | version |
 | <a id="namespace"></a>**Namespace** `k8s:namespace` | [Cluster](#cluster) |  | ns |  |
-| <a id="networkpolicy"></a>**Network policy** `k8s:networkpolicy` | [Namespace](#namespace) | rules look through it to the zone around | policy, firewall | rules |
+| <a id="networkpolicy"></a>**Network policy** `k8s:networkpolicy` | [Namespace](#namespace) | a box inside it is checked against the zone around it | policy, firewall | rules |
 | <a id="nodepool"></a>**Node pool** `k8s:nodepool` | [Cluster](#cluster) |  | node group, nodes | size; machine |
-| <a id="mesh"></a>**Service mesh** `k8s:mesh` | [Cluster](#cluster), [Namespace](#namespace) | rules look through it to the zone around | istio, linkerd, mesh |  |
+| <a id="mesh"></a>**Service mesh** `k8s:mesh` | [Cluster](#cluster), [Namespace](#namespace) | a box inside it is checked against the zone around it | istio, linkerd, mesh |  |
 
 ## Boxes
+
+A box is one resource, such as a server, a database or a queue.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -59,7 +59,7 @@ Frames that hold other things.
 
 ## Lines
 
-A line without a kind is traffic: one part calling another.
+A line without a kind is plain traffic, one part calling another. These kinds are for lines that mean something else.
 
 | Kind | Means |
 |---|---|
@@ -68,3 +68,5 @@ A line without a kind is traffic: one part calling another.
 | <a id="line-selects"></a>`k8s:selects` | Selects pods |
 | <a id="line-routes"></a>`k8s:routes` | Routes to |
 | <a id="line-scales"></a>`k8s:scales` | Scales |
+
+> **Good to know:** This page is generated from `skills/walkboard/lib/profiles.mjs`. To add a kind, change that file and run `node scripts/profiles-doc.mjs`.

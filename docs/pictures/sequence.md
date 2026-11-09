@@ -1,21 +1,28 @@
 # Sequence
 
-[Docs](../README.md) › [Pictures](README.md) › Sequence
-
-**Answers:** who calls whom, in what order, and what happens if it fails?
+A **sequence** shows who calls whom, in what order, and what happens when something fails. It is useful for following one request through several services.
 
 ![A sequence: the customer orders, the API saves and queues, the worker sends, with a framed retry path](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/sequence.png)
 
-[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=calls&step=all)
+[Open this picture in the live example ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=calls&step=all)
 
-## How to read it
+## Reading a sequence
 
-- Each column is a part of the system; time goes down the page.
-- A solid arrow is a call; a dashed arrow back is its reply.
-- An arrow from a column to itself is something that part does on its own (split into batches, retry).
-- A frame around some messages is one alternative path, named at its top ("If the write fails").
-- Choosing a step fades the messages of other steps.
+Each column is one part of the system, and time runs down the page.
+
+- A solid arrow is a call, and a dashed arrow going back is its reply.
+- An arrow from a column back to itself is something that part does on its own, such as splitting work into batches or retrying.
+- A frame around some messages is another path the request can take. Its name is at the top, for example "If the write fails".
+
+When you choose a step, the messages from other steps fade out.
 
 Click a message to open the box that receives it, with its details and conversation.
 
-There is no draft mode on a sequence: ask for changes in the chat.
+## Changing a sequence
+
+A sequence has no draft mode. To change it, tell the agent what is different in the chat.
+
+## Next steps
+
+- [Journey](journey.md): follow one piece of data and see how it changes at each stop.
+- [Timeline](timeline.md): see when things happen and how long they take.

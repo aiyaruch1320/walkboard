@@ -1,25 +1,35 @@
 # State
 
-[Docs](../README.md) › [Pictures](README.md) › State
-
-**Answers:** which states can something be in, and what moves it from one to the next? An order, a job, an account.
+A **state** picture shows which states something can be in, and what moves it from one state to the next. It works for anything with a life of its own, such as an order, a job or an account.
 
 ![An email moving from queued to sending, sent, waiting to retry, or gave up](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/state.png)
 
-[Try it: click a box, choose a step ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=life&step=all)
+[Open this picture in the live example ↗](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=life&step=all)
 
-## How to read it
+## Reading a state picture
 
-- Each box is a state. A line from A to B means it can move from A to B.
-- The words on a line say what makes it move: an event, a time limit ("30 min unpaid").
-- A line back into the same box means it can happen again (a retry).
-- **start** marks the state a new one begins in; only one box is the start.
-- **end** marks where it can stop. Lines may still go on from an end (a refund after delivery).
+Each box is a state. A line from A to B means it can move from A to B, and the words on the line say what makes it move. That can be an event, or a time limit such as "30 min unpaid".
 
-## Arranging
+A line that comes back into the same box means the same thing can happen again, such as a retry.
 
-Drag boxes to arrange the picture; it holds still while you do. Click a line, or drag the dot at either end, to choose which side of each box it meets.
+- **start** marks the state that something new begins in. Only one box can be the start.
+- **end** marks a state where it can stop. Lines can still go on from an end, for example a refund after delivery.
 
-## Draft mode
+## Arranging a state picture
 
-Add states, draw lines, rename, take out. Click a box to edit its name, note and icon, and switch **start** and **end** in its card; click a line for its label and direction. Drag a line's end onto another box to reconnect it. See [Sketch your own changes](../draft.md).
+Drag boxes to arrange the picture. The rest of the picture holds still while you do.
+
+To choose which side of a box a line meets, click the line, or drag the dot at either end.
+
+## Sketching on a state picture
+
+In [draft mode](../draft.md) you can add states, draw lines between them, rename them and take them out.
+
+- To edit a state's name, note or icon, click it. Its card also lets you switch **start** and **end** on or off.
+- To edit a line's label or direction, click the line.
+- To connect a line to a different state, drag the line's end onto that box.
+
+## Next steps
+
+- [Decision](decision.md): show the rules that choose between paths.
+- [Timeline](timeline.md): show how long each state lasts.

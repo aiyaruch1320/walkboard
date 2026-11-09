@@ -1,18 +1,16 @@
 # Google Cloud
 
-[Docs](../README.md) › [Platforms](README.md) › Google Cloud
+This page lists every Google Cloud kind that Walkboard knows: the boxes, zones and lines you can draw on a [map](../pictures/map.md), and where each one usually sits.
 
-What boxes, zones and lines can be on Google Cloud, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).
+When a box has one of these kinds, the map shows its icon and fields. If you put it somewhere other than the zones listed under "Usually in", a small amber ⚠ appears next to its name. It is only a hint, so if you mean it, that is fine. To learn how kinds work, see [Platforms](README.md).
 
 ![A small web app with a database and a job, drawn with Google Cloud kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/gcp.png)
 
-[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=gcp&step=all)
-
-This page is generated from `skills/walkboard/lib/profiles.mjs`.
+[Open this map in the live example and click a box to see its kind ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=gcp&step=all)
 
 ## Zones
 
-Frames that hold other things.
+A zone is a frame that holds boxes and other zones.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -23,11 +21,13 @@ Frames that hold other things.
 | <a id="region"></a>**Region** `gcp:region` | [Project](#project), [VPC network](#vpc) |  |  |  |
 | <a id="zone"></a>**Zone** `gcp:zone` | [Region](#region) |  |  |  |
 | <a id="subnet"></a>**Subnet** `gcp:subnet` | [VPC network](#vpc), [Region](#region) |  |  | cidr |
-| <a id="firewall"></a>**Firewall rule** `gcp:firewall` | [VPC network](#vpc), [Subnet](#subnet) | rules look through it to the zone around | security group | rules |
+| <a id="firewall"></a>**Firewall rule** `gcp:firewall` | [VPC network](#vpc), [Subnet](#subnet) | a box inside it is checked against the zone around it | security group | rules |
 | <a id="sharedvpc"></a>**Shared VPC host project** `gcp:sharedvpc` | [Organization](#org), [Folder](#folder) |  | host project, xpn |  |
-| <a id="perimeter"></a>**VPC Service Controls perimeter** `gcp:perimeter` | [Organization](#org), [Folder](#folder) | rules look through it to the zone around | service perimeter, vpc sc |  |
+| <a id="perimeter"></a>**VPC Service Controls perimeter** `gcp:perimeter` | [Organization](#org), [Folder](#folder) | a box inside it is checked against the zone around it | service perimeter, vpc sc |  |
 
 ## Boxes
+
+A box is one resource, such as a server, a database or a queue.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -101,7 +101,7 @@ Frames that hold other things.
 
 ## Lines
 
-A line without a kind is traffic: one part calling another.
+A line without a kind is plain traffic, one part calling another. These kinds are for lines that mean something else.
 
 | Kind | Means |
 |---|---|
@@ -109,3 +109,5 @@ A line without a kind is traffic: one part calling another.
 | <a id="line-peering"></a>`gcp:peering` | VPC peering |
 | <a id="line-iam"></a>`gcp:iam` | Permission (IAM) |
 | <a id="line-replication"></a>`gcp:replication` | Replication |
+
+> **Good to know:** This page is generated from `skills/walkboard/lib/profiles.mjs`. To add a kind, change that file and run `node scripts/profiles-doc.mjs`.

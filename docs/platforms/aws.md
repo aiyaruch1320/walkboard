@@ -1,18 +1,16 @@
 # AWS
 
-[Docs](../README.md) › [Platforms](README.md) › AWS
+This page lists every AWS kind that Walkboard knows: the boxes, zones and lines you can draw on a [map](../pictures/map.md), and where each one usually sits.
 
-What boxes, zones and lines can be on AWS, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).
+When a box has one of these kinds, the map shows its icon and fields. If you put it somewhere other than the zones listed under "Usually in", a small amber ⚠ appears next to its name. It is only a hint, so if you mean it, that is fine. To learn how kinds work, see [Platforms](README.md).
 
 ![A small web app with a database and a job, drawn with AWS kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/aws.png)
 
-[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=aws&step=all)
-
-This page is generated from `skills/walkboard/lib/profiles.mjs`.
+[Open this map in the live example and click a box to see its kind ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=aws&step=all)
 
 ## Zones
 
-Frames that hold other things.
+A zone is a frame that holds boxes and other zones.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -21,9 +19,11 @@ Frames that hold other things.
 | <a id="vpc"></a>**VPC** `aws:vpc` | [Account](#account), [Region](#region) |  |  | cidr |
 | <a id="az"></a>**Availability Zone** `aws:az` | [VPC](#vpc), [Region](#region) |  |  |  |
 | <a id="subnet"></a>**Subnet** `aws:subnet` | [VPC](#vpc), [Availability Zone](#az) |  |  | access (private, public); cidr |
-| <a id="sg"></a>**Security group** `aws:sg` | [VPC](#vpc), [Subnet](#subnet), [Availability Zone](#az) | rules look through it to the zone around | security group, firewall | rules |
+| <a id="sg"></a>**Security group** `aws:sg` | [VPC](#vpc), [Subnet](#subnet), [Availability Zone](#az) | a box inside it is checked against the zone around it | security group, firewall | rules |
 
 ## Boxes
+
+A box is one resource, such as a server, a database or a queue.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -71,7 +71,7 @@ Frames that hold other things.
 
 ## Lines
 
-A line without a kind is traffic: one part calling another.
+A line without a kind is plain traffic, one part calling another. These kinds are for lines that mean something else.
 
 | Kind | Means |
 |---|---|
@@ -79,3 +79,5 @@ A line without a kind is traffic: one part calling another.
 | <a id="line-peering"></a>`aws:peering` | VPC peering |
 | <a id="line-iam"></a>`aws:iam` | Permission (IAM) |
 | <a id="line-replication"></a>`aws:replication` | Replication |
+
+> **Good to know:** This page is generated from `skills/walkboard/lib/profiles.mjs`. To add a kind, change that file and run `node scripts/profiles-doc.mjs`.

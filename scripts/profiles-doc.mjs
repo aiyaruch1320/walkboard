@@ -41,31 +41,32 @@ function peoplePage(p, pr) {
   const out = [
     `# ${pr.label}`,
     "",
-    `[Docs](../README.md) › [Platforms](README.md) › ${pr.label}`,
+    `This page lists every ${pr.label} kind that Walkboard knows: the boxes, zones and lines you can draw on a [map](../pictures/map.md), and where each one usually sits.`,
     "",
-    `What boxes, zones and lines can be on ${pr.label}, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).`,
+    `When a box has one of these kinds, the map shows its icon and fields. If you put it somewhere other than the zones listed under "Usually in", a small amber ⚠ appears next to its name. It is only a hint, so if you mean it, that is fine. To learn how kinds work, see [Platforms](README.md).`,
     "",
     // The same small system drawn on this platform: examples/platforms, shot by scripts/screenshots.mjs.
     `![A small web app with a database and a job, drawn with ${pr.label} kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/${p}.png)`,
     "",
-    `[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=${p}&step=all)`,
-    "",
-    "This page is generated from `skills/walkboard/lib/profiles.mjs`.",
+    `[Open this map in the live example and click a box to see its kind ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=${p}&step=all)`,
     "",
     "## Zones",
     "",
-    "Frames that hold other things.",
+    "A zone is a frame that holds boxes and other zones.",
     "",
     head,
-    ...zones.map(([k, d]) => row(k, d, d.see ? "rules look through it to the zone around" : "")),
+    ...zones.map(([k, d]) => row(k, d, d.see ? "a box inside it is checked against the zone around it" : "")),
     "",
     "## Boxes",
+    "",
+    "A box is one resource, such as a server, a database or a queue.",
     "",
     head,
     ...boxes.map(([k, d]) => row(k, d, d.zone === "also" ? "a box, or a zone when something runs inside it" : "")),
   ];
   const ls = Object.entries(pr.lines || {});
-  if (ls.length) out.push("", "## Lines", "", "A line without a kind is traffic: one part calling another.", "", "| Kind | Means |", "|---|---|", ...ls.map(([k, d]) => `| <a id="line-${k}"></a>\`${p}:${k}\` | ${cell(d.name)} |`));
+  if (ls.length) out.push("", "## Lines", "", "A line without a kind is plain traffic, one part calling another. These kinds are for lines that mean something else.", "", "| Kind | Means |", "|---|---|", ...ls.map(([k, d]) => `| <a id="line-${k}"></a>\`${p}:${k}\` | ${cell(d.name)} |`));
+  out.push("", "> **Good to know:** This page is generated from `skills/walkboard/lib/profiles.mjs`. To add a kind, change that file and run `node scripts/profiles-doc.mjs`.");
   return out.join("\n") + "\n";
 }
 

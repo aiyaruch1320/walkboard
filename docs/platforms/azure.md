@@ -1,18 +1,16 @@
 # Azure
 
-[Docs](../README.md) › [Platforms](README.md) › Azure
+This page lists every Azure kind that Walkboard knows: the boxes, zones and lines you can draw on a [map](../pictures/map.md), and where each one usually sits.
 
-What boxes, zones and lines can be on Azure, and where each usually sits. On a map the page draws a kind's icon and fields, and shows a small amber ⚠ when something sits outside the zones listed here. That is a hint, never a block: if you mean it, it is fine. How profiles work: [Platforms](README.md).
+When a box has one of these kinds, the map shows its icon and fields. If you put it somewhere other than the zones listed under "Usually in", a small amber ⚠ appears next to its name. It is only a hint, so if you mean it, that is fine. To learn how kinds work, see [Platforms](README.md).
 
 ![A small web app with a database and a job, drawn with Azure kinds](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/azure.png)
 
-[Try it: click a box, see its kind and fields ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=azure&step=all)
-
-This page is generated from `skills/walkboard/lib/profiles.mjs`.
+[Open this map in the live example and click a box to see its kind ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=azure&step=all)
 
 ## Zones
 
-Frames that hold other things.
+A zone is a frame that holds boxes and other zones.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -23,9 +21,11 @@ Frames that hold other things.
 | <a id="vnet"></a>**Virtual network** `azure:vnet` | [Resource group](#resourcegroup), [Region](#region), [Subscription](#subscription) |  |  | cidr |
 | <a id="availabilityzone"></a>**Availability Zone** `azure:availabilityzone` | [Region](#region), [Virtual network](#vnet) |  |  |  |
 | <a id="subnet"></a>**Subnet** `azure:subnet` | [Virtual network](#vnet) |  |  | cidr |
-| <a id="nsg"></a>**Network security group** `azure:nsg` | [Virtual network](#vnet), [Subnet](#subnet) | rules look through it to the zone around | security group, firewall | rules |
+| <a id="nsg"></a>**Network security group** `azure:nsg` | [Virtual network](#vnet), [Subnet](#subnet) | a box inside it is checked against the zone around it | security group, firewall | rules |
 
 ## Boxes
+
+A box is one resource, such as a server, a database or a queue.
 
 | Kind | Usually in | Notes | Also called | Fields |
 |---|---|---|---|---|
@@ -110,7 +110,7 @@ Frames that hold other things.
 
 ## Lines
 
-A line without a kind is traffic: one part calling another.
+A line without a kind is plain traffic, one part calling another. These kinds are for lines that mean something else.
 
 | Kind | Means |
 |---|---|
@@ -118,3 +118,5 @@ A line without a kind is traffic: one part calling another.
 | <a id="line-peering"></a>`azure:peering` | VNet peering |
 | <a id="line-iam"></a>`azure:iam` | Permission (RBAC) |
 | <a id="line-replication"></a>`azure:replication` | Replication |
+
+> **Good to know:** This page is generated from `skills/walkboard/lib/profiles.mjs`. To add a kind, change that file and run `node scripts/profiles-doc.mjs`.

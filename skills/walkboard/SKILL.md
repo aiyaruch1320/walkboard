@@ -45,8 +45,8 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
 ## 3. Show and listen
 
 1. `WB open <dir>` prints the URL (`--no-browser` if you open it yourself; `&step=`, `&node=`, `&view=` point at something). If it says a newer Walkboard is installed, tell the user in one line.
-2. Give the user the URL with one line on what to do there, in their language. Not polling in the background (3)? That line must end by asking them to say "check the page" here when they want you to read it: "Click a box to see it, type below to ask or change something, approve when ready; then tell me here to check the page."
-3. Listen. Only if your tool starts a new turn for you when a background command ends (Claude Code's `run_in_background` does), keep exactly one `WB poll <dir>` running that way, the whole session, building included: it exits when the page sends something; start it again after each batch. Its `[]` means the server stopped: `WB open` again. Otherwise, including a tool that moves a long command to the background by itself, never run a plain `WB poll` and never say messages reach you by themselves. When the user says to check the page (any words), `WB poll <dir> --now` prints what waits (`[]` = nothing yet), handled the same way; end your answer by reminding them to say so again. Either way, one JSON line per message (`kind`, `text`, `node` or `step`; `viewingStep` = the step on screen; `images` = paths of images the user attached: read them).
+2. Give the URL with one line, in their language: "Click a box to see it, type below to ask or change something, approve when ready." Not polling (3)? Add: "then tell me here to check the page."
+3. Listen. Only if your tool starts a new turn for you when a background command ends (Claude Code's `run_in_background`): keep one `WB poll <dir>` running that way all session, building included; it exits with what the page sent; start it again after each batch; its `[]` = server stopped, `WB open` again. Otherwise (a tool that backgrounds long commands by itself too) never run a plain `WB poll` nor say messages reach you by themselves: when told to check the page (any words), `WB poll <dir> --now` (`[]` = nothing yet), and end by reminding them. One JSON line per message: `kind`, `text`, `node`/`step`, `viewingStep` (step on screen), `images` (paths: read them).
    - `question` / `confused`: a request to add, change or remove something is a proposal (messages.md). Otherwise `WB reply <dir> [--node <id> | --step <id>] "<answer>"`. Two or three sentences; code in ``` fences. If the picture was unclear, fix it and say so.
    - `deeper`: add boxes, a stage or a view (with `file` evidence); reply with what you added.
    - `approve`: `WB set <dir> approved=true`, reply in one line.
@@ -54,11 +54,9 @@ Only where the flow itself is the hard part, add `moves` to that step or stage (
    - `review`: [review.md](references/review.md). `withdraw`, `plan`, `apply`, `commit`, `committed`: [messages.md](references/messages.md). `decide`: design.md.
    - `settings`: already saved in plan.json; arrives with another message; no reply.
 
-   Reply to every other message **on the page, where it was asked**, even in one line, even if you also act on it or say it in chat: asked on the page, answered on the page. If the answer belongs on another box or step, reply there and also, in one line, where it was asked with a link: `[[node:<id>]]`, `[[step:<id>]]`, `[[plan]]`.
+   Reply to every other message **on the page, where it was asked**, even in one line, even if you also act or say it in chat. An answer that belongs elsewhere goes there, plus one line where it was asked linking it: `[[node:<id>]]`, `[[step:<id>]]`, `[[plan]]`. A person reads it: names and titles on the picture, never ids.
 
-   A person reads every reply: use the names and titles on the picture, never ids.
-
-   Asked how Walkboard itself works (reading a picture, draft mode, export)? Answer in a line or two and give the page from https://aiyaruch1320.github.io/walkboard/ (`pictures/<kind>.html`, `platforms/<profile>.html`, `draft.html`, `share.html`, `faq.html`; Thai: `th/`). The page's ⋮ → Guide opens it too.
+   Asked how Walkboard itself works? A line or two, and the page from https://aiyaruch1320.github.io/walkboard/ (`pictures/<kind>.html`, `platforms/<profile>.html`, `draft.html`, `share.html`, `other-agents.html`, `faq.html`; Thai: the same under `th/`).
 
 4. Taking out a box someone talked about: first `WB reply <dir>` (whole plan) in one line why. The user may also answer in chat.
 

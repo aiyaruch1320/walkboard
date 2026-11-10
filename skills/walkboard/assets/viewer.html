@@ -442,8 +442,9 @@ function msgFor(m, holder) {
 }
 
 function refreshThreads() {
-  const open = snapshot ? [] : unanswered(), listening = connected && !waiting;
-  const queue = snapshot || !listening ? [] : thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings");
+  // No poll waiting on the page: what was sent waits in line, and what was taken is being worked on.
+  const open = snapshot ? [] : unanswered(), noPoll = connected && !waiting;
+  const queue = snapshot || !noPoll ? [] : thread.filter((m) => m.from !== "agent" && !m.delivered && m.kind !== "settings");
   document.querySelectorAll(".thread[data-ctx]").forEach((t) => {
     const c = JSON.parse(t.dataset.ctx);
     // Like a chat: open on the newest message and stay there, also when the chat is unfolded, the panel widened
@@ -462,7 +463,7 @@ function refreshThreads() {
     const busy = open.findLast((m) => inCtx(m, c));
     const other = busy && thread.findLast((r) => r.from === "agent" && r.at > busy.at);
     if (other) hiddenNotes.has(busy.id) || t.append(elsewhereEl(busy, other));
-    else if (busy && listening && !(quiet(busy) && hiddenNotes.has(busy.id))) t.append(typingEl(busy));
+    else if (busy && noPoll && !(quiet(busy) && hiddenNotes.has(busy.id))) t.append(typingEl(busy));
     const waitingHere = queue.findLast((m) => inCtx(m, c));
     if (waitingHere) t.append(queuedEl(waitingHere, queue, open));
     // Follow the conversation while you are at its end, as a chat does.
@@ -2072,7 +2073,7 @@ function readHelp(button, kind, words = []) {
   if (["state", "decision", "impact", "lines"].includes(kind) && served && !snapshot) parts.push(el("div", "lhtext", t("rh_sides")));
   if (arrows) parts.push(el("div", "dhint", t("lh_shape")));
   // No pencil on a phone or in a very narrow window: say why, where the pencil would be looked for.
-  if (served && !snapshot && !canArrange() && ["flow", "map", "state", "decision", "datamodel", "impact"].includes(pictureKind)) parts.push(el("div", "dhint", t("sketchOnComputer")));
+  if (served && !snapshot && !canArrange() && draftable({kind: pictureKind})) parts.push(el("div", "dhint", t("sketchOnComputer")));
   if (pictureKind) parts.push(docLink(`pictures/${pictureKind}.md`, t("readMore") + " ↗"));
   if (document.body.classList.contains("sketching")) parts.push(docLink(sketchDoc(), t("sketchDoc") + " ↗"));
   const pop = popover(0, 0, parts);

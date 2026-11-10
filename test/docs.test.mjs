@@ -81,6 +81,14 @@ test("the docs site builds, and every link and image in it leads to a file of th
   assert.deepEqual(broken, []);
 });
 
-test("each picture with draft mode has the #sketch anchor its draft help links to", () => {
-  for (const k of ["flow", "map", "state", "decision", "datamodel", "impact"]) assert.match(fs.readFileSync(path.join(root, "docs/pictures", k + ".md"), "utf8"), /<a id="sketch"><\/a>/, k);
+test("each picture with draft mode has the #sketch anchor its draft help links to, in English and Thai", async () => {
+  const {draftable} = await import("../skills/walkboard/lib/draft.mjs");
+  const kinds = fs.readdirSync(path.join(root, "docs/pictures")).map((f) => f.replace(/\.md$/, "")).filter((k) => draftable({kind: k}));
+  assert.ok(kinds.length >= 6, kinds.join());
+  for (const k of kinds) for (const dir of ["docs/pictures", "docs/th/pictures"]) {
+    const f = path.join(root, dir, k + ".md");
+    if (dir.includes("/th/") && !fs.existsSync(f)) continue;
+    assert.match(fs.readFileSync(f, "utf8"), /<a id="sketch"><\/a>/, `${dir}/${k}.md`);
+  }
 });
+

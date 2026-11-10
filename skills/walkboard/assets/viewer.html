@@ -2707,7 +2707,7 @@ function layoutTools(v, canMove, apply, review = null, drafts = false) {
     let ok = false;
     try {
       const {changes, stale, warnings} = drafts ? describeDraft(plan, draft, v.id, PROF) : {changes: []};
-      await send({}, "review", t(changes.length ? "reviewDraftAsk" : "reviewAsk"), {view: v.id, ...review(), ...(changes.length ? {changes} : {}), ...(stale?.length ? {stale} : {}), ...(warnings?.length ? {warnings} : {})});
+      await send({}, "review", t(changes.length ? "reviewDraftAsk" : "reviewAsk", changes.length), {view: v.id, ...review(), ...(changes.length ? {changes} : {}), ...(stale?.length ? {stale} : {}), ...(warnings?.length ? {warnings} : {})});
       ask.textContent = t("reviewSent");
       ok = true;
       openSide({kind: "plan"});

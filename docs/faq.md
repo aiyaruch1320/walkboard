@@ -24,7 +24,7 @@ If the status says **✉ Not live: tell your agent** instead, your agent is not 
 
 A session that is already running keeps the version it started with. Run `/reload-plugins` or start a new session, then ask the agent to open the plan again. The page from the older copy is replaced. You can check the version at the bottom of the **⋮** menu.
 
-### The agent asks for permission on every update
+### The agent asks for permission every time it changes the plan
 
 In your agent's permissions, allow `node …/skills/walkboard/bin/walkboard.mjs` commands and edits under `~/.walkboard/`.
 

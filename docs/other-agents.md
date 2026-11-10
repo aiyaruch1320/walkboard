@@ -24,7 +24,7 @@ check the page
 
 Any words work, in any language, for example "ดูหน้า walkboard". The agent reads everything that waited: your questions, an approval, a sketch to review. Then it answers each one on the page, where you asked, and goes back to its chat. Behind the scenes it runs `walkboard poll --now`, which hands over what waits and returns at once.
 
-You can tell which way a page works from the status at the top right. It reads **✉ Not live: tell your agent**, and after you send something, how many messages are waiting. Click it for the words to copy into the chat. Each waiting message on the page says the same, with a **Copy** button.
+You can tell which way a page works from the status at the top right. It reads **✉ Not live: tell your agent**. After you send something, it also shows how many messages are waiting. Click it for the words to copy into the chat. Each waiting message on the page says the same, with a **Copy** button.
 
 > **Good to know:** "Check the page" also works in Claude Code. If the agent is busy building a step, it makes the agent read your messages sooner.
 

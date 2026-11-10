@@ -50,7 +50,7 @@ The repository has example plans you can open and read. All their data is made u
 
 Walkboard is designed to be light on tokens. The page does the drawing and explaining, so the agent writes the content once and spends very little after that.
 
-| What it costs | An explainer page written by hand | Walkboard |
+| What it costs | A page the agent writes itself | Walkboard |
 |---|---|---|
 | A rich plan with four pictures | 26–43 KB of HTML and SVG, rewritten on every change | about 7 KB of `plan.json`, written once. A simple plan is about 0.5 KB |
 | Moving a step forward | rewriting or editing the page | one `walkboard set … step:x status=review`, about 90 bytes |

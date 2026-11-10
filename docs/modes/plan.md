@@ -25,7 +25,7 @@ For example:
 You can choose who makes the commits in the **⋮** menu, and change your mind at any time. Switching does not interrupt the agent and costs nothing.
 
 - With **Agent commits**, the agent commits each step itself. You also get **Run the rest**, which builds all the remaining steps without stopping.
-- With **Only suggest**, each step that changed files shows a suggested commit message. Edit it if you like, then press **Agent commits these, then goes on**, or commit yourself and press **I committed, go on**. A step that changed no files does not ask for a message.
+- With **Suggest messages**, each step that changed files shows a suggested commit message. Edit it if you like, then press **Agent commits these, then goes on**, or commit yourself and press **I committed, go on**. A step that changed no files does not ask for a message.
 
 ## Changing the plan after approval
 

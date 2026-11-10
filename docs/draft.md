@@ -14,7 +14,7 @@ You can sketch on six kinds of picture: [map](pictures/map.md), [data model](pic
 
 While you sketch, the plan stays as it is and the agent is not interrupted. Your sketch is saved as you go.
 
-> **Good to know:** Sketching needs a mouse and a window at least 640 pixels wide, so a narrow or zoomed-in window still works. On a phone you can read a sketch, and send it for review from its list, but not draw.
+> **Good to know:** Sketching needs a mouse and a window at least 640 pixels wide. A narrow or zoomed-in window still works, as long as it is that wide. On a phone you can read a sketch, and send it for review from its list, but not draw.
 
 ## Making changes
 

@@ -2,7 +2,7 @@
 
 Welcome to the Walkboard docs.
 
-**อ่านภาษาไทย:** [เริ่มใช้งาน Walkboard](th/README.md)
+**อ่านภาษาไทย:** [รู้จัก Walkboard](th/README.md)
 
 ## What is Walkboard?
 
@@ -51,7 +51,7 @@ These pages are also a website, with every picture shown and live examples to cl
 
 ## Getting help
 
-If something is unclear or does not work, [open an issue on GitHub](https://github.com/aiyaruch1320/walkboard/issues/new/choose). Questions in Thai are welcome too.
+If something is unclear or does not work, [open an issue on GitHub](https://github.com/aiyaruch1320/walkboard/issues/new/choose). Questions in Thai are welcome too. Issues are public, so do not paste plans or screenshots that show customer data, hostnames or passwords.
 
 ## Next steps
 

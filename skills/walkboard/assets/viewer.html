@@ -1975,13 +1975,14 @@ function anchored(id, elx = nodeBox(id)) {
 // The picture on screen says what its "?" card explains. On paper there is no card: the lines' key stays on the page.
 let pictureHelp = null, pictureKind = null;
 // The docs site, opened in a new tab by a click: the page itself still loads nothing from the network.
-// Pages are named as in docs/, with .html (README is index).
+// Pages are named as in docs/, with .html (README is index). A Thai plan opens the Thai page, which docs/th/ has for
+// every English one at the same path.
 const DOCS = "https://aiyaruch1320.github.io/walkboard/";
 // Where this picture's draft tools are explained (each picture's page has a "#sketch" anchor), and draft mode as a whole.
 const sketchDoc = () => (pictureKind ? `pictures/${pictureKind}.md#sketch` : "draft.md");
 function docLink(page, label, cls = "doclink") {
   const a = el("a", cls, label);
-  a.href = DOCS + page.replace(/(^|\/)README\.md$/, "$1").replace(/\.md\b/, ".html");
+  a.href = DOCS + (lang === "th" ? "th/" : "") + page.replace(/(^|\/)README\.md$/, "$1").replace(/\.md\b/, ".html");
   a.target = "_blank";
   a.rel = "noopener noreferrer";
   return a;
@@ -9493,7 +9494,7 @@ moreBtn.onclick = (e) => {
   const helpIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M6.3 6.3a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1.1V9.6"/><circle cx="8" cy="11.6" r=".4" fill="currentColor"/></svg>';
   const bookIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M8 4.2C6.6 3 4.6 2.7 2.5 3v9.3c2.1-.3 4.1 0 5.5 1.2 1.4-1.2 3.4-1.5 5.5-1.2V3c-2.1-.3-4.1 0-5.5 1.2zM8 4.2v9.3"/></svg>';
   // The docs, in the page's language when they have it.
-  const guide = docLink(lang === "th" ? "th/README.md" : "README.md", "", "mitem");
+  const guide = docLink("README.md", "", "mitem");
   guide.insertAdjacentHTML("afterbegin", bookIcon);
   guide.append(el("span", null, t("docsTitle")), el("span", "mext", "↗"));
   const cur = MODES_SHOWN.includes(plan?.mode) ? plan.mode : "build";

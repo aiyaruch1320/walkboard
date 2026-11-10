@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {launch, sleep} from "./lib/chrome.mjs";
+import {listening, stopListening} from "./lib/listening.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
@@ -71,17 +72,11 @@ function draftPlan() {
 fs.mkdirSync(out, {recursive: true});
 const demo = demoPlan();
 const drafted = draftPlan();
-// As if an agent were polling each page: the status shows it listening, not "tell your agent". The server counts
-// a poll as recent for a few minutes, so the mark is renewed while the shots run.
-const marks = [];
-const mark = () => marks.forEach((f) => fs.writeFileSync(f, "screenshots"));
+// As if an agent were polling each page: the status shows it listening (lib/listening.mjs).
 const open = (d) => {
-  fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true});
-  marks.push(path.join(d, ".walkboard", "listens"));
-  mark();
+  listening(d);
   return pv("open", d, "--no-browser");
 };
-const renew = setInterval(mark, 30_000);
 const urls = {
   build: open(path.join(repo, "examples/nightly-import")),
   explain: open(path.join(repo, "examples/explain-login")),
@@ -145,7 +140,7 @@ try {
     prepare: `document.getElementById('talks').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.rtalk').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.fresh')?.remove();`,
   });
 } finally {
-  clearInterval(renew);
+  stopListening();
   page.close();
   for (const u of Object.values(urls)) {
     const dir = {[urls.demo]: demo, [urls.draft]: drafted, [urls.build]: "examples/nightly-import", [urls.explain]: "examples/explain-login", [urls.pictures]: "examples/pictures", [urls.platforms]: "examples/platforms"}[u];

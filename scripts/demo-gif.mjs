@@ -12,6 +12,7 @@ import os from "node:os";
 import path from "node:path";
 import {fileURLToPath, pathToFileURL} from "node:url";
 import {launch, sleep} from "./lib/chrome.mjs";
+import {listening, stopListening} from "./lib/listening.mjs";
 import {decodePng, encodeGif, encodePng, overlay, view} from "./lib/gif.mjs";
 
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -19,15 +20,6 @@ const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
 const W = 960, H = 600, SCALE = 2;
 const want = (name) => !process.env.DEMO_ONLY || process.env.DEMO_ONLY.split(",").includes(name);
-// As if an agent were polling the page: the status says it listens, not "tell your agent". The server counts a poll
-// as recent for a few minutes, so the mark is renewed while recording.
-const marks = [];
-const listens = (d) => {
-  fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true});
-  marks.push(path.join(d, ".walkboard", "listens"));
-  fs.writeFileSync(marks.at(-1), "demo");
-};
-const renew = setInterval(() => marks.forEach((f) => fs.writeFileSync(f, "demo")), 30_000);
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-"));
 const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
@@ -36,11 +28,11 @@ for (const s of plan.steps) {
   s.status = "todo";
 }
 fs.writeFileSync(path.join(dir, "plan.json"), JSON.stringify(plan));
-listens(dir);
+listening(dir);
 const url = pv("open", dir, "--no-browser");
 const designDir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-design-"));
 fs.copyFileSync(path.join(repo, "examples/connect-vpcs/plan.json"), path.join(designDir, "plan.json"));
-listens(designDir);
+listening(designDir);
 const designUrl = pv("open", designDir, "--no-browser");
 const designShort = `127.0.0.1:${new URL(designUrl).port}/?token=…`;
 const {origin, searchParams} = new URL(url);
@@ -276,7 +268,7 @@ const CAPTIONS = [
 // sketch.gif: a copy of the pictures example, on its map.
 const sketchDir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-sketch-"));
 fs.copyFileSync(path.join(repo, "examples/pictures/plan.json"), path.join(sketchDir, "plan.json"));
-listens(sketchDir);
+listening(sketchDir);
 const sketchUrl = pv("open", sketchDir, "--no-browser");
 const sketchShort = `127.0.0.1:${new URL(sketchUrl).port}/?token=…`;
 // Real pointer and keys, for the drawing tools (they listen to pointer events, not click()).
@@ -520,7 +512,7 @@ try {
     save("sketch");
   }
 } finally {
-  clearInterval(renew);
+  stopListening();
   page.close();
   pv("stop", dir);
   pv("stop", designDir);

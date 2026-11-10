@@ -3030,7 +3030,8 @@ const ICON_PATHS = {
   pencil: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
   select: ["M6 3l12 9-5.5 1.2L9.5 19z"],
   box: ["M3 7h12v12H3z", "M19 3v6", "M16 6h6"],
-  zone: [{d: "M3 7h12v12H3z", dash: "2.6 2.2"}, "M19 3v6", "M16 6h6"],
+  // A zone is a frame with a title bar and something inside, so it does not read as the box beside it.
+  zone: ["M2 8h13v13H2z", "M2 11.5h13", "M5 14.5h7v3.5H5z", "M19 3v6", "M16 6h6"],
   connect: ["M4 20a2 2 0 1 1 0.01 0", "M20 4a2 2 0 1 1 0.01 0", "M6 18L18 6", "M13 5.5h5.5V11"],
   rename: ["M5 6h10", "M10 6v12", "M7.5 18h5", "M18 9v10", "M16.5 9h3", "M16.5 19h3"],
   remove: ["M4 7h16", "M9.5 7V4.5h5V7", "M6.5 7l1 13h9l1-13", "M10.5 11v5.5", "M13.5 11v5.5"],

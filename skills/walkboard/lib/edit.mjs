@@ -58,11 +58,26 @@ export function applySet(plan, ops) {
   return plan;
 }
 
-// Write plan.json the way it was written (compact stays compact), through a temporary file of its own so a reader never sees half of it.
+// A plan written one entry per line: each top-level field on its line, and each step, box, view or other entry of a
+// list or map on its own line, compact. Agents often write it so; keeping it keeps their next Edit's old text valid.
+export function planLines(plan, ind = " ") {
+  const field = ([k, v]) => {
+    if (!v || typeof v !== "object" || !Object.keys(v).length) return JSON.stringify(k) + ":" + JSON.stringify(v);
+    const arr = Array.isArray(v), items = arr ? v.map((x) => ind + JSON.stringify(x)) : Object.entries(v).map(([kk, vv]) => ind + JSON.stringify(kk) + ":" + JSON.stringify(vv));
+    return JSON.stringify(k) + ":" + (arr ? "[" : "{") + "\n" + items.join(",\n") + (arr ? "]" : "}");
+  };
+  return "{" + Object.entries(plan).map(field).join(",\n") + "}";
+}
+
+// Write plan.json the way it was written, through a temporary file of its own so a reader never sees half of it:
+// compact stays compact, pretty-printed keeps its indent, and one entry per line stays so (a line that starts with a
+// closing bracket is what tells pretty-printing from it).
 export function savePlan(file, plan, before = "") {
-  const indent = before.includes("\n ") || before.includes("\n\t") ? before.match(/\n([ \t]+)"/)?.[1] ?? 1 : before.trim() ? 0 : 1;
+  const text = before.trim();
+  const pretty = /\n[ \t]*[}\]]/.test(text), indent = before.match(/\n([ \t]+)"/)?.[1] ?? 1;
+  const out = !text ? JSON.stringify(plan, null, 1) : !text.includes("\n") ? JSON.stringify(plan) : pretty ? JSON.stringify(plan, null, indent) : planLines(plan, indent);
   const tmp = `${file}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(plan, null, indent) + "\n");
+  fs.writeFileSync(tmp, out + "\n");
   replaceFile(tmp, file);
 }
 

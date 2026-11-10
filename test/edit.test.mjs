@@ -48,3 +48,25 @@ test("text that only starts like JSON stays text", () => {
   assert.equal(p.steps[0].detail, '"quoted" word');
   assert.throws(() => applySet(plan(), parseSet(["plan", "settings={commit: auto}"])), /not valid JSON/);
 });
+
+test("set keeps a plan written one entry per line, so the agent's next Edit still finds its text", async () => {
+  const fs = await import("node:fs"), os = await import("node:os"), path = await import("node:path");
+  const {savePlan} = await import("../skills/walkboard/lib/edit.mjs");
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-lines-")), "plan.json");
+  const text = '{"title":"t",\n"steps":[\n {"id":"a","title":"A","status":"doing"}],\n"nodes":{\n "x":{"name":"X","status":"new"},\n "y":{"name":"Y","why":"because"}}}\n';
+  fs.writeFileSync(file, text);
+  savePlan(file, applySet(JSON.parse(text), parseSet(["step:a", "status=review"])), text);
+  const after = fs.readFileSync(file, "utf8");
+  assert.ok(after.includes('\n "y":{"name":"Y","why":"because"}'), after);
+  assert.ok(after.includes('{"id":"a","title":"A","status":"review"}'), after);
+  assert.deepEqual(JSON.parse(after).steps[0].status, "review");
+  // Pretty-printed stays pretty-printed, compact stays compact.
+  const pretty = JSON.stringify(JSON.parse(text), null, 2) + "\n";
+  fs.writeFileSync(file, pretty);
+  savePlan(file, JSON.parse(pretty), pretty);
+  assert.equal(fs.readFileSync(file, "utf8"), pretty);
+  const compact = JSON.stringify(JSON.parse(text)) + "\n";
+  fs.writeFileSync(file, compact);
+  savePlan(file, JSON.parse(compact), compact);
+  assert.equal(fs.readFileSync(file, "utf8"), compact);
+});

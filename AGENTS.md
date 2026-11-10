@@ -34,6 +34,7 @@ Notes for AI agents (and people) changing this repository. To *use* Walkboard, r
 - Page labels live in `STRINGS` in `assets/strings.js` (English and Thai); add a key to both. Code, comments and docs are English.
 - Icons are Walkboard's own line drawings. Do not add vendor logos: their licences do not allow shipping them here.
 - Keep `SKILL.md` small and the plan format backward compatible; document new fields in `references/schema.md` (a picture's in `references/views/<kind>.md`; a draft change's in `references/review.md`) and `CHANGELOG.md`.
+- **A change people can see changes its docs in the same commit, in both languages.** A new or renamed button, label, sign, shortcut, behaviour or command updates the page in `docs/` that describes it and its twin in `docs/th/` (find it with the site's search, or `grep -rn` for the old words). A renamed label in `strings.js`: search both docs for the old English and Thai label. A change in what the agent does goes in `SKILL.md` or `references/`. Every such change also gets a line in `CHANGELOG.md`, and a picture that shows it is regenerated (see "Check your change"). `npm test` catches broken links and a missing Thai page, not an outdated sentence: that part is yours.
 
 ## Writing the docs
 

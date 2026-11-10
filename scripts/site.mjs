@@ -33,8 +33,8 @@ const NAV = [
 const SECTIONS_TH = {"Getting started": "เริ่มต้นใช้งาน", Guides: "วิธีใช้", Pictures: "ภาพ", Platforms: "แพลตฟอร์ม", Reference: "อ้างอิง"};
 const NAV_TH = NAV.map(([head, list]) => [SECTIONS_TH[head], list.map((p) => "th/" + p)]);
 const WORDS = {
-  en: {overview: "Overview", prev: "← Previous", next: "Next →", other: "ภาษาไทย", edit: "Edit this page on GitHub", report: "Report a problem", suffix: " · Walkboard docs", home: "Walkboard docs", menu: "Menu", brand: "docs"},
-  th: {overview: "ภาพรวม", prev: "← ก่อนหน้า", next: "ถัดไป →", other: "English", edit: "แก้หน้านี้บน GitHub", report: "แจ้งปัญหา", suffix: " · คู่มือ Walkboard", home: "คู่มือ Walkboard", menu: "เมนู", brand: "คู่มือ"},
+  en: {search: "Search", searchHint: "Search the docs", noResults: "Nothing found", overview: "Overview", prev: "← Previous", next: "Next →", other: "ภาษาไทย", edit: "Edit this page on GitHub", report: "Report a problem", suffix: " · Walkboard docs", home: "Walkboard docs", menu: "Menu", brand: "docs"},
+  th: {search: "ค้นหา", searchHint: "ค้นหาในคู่มือ", noResults: "ไม่พบ", overview: "ภาพรวม", prev: "← ก่อนหน้า", next: "ถัดไป →", other: "English", edit: "แก้หน้านี้บน GitHub", report: "แจ้งปัญหา", suffix: " · คู่มือ Walkboard", home: "คู่มือ Walkboard", menu: "เมนู", brand: "คู่มือ"},
 };
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -187,7 +187,7 @@ function layout(md, body) {
 <link rel="stylesheet" href="${up}assets/site.css">
 </head>
 <body>
-<header class="top"><a class="brand" href="${up}${th ? "th/" : ""}index.html"><img src="${up}logo/mark.svg" alt="" width="22" height="22">Walkboard <span>${w.brand}</span></a><nav><a href="${up}${htmlName(other)}" hreflang="${th ? "en" : "th"}" lang="${th ? "en" : "th"}">${w.other}</a><a href="${GITHUB}" target="_blank" rel="noopener">GitHub</a></nav></header>
+<header class="top"><a class="brand" href="${up}${th ? "th/" : ""}index.html"><img src="${up}logo/mark.svg" alt="" width="22" height="22">Walkboard <span>${w.brand}</span></a><nav><button class="searchbtn" type="button" aria-label="${w.searchHint}"><span>${w.search}</span><kbd>⌘K</kbd></button><a href="${up}${htmlName(other)}" hreflang="${th ? "en" : "th"}" lang="${th ? "en" : "th"}">${w.other}</a><a href="${GITHUB}" target="_blank" rel="noopener">GitHub</a></nav></header>
 <div class="wrap">
 <details class="menu"><summary>${w.menu}</summary><nav>${nav}</nav></details>
 <aside class="side"><nav>${nav}</nav></aside>
@@ -197,9 +197,41 @@ ${pager}
 <footer class="foot"><a href="${GITHUB}/blob/main/docs/${md}" target="_blank" rel="noopener">${w.edit}</a> · <a href="${GITHUB}/issues/new/choose" target="_blank" rel="noopener">${w.report}</a></footer>
 </main>
 </div>
+<script src="${up}assets/site.js" defer data-index="${up}search-${th ? "th" : "en"}.json" data-base="${up}" data-hint="${w.searchHint}" data-none="${w.noResults}"></script>
 </body>
 </html>
 `;
+}
+
+// Text a reader searches, from Markdown: no markup, no images, no anchors, link words kept.
+const plain = (t) => t.replace(/<[^>]+>/g, "").replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[`*>|]/g, " ").replace(/\s+/g, " ").trim();
+
+// The search index of one language: a page's opening, each of its sections, and on a platform page each kind's row,
+// so "RDS" lands on the RDS row. Read by assets/site.js the first time search opens.
+function searchIndex(list) {
+  const out = [];
+  for (const md of list) {
+    const lines = fs.readFileSync(path.join(docs, md), "utf8").split("\n").filter((l) => !l.startsWith("<!--"));
+    const url = htmlName(md), title = titleOf(md);
+    let head = "", anchor = "", buf = [];
+    const flush = () => {
+      const x = plain(buf.join(" "));
+      if (x || head) out.push({u: url + (anchor ? "#" + anchor : ""), t: title, h: head, x: x.slice(0, 1200)});
+      buf = [];
+    };
+    for (const l of lines) {
+      const h = l.match(/^#{2,3} (.+)$/);
+      const row = l.match(/^\| <a id="([^"]+)"><\/a>\*\*([^*]+)\*\*(.*)$/);
+      if (h) {
+        flush();
+        head = plain(h[1]);
+        anchor = slug(h[1]);
+      } else if (row) out.push({u: url + "#" + row[1], t: title, h: row[2], x: plain(row[3])});
+      else if (!/^# /.test(l)) buf.push(l);
+    }
+    flush();
+  }
+  return out;
 }
 
 export function build(out, {media = process.env.WALKBOARD_MEDIA || path.join(repo, "media"), examples = true} = {}) {
@@ -222,6 +254,9 @@ export function build(out, {media = process.env.WALKBOARD_MEDIA || path.join(rep
       built.push(`examples/${name}.html`);
     }
   }
+  const all = pages().filter((p) => p !== "GUIDE.md");
+  fs.writeFileSync(path.join(out, "search-en.json"), JSON.stringify(searchIndex(all.filter((p) => !p.startsWith("th/")))));
+  fs.writeFileSync(path.join(out, "search-th.json"), JSON.stringify(searchIndex(all.filter((p) => p.startsWith("th/")))));
   fs.writeFileSync(path.join(out, ".nojekyll"), "");
   return built;
 }

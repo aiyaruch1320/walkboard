@@ -22,8 +22,9 @@ export const paths = (dir) => {
     draft: path.join(state, "draft.json"),
     images: path.join(state, "images"),
     lock: path.join(state, "server.lock"),
-    // Present once an agent has waited on the page (a long poll): it is woken by clicks. Without it, messages wait
-    // until the user tells the agent in its own chat, and the page says so.
+    // Touched whenever an agent waits on the page (a long poll starts or ends). Recent: the agent is woken by clicks,
+    // or is answering one. Old or missing: messages wait until the user tells the agent in its own chat, and the page
+    // says so. A file, so a restarted server still knows, and its time, so an agent that went away stops counting.
     listens: path.join(state, "listens"),
   };
 };
@@ -138,7 +139,7 @@ function takeLock(file) {
   throw new Error(`cannot lock ${file}`);
 }
 
-export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
+export function startServer(dir, {pollMs = 240_000, port = 0, recentMs = 180_000} = {}) {
   const p = paths(dir);
   fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
   takeLock(p.lock);
@@ -158,8 +159,27 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
   const broadcast = (event, data) => {
     for (const s of streams) s.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
-  let listens = fs.existsSync(p.listens);
-  const agentState = () => broadcast("agent", {waiting: waiters.length, listens});
+  // Listening: a poll waits now, or one did in the last few minutes (the agent is answering, then polls again).
+  const listening = () => {
+    if (waiters.length) return true;
+    try {
+      return Date.now() - fs.statSync(p.listens).mtimeMs < recentMs;
+    } catch {
+      return false;
+    }
+  };
+  const agentState = () => broadcast("agent", {waiting: waiters.length, listens: listening()});
+  // A poll that started or ended: remembered, and the page told again when it no longer counts as recent.
+  let quietTimer = null;
+  const polled = () => {
+    try {
+      fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
+      fs.writeFileSync(p.listens, new Date().toISOString());
+    } catch {}
+    clearTimeout(quietTimer);
+    quietTimer = setTimeout(agentState, recentMs + 500);
+    quietTimer.unref?.();
+  };
   // Settings switched on the page never wake the agent; they ride along with the next real message.
   let changedSettings = null;
   // Messages count as delivered only when the poll that took them says so (POST /api/ack). If it never does
@@ -268,7 +288,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
     } else if (route === "GET /api/thread") {
       const feedback = readLines(p.feedback).map((f, i) => ({...f, from: "user", delivered: i < delivered}));
       const replies = readLines(p.replies);
-      res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify({items: [...feedback, ...replies], waiting: waiters.length, listens}));
+      res.writeHead(200, {"content-type": "application/json; charset=utf-8"}).end(JSON.stringify({items: [...feedback, ...replies], waiting: waiters.length, listens: listening()}));
     } else if (route === "POST /api/image") {
       const chunks = [];
       let size = 0;
@@ -450,14 +470,11 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       waiters.unshift((items) => res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(items)));
       flush();
     } else if (route === "GET /api/poll") {
-      if (!listens) {
-        listens = true;
-        fs.mkdirSync(p.state, {recursive: true, mode: 0o700});
-        fs.writeFileSync(p.listens, new Date().toISOString());
-      }
+      polled();
       let timer;
       const send = (items) => {
         clearTimeout(timer);
+        polled();
         res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify(items));
       };
       const drop = () => {
@@ -465,6 +482,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
         const i = waiters.indexOf(send);
         if (i >= 0) {
           waiters.splice(i, 1);
+          polled();
           agentState();
         }
       };
@@ -482,7 +500,7 @@ export function startServer(dir, {pollMs = 240_000, port = 0} = {}) {
       agentState();
       flush();
     } else if (route === "GET /api/status") {
-      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, listens, viewers: streams.size, version: VERSION, skill: SKILL_DIR}));
+      res.writeHead(200, {"content-type": "application/json"}).end(JSON.stringify({pid: process.pid, pending: pending.length, waiting: waiters.length, listens: listening(), viewers: streams.size, version: VERSION, skill: SKILL_DIR}));
     } else {
       res.writeHead(404).end();
     }

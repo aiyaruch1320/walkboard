@@ -66,6 +66,17 @@ test("poll --now reads what waits at once, and only a waiting poll makes the pag
   assert.ok(fs.existsSync(path.join(dir, ".walkboard", "listens")), "kept across restarts");
 });
 
+test("an agent that stopped polling a while ago no longer counts as listening", async (t) => {
+  const dir = planDir();
+  const s = await startServer(dir, {recentMs: 400});
+  t.after(s.close);
+  const listens = async () => (await (await fetch(`http://127.0.0.1:${s.port}/api/thread?token=${s.token}`)).json()).listens;
+  assert.equal((await run("poll", dir, "--timeout", "1")).stdout.trim(), "[]");
+  assert.equal(await listens(), true, "just polled: answering, or about to poll again");
+  await new Promise((r) => setTimeout(r, 700));
+  assert.equal(await listens(), false, "gone quiet: the page tells the user to say so in the agent's chat");
+});
+
 test("poll --now says so when the server is not running", async () => {
   const r = await run("poll", planDir(), "--now");
   assert.notEqual(r.code, 0);

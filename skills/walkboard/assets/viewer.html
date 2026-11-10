@@ -496,8 +496,16 @@ function renderAskBar() {
   bar.setAttribute("aria-label", words);
   bar.hidden = false;
   bar.onclick = () => {
-    openSide(opt ? {kind: "option", id: opt.id} : step ? {kind: "step", id: step.id} : {kind: "plan"});
-    requestAnimationFrame(() => document.querySelector("#panel textarea")?.focus());
+    const open = () => {
+      openSide(opt ? {kind: "option", id: opt.id} : step ? {kind: "step", id: step.id} : {kind: "plan"});
+      bar.classList.remove("leaving");
+      // The panel arrives in a View Transition: type into it once it is there.
+      setTimeout(() => document.querySelector("#panel textarea")?.focus({preventScroll: true}), 380);
+    };
+    // The bar fades away first, then the panel opens where the talk goes on.
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return open();
+    bar.classList.add("leaving");
+    setTimeout(open, 170);
   };
 }
 
@@ -9153,6 +9161,7 @@ function openHelp() {
 
 // A small card under the button that opened it; a click elsewhere, or on that button again, closes it.
 let cardFor = null;
+const toastHome = document.getElementById("toast").parentElement;
 function showCard(anchor, cls, ...parts) {
   const box = document.getElementById("toast");
   if (!box.hidden && cardFor === anchor && box.classList.contains(cls)) {
@@ -9163,11 +9172,22 @@ function showCard(anchor, cls, ...parts) {
   cardFor = anchor;
   box.className = "toast " + cls;
   box.replaceChildren(...parts);
-  const r = anchor.getBoundingClientRect();
-  box.style.top = r.bottom + 8 + "px";
-  box.style.left = Math.max(16, Math.min(r.left, innerWidth - 436)) + "px";
-  box.style.right = "auto";
   box.onclick = (ev) => ev.stopPropagation();
+  // A card under a button of the top bar lives in the bar, so it stays with the button as the page scrolls (the bar
+  // sticks to the top). Any other card is placed where its button is.
+  const bar = anchor.closest(".bar");
+  if (bar) {
+    if (box.parentElement !== bar) bar.append(box);
+    Object.assign(box.style, {position: "absolute", top: anchor.offsetTop + anchor.offsetHeight + 8 + "px", left: "0px", right: "auto"});
+    box.hidden = false;
+    const b = bar.getBoundingClientRect(), a = anchor.getBoundingClientRect(), w = box.offsetWidth;
+    // Under the button, kept inside the window.
+    box.style.left = Math.max(16 - b.left, Math.min(a.left - b.left, innerWidth - 16 - w - b.left)) + "px";
+    return;
+  }
+  if (box.parentElement !== toastHome) toastHome.append(box);
+  const r = anchor.getBoundingClientRect();
+  Object.assign(box.style, {position: "", top: r.bottom + 8 + "px", left: Math.max(16, Math.min(r.left, innerWidth - 436)) + "px", right: "auto"});
   box.hidden = false;
 }
 

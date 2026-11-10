@@ -61,7 +61,7 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .drawfail{color:var(--warn-tx);border:1.5px dashed var(--warn-bd);border-radius:var(--r2);padding:10px 14px}
 .problems{position:fixed;left:16px;bottom:16px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:var(--shadow-2);animation:wb-pop var(--t2) var(--ease) both}
 .bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:color-mix(in srgb,var(--bg) 76%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 1px 0 color-mix(in srgb,var(--line) 70%,transparent)}
-.bar button.primary{font-weight:500}
+.bar button.primary:not(.toast *){font-weight:500}
 .bar #barExtra{display:contents}
 .brand{display:inline-flex;align-items:center;gap:7px;margin-right:auto;font-size:var(--fs-4);letter-spacing:.2px;order:-2}
 .bar .brand{order:-1;margin-right:auto}
@@ -72,11 +72,12 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .foot{display:flex;justify-content:flex-end;margin-top:28px;padding-top:12px;border-top:1px solid var(--line);font-size:var(--fs-2)}
 .foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
 .foot a:hover{color:var(--text);text-decoration:underline}
-.bar button{font-size:var(--fs-2);padding:2px 10px;border-radius:999px}
+/* The bar's own buttons; a card that lives in the bar (showCard) keeps its own. */
+.bar button:not(.toast *){font-size:var(--fs-2);padding:2px 10px;border-radius:999px}
 .bar .helpbtn{padding:0;border-radius:50%;font-size:var(--fs-3);color:var(--muted)}
 .bar .helpbtn:hover{color:var(--text)}
 .bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
-.toast{position:fixed;right:16px;top:52px;max-width:min(420px,calc(100vw - 32px));z-index:21;background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--text);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:var(--r3);padding:12px 14px;font-size:var(--fs-3);box-shadow:var(--shadow-3)}
+.toast{position:fixed;right:16px;top:52px;max-width:min(420px,calc(100vw - 32px));z-index:21;background:color-mix(in srgb,var(--card) 94%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--text);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:var(--r3);padding:12px 14px;font-size:var(--fs-3);box-shadow:var(--shadow-3)}
 .toast ul{margin:6px 0 8px;padding-left:18px}
 :is(#view,#printout) .changed,.chip.changed{outline:3px solid var(--you-bd);outline-offset:3px}
 .problems ul{margin:4px 0 0;padding-left:20px}
@@ -380,6 +381,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .askbar:hover{border-color:color-mix(in srgb,var(--you-bd) 50%,transparent);color:var(--text);box-shadow:var(--shadow-3);transform:translateX(-50%) translateY(-1px)}
 .askbar .asklabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .askbar .askn{font-size:var(--fs-2);font-weight:600;min-width:20px;padding:0 6px;text-align:center;border-radius:999px;background:var(--you-bg);color:var(--you-tx)}
+.askbar.leaving{opacity:0;transform:translateX(-50%) translateY(8px) scale(.97);transition:opacity var(--t1) var(--ease),transform var(--t1) var(--ease);pointer-events:none}
 .askbar[hidden],body.side-open .askbar,body.sketching .askbar,body.snapshot .askbar{display:none}
 .firsthint{position:absolute;z-index:16;padding:7px 12px;border-radius:var(--r2);background:var(--you-bd);color:var(--card);font-size:var(--fs-3);font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.3);animation:hintin .25s ease both}
 .firsthint::before{content:"";position:absolute;left:20px;top:-5px;width:11px;height:11px;background:inherit;transform:rotate(45deg)}
@@ -457,7 +459,7 @@ svg.links path.dlhover:not(.dhit){stroke-width:3.4!important;opacity:1!important
 .map.sketch[data-tool="remove"] svg.links .dhit,.map.sketch[data-tool="rename"] svg.links .dhit{cursor:pointer}
 .map svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .dedit{position:absolute;z-index:70;font:inherit;font-size:var(--fs-3);font-weight:600;padding:3px 6px;border:1.5px solid var(--you-bd);border-radius:var(--r1);background:var(--card);color:var(--text);outline:none;box-shadow:0 4px 14px rgba(0,0,0,.15)}
-.dpop{position:absolute;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:360px;padding:12px;border-radius:var(--r3);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:var(--shadow-3);animation:wb-pop var(--t2) var(--ease) both}
+.dpop{position:absolute;z-index:80;display:flex;flex-direction:column;gap:8px;max-width:360px;padding:12px;border-radius:var(--r3);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--card) 94%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:var(--shadow-3);animation:wb-pop var(--t2) var(--ease) both}
 .dcolcard{display:grid;gap:6px;width:230px}
 .dcolcard .dcolkeys{justify-self:start;margin:0}
 .dphead{font-size:var(--fs-2);font-weight:600;color:var(--muted)}
@@ -1097,7 +1099,7 @@ svg .lk-backup{stroke-dasharray:6 2 1 2 1 2}
 .stage th{background:var(--code);font-weight:500}
 .stage .snote{font-size:var(--fs-2);color:var(--muted);margin:8px 0 0;padding-left:16px}
 .term{border-bottom:1.5px dotted currentColor;cursor:help}
-.tip{position:absolute;z-index:30;max-width:320px;background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--text);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:var(--r2);padding:10px 13px;font-size:var(--fs-3);line-height:1.5;box-shadow:var(--shadow-3);animation:wb-pop var(--t1) var(--ease) both}
+.tip{position:absolute;z-index:30;max-width:320px;background:color-mix(in srgb,var(--card) 94%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--text);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:var(--r2);padding:10px 13px;font-size:var(--fs-3);line-height:1.5;box-shadow:var(--shadow-3);animation:wb-pop var(--t1) var(--ease) both}
 .tip::before{content:"";position:absolute;top:-6px;left:var(--cx,16px);width:10px;height:10px;background:var(--card);border-left:1px solid var(--you-bd);border-top:1px solid var(--you-bd);transform:translateX(-50%) rotate(45deg)}
 .tip.above::before{top:auto;bottom:-6px;transform:translateX(-50%) rotate(225deg)}
 .tip b{display:block;color:var(--you-tx)}

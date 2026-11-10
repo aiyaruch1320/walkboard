@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **A new box is never lost.** After you add a box, zone or table in draft mode, the page scrolls to wherever the layout put it and marks it for a moment. A box added to a zone full of other zones goes under them, which could be off screen.
+- **Narrow windows sketch too.** Draft mode and arranging need a mouse and 640 px instead of 820, the toolbar drops its words to fit, and resizing across that width redraws the picture so its tools match.
 - **A first visit says what to do.** The first hint sits above its box when the chat bar would cover it, and mentions the bar. A sent message scrolls into view with what happens next.
 - **Draft mode explains itself.** A **?** on the toolbar lists the picture's tools, keys and moves, and links to that picture's sketching section in the docs, which now shows a whole sketch step by step (sketch.gif). A note about something refused while sketching links there too, and a line dropped back on its own box says why it was not drawn.
 - **SKILL.md:** the agent always tells the user what to do on the page when it gives the link; a waiting poll runs the whole session, building included; questions go to a question tool or the chat.

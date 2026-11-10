@@ -18,7 +18,7 @@ body:
     attributes:
       label: Walkboard version
       description: The bottom line of the ⋮ menu on the page, or the version in `/plugin`.
-      placeholder: "0.10.3"
+      placeholder: "0.11.0"
     validations:
       required: true
   - type: dropdown

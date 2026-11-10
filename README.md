@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="CHANGELOG.md"><img alt="version 0.10.3" src="https://img.shields.io/badge/version-0.10.3-7f77dd"></a>
+  <a href="CHANGELOG.md"><img alt="version 0.11.0" src="https://img.shields.io/badge/version-0.11.0-7f77dd"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-1d9e75"></a>
   <img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-ef9f27">
 </p>
@@ -41,7 +41,7 @@ Using Codex, Gemini CLI or another agent that reads `SKILL.md` skills? See [Use 
 
 Want to look before you install? [Open a live example](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=map&step=all) in your browser.
 
-> Walkboard is new (version 0.10). It is built and used every day with Claude Code on macOS. It has also been tried end to end with OpenCode. Windows, Linux and [other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html) such as Codex or Gemini CLI should work, but nobody has tried them by hand yet. [Issues](https://github.com/aiyaruch1320/walkboard/issues) are very welcome.
+> Walkboard is new (version 0.11). It is built and used every day with Claude Code on macOS. It has also been tried end to end with OpenCode. Windows, Linux and [other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html) such as Codex or Gemini CLI should work, but nobody has tried them by hand yet. [Issues](https://github.com/aiyaruch1320/walkboard/issues) are very welcome.
 
 ## Why Walkboard
 

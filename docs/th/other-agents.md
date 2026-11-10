@@ -32,7 +32,7 @@ check the page
 
 ต้องมี Node.js เวอร์ชัน 18.18 ขึ้นไป เช็กได้ด้วย `node -v`
 
-clone repository แล้ว copy โฟลเดอร์ `skills/walkboard` ทั้งโฟลเดอร์ ไม่ใช่แค่ `SKILL.md` ไปไว้ในโฟลเดอร์ที่ agent ของคุณอ่าน skill Codex อ่านจาก `~/.agents/skills` และ agent อื่นอีกหลายตัวก็อ่านจากที่นี่ OpenCode หา skill ในโฟลเดอร์ `.opencode/skills` ของโปรเจกต์ได้ด้วย ถ้า agent ของคุณอ่าน skill จากโฟลเดอร์อื่น ดูชื่อโฟลเดอร์ได้ในเอกสารของมัน
+clone repository แล้ว copy folder `skills/walkboard` ทั้ง folder ไม่ใช่แค่ `SKILL.md` ไปไว้ใน folder ที่ agent ของคุณอ่าน skill Codex อ่านจาก `~/.agents/skills` และ agent อื่นอีกหลายตัวก็อ่านจากที่นี่ OpenCode หา skill ใน folder `.opencode/skills` ของโปรเจกต์ได้ด้วย ถ้า agent ของคุณอ่าน skill จาก folder อื่น ดูชื่อ folder ได้ในเอกสารของมัน
 
 บน macOS หรือ Linux
 
@@ -50,7 +50,7 @@ New-Item -ItemType Directory -Force "$HOME\.agents\skills" | Out-Null
 Copy-Item -Recurse walkboard\skills\walkboard "$HOME\.agents\skills\walkboard"
 ```
 
-ตรวจว่า copy ถูกไหมด้วยการรัน command line ของมัน ถ้าถูก จะพิมพ์วิธีใช้ออกมา
+ตรวจว่า copy ถูกไหมด้วยการรัน command line ของมัน ถ้าถูก จะ print วิธีใช้ออกมา
 
 ```bash
 node ~/.agents/skills/walkboard/bin/walkboard.mjs --help
@@ -60,35 +60,35 @@ node ~/.agents/skills/walkboard/bin/walkboard.mjs --help
 
 เปิด session ใหม่ใน repository ของคุณ แล้วขอเป็นคำพูดธรรมดา เช่น "ขอดูการทำงานของ login เป็นภาพ" หรือ "วางแผนเพิ่ม health check ด้วย walkboard" agent จะเลือก skill เองจากคำอธิบายของมัน
 
-agent จะเขียนแผน แล้วส่งลิงก์ที่ขึ้นต้นด้วย `http://127.0.0.1:` มาให้ เปิดลิงก์นั้นในเบราว์เซอร์ ถ้า agent ไม่พูดถึง skill เลย ลองถามว่ามันมี skill walkboard ไหม ถ้าไม่มี กลับไปเช็กโฟลเดอร์ข้างบน แล้วเปิด session ใหม่
+agent จะเขียนแผน แล้วส่งลิงก์ที่ขึ้นต้นด้วย `http://127.0.0.1:` มาให้ เปิดลิงก์นั้นใน browser ถ้า agent ไม่พูดถึง skill เลย ลองถามว่ามันมี skill walkboard ไหม ถ้าไม่มี กลับไปเช็ก folder ข้างบน แล้วเปิด session ใหม่
 
 ## Permission และ sandbox
 
-agent จะรัน `node …/skills/walkboard/bin/walkboard.mjs` หลายครั้ง ให้อนุญาตคำสั่งนี้ไว้ในการตั้งค่าของ agent ไม่อย่างนั้นมันจะถามคุณทุกครั้ง
+agent จะรัน `node …/skills/walkboard/bin/walkboard.mjs` หลายครั้ง ให้อนุญาตคำสั่งนี้ไว้ใน setting ของ agent ไม่อย่างนั้นมันจะถามคุณทุกครั้ง
 
 Walkboard ต้องทำสองอย่างที่ **sandbox** (ระบบที่จำกัดว่า agent เข้าถึงอะไรได้บ้าง) แบบเข้มงวดอาจไม่ให้ทำ
 
-- เขียนแผนไว้ใน `~/.walkboard/` ยกเว้นคุณขอให้ใช้โฟลเดอร์อื่น
-- รัน server เล็กๆ บน 127.0.0.1 ให้เบราว์เซอร์ของคุณต่อเข้ามา
+- เขียนแผนไว้ใน `~/.walkboard/` ยกเว้นคุณขอให้ใช้ folder อื่น
+- รัน server เล็กๆ บน 127.0.0.1 ให้ browser ของคุณต่อเข้ามา
 
-ถ้า agent บอกว่าเขียนไฟล์ตรงนั้นไม่ได้ หรือเปิด server ไม่ได้ ให้อนุญาตสองอย่างนี้ในการตั้งค่า sandbox ของ agent ตัว server ไม่ส่ง request ออกไปทาง network เองเลย [SECURITY.md](../../SECURITY.md) บอกครบทุกอย่างที่มันอ่าน เขียน และรัน
+ถ้า agent บอกว่าเขียนไฟล์ตรงนั้นไม่ได้ หรือเปิด server ไม่ได้ ให้อนุญาตสองอย่างนี้ใน sandbox setting ของ agent ตัว server ไม่ส่ง request ออกไปทาง network เองเลย [SECURITY.md](../../SECURITY.md) บอกครบทุกอย่างที่มันอ่าน เขียน และรัน
 
 ## อัปเดตและถอนการติดตั้ง
 
-จะอัปเดต ให้ pull repository แล้ว copy โฟลเดอร์ใหม่อีกครั้ง
+จะอัปเดต ให้ pull repository แล้ว copy folder ใหม่อีกครั้ง
 
 ```bash
 cd walkboard && git pull
 rm -rf ~/.agents/skills/walkboard && cp -R skills/walkboard ~/.agents/skills/walkboard
 ```
 
-จะถอนการติดตั้ง ลบ `~/.agents/skills/walkboard` ทิ้ง แผนของคุณจะยังอยู่ใน `~/.walkboard/` จนกว่าคุณจะลบโฟลเดอร์นั้นด้วย
+จะถอนการติดตั้ง ลบ `~/.agents/skills/walkboard` ทิ้ง แผนของคุณจะยังอยู่ใน `~/.walkboard/` จนกว่าคุณจะลบ folder นั้นด้วย
 
 ## ทดสอบไปแค่ไหนแล้ว
 
 Walkboard สร้างและใช้ทุกวันกับ Claude Code และได้ลองครบทุกขั้นกับ **OpenCode** 2.2 แล้ว OpenCode หา skill ได้เอง วาดคำอธิบายและแผน ตอบคำถามและรับการอนุมัติเมื่อถูกบอกให้ดูหน้าเว็บ และลงมือทำขั้นแรกได้ agent อื่นก็น่าจะใช้ได้ เพราะทำตาม `SKILL.md` เดียวกัน แต่ยังไม่มีใครลองด้วยมือจริงๆ
 
-ถ้าคุณได้ลอง ช่วย[เล่าให้ฟังหน่อยว่าเป็นยังไง](https://github.com/aiyaruch1320/walkboard/issues/new/choose) ถึงจะใช้ได้ดีก็อยากรู้ เขียนเป็นภาษาไทยก็ได้ ฟอร์มแจ้งปัญหาจะถามว่าคุณใช้ agent ตัวไหน
+ถ้าคุณได้ลอง ช่วย[เล่าให้ฟังหน่อยว่าเป็นยังไง](https://github.com/aiyaruch1320/walkboard/issues/new/choose) ถึงจะใช้ได้ดีก็อยากรู้ เขียนเป็นภาษาไทยก็ได้ issue form จะถามว่าคุณใช้ agent ตัวไหน
 
 ## อ่านต่อ
 

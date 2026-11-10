@@ -1,18 +1,18 @@
 # Azure
 
-หน้านี้รวม kind ทั้งหมดของ Azure ที่ Walkboard รู้จัก คือกล่อง โซน และเส้นที่วาดบน[ภาพระบบ (map)](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
+หน้านี้รวม kind ทั้งหมดของ Azure ที่ Walkboard รู้จัก คือ box, zone และ line ที่วาดบน [map](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
 
-ถ้ากล่องมี kind จากหน้านี้ ภาพจะแสดงไอคอนและช่องข้อมูลของมัน ถ้าวางไว้นอกโซนที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
+ถ้า box มี kind จากหน้านี้ map จะแสดง icon และ field ของมัน ถ้าวางไว้นอก zone ที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
 
-![เว็บแอปเล็กๆ ที่มีฐานข้อมูลและ job วาดด้วย kind ของ Azure](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/azure.png)
+![web app เล็กๆ ที่มี database และ job วาดด้วย kind ของ Azure](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/azure.png)
 
-[เปิดภาพนี้ในตัวอย่างที่ลองได้ แล้วคลิกกล่องเพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=azure&step=all)
+[เปิด map นี้ใน live example แล้วคลิก box เพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=azure&step=all)
 
-## โซน (zone)
+## Zone
 
-โซนคือกรอบที่มีกล่องหรือโซนอื่นอยู่ข้างใน
+zone คือกรอบที่มี box หรือ zone อื่นอยู่ข้างใน
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
 | <a id="subscription"></a>**Subscription** `azure:subscription` | [Management group](#managementgroup) |  |  |  |
 | <a id="managementgroup"></a>**Management group** `azure:managementgroup` | [Management group](#managementgroup) |  |  |  |
@@ -21,16 +21,16 @@
 | <a id="vnet"></a>**Virtual network** `azure:vnet` | [Resource group](#resourcegroup), [Region](#region), [Subscription](#subscription) |  |  | cidr |
 | <a id="availabilityzone"></a>**Availability Zone** `azure:availabilityzone` | [Region](#region), [Virtual network](#vnet) |  |  |  |
 | <a id="subnet"></a>**Subnet** `azure:subnet` | [Virtual network](#vnet) |  |  | cidr |
-| <a id="nsg"></a>**Network security group** `azure:nsg` | [Virtual network](#vnet), [Subnet](#subnet) | กล่องข้างในจะถูกเช็กกับโซนที่ครอบมันอีกชั้น | security group, firewall | rules |
+| <a id="nsg"></a>**Network security group** `azure:nsg` | [Virtual network](#vnet), [Subnet](#subnet) | box ข้างในจะถูกเช็กกับ zone ที่ครอบมันอีกชั้น | security group, firewall | rules |
 
-## กล่อง (box)
+## Box
 
-กล่องคือทรัพยากรหนึ่งชิ้น เช่น server ฐานข้อมูล หรือ queue
+box คือ resource หนึ่งตัว เช่น server, database หรือ queue
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
-| <a id="vm"></a>**Virtual machine** `azure:vm` | [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | server, instance | size; os |
-| <a id="aks"></a>**AKS cluster** `azure:aks` | [Virtual network](#vnet), [Subnet](#subnet), [Resource group](#resourcegroup) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | kubernetes, k8s |  |
+| <a id="vm"></a>**Virtual machine** `azure:vm` | [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | server, instance | size; os |
+| <a id="aks"></a>**AKS cluster** `azure:aks` | [Virtual network](#vnet), [Subnet](#subnet), [Resource group](#resourcegroup) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | kubernetes, k8s |  |
 | <a id="appservice"></a>**App Service** `azure:appservice` | [Resource group](#resourcegroup), [Region](#region), [Subnet](#subnet) |  | web app | plan |
 | <a id="functions"></a>**Functions** `azure:functions` | [Resource group](#resourcegroup), [Region](#region) |  | function, serverless | runtime |
 | <a id="containerapps"></a>**Container Apps** `azure:containerapps` | [Resource group](#resourcegroup), [Region](#region), [Subnet](#subnet) |  | container |  |
@@ -61,13 +61,13 @@
 | <a id="monitor"></a>**Azure Monitor** `azure:monitor` | [Subscription](#subscription), [Resource group](#resourcegroup) |  |  |  |
 | <a id="acr"></a>**Container Registry** `azure:acr` | [Resource group](#resourcegroup), [Region](#region), [Subnet](#subnet), [Virtual network](#vnet) |  | registry, image |  |
 | <a id="openai"></a>**Azure OpenAI / Foundry** `azure:openai` | [Resource group](#resourcegroup), [Region](#region) |  | foundry, gpt, llm, ai |  |
-| <a id="vmss"></a>**VM scale set** `azure:vmss` | [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | autoscaling, scale set, vm | min; max; size |
+| <a id="vmss"></a>**VM scale set** `azure:vmss` | [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | autoscaling, scale set, vm | min; max; size |
 | <a id="disk"></a>**Managed disk** `azure:disk` | [Resource group](#resourcegroup), [Region](#region), [Availability Zone](#availabilityzone) |  | disk, volume, block storage | size; sku |
-| <a id="aro"></a>**Azure Red Hat OpenShift** `azure:aro` | [Virtual network](#vnet), [Subnet](#subnet), [Resource group](#resourcegroup) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | openshift, kubernetes |  |
+| <a id="aro"></a>**Azure Red Hat OpenShift** `azure:aro` | [Virtual network](#vnet), [Subnet](#subnet), [Resource group](#resourcegroup) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | openshift, kubernetes |  |
 | <a id="staticwebapps"></a>**Static Web Apps** `azure:staticwebapps` | [Resource group](#resourcegroup), [Region](#region) |  | static site, frontend, spa |  |
 | <a id="batch"></a>**Batch** `azure:batch` | [Resource group](#resourcegroup), [Subnet](#subnet) |  | batch job, hpc |  |
 | <a id="avd"></a>**Azure Virtual Desktop** `azure:avd` | [Resource group](#resourcegroup), [Subnet](#subnet), [Virtual network](#vnet) |  | vdi, desktop |  |
-| <a id="vmware"></a>**Azure VMware Solution** `azure:vmware` | [Resource group](#resourcegroup), [Region](#region) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน | vmware, vsphere |  |
+| <a id="vmware"></a>**Azure VMware Solution** `azure:vmware` | [Resource group](#resourcegroup), [Region](#region) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน | vmware, vsphere |  |
 | <a id="appconfig"></a>**App Configuration** `azure:appconfig` | [Resource group](#resourcegroup), [Region](#region), [Subnet](#subnet) |  | config, feature flags |  |
 | <a id="sqlmi"></a>**SQL Managed Instance** `azure:sqlmi` | [Subnet](#subnet), [Virtual network](#vnet) |  | sql server, db, database | tier |
 | <a id="mysql"></a>**Database for MySQL** `azure:mysql` | [Resource group](#resourcegroup), [Subnet](#subnet), [Region](#region) |  | db, database | tier |
@@ -91,7 +91,7 @@
 | <a id="trafficmanager"></a>**Traffic Manager** `azure:trafficmanager` | [Resource group](#resourcegroup), [Subscription](#subscription) |  | dns load balancing, failover |  |
 | <a id="waf"></a>**Web Application Firewall policy** `azure:waf` | [Resource group](#resourcegroup), [Subscription](#subscription) |  | waf |  |
 | <a id="ddos"></a>**DDoS Protection plan** `azure:ddos` | [Resource group](#resourcegroup), [Subscription](#subscription), [Virtual network](#vnet) |  | ddos |  |
-| <a id="vwan"></a>**Virtual WAN hub** `azure:vwan` | [Resource group](#resourcegroup), [Region](#region), [Subscription](#subscription) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน | hub, transit, virtual wan |  |
+| <a id="vwan"></a>**Virtual WAN hub** `azure:vwan` | [Resource group](#resourcegroup), [Region](#region), [Subscription](#subscription) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน | hub, transit, virtual wan |  |
 | <a id="routeserver"></a>**Route Server** `azure:routeserver` | [Subnet](#subnet), [Virtual network](#vnet) |  | bgp |  |
 | <a id="privatelinkservice"></a>**Private Link service** `azure:privatelinkservice` | [Subnet](#subnet), [Virtual network](#vnet) |  | private link |  |
 | <a id="loganalytics"></a>**Log Analytics workspace** `azure:loganalytics` | [Resource group](#resourcegroup), [Region](#region) |  | logs, kql |  |
@@ -108,9 +108,9 @@
 | <a id="documentintelligence"></a>**Document Intelligence** `azure:documentintelligence` | [Resource group](#resourcegroup), [Region](#region) |  | ocr, document, form recognizer |  |
 | <a id="devops"></a>**Azure DevOps / Pipelines** `azure:devops` | ที่ไหนก็ได้ |  | ci, cd, pipeline |  |
 
-## เส้น (line)
+## Line
 
-เส้นที่ไม่มี kind คือ traffic ธรรมดา คือส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับเส้นที่หมายถึงอย่างอื่น
+line ที่ไม่มี kind คือ traffic ธรรมดา ส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับ line ที่หมายถึงอย่างอื่น
 
 | Kind | หมายถึง |
 |---|---|

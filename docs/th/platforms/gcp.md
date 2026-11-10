@@ -1,18 +1,18 @@
 # Google Cloud
 
-หน้านี้รวม kind ทั้งหมดของ Google Cloud ที่ Walkboard รู้จัก คือกล่อง โซน และเส้นที่วาดบน[ภาพระบบ (map)](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
+หน้านี้รวม kind ทั้งหมดของ Google Cloud ที่ Walkboard รู้จัก คือ box, zone และ line ที่วาดบน [map](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
 
-ถ้ากล่องมี kind จากหน้านี้ ภาพจะแสดงไอคอนและช่องข้อมูลของมัน ถ้าวางไว้นอกโซนที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
+ถ้า box มี kind จากหน้านี้ map จะแสดง icon และ field ของมัน ถ้าวางไว้นอก zone ที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
 
-![เว็บแอปเล็กๆ ที่มีฐานข้อมูลและ job วาดด้วย kind ของ Google Cloud](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/gcp.png)
+![web app เล็กๆ ที่มี database และ job วาดด้วย kind ของ Google Cloud](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/gcp.png)
 
-[เปิดภาพนี้ในตัวอย่างที่ลองได้ แล้วคลิกกล่องเพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=gcp&step=all)
+[เปิด map นี้ใน live example แล้วคลิก box เพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=gcp&step=all)
 
-## โซน (zone)
+## Zone
 
-โซนคือกรอบที่มีกล่องหรือโซนอื่นอยู่ข้างใน
+zone คือกรอบที่มี box หรือ zone อื่นอยู่ข้างใน
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
 | <a id="org"></a>**Organization** `gcp:org` | ที่ไหนก็ได้ |  |  |  |
 | <a id="folder"></a>**Folder** `gcp:folder` | [Organization](#org), [Folder](#folder) |  |  |  |
@@ -21,18 +21,18 @@
 | <a id="region"></a>**Region** `gcp:region` | [Project](#project), [VPC network](#vpc) |  |  |  |
 | <a id="zone"></a>**Zone** `gcp:zone` | [Region](#region) |  |  |  |
 | <a id="subnet"></a>**Subnet** `gcp:subnet` | [VPC network](#vpc), [Region](#region) |  |  | cidr |
-| <a id="firewall"></a>**Firewall rule** `gcp:firewall` | [VPC network](#vpc), [Subnet](#subnet) | กล่องข้างในจะถูกเช็กกับโซนที่ครอบมันอีกชั้น | security group | rules |
+| <a id="firewall"></a>**Firewall rule** `gcp:firewall` | [VPC network](#vpc), [Subnet](#subnet) | box ข้างในจะถูกเช็กกับ zone ที่ครอบมันอีกชั้น | security group | rules |
 | <a id="sharedvpc"></a>**Shared VPC host project** `gcp:sharedvpc` | [Organization](#org), [Folder](#folder) |  | host project, xpn |  |
-| <a id="perimeter"></a>**VPC Service Controls perimeter** `gcp:perimeter` | [Organization](#org), [Folder](#folder) | กล่องข้างในจะถูกเช็กกับโซนที่ครอบมันอีกชั้น | service perimeter, vpc sc |  |
+| <a id="perimeter"></a>**VPC Service Controls perimeter** `gcp:perimeter` | [Organization](#org), [Folder](#folder) | box ข้างในจะถูกเช็กกับ zone ที่ครอบมันอีกชั้น | service perimeter, vpc sc |  |
 
-## กล่อง (box)
+## Box
 
-กล่องคือทรัพยากรหนึ่งชิ้น เช่น server ฐานข้อมูล หรือ queue
+box คือ resource หนึ่งตัว เช่น server, database หรือ queue
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
-| <a id="gce"></a>**Compute Engine VM** `gcp:gce` | [Subnet](#subnet), [Zone](#zone) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | vm, server, instance | type; os |
-| <a id="gke"></a>**GKE cluster** `gcp:gke` | [VPC network](#vpc), [Region](#region), [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | kubernetes, k8s | mode (autopilot, standard) |
+| <a id="gce"></a>**Compute Engine VM** `gcp:gce` | [Subnet](#subnet), [Zone](#zone) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | vm, server, instance | type; os |
+| <a id="gke"></a>**GKE cluster** `gcp:gke` | [VPC network](#vpc), [Region](#region), [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | kubernetes, k8s | mode (autopilot, standard) |
 | <a id="cloudrun"></a>**Cloud Run** `gcp:cloudrun` | [Region](#region), [Project](#project), [Subnet](#subnet), [VPC network](#vpc) |  | container, serverless | cpu; memory |
 | <a id="functions"></a>**Cloud Functions** `gcp:functions` | [Region](#region), [Project](#project), [Subnet](#subnet), [VPC network](#vpc) |  | function, serverless | runtime |
 | <a id="loadbalancer"></a>**Load balancer** `gcp:loadbalancer` | [Project](#project), [VPC network](#vpc), [Region](#region) |  | lb | scheme (external, internal) |
@@ -66,11 +66,11 @@
 | <a id="monitoring"></a>**Cloud Monitoring** `gcp:monitoring` | [Project](#project) |  |  |  |
 | <a id="artifactregistry"></a>**Artifact Registry** `gcp:artifactregistry` | [Region](#region), [Project](#project) |  | registry, image |  |
 | <a id="vertexai"></a>**Vertex AI / Agent Platform** `gcp:vertexai` | [Region](#region), [Project](#project) |  | gemini, ml, llm, agent |  |
-| <a id="mig"></a>**Managed instance group** `gcp:mig` | [Subnet](#subnet), [Zone](#zone), [Region](#region) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | autoscaling, instance group, vm | min; max; type |
+| <a id="mig"></a>**Managed instance group** `gcp:mig` | [Subnet](#subnet), [Zone](#zone), [Region](#region) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | autoscaling, instance group, vm | min; max; type |
 | <a id="disk"></a>**Persistent Disk / Hyperdisk** `gcp:disk` | [Zone](#zone), [Region](#region), [Subnet](#subnet) |  | disk, volume, block storage | size; type |
 | <a id="appengine"></a>**App Engine** `gcp:appengine` | [Region](#region), [Project](#project) |  | paas, web app |  |
 | <a id="batch"></a>**Batch** `gcp:batch` | [Region](#region), [Project](#project), [Subnet](#subnet) |  | batch job, hpc |  |
-| <a id="vmwareengine"></a>**VMware Engine** `gcp:vmwareengine` | [Region](#region), [VPC network](#vpc), [Project](#project) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน | vmware, vsphere |  |
+| <a id="vmwareengine"></a>**VMware Engine** `gcp:vmwareengine` | [Region](#region), [VPC network](#vpc), [Project](#project) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน | vmware, vsphere |  |
 | <a id="apigateway"></a>**API Gateway** `gcp:apigateway` | [Region](#region), [Project](#project) |  | api |  |
 | <a id="eventarc"></a>**Eventarc trigger** `gcp:eventarc` | [Region](#region), [Project](#project) |  | event, trigger |  |
 | <a id="workflows"></a>**Workflows** `gcp:workflows` | [Region](#region), [Project](#project) |  | orchestration, workflow |  |
@@ -99,9 +99,9 @@
 | <a id="trace"></a>**Cloud Trace** `gcp:trace` | [Project](#project) |  | tracing, latency |  |
 | <a id="documentai"></a>**Document AI** `gcp:documentai` | [Region](#region), [Project](#project) |  | ocr, document |  |
 
-## เส้น (line)
+## Line
 
-เส้นที่ไม่มี kind คือ traffic ธรรมดา คือส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับเส้นที่หมายถึงอย่างอื่น
+line ที่ไม่มี kind คือ traffic ธรรมดา ส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับ line ที่หมายถึงอย่างอื่น
 
 | Kind | หมายถึง |
 |---|---|

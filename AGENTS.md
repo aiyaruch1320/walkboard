@@ -51,7 +51,8 @@ The pages in `docs/` are for people who have never seen Walkboard. Write them th
 
 `docs/th/` mirrors `docs/` page for page (`docs/th/pictures/map.md` is `docs/pictures/map.md` in Thai), so the site can switch between them. It is written for Thai developers, not translated word for word:
 
-- Natural Thai, the way a Thai developer writes in a team chat or a blog. Technical terms stay as the team says them, in English (agent, plan, deploy, config, commit, box, zone, subnet, `plan.json`); explain them in Thai the first time, as the English pages do.
+- Natural Thai, the way a Thai developer writes in a team chat or a blog. The readers work in software, so software jargon a Thai developer would say in English is written in English, in Latin script: side panel, field, resource, map, export, browser, folder, icon, tab, card, toolbar, shortcut, label, setting, database, column, key, timeout, retry, token, port, deploy, config, commit, zone, subnet, `plan.json`. Do not coin a formal Thai word for these (not แผงด้านข้าง, ช่องข้อมูล, ทรัพยากร, ส่งออก). Explain a term in Thai the first time, as the English pages do.
+- Everyday words stay Thai (คลิก, เปิด, ลาก, ภาพ, ขั้น, กล่อง, ตาราง), and so do Thai grammar and sentence flow: only the nouns and jargon switch, so a page never reads as a wall of English.
 - A label on the page is written exactly as the Thai page shows it, from `th` in `assets/strings.js` (**✎ ร่างการแก้ไข**, **อนุมัติแผน**, **ให้ agent รีวิวภาพนี้**).
 - Same headings in the same order, the same images (same URLs) and live-example links, the same `<a id="…">` anchors. Links go to the Thai page when there is one, relatively (`../draft.md`), and to files in the repository as the English page does, one folder deeper.
 - "Good to know" is **ควรรู้:**, "Next steps" is **อ่านต่อ**.

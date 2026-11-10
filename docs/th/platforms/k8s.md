@@ -1,30 +1,30 @@
 # Kubernetes
 
-หน้านี้รวม kind ทั้งหมดของ Kubernetes ที่ Walkboard รู้จัก คือกล่อง โซน และเส้นที่วาดบน[ภาพระบบ (map)](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
+หน้านี้รวม kind ทั้งหมดของ Kubernetes ที่ Walkboard รู้จัก คือ box, zone และ line ที่วาดบน [map](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
 
-ถ้ากล่องมี kind จากหน้านี้ ภาพจะแสดงไอคอนและช่องข้อมูลของมัน ถ้าวางไว้นอกโซนที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
+ถ้า box มี kind จากหน้านี้ map จะแสดง icon และ field ของมัน ถ้าวางไว้นอก zone ที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
 
-![เว็บแอปเล็กๆ ที่มีฐานข้อมูลและ job วาดด้วย kind ของ Kubernetes](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/k8s.png)
+![web app เล็กๆ ที่มี database และ job วาดด้วย kind ของ Kubernetes](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/k8s.png)
 
-[เปิดภาพนี้ในตัวอย่างที่ลองได้ แล้วคลิกกล่องเพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=k8s&step=all)
+[เปิด map นี้ใน live example แล้วคลิก box เพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=k8s&step=all)
 
-## โซน (zone)
+## Zone
 
-โซนคือกรอบที่มีกล่องหรือโซนอื่นอยู่ข้างใน
+zone คือกรอบที่มี box หรือ zone อื่นอยู่ข้างใน
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
 | <a id="cluster"></a>**Cluster** `k8s:cluster` | ที่ไหนก็ได้ |  | kubernetes, k8s | version |
 | <a id="namespace"></a>**Namespace** `k8s:namespace` | [Cluster](#cluster) |  | ns |  |
-| <a id="networkpolicy"></a>**Network policy** `k8s:networkpolicy` | [Namespace](#namespace) | กล่องข้างในจะถูกเช็กกับโซนที่ครอบมันอีกชั้น | policy, firewall | rules |
+| <a id="networkpolicy"></a>**Network policy** `k8s:networkpolicy` | [Namespace](#namespace) | box ข้างในจะถูกเช็กกับ zone ที่ครอบมันอีกชั้น | policy, firewall | rules |
 | <a id="nodepool"></a>**Node pool** `k8s:nodepool` | [Cluster](#cluster) |  | node group, nodes | size; machine |
-| <a id="mesh"></a>**Service mesh** `k8s:mesh` | [Cluster](#cluster), [Namespace](#namespace) | กล่องข้างในจะถูกเช็กกับโซนที่ครอบมันอีกชั้น | istio, linkerd, mesh |  |
+| <a id="mesh"></a>**Service mesh** `k8s:mesh` | [Cluster](#cluster), [Namespace](#namespace) | box ข้างในจะถูกเช็กกับ zone ที่ครอบมันอีกชั้น | istio, linkerd, mesh |  |
 
-## กล่อง (box)
+## Box
 
-กล่องคือทรัพยากรหนึ่งชิ้น เช่น server ฐานข้อมูล หรือ queue
+box คือ resource หนึ่งตัว เช่น server, database หรือ queue
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
 | <a id="deployment"></a>**Deployment** `k8s:deployment` | [Namespace](#namespace) |  | pod, app | replicas; image; containers |
 | <a id="statefulset"></a>**StatefulSet** `k8s:statefulset` | [Namespace](#namespace) |  |  | replicas; image; containers |
@@ -41,7 +41,7 @@
 | <a id="hpa"></a>**HorizontalPodAutoscaler** `k8s:hpa` | [Namespace](#namespace) |  | autoscale | min; max |
 | <a id="serviceaccount"></a>**ServiceAccount** `k8s:serviceaccount` | [Namespace](#namespace) |  |  |  |
 | <a id="role"></a>**Role / RoleBinding** `k8s:role` | [Namespace](#namespace) |  | rbac |  |
-| <a id="node"></a>**Node** `k8s:node` | [Cluster](#cluster), [Node pool](#nodepool) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน | worker, machine | machine |
+| <a id="node"></a>**Node** `k8s:node` | [Cluster](#cluster), [Node pool](#nodepool) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน | worker, machine | machine |
 | <a id="replicaset"></a>**ReplicaSet** `k8s:replicaset` | [Namespace](#namespace) |  |  | replicas |
 | <a id="operator"></a>**Operator / controller** `k8s:operator` | [Namespace](#namespace) |  | controller, crd |  |
 | <a id="gateway"></a>**Gateway (Gateway API)** `k8s:gateway` | [Namespace](#namespace) |  | gateway api, load balancer | class; listeners |
@@ -57,9 +57,9 @@
 | <a id="externalsecret"></a>**ExternalSecret** `k8s:externalsecret` | [Namespace](#namespace) |  | external secrets, vault, secret store |  |
 | <a id="gitopsapp"></a>**GitOps app (Argo CD / Flux)** `k8s:gitopsapp` | [Namespace](#namespace), [Cluster](#cluster) |  | argo cd, argocd, flux, gitops |  |
 
-## เส้น (line)
+## Line
 
-เส้นที่ไม่มี kind คือ traffic ธรรมดา คือส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับเส้นที่หมายถึงอย่างอื่น
+line ที่ไม่มี kind คือ traffic ธรรมดา ส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับ line ที่หมายถึงอย่างอื่น
 
 | Kind | หมายถึง |
 |---|---|

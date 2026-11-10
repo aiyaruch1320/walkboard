@@ -1,34 +1,34 @@
 # Huawei Cloud
 
-หน้านี้รวม kind ทั้งหมดของ Huawei Cloud ที่ Walkboard รู้จัก คือกล่อง โซน และเส้นที่วาดบน[ภาพระบบ (map)](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
+หน้านี้รวม kind ทั้งหมดของ Huawei Cloud ที่ Walkboard รู้จัก คือ box, zone และ line ที่วาดบน [map](../pictures/map.md) ได้ และบอกว่าแต่ละอย่างมักอยู่ตรงไหน
 
-ถ้ากล่องมี kind จากหน้านี้ ภาพจะแสดงไอคอนและช่องข้อมูลของมัน ถ้าวางไว้นอกโซนที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
+ถ้า box มี kind จากหน้านี้ map จะแสดง icon และ field ของมัน ถ้าวางไว้นอก zone ที่อยู่ในคอลัมน์ "มักอยู่ใน" จะมีป้าย ⚠ เล็กๆ ขึ้นข้างชื่อ เป็นแค่คำเตือน ถ้าตั้งใจวางแบบนั้นก็ไม่เป็นไร อ่านว่า kind ทำงานยังไงได้ที่หน้า[แพลตฟอร์ม](README.md)
 
-![เว็บแอปเล็กๆ ที่มีฐานข้อมูลและ job วาดด้วย kind ของ Huawei Cloud](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/huawei.png)
+![web app เล็กๆ ที่มี database และ job วาดด้วย kind ของ Huawei Cloud](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/platforms/huawei.png)
 
-[เปิดภาพนี้ในตัวอย่างที่ลองได้ แล้วคลิกกล่องเพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=huawei&step=all)
+[เปิด map นี้ใน live example แล้วคลิก box เพื่อดู kind ของมัน ↗](https://aiyaruch1320.github.io/walkboard/examples/platforms.html?view=huawei&step=all)
 
-## โซน (zone)
+## Zone
 
-โซนคือกรอบที่มีกล่องหรือโซนอื่นอยู่ข้างใน
+zone คือกรอบที่มี box หรือ zone อื่นอยู่ข้างใน
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
 | <a id="region"></a>**Region** `huawei:region` | [Enterprise project](#enterpriseproject) |  |  |  |
 | <a id="vpc"></a>**VPC** `huawei:vpc` | [Region](#region) |  |  | cidr |
 | <a id="az"></a>**Availability Zone** `huawei:az` | [VPC](#vpc), [Region](#region) |  |  |  |
 | <a id="subnet"></a>**Subnet** `huawei:subnet` | [VPC](#vpc), [Availability Zone](#az) |  |  | cidr |
-| <a id="sg"></a>**Security group** `huawei:sg` | [VPC](#vpc), [Subnet](#subnet), [Availability Zone](#az) | กล่องข้างในจะถูกเช็กกับโซนที่ครอบมันอีกชั้น | security group, firewall | rules |
+| <a id="sg"></a>**Security group** `huawei:sg` | [VPC](#vpc), [Subnet](#subnet), [Availability Zone](#az) | box ข้างในจะถูกเช็กกับ zone ที่ครอบมันอีกชั้น | security group, firewall | rules |
 | <a id="enterpriseproject"></a>**Enterprise project** `huawei:enterpriseproject` | ที่ไหนก็ได้ |  | project, account |  |
 
-## กล่อง (box)
+## Box
 
-กล่องคือทรัพยากรหนึ่งชิ้น เช่น server ฐานข้อมูล หรือ queue
+box คือ resource หนึ่งตัว เช่น server, database หรือ queue
 
-| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | ช่องข้อมูล |
+| Kind | มักอยู่ใน | หมายเหตุ | ชื่ออื่น | Field |
 |---|---|---|---|---|
-| <a id="ecs"></a>**ECS** `huawei:ecs` | [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | vm, server, instance | flavor; os |
-| <a id="cce"></a>**CCE cluster** `huawei:cce` | [VPC](#vpc), [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | kubernetes, k8s |  |
+| <a id="ecs"></a>**ECS** `huawei:ecs` | [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | vm, server, instance | flavor; os |
+| <a id="cce"></a>**CCE cluster** `huawei:cce` | [VPC](#vpc), [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Kubernetes](k8s.md) อยู่ข้างในได้ | kubernetes, k8s |  |
 | <a id="cci"></a>**CCI container** `huawei:cci` | [Region](#region), [Subnet](#subnet) |  | container |  |
 | <a id="functiongraph"></a>**FunctionGraph** `huawei:functiongraph` | [Region](#region) |  |  |  |
 | <a id="elb"></a>**ELB** `huawei:elb` | [Subnet](#subnet), [VPC](#vpc) |  | lb, load balancer |  |
@@ -53,9 +53,9 @@
 | <a id="ces"></a>**Cloud Eye** `huawei:ces` | [Region](#region) |  |  |  |
 | <a id="lts"></a>**Log Tank Service** `huawei:lts` | [Region](#region) |  |  |  |
 | <a id="swr"></a>**SWR registry** `huawei:swr` | [Region](#region) |  | registry, image |  |
-| <a id="flexus"></a>**Flexus instance** `huawei:flexus` | [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | vm, server, lightweight | flavor; os |
-| <a id="bms"></a>**Bare Metal Server** `huawei:bms` | [Subnet](#subnet) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | bare metal, physical server | flavor; os |
-| <a id="as"></a>**Auto Scaling group** `huawei:as` | [Subnet](#subnet), [VPC](#vpc) | เป็นกล่อง หรือเป็นโซนเมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | autoscaling, scaling group | min; max |
+| <a id="flexus"></a>**Flexus instance** `huawei:flexus` | [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | vm, server, lightweight | flavor; os |
+| <a id="bms"></a>**Bare Metal Server** `huawei:bms` | [Subnet](#subnet) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | bare metal, physical server | flavor; os |
+| <a id="as"></a>**Auto Scaling group** `huawei:as` | [Subnet](#subnet), [VPC](#vpc) | เป็น box หรือเป็น zone เมื่อมีอะไรรันอยู่ข้างใน; มี [Container](container.md) อยู่ข้างในได้ | autoscaling, scaling group | min; max |
 | <a id="gpu"></a>**GPU Accelerated Cloud Server** `huawei:gpu` | [Subnet](#subnet) |  | gpu, gacs | flavor |
 | <a id="cae"></a>**Cloud Application Engine** `huawei:cae` | [Region](#region), [VPC](#vpc) |  | serverless, container, paas |  |
 | <a id="servicestage"></a>**ServiceStage** `huawei:servicestage` | [Region](#region), [VPC](#vpc) |  | paas, microservice |  |
@@ -89,9 +89,9 @@
 | <a id="codearts"></a>**CodeArts Pipeline** `huawei:codearts` | [Region](#region) |  | ci, cd, pipeline, devops |  |
 | <a id="modelarts"></a>**ModelArts / MaaS** `huawei:modelarts` | [Region](#region) |  | ai, ml, pangu, llm |  |
 
-## เส้น (line)
+## Line
 
-เส้นที่ไม่มี kind คือ traffic ธรรมดา คือส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับเส้นที่หมายถึงอย่างอื่น
+line ที่ไม่มี kind คือ traffic ธรรมดา ส่วนหนึ่งเรียกอีกส่วน kind ด้านล่างใช้กับ line ที่หมายถึงอย่างอื่น
 
 | Kind | หมายถึง |
 |---|---|

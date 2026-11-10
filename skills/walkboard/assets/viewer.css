@@ -1246,3 +1246,7 @@ svg .dr-add,svg .dr-change,svg .dr-remove,svg .dr-move{outline:none!important}
 .dhelpcard .dhelprow{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
 .dhelpcard .dhelprow svg{width:16px;height:16px;flex:none}
 .dhelpcard .doclink{display:block;margin-top:6px}
+/* Just added in draft mode: shown, and marked for a moment, wherever the layout put it. */
+.dreveal{animation:dreveal 1.5s ease-out}
+@keyframes dreveal{0%,40%{box-shadow:0 0 0 4px var(--you-bd)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.dreveal{animation:none;outline:3px solid var(--you-bd)}}

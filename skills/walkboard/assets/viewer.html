@@ -5251,6 +5251,7 @@ function renderMap(real, focus = null) {
           }
           const list = ops(), id = newNode(), spot = fixed ? relRect(tmp, z) : null;
           tmp.remove();
+          revealId = id;
           setOps([...list, {id: nextId(list), op: "addNode", node: id, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...kindFields(val), zone: z.dataset.zone, at}], undefined, spot ? {...layout(), [id]: {x: spot.x, y: spot.y, in: z.dataset.zone}} : undefined);
         },
       });
@@ -5286,6 +5287,7 @@ function renderMap(real, focus = null) {
             for (let n = 2; zoneNamed(key) || ops().some((o) => o.op === "addZone" && o.zone === key); n++) key = `${base} ${n}`;
           }
           const list = ops();
+          revealId = key;
           setOps([...list, {id: nextId(list), op: "addZone", zone: key, ...(key !== val ? {label: val} : {}), parent: z ? z.dataset.zone : "", at, ...(got.icon ? {icon: got.icon} : {}), ...(got.what ? {note: got.what} : {}), ...kindFields(got)}], undefined, spot ? {...layout(), ["z:" + key]: {x: spot.x, y: spot.y, in: z ? z.dataset.zone : ""}} : undefined);
         },
       });
@@ -7199,6 +7201,7 @@ function sketchModel({real, v, drafted, grid, svg, tools, frameAt, spotFor, plac
             return showProblem(t("tableTaken", val.name));
           }
           const list = ops(), node = newNode();
+          revealId = node;
           setOps([...list, {id: newOpId(list), op: "addTable", node, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...(group ? {group} : {})}], placeTable(node, x, y, group, h));
         },
       });
@@ -7403,6 +7406,7 @@ function sketchKit(real, tools, container) {
           done?.(!!val);
           if (!val) return;
           const list = ops(), node = kit.newNode();
+          revealId = node;
           const next = [...list, {id: newOpId(list), op: "addBox", node, name: val.name, ...(val.what ? {what: val.what} : {}), ...(val.icon ? {icon: val.icon} : {}), ...fields}];
           kit.setOps(val.flags ? kit.setFlags(next, node, val.flags) : next, undefined, spot ? {[node]: spot} : null);
         },
@@ -8083,6 +8087,22 @@ function placeViewTools() {
   };
   document.getElementById("viewTools").replaceChildren(...(own ? [own] : []), help);
 }
+// Something just added in draft mode: once the picture is drawn again, show it, wherever the layout put it (a box
+// in a zone full of other zones goes under them, maybe off screen), and mark it for a moment.
+let revealId = null;
+function revealAdded() {
+  const id = revealId;
+  revealId = null;
+  if (!id) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const e = document.querySelector(`#view [data-id="${CSS.escape(id)}"], #view [data-zone="${CSS.escape(id)}"]`);
+    if (!e) return;
+    const r = e.getBoundingClientRect(), bar = document.querySelector(".dtools")?.getBoundingClientRect().top ?? innerHeight;
+    if (r.top < 90 || r.bottom > bar - 8 || r.left < 0 || r.right > innerWidth) e.scrollIntoView({block: "center", inline: "nearest", behavior: "smooth"});
+    e.classList.add("dreveal");
+    setTimeout(() => e.classList.remove("dreveal"), 1600);
+  }));
+}
 function renderView() {
   const t0 = performance.now();
   // The picture is built again after every change: the page stays where it was. The new picture may only get its
@@ -8100,6 +8120,7 @@ function renderView() {
   if (sc && left) sc.scrollLeft = left;
   if (box) requestAnimationFrame(() => requestAnimationFrame(() => (box.style.minHeight = "")));
   if (side?.kind === "draft") renderSide();
+  revealAdded();
   window.__wbRender?.push(performance.now() - t0);
 }
 function renderViewNow() {

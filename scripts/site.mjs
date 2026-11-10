@@ -72,7 +72,9 @@ function inline(text, from) {
     } else if (m[3]) {
       const [, label, url] = t.match(/^\[([\s\S]*)\]\(([^)]+)\)$/);
       const to = href(url, from);
-      out += `<a href="${esc(to)}"${/^https?:/.test(to) && !to.startsWith(SITE) ? ' target="_blank" rel="noopener"' : ""}>${inline(label, from)}</a>`;
+      // Outside the site, and the live examples (a page with no way back to the docs), open in a new tab.
+      const away = (/^https?:/.test(to) && !to.startsWith(SITE)) || /(^|\/)examples\//.test(to);
+      out += `<a href="${esc(to)}"${away ? ' target="_blank" rel="noopener"' : ""}>${inline(label, from)}</a>`;
     } else if (m[4]) out += `<strong>${inline(t.slice(2, -2), from)}</strong>`;
     else out += t;
     at = m.index + t.length;

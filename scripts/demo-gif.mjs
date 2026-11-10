@@ -19,8 +19,15 @@ const cli = path.join(repo, "skills/walkboard/bin/walkboard.mjs");
 const pv = (...args) => execFileSync(process.execPath, [cli, ...args], {encoding: "utf8"}).trim();
 const W = 960, H = 600, SCALE = 2;
 const want = (name) => !process.env.DEMO_ONLY || process.env.DEMO_ONLY.split(",").includes(name);
-// As if an agent had waited on the page before: the status says it listens, not "tell your agent".
-const listens = (d) => (fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true}), fs.writeFileSync(path.join(d, ".walkboard", "listens"), "demo"));
+// As if an agent were polling the page: the status says it listens, not "tell your agent". The server counts a poll
+// as recent for a few minutes, so the mark is renewed while recording.
+const marks = [];
+const listens = (d) => {
+  fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true});
+  marks.push(path.join(d, ".walkboard", "listens"));
+  fs.writeFileSync(marks.at(-1), "demo");
+};
+const renew = setInterval(() => marks.forEach((f) => fs.writeFileSync(f, "demo")), 30_000);
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "walkboard-gif-"));
 const plan = JSON.parse(fs.readFileSync(path.join(repo, "examples/nightly-import/plan.json"), "utf8"));
@@ -513,6 +520,7 @@ try {
     save("sketch");
   }
 } finally {
+  clearInterval(renew);
   page.close();
   pv("stop", dir);
   pv("stop", designDir);

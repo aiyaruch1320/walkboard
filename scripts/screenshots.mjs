@@ -71,12 +71,17 @@ function draftPlan() {
 fs.mkdirSync(out, {recursive: true});
 const demo = demoPlan();
 const drafted = draftPlan();
-// As if an agent had waited on each page before: the status shows it listening, not "tell your agent".
+// As if an agent were polling each page: the status shows it listening, not "tell your agent". The server counts
+// a poll as recent for a few minutes, so the mark is renewed while the shots run.
+const marks = [];
+const mark = () => marks.forEach((f) => fs.writeFileSync(f, "screenshots"));
 const open = (d) => {
   fs.mkdirSync(path.join(d, ".walkboard"), {recursive: true});
-  fs.writeFileSync(path.join(d, ".walkboard", "listens"), "screenshots");
+  marks.push(path.join(d, ".walkboard", "listens"));
+  mark();
   return pv("open", d, "--no-browser");
 };
+const renew = setInterval(mark, 30_000);
 const urls = {
   build: open(path.join(repo, "examples/nightly-import")),
   explain: open(path.join(repo, "examples/explain-login")),
@@ -140,6 +145,7 @@ try {
     prepare: `document.getElementById('talks').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.rtalk').click(); await new Promise((r) => setTimeout(r, 300)); document.querySelector('.fresh')?.remove();`,
   });
 } finally {
+  clearInterval(renew);
   page.close();
   for (const u of Object.values(urls)) {
     const dir = {[urls.demo]: demo, [urls.draft]: drafted, [urls.build]: "examples/nightly-import", [urls.explain]: "examples/explain-login", [urls.pictures]: "examples/pictures", [urls.platforms]: "examples/platforms"}[u];

@@ -1523,6 +1523,16 @@ function sideTitle(c) {
 // The panel that holds a message's conversation.
 const sideOf = (m) => (m.node ? {kind: "node", id: m.node} : m.step ? {kind: "step", id: m.step} : m.option ? (m.criterion ? {kind: "cell", option: m.option, criterion: m.criterion} : {kind: "option", id: m.option}) : {kind: "plan"});
 
+// The panel coming or going, in one View Transition: the panel slides in from the right edge while the page's column
+// narrows as a picture of itself, so nothing is laid out again on every frame (which is what made it stutter).
+// A narrow window keeps its sheet from the bottom.
+function sideMotion(update) {
+  const can = document.startViewTransition && innerWidth >= 820 && !snapshot && document.visibilityState === "visible" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!can) return update();
+  const root = document.documentElement;
+  root.classList.add("wb-vt");
+  document.startViewTransition(update).finished.catch(() => {}).finally(() => root.classList.remove("wb-vt"));
+}
 function openSide(ctx) {
   side = ctx;
   if (ctx.kind !== "node") nodeId = null;
@@ -1535,10 +1545,14 @@ function openSide(ctx) {
     const pic = document.querySelector("#view > .scroll > .diagram");
     if (pic) document.getElementById("view").style.setProperty("--held-w", pic.offsetWidth + "px");
   }
-  document.getElementById("side").inert = false;
-  document.body.classList.add("side-open");
-  renderSide();
-  highlight();
+  const show = () => {
+    document.getElementById("side").inert = false;
+    document.body.classList.add("side-open");
+    renderSide();
+    highlight();
+  };
+  if (was) show();
+  else sideMotion(show);
   // Open on the latest message, as a chat does.
   requestAnimationFrame(() => document.querySelectorAll("#side .thread").forEach((x) => (x.scrollTop = x.scrollHeight)));
   // Once the page column has narrowed, keep the box you clicked in sight.
@@ -1557,9 +1571,11 @@ function closeSide() {
   const open = document.querySelector("#view .active"), top0 = open?.getBoundingClientRect().top;
   side = null;
   nodeId = null;
-  document.getElementById("side").inert = true;
-  document.body.classList.remove("side-open");
-  highlight();
+  sideMotion(() => {
+    document.getElementById("side").inert = true;
+    document.body.classList.remove("side-open");
+    highlight();
+  });
   clearTimeout(closeSide.timer);
   closeSide.timer = setTimeout(() => {
     if (!document.body.classList.contains("side-open")) document.getElementById("view").style.removeProperty("--held-w");
@@ -8135,13 +8151,15 @@ function slideTabs(tabs) {
   tabs.prepend(pill);
   tabs.classList.add("slid");
   const to = {left: on.offsetLeft, top: on.offsetTop, width: on.offsetWidth, height: on.offsetHeight};
-  const place = (r) => Object.assign(pill.style, {left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px"});
-  place(lastTab || to);
-  if (lastTab) {
-    pill.getBoundingClientRect();
-    place(to);
-  }
+  Object.assign(pill.style, {left: to.left + "px", top: to.top + "px", width: to.width + "px", height: to.height + "px"});
+  const from = lastTab;
   lastTab = to;
+  if (!from || (from.left === to.left && from.top === to.top) || !pill.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // Like a drop of water: it reaches toward the tab first (wide, a little flatter), then gathers there.
+  const frame = (r, extra = {}) => ({left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px", ...extra});
+  const sameRow = from.top === to.top, l = Math.min(from.left, to.left), r = Math.max(from.left + from.width, to.left + to.width);
+  const reach = sameRow ? frame({left: l, top: to.top + 1, width: r - l, height: to.height - 2}) : frame({left: to.left, top: to.top, width: to.width, height: to.height}, {opacity: 0.6});
+  pill.animate([frame(from), {...reach, offset: 0.45}, frame(to)], {duration: 420, easing: "cubic-bezier(.3,.7,.2,1)"});
 }
 function renderView() {
   const t0 = performance.now();
@@ -8181,7 +8199,7 @@ function renderViewNow() {
     const belongs = (x) => options().some((o) => o.view === x.id || o.id === x.option);
     const pick = (x, label = x.title || x.id, cls = "") => {
       const b = el("button", (x.id === v.id ? "on " : "") + cls, label);
-      b.onclick = () => crossPicture(() => {
+      b.onclick = () => x.id !== viewId && crossPicture(() => {
         viewId = chosenView = x.id;
         renderView();
         renderCompare();
@@ -8196,15 +8214,16 @@ function renderViewNow() {
       // Out of the running (fails a must): no percentage to compare, as in the table.
       if (failsMust(plan, o.id).length) b.append(el("span", "pct out", "✗"));
       else if (pct[o.id] != null) b.append(el("span", "pct", pct[o.id] + "%"));
-      b.onclick = () => chooseOption(o.id);
+      b.onclick = () => o.id !== shown?.id && chooseOption(o.id);
       return b;
     }), ...plan.views.filter((x) => !belongs(x)).map((x, i) => pick(x, undefined, i ? "" : "afteropts")), ...(sub ? [sub] : []));
   } else tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
     const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
-    b.onclick = () => crossPicture(() => {
+    b.onclick = () => x.id !== viewId && crossPicture(() => {
       viewId = chosenView = x.id;
       renderView();
     });
+    if (x.id === v.id) b.setAttribute("aria-current", "true");
     return b;
   }) : []));
   slideTabs(tabs);
@@ -9504,9 +9523,9 @@ function applyTheme() {
 }
 applyTheme();
 
-// ⋮ holds what is used now and then: export, theme, shortcuts and the tour.
+// The gear holds what is used now and then: the mode, who commits, export, theme, the guide and shortcuts.
 const moreBtn = document.getElementById("more");
-moreBtn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="currentColor"><circle cx="8" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="8" cy="13" r="1.5"/></svg>';
+moreBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M19.13 10.03 L21.49 10.55 L21.49 13.45 L19.13 13.97 L18.44 15.65 L19.73 17.69 L17.69 19.73 L15.65 18.44 L13.97 19.13 L13.45 21.49 L10.55 21.49 L10.03 19.13 L8.35 18.44 L6.31 19.73 L4.27 17.69 L5.56 15.65 L4.87 13.97 L2.51 13.45 L2.51 10.55 L4.87 10.03 L5.56 8.35 L4.27 6.31 L6.31 4.27 L8.35 5.56 L10.03 4.87 L10.55 2.51 L13.45 2.51 L13.97 4.87 L15.65 5.56 L17.69 4.27 L19.73 6.31 L18.44 8.35Z"/><circle cx="12" cy="12" r="3.2"/></svg>';
 moreBtn.title = t("moreTip");
 moreBtn.setAttribute("aria-label", t("moreTip"));
 moreBtn.onclick = (e) => {

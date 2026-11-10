@@ -73,7 +73,8 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
 .foot a:hover{color:var(--text);text-decoration:underline}
 .bar button{font-size:var(--fs-2);padding:2px 10px;border-radius:999px}
-.bar .helpbtn{padding:0;border-radius:50%;font-size:var(--fs-3)}
+.bar .helpbtn{padding:0;border-radius:50%;font-size:var(--fs-3);color:var(--muted)}
+.bar .helpbtn:hover{color:var(--text)}
 .bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
 .toast{position:fixed;right:16px;top:52px;max-width:min(420px,calc(100vw - 32px));z-index:21;background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--text);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:var(--r3);padding:12px 14px;font-size:var(--fs-3);box-shadow:var(--shadow-3)}
 .toast ul{margin:6px 0 8px;padding-left:18px}
@@ -792,9 +793,12 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .stepcard .donewhen{margin:0;font-size:var(--fs-3);color:var(--muted)}
 .tabs{position:relative;display:inline-flex;flex-wrap:wrap;gap:2px;margin-bottom:10px;padding:3px;border-radius:calc(var(--r2) + 3px);background:var(--seg)}
 .tabs button{position:relative;z-index:1;border-color:transparent;background:transparent;padding:4px 12px;color:var(--muted);transition:color var(--t2) var(--ease),transform var(--t1) var(--ease)}
-.tabs button:hover{border-color:transparent;color:var(--text)}
+.tabs button:hover{border-color:transparent;background:transparent;color:var(--text)}
+.tabs > button:not(.on):hover{background:color-mix(in srgb,var(--seg-on) 20%,transparent)}
+.tabs > button.on{cursor:default}
+.tabs > button.on:active{transform:none}
 .tabs button:active{transform:scale(.97)}
-.tabind{position:absolute;z-index:0;border-radius:var(--r2);background:var(--seg-on);box-shadow:var(--shadow-1);transition:left var(--t3) var(--spring),top var(--t3) var(--spring),width var(--t3) var(--spring),height var(--t3) var(--spring);pointer-events:none}
+.tabind{position:absolute;z-index:0;border-radius:var(--r2);background:var(--seg-on);box-shadow:var(--shadow-1);pointer-events:none}
 .tabs button.on{color:var(--text);font-weight:500}
 .tabs:empty{display:none}
 .subtabs button.on{background:var(--seg-on);box-shadow:var(--shadow-1)}
@@ -1196,7 +1200,7 @@ body.snapshot .cmpnote button{display:none!important}
 }
 .cmp .wtext{display:none}
 /* ⋯ menu */
-.toast.menucard{display:grid;gap:0;padding:3px;width:auto;min-width:190px;max-width:260px;border:1px solid var(--line)}
+.toast.menucard{display:grid;gap:1px;padding:5px;width:max-content;min-width:200px;max-width:calc(100vw - 32px)}
 .toast:not([hidden]){animation:pop .14s ease-out}
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}}
 @media (prefers-reduced-motion:reduce){.toast:not([hidden]){animation:none}}
@@ -1233,18 +1237,18 @@ path.mv-on{stroke:var(--new-bd)!important;stroke-width:3.2!important;stroke-dash
 .copylist li{color:var(--copy-tx)}
 .copylist li.keep{color:var(--muted)}
 .mitem{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;text-align:left;padding:5px 10px;border-radius:var(--r1);font-size:var(--fs-2)}
-.mitem:hover{background:var(--you-bg)}
+.mitem:hover{background:color-mix(in srgb,var(--you-bg) 80%,transparent)}
 a.mitem{color:inherit;text-decoration:none}
 .mitem .mext{margin-left:auto;color:var(--muted);font-size:var(--fs-1)}
 .doclink{display:inline-block;margin-top:8px;font-size:var(--fs-2);color:var(--muted);text-decoration:none}
 .doclink:hover{color:var(--text);text-decoration:underline}
 .mversion{padding:4px 10px 2px;margin-top:2px;border-top:1px solid var(--line);font-size:var(--fs-1);color:var(--muted);user-select:text}
 .mthemes{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:3px 6px 3px 10px;font-size:var(--fs-2)}
-.mthemes .seg{display:inline-flex;gap:2px;padding:2px;border:1px solid var(--line);border-radius:var(--r2);background:var(--bg)}
+.mthemes .seg{display:inline-flex;flex:none;gap:2px;padding:2px;border-radius:var(--r2);background:var(--seg)}
 .mthemes .seg button{border:0;border-radius:var(--r1);width:26px;height:22px;padding:0;margin:0;display:grid;place-items:center;background:transparent;color:var(--muted)}
 .mthemes .seg.words button{width:auto;padding:0 7px;font-size:var(--fs-1);white-space:nowrap}
 .mthemes .seg button:hover{color:var(--text)}
-.mthemes .seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.mthemes .seg button.on{background:var(--seg-on);color:var(--text);box-shadow:var(--shadow-1)}
 .mthemes .seg button:focus:not(:focus-visible),.mitem:focus:not(:focus-visible){outline:none}
 /* A wide picture fades where there is more to scroll to. */
 .scroll.more-r{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 36px),transparent)}
@@ -1321,3 +1325,18 @@ button:focus:not(:focus-visible){outline:none}
 /* Thin scrollbars that only show what they must. */
 *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--muted) 45%,transparent) transparent}
 @media print{.bar{-webkit-backdrop-filter:none;backdrop-filter:none;background:none}.tabind{display:none}}
+/* The side panel coming and going (viewer.html, sideMotion): while the View Transition runs, nothing transitions in
+   the page itself. The page column narrows as a picture of itself, kept at its own scale (clipped, never squeezed),
+   and the panel is revealed from the right edge. */
+.layout>main{view-transition-name:wb-main}
+.side{view-transition-name:wb-side}
+html.wb-vt .layout,html.wb-vt .side,html.wb-vt .side-inner{transition:none!important}
+::view-transition-image-pair(wb-main),::view-transition-image-pair(wb-side){overflow:clip}
+::view-transition-old(wb-main),::view-transition-new(wb-main),::view-transition-old(wb-side),::view-transition-new(wb-side){height:100%;width:auto;object-fit:none;object-position:left top}
+::view-transition-group(wb-main),::view-transition-group(wb-side){animation-duration:var(--t3);animation-timing-function:cubic-bezier(.32,.72,0,1)}
+/* The page shows its new layout at once (no ghost of the old one under it); the panel is what moves. */
+html.wb-vt::view-transition-old(wb-main),html.wb-vt::view-transition-old(wb-bar){display:none}
+html.wb-vt::view-transition-new(wb-main),html.wb-vt::view-transition-new(wb-bar){animation:none;height:100%;width:auto;object-fit:none;object-position:left top}
+html.wb-vt::view-transition-image-pair(wb-bar){overflow:clip}
+/* The bar takes its new width at once, so its buttons are never cut while the panel moves. */
+html.wb-vt::view-transition-group(wb-bar){animation:none}

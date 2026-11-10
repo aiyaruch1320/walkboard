@@ -32,7 +32,7 @@ You can tell which way a page works from the status at the top right. It reads *
 
 You need Node.js 18.18 or newer. Run `node -v` to check.
 
-Clone the repository, then copy the whole `skills/walkboard` folder, not only `SKILL.md`, to the folder where your agent reads skills. `~/.agents/skills` is where Codex looks, and several other agents read it too. If yours reads skills from another folder, its documentation names it.
+Clone the repository, then copy the whole `skills/walkboard` folder, not only `SKILL.md`, to the folder where your agent reads skills. `~/.agents/skills` is where Codex looks, and several other agents read it too. OpenCode also finds a skill in your project's `.opencode/skills` folder. If yours reads skills from another folder, its documentation names it.
 
 On macOS or Linux:
 
@@ -86,7 +86,7 @@ To uninstall, delete `~/.agents/skills/walkboard`. Your plans stay in `~/.walkbo
 
 ## How well it is tested
 
-Walkboard is built and used every day with Claude Code. Other agents should work, because they follow the same `SKILL.md`, but nobody has tried them by hand yet.
+Walkboard is built and used every day with Claude Code. It has also been tried end to end with **OpenCode** 2.2: it found the skill by itself, drew an explanation and a plan, answered questions and an approval when told to check the page, and built the first step. Other agents should work too, because they follow the same `SKILL.md`, but nobody has tried them by hand yet.
 
 If you try one, please [tell us how it went](https://github.com/aiyaruch1320/walkboard/issues/new/choose), even if it worked. The bug form asks which agent you use.
 

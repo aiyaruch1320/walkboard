@@ -64,7 +64,7 @@ Fewer than having the agent write an HTML page itself. The agent writes one smal
 
 ### Does it work with other agents?
 
-Yes. Agents that read `SKILL.md` skills, such as Codex, Gemini CLI or Cursor, get the same pictures and page. The difference is that most of them cannot be woken up by a click, so your messages on the page wait until you tell the agent "check the page" in its chat. Only Claude Code is tested by hand so far. [Use other agents](other-agents.md) shows how to install it and what to expect.
+Yes. Agents that read `SKILL.md` skills, such as Codex, Gemini CLI or Cursor, get the same pictures and page. The difference is that most of them cannot be woken up by a click, so your messages on the page wait until you tell the agent "check the page" in its chat. Claude Code is used every day, and OpenCode has been tried end to end. [Use other agents](other-agents.md) shows how to install it and what to expect.
 
 ## Limits
 

@@ -123,7 +123,7 @@ mkdir -p ~/.agents/skills
 cp -R walkboard/skills/walkboard ~/.agents/skills/walkboard
 ```
 
-จากนั้นเปิด session ใหม่ แล้วขอเป็นคำพูดธรรมดา เช่น "ขอดูการทำงานของ login เป็นภาพ" รายละเอียดอื่น เช่น Windows, sandbox และการอัปเดต อยู่ในหน้า [Use other agents](../other-agents.md) (ภาษาอังกฤษ) ตอนนี้ยังทดสอบจริงแค่กับ Claude Code
+จากนั้นเปิด session ใหม่ แล้วขอเป็นคำพูดธรรมดา เช่น "ขอดูการทำงานของ login เป็นภาพ" รายละเอียดอื่น เช่น Windows, sandbox และการอัปเดต อยู่ในหน้า [Use other agents](../other-agents.md) (ภาษาอังกฤษ) ตอนนี้ใช้จริงทุกวันกับ Claude Code และลองครบทุกขั้นกับ OpenCode แล้ว (OpenCode หา skill ในโฟลเดอร์ `.opencode/skills` ของโปรเจกต์ได้ด้วย)
 
 ### อัปเดตแล้วแต่หน้าเว็บยังเป็นเวอร์ชันเก่า
 

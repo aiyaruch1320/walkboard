@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Tried with OpenCode, and fixed what it tripped on.** OpenCode found the skill in `.opencode/skills`, drew a plan, and handled questions, an answered guess and an approval when told to check the page. Along the way: the page now counts an agent as listening only while it polls or did in the last few minutes (OpenCode backgrounded a poll that then ended with its run, and the page kept saying "busy"); SKILL.md says only a tool that starts a new turn when a background command ends may poll, and never to claim messages arrive by themselves; `set` keeps a plan written one entry per line, so the agent's next Edit still matches.
 - **A new box is never lost.** After you add a box, zone or table in draft mode, the page scrolls to wherever the layout put it and marks it for a moment. A box added to a zone full of other zones goes under them, which could be off screen.
 - **Narrow windows sketch too.** Draft mode and arranging need a mouse and 640 px instead of 820, the toolbar drops its words to fit, and resizing across that width redraws the picture so its tools match.
 - **A first visit says what to do.** The first hint sits above its box when the chat bar would cover it, and mentions the bar. A sent message scrolls into view with what happens next.

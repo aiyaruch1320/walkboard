@@ -41,7 +41,7 @@ Using Codex, Gemini CLI or another agent that reads `SKILL.md` skills? See [Use 
 
 Want to look before you install? [Open a live example](https://aiyaruch1320.github.io/walkboard/examples/pictures.html?view=map&step=all) in your browser.
 
-> Walkboard is new (version 0.10). It is built and used every day with Claude Code on macOS. Windows, Linux and [other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html) such as Codex or Gemini CLI should work, but nobody has tried them by hand yet. [Issues](https://github.com/aiyaruch1320/walkboard/issues) are very welcome.
+> Walkboard is new (version 0.10). It is built and used every day with Claude Code on macOS. It has also been tried end to end with OpenCode. Windows, Linux and [other agents](https://aiyaruch1320.github.io/walkboard/other-agents.html) such as Codex or Gemini CLI should work, but nobody has tried them by hand yet. [Issues](https://github.com/aiyaruch1320/walkboard/issues) are very welcome.
 
 ## Why Walkboard
 
@@ -106,7 +106,7 @@ Everything stays on your machine. Each plan gets its own small Node server with 
   2. Claude Code: prefer the plugin, `claude plugin marketplace add aiyaruch1320/walkboard`, then `claude plugin install walkboard@walkboard`. Without plugins, clone this repository and copy `skills/walkboard` to `~/.claude/skills/walkboard`.
   3. Other agents that read `SKILL.md` skills (Codex, GitHub Copilot, Cursor, Gemini CLI, …): clone this repository and copy the whole `skills/walkboard` folder, not only `SKILL.md`, into the agent's user skills folder: `~/.agents/skills/walkboard` for Codex (and the shared location several agents read), otherwise the folder that agent's documentation names.
   4. Tell the user to start a new session. It worked if the agent lists the `walkboard` skill (in Claude Code, `/walkboard` appears in the slash-command menu) and `node <skill dir>/bin/walkboard.mjs` prints its usage.
-  5. Only Claude Code is tested so far. Elsewhere the page and pictures work the same. An agent that cannot be woken by a background command does not wait on the page: the user tells it "check the page" in its chat, and it reads what waits with `walkboard poll --now` (see SKILL.md).
+  5. Claude Code is used every day and OpenCode was tried end to end; others are untested. Elsewhere the page and pictures work the same. An agent that cannot be woken by a background command does not wait on the page: the user tells it "check the page" in its chat, and it reads what waits with `walkboard poll --now` (see SKILL.md).
 - **Changing this repository**: read [AGENTS.md](AGENTS.md) for the map, rules and checks.
 
 ## License

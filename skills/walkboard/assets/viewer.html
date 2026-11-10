@@ -1095,11 +1095,13 @@ function totals() {
 }
 
 function chooseOption(id) {
-  optionId = id;
-  viewId = curOption()?.view || viewId;
-  renderView();
-  renderStepCard();
-  renderCompare();
+  crossPicture(() => {
+    optionId = id;
+    viewId = curOption()?.view || viewId;
+    renderView();
+    renderStepCard();
+    renderCompare();
+  });
 }
 
 function sourceLink(src) {
@@ -8124,6 +8126,23 @@ function revealAdded() {
     setTimeout(() => e.classList.remove("dreveal"), 1600);
   }));
 }
+// The picture tabs are one segmented control: a pill under the chosen tab, sliding there from the last one.
+let lastTab = null;
+function slideTabs(tabs) {
+  const on = tabs.querySelector(":scope > button.on");
+  if (!on) return tabs.classList.remove("slid");
+  const pill = el("span", "tabind");
+  tabs.prepend(pill);
+  tabs.classList.add("slid");
+  const to = {left: on.offsetLeft, top: on.offsetTop, width: on.offsetWidth, height: on.offsetHeight};
+  const place = (r) => Object.assign(pill.style, {left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px"});
+  place(lastTab || to);
+  if (lastTab) {
+    pill.getBoundingClientRect();
+    place(to);
+  }
+  lastTab = to;
+}
 function renderView() {
   const t0 = performance.now();
   // The picture is built again after every change: the page stays where it was. The new picture may only get its
@@ -8162,11 +8181,11 @@ function renderViewNow() {
     const belongs = (x) => options().some((o) => o.view === x.id || o.id === x.option);
     const pick = (x, label = x.title || x.id, cls = "") => {
       const b = el("button", (x.id === v.id ? "on " : "") + cls, label);
-      b.onclick = () => {
+      b.onclick = () => crossPicture(() => {
         viewId = chosenView = x.id;
         renderView();
         renderCompare();
-      };
+      });
       return b;
     };
     const under = shown ? plan.views.filter((x) => x.id === shown.view || x.option === shown.id) : [];
@@ -8182,12 +8201,13 @@ function renderViewNow() {
     }), ...plan.views.filter((x) => !belongs(x)).map((x, i) => pick(x, undefined, i ? "" : "afteropts")), ...(sub ? [sub] : []));
   } else tabs.replaceChildren(...(plan.views.length > 1 ? plan.views.map((x) => {
     const b = el("button", x.id === v.id ? "on" : "", x.title || x.id);
-    b.onclick = () => {
+    b.onclick = () => crossPicture(() => {
       viewId = chosenView = x.id;
       renderView();
-    };
+    });
     return b;
   }) : []));
+  slideTabs(tabs);
   // Tabs in one scrolling row (a phone): the picture on screen is the tab in sight.
   const onTab = tabs.querySelector(":scope > .on");
   if (onTab && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = Math.max(0, onTab.offsetLeft - tabs.offsetLeft - 24);
@@ -8289,41 +8309,71 @@ function syncUrl() {
 
 // Show the step in a picture that contains its boxes; back to the picture the user picked when no step is selected.
 let chosenView = null;
-function followStep(step) {
+// The picture a step should be shown on, or null to stay on the one on screen.
+function stepView(step) {
   // A step that tells a story needs the picture that holds the boxes it moves between.
   const ends = stepMoves(step).flatMap((m) => [m.from, m.to]);
   if (ends.length) {
     const has = (v) => ends.filter((e) => (KINDS[v.kind]?.refs(v) || []).includes(e)).length;
     const now = plan.views.find((x) => x.id === viewId) || plan.views[0];
     const best = [...plan.views].sort((a, b) => has(b) - has(a))[0];
-    if (best && best !== now && has(best) > has(now)) {
-      viewId = best.id;
-      renderView();
-    }
-    return;
+    return best && best !== now && has(best) > has(now) ? best.id : null;
   }
-  if (!step && chosenView && chosenView !== viewId && plan.views.some((x) => x.id === chosenView)) {
-    viewId = chosenView;
-    return renderView();
-  }
+  if (!step && chosenView && chosenView !== viewId && plan.views.some((x) => x.id === chosenView)) return chosenView;
   const want = new Set(step?.nodes || []);
-  if (!want.size || [...document.querySelectorAll("#view [data-id]")].some((e) => want.has(e.dataset.id))) return;
-  const v = plan.views.find((x) => KINDS[x.kind]?.refs(x).some((k) => want.has(k)));
-  if (v) {
-    viewId = v.id;
+  if (!want.size || [...document.querySelectorAll("#view [data-id]")].some((e) => want.has(e.dataset.id))) return null;
+  return plan.views.find((x) => KINDS[x.kind]?.refs(x).some((k) => want.has(k)))?.id ?? null;
+}
+function followStep(step) {
+  const id = stepView(step);
+  if (id && id !== viewId) {
+    viewId = id;
     renderView();
   }
 }
 
+// Changing picture: the old one fades across to the new one, and a box found in both moves to its new place
+// (View Transitions; each box shared by name for the moment of the change). Skipped where it would not be smooth:
+// no API, reduced motion, a hidden tab, paper, a picture with very many boxes.
+function crossPicture(update) {
+  const can = document.startViewTransition && !snapshot && !printState && document.visibilityState === "visible" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!can) return update();
+  const tag = () => {
+    const seen = new Set(), boxes = [...document.querySelectorAll("#view [data-id]")];
+    if (boxes.length > 120) return;
+    for (const b of boxes) {
+      const n = "wbn-" + b.dataset.id.replace(/[^\w-]/g, "_");
+      if (seen.has(n)) continue;
+      seen.add(n);
+      b.style.viewTransitionName = n;
+    }
+  };
+  tag();
+  const t = document.startViewTransition(() => {
+    update();
+    tag();
+  });
+  t.finished.catch(() => {}).finally(() => document.querySelectorAll("#view [data-id]").forEach((b) => (b.style.viewTransitionName = "")));
+}
+
 function selectStep(id) {
+  const show = () => {
+    stepId = id;
+    renderSteps();
+    renderStepCard();
+    followStep(curStep());
+    highlight();
+    document.querySelector(".stepbar .chip.sel")?.scrollIntoView({block: "nearest", inline: "center"});
+    stepFades();
+    startStory();
+  };
+  // A step on another picture crosses to it; on the same picture, what it does not touch fades (CSS).
+  const was = stepId;
   stepId = id;
-  renderSteps();
-  renderStepCard();
-  followStep(curStep());
-  highlight();
-  document.querySelector(".stepbar .chip.sel")?.scrollIntoView({block: "nearest", inline: "center"});
-  stepFades();
-  startStory();
+  const to = stepView(curStep());
+  stepId = was;
+  if (to && to !== viewId) crossPicture(show);
+  else show();
 }
 
 const EDITOR_URL = {

@@ -49,7 +49,13 @@ The pages in `docs/` are for people who have never seen Walkboard. Write them th
 - **End with "Next steps"**: two or three pages, each with one line on why you would read it.
 - Use the labels exactly as the page shows them, and keep the page URLs: the page links to `pictures/<kind>`, `platforms/<profile>`, `draft`, `share`, `faq` and `th/`.
 
-`docs/th/` is written in Thai for Thai readers, not translated word for word. Use the Thai labels from `assets/strings.js`.
+`docs/th/` mirrors `docs/` page for page (`docs/th/pictures/map.md` is `docs/pictures/map.md` in Thai), so the site can switch between them. It is written for Thai developers, not translated word for word:
+
+- Natural Thai, the way a Thai developer writes in a team chat or a blog. Technical terms stay as the team says them, in English (agent, plan, deploy, config, commit, box, zone, subnet, `plan.json`); explain them in Thai the first time, as the English pages do.
+- A label on the page is written exactly as the Thai page shows it, from `th` in `assets/strings.js` (**✎ ร่างการแก้ไข**, **อนุมัติแผน**, **ให้ agent รีวิวภาพนี้**).
+- Same headings in the same order, the same images (same URLs) and live-example links, the same `<a id="…">` anchors. Links go to the Thai page when there is one, relatively (`../draft.md`), and to files in the repository as the English page does, one folder deeper.
+- "Good to know" is **ควรรู้:**, "Next steps" is **อ่านต่อ**.
+- The platform pages under `docs/th/platforms/` are generated with the English ones (`node scripts/profiles-doc.mjs`), except `README.md`.
 
 ## Check your change
 

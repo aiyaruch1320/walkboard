@@ -92,3 +92,13 @@ test("each picture with draft mode has the #sketch anchor its draft help links t
   }
 });
 
+test("every docs page has its Thai twin at the same path under docs/th/, with the same anchors", () => {
+  const pages = (dir) => fs.readdirSync(path.join(root, dir), {withFileTypes: true}).flatMap((e) => (e.isDirectory() ? (e.name === "th" ? [] : pages(path.join(dir, e.name))) : e.name.endsWith(".md") ? [path.join(dir, e.name)] : []));
+  const ids = (f) => [...fs.readFileSync(f, "utf8").matchAll(/<a id="([^"]+)"/g)].map((m) => m[1]).sort();
+  for (const en of pages("docs").map((f) => path.relative(path.join(root, "docs"), path.join(root, f)))) {
+    if (en === "GUIDE.md") continue; // a stub that only points at the new pages
+    const th = path.join(root, "docs/th", en);
+    assert.ok(fs.existsSync(th), `docs/th/${en}`);
+    assert.deepEqual(ids(th), ids(path.join(root, "docs", en)), `anchors of docs/th/${en}`);
+  }
+});

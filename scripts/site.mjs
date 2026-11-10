@@ -27,8 +27,15 @@ const NAV = [
   ["Pictures", ["pictures/README.md", "pictures/flow.md", "pictures/map.md", "pictures/sequence.md", "pictures/transform.md", "pictures/journey.md", "pictures/state.md", "pictures/decision.md", "pictures/timeline.md", "pictures/datamodel.md", "pictures/impact.md", "pictures/diff.md"]],
   ["Platforms", ["platforms/README.md", "platforms/aws.md", "platforms/gcp.md", "platforms/azure.md", "platforms/huawei.md", "platforms/k8s.md", "platforms/container.md", "platforms/onprem.md"]],
   ["Reference", ["reference.md", "faq.md"]],
-  ["ภาษาไทย", ["th/README.md"]],
 ];
+// docs/th/ mirrors docs/ page for page: the same menu in Thai, and a switch in the header to the same page in the
+// other language.
+const SECTIONS_TH = {"Getting started": "เริ่มต้นใช้งาน", Guides: "วิธีใช้", Pictures: "ภาพ", Platforms: "แพลตฟอร์ม", Reference: "อ้างอิง"};
+const NAV_TH = NAV.map(([head, list]) => [SECTIONS_TH[head], list.map((p) => "th/" + p)]);
+const WORDS = {
+  en: {overview: "Overview", prev: "← Previous", next: "Next →", other: "ภาษาไทย", edit: "Edit this page on GitHub", report: "Report a problem", suffix: " · Walkboard docs", home: "Walkboard docs", menu: "Menu", brand: "docs"},
+  th: {overview: "ภาพรวม", prev: "← ก่อนหน้า", next: "ถัดไป →", other: "English", edit: "แก้หน้านี้บน GitHub", report: "แจ้งปัญหา", suffix: " · คู่มือ Walkboard", home: "คู่มือ Walkboard", menu: "เมนู", brand: "คู่มือ"},
+};
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 // GitHub's anchor for a heading: lower case, punctuation dropped, spaces to hyphens.
@@ -155,36 +162,39 @@ const pages = (dir = "") => fs.readdirSync(path.join(docs, dir), {withFileTypes:
 });
 const titleOf = (md) => fs.readFileSync(path.join(docs, md), "utf8").match(/^# (.+)$/m)?.[1] || md;
 
-const navTitle = (p) => (p.endsWith("README.md") && p !== "README.md" && p !== "th/README.md" ? "Overview" : titleOf(p));
+const isOverview = (p) => /(^|\/)[^/]+\/README\.md$/.test(p) && p !== "th/README.md";
 
 function layout(md, body) {
   const up = "../".repeat(md.split("/").length - 1);
-  const th = md.startsWith("th/");
+  const th = md.startsWith("th/"), w = WORDS[th ? "th" : "en"], menu = th ? NAV_TH : NAV;
   const title = titleOf(md);
-  const nav = NAV.map(([head, list]) => `<div class="navsec"><div class="navhead">${esc(head)}</div>${list.map((p) => `<a href="${up}${htmlName(p)}"${p === md ? ' class="on" aria-current="page"' : ""}>${esc(navTitle(p))}</a>`).join("")}</div>`).join("");
-  // Previous and next page in the menu's order; the Thai page stands alone.
-  const order = NAV.flatMap(([, list]) => list).filter((p) => !p.startsWith("th/"));
+  const navTitle = (p) => (isOverview(p) ? w.overview : titleOf(p));
+  const nav = menu.map(([head, list]) => `<div class="navsec"><div class="navhead">${esc(head)}</div>${list.map((p) => `<a href="${up}${htmlName(p)}"${p === md ? ' class="on" aria-current="page"' : ""}>${esc(navTitle(p))}</a>`).join("")}</div>`).join("");
+  // Previous and next page in the menu's order.
+  const order = menu.flatMap(([, list]) => list);
   const at = order.indexOf(md);
-  const pageLink = (p, cls, label) => `<a class="${cls}" href="${up}${htmlName(p)}"><span>${label}</span>${esc(navTitle(p) === "Overview" ? titleOf(p) : navTitle(p))}</a>`;
-  const pager = at < 0 ? "" : `<nav class="pager">${at > 0 ? pageLink(order[at - 1], "prev", "← Previous") : ""}${at < order.length - 1 ? pageLink(order[at + 1], "next", "Next →") : ""}</nav>`;
+  const pageLink = (p, cls, label) => `<a class="${cls}" href="${up}${htmlName(p)}"><span>${label}</span>${esc(titleOf(p))}</a>`;
+  const pager = at < 0 ? "" : `<nav class="pager">${at > 0 ? pageLink(order[at - 1], "prev", w.prev) : ""}${at < order.length - 1 ? pageLink(order[at + 1], "next", w.next) : ""}</nav>`;
+  // The same page in the other language, or that language's start page when there is none.
+  const twin = th ? md.slice(3) : "th/" + md, other = fs.existsSync(path.join(docs, twin)) ? twin : th ? "README.md" : "th/README.md";
   return `<!doctype html>
 <html lang="${th ? "th" : "en"}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(md === "README.md" ? "Walkboard docs" : title + " · Walkboard docs")}</title>
+<title>${esc(md === "README.md" || md === "th/README.md" ? w.home : title + w.suffix)}</title>
 <link rel="icon" href="${up}logo/mark.svg">
 <link rel="stylesheet" href="${up}assets/site.css">
 </head>
 <body>
-<header class="top"><a class="brand" href="${up}index.html"><img src="${up}logo/mark.svg" alt="" width="22" height="22">Walkboard <span>docs</span></a><nav><a href="${up}${th ? "index.html" : "th/index.html"}">${th ? "English" : "ภาษาไทย"}</a><a href="${GITHUB}" target="_blank" rel="noopener">GitHub</a></nav></header>
+<header class="top"><a class="brand" href="${up}${th ? "th/" : ""}index.html"><img src="${up}logo/mark.svg" alt="" width="22" height="22">Walkboard <span>${w.brand}</span></a><nav><a href="${up}${htmlName(other)}" hreflang="${th ? "en" : "th"}" lang="${th ? "en" : "th"}">${w.other}</a><a href="${GITHUB}" target="_blank" rel="noopener">GitHub</a></nav></header>
 <div class="wrap">
-<details class="menu"><summary>Menu</summary><nav>${nav}</nav></details>
+<details class="menu"><summary>${w.menu}</summary><nav>${nav}</nav></details>
 <aside class="side"><nav>${nav}</nav></aside>
 <main class="doc">
 ${body}
 ${pager}
-<footer class="foot"><a href="${GITHUB}/blob/main/docs/${md}" target="_blank" rel="noopener">Edit this page on GitHub</a> · <a href="${GITHUB}/issues/new/choose" target="_blank" rel="noopener">Report a problem</a></footer>
+<footer class="foot"><a href="${GITHUB}/blob/main/docs/${md}" target="_blank" rel="noopener">${w.edit}</a> · <a href="${GITHUB}/issues/new/choose" target="_blank" rel="noopener">${w.report}</a></footer>
 </main>
 </div>
 </body>

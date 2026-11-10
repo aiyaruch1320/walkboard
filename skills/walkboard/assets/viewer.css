@@ -352,7 +352,7 @@ body.side-open .side-inner{opacity:1;transform:none}
 .erframe-label .icon svg{width:13px;height:13px}
 .erframe-label small{font-weight:400;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .erframe-label .ptag{flex:none}
-@media (pointer:fine) and (min-width:820px){body:not(.snapshot) .erhead,body:not(.snapshot) .erframe-label{cursor:grab}}
+@media (pointer:fine) and (min-width:640px){body:not(.snapshot) .erhead,body:not(.snapshot) .erframe-label{cursor:grab}}
 .er.dragging,.er.dragging .erhead,.er.dragging .erframe-label{cursor:grabbing;user-select:none}
 .ltools{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:0 0 6px}
 .ltools[hidden],.ltools [hidden]{display:none}
@@ -644,7 +644,7 @@ svg.links path.dr-remove:not(.head){stroke-dasharray:2 5}
 .graph.sketch{min-width:100%}
 .graph.sketch:not(.free){padding-bottom:120px}
 .graph.dragging,.graph.dragging *{cursor:grabbing!important;user-select:none}
-@media (pointer:fine) and (min-width:820px){body:not(.snapshot) .graph:not(.sketch)>[data-anchor]{cursor:grab}body:not(.snapshot) .graph.sketch[data-tool="select"]>[data-anchor]{cursor:grab}}
+@media (pointer:fine) and (min-width:640px){body:not(.snapshot) .graph:not(.sketch)>[data-anchor]{cursor:grab}body:not(.snapshot) .graph.sketch[data-tool="select"]>[data-anchor]{cursor:grab}}
 .lane.dtemp{opacity:.85}
 .lane.dtemp .row{min-height:44px}
 .graph [data-anchor],.k8s [data-anchor],.lane .node{position:relative}
@@ -725,7 +725,7 @@ svg.links .dsidedot.on{fill:var(--you-bd);stroke:var(--you-bd)}
 .er svg.links .dtmp{fill:none;stroke:var(--you-bd);stroke-width:2;stroke-dasharray:6 4}
 .map.dragging,.map.dragging *{cursor:grabbing!important;user-select:none}
 .map.dragging .node,.map.dragging .zone{transition:none}
-@media (pointer:fine) and (min-width:820px){body:not(.snapshot) .map .zhead{cursor:grab}}
+@media (pointer:fine) and (min-width:640px){body:not(.snapshot) .map .zhead{cursor:grab}}
 /* Room for lines to run around boxes instead of over them. */
 .map.linked{gap:44px 64px}
 .map.linked .zone{padding-bottom:46px}
@@ -1250,3 +1250,5 @@ svg .dr-add,svg .dr-change,svg .dr-remove,svg .dr-move{outline:none!important}
 .dreveal{animation:dreveal 1.5s ease-out}
 @keyframes dreveal{0%,40%{box-shadow:0 0 0 4px var(--you-bd)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.dreveal{animation:none;outline:3px solid var(--you-bd)}}
+/* A narrow window: the draft toolbar keeps its tools and drops words, and still scrolls if it must. */
+@media (max-width:819px){.dtools .dmode{font-size:0;gap:0;padding:0 6px}.dtools .dsep{margin:0 1px}.dtools{bottom:10px}.dtip{bottom:60px}}

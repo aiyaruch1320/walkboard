@@ -3009,7 +3009,15 @@ function sheetsForPaper(box, v) {
   box.querySelector(".pcap")?.append(` · ${t("printOverview")}`);
   return made;
 }
-const canArrange = () => !snapshot && served && !printState && innerWidth >= 820 && matchMedia("(pointer: fine)").matches;
+// A mouse and room for the toolbar: a narrow window (split screen, zoomed in) still sketches; a phone does not.
+const ARRANGE_W = 640;
+const canArrange = () => !snapshot && served && !printState && innerWidth >= ARRANGE_W && matchMedia("(pointer: fine)").matches;
+// Resizing across that width redraws the picture, so its pencil and tools match the window.
+let couldArrange = null;
+addEventListener("resize", () => {
+  const now = canArrange();
+  if (plan && couldArrange !== null && now !== couldArrange) renderView();
+});
 const draftShown = () => !printState && !drawingDiff;
 // On paper the draft goes along: a picture is sketched to be talked over, with the agent and with people. Export can leave
 // it out. Before / after compares the plan's own pictures, so never there.
@@ -8045,7 +8053,7 @@ function scrollHints() {
 // Before / after looks like the pictures it compares, so it has their pencil in the same place: it leads to one of them.
 // A kind of picture that takes no draft has no pencil at all.
 function diffPencil(v) {
-  if (v.kind !== "diff" || snapshot || !served || printState || innerWidth < 820 || !matchMedia("(pointer: fine)").matches) return null;
+  if (v.kind !== "diff" || snapshot || !served || printState || innerWidth < ARRANGE_W || !matchMedia("(pointer: fine)").matches) return null;
   const sides = [v.before, v.after].map((id) => plan.views.find((x) => x.id === id));
   if (!sides.some((x) => draftable(x))) return null;
   const row = el("div", "ltools"), pencil = el("button", "lsketch");
@@ -8124,6 +8132,7 @@ function renderView() {
   window.__wbRender?.push(performance.now() - t0);
 }
 function renderViewNow() {
+  couldArrange = canArrange();
   pictureHelp = null;
   document.getElementById("view").classList.remove("intro");
   document.querySelectorAll(".dtools, .dtip").forEach((e) => e.remove());

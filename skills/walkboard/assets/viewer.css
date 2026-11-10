@@ -1252,3 +1252,21 @@ svg .dr-add,svg .dr-change,svg .dr-remove,svg .dr-move{outline:none!important}
 @media (prefers-reduced-motion:reduce){.dreveal{animation:none;outline:3px solid var(--you-bd)}}
 /* A narrow window: the draft toolbar keeps its tools and drops words, and still scrolls if it must. */
 @media (max-width:819px){.dtools .dmode{font-size:0;gap:0;padding:0 6px}.dtools .dsep{margin:0 1px}.dtools{bottom:10px}.dtip{bottom:60px}}
+/* Only on a wide screen: the count of guesses still to confirm stands in for their chips on a phone. */
+.cons .copen{display:none;cursor:pointer}
+/* A phone: the top bar fits in two rows, the guesses become a count, the picture tabs scroll in one row. */
+@media (max-width:600px){
+  .bar{gap:6px;padding:6px 0}
+  .bar .brand b,.bar .progress,.conn .cwords{display:none}
+  .bar .nextbox{max-width:100%}
+  .bar .nextbox .primary{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  .cons .cchip,.cons .cmore{display:none}
+  .cons .copen{display:inline}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs>*{flex:none}
+  .viewbar{flex-wrap:nowrap;align-items:center}
+  .viewbar .tabs{flex:1;min-width:0;margin-bottom:0}
+  .viewtools{flex:none}
+}

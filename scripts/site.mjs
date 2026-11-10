@@ -33,8 +33,8 @@ const NAV = [
 const SECTIONS_TH = {"Getting started": "เริ่มต้นใช้งาน", Guides: "วิธีใช้", Pictures: "ภาพ", Platforms: "แพลตฟอร์ม", Reference: "อ้างอิง"};
 const NAV_TH = NAV.map(([head, list]) => [SECTIONS_TH[head], list.map((p) => "th/" + p)]);
 const WORDS = {
-  en: {search: "Search", searchHint: "Search the docs", noResults: "Nothing found", overview: "Overview", prev: "← Previous", next: "Next →", other: "ภาษาไทย", edit: "Edit this page on GitHub", report: "Report a problem", suffix: " · Walkboard docs", home: "Walkboard docs", menu: "Menu", brand: "docs"},
-  th: {search: "ค้นหา", searchHint: "ค้นหาในคู่มือ", noResults: "ไม่พบ", overview: "ภาพรวม", prev: "← ก่อนหน้า", next: "ถัดไป →", other: "English", edit: "แก้หน้านี้บน GitHub", report: "แจ้งปัญหา", suffix: " · คู่มือ Walkboard", home: "คู่มือ Walkboard", menu: "เมนู", brand: "คู่มือ"},
+  en: {toc: "On this page", search: "Search", searchHint: "Search the docs", noResults: "Nothing found", overview: "Overview", prev: "← Previous", next: "Next →", other: "ภาษาไทย", edit: "Edit this page on GitHub", report: "Report a problem", suffix: " · Walkboard docs", home: "Walkboard docs", menu: "Menu", brand: "docs"},
+  th: {toc: "ในหน้านี้", search: "ค้นหา", searchHint: "ค้นหาในคู่มือ", noResults: "ไม่พบ", overview: "ภาพรวม", prev: "← ก่อนหน้า", next: "ถัดไป →", other: "English", edit: "แก้หน้านี้บน GitHub", report: "แจ้งปัญหา", suffix: " · คู่มือ Walkboard", home: "คู่มือ Walkboard", menu: "เมนู", brand: "คู่มือ"},
 };
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -198,6 +198,7 @@ ${body}
 ${pager}
 <footer class="foot"><a href="${GITHUB}/blob/main/docs/${md}" target="_blank" rel="noopener">${w.edit}</a> · <a href="${GITHUB}/issues/new/choose" target="_blank" rel="noopener">${w.report}</a></footer>
 </main>
+<aside class="toc" aria-label="${w.toc}"><div class="tochead">${w.toc}</div><nav></nav></aside>
 </div>
 <script src="${up}assets/site.js" defer data-index="${up}search-${th ? "th" : "en"}.json" data-base="${up}" data-hint="${w.searchHint}" data-none="${w.noResults}"></script>
 </body>

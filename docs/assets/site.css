@@ -1,103 +1,145 @@
-/* The docs site (scripts/site.mjs): Walkboard's own colours, light and dark. */
+/* The docs site (scripts/site.mjs, assets/site.js). Calm and quiet, after Apple's own pages: system type set large
+   and tight, room around everything, hairlines instead of boxes, a frosted header, and short motion with a purpose
+   (about 0.3 s, an ease that settles) that never makes you wait and is left out when reduced motion is asked for. */
 :root{
-  --bg:#f7f6f2;--card:#ffffff;--text:#1f1e1c;--muted:#6b6a65;--line:#d9d7cf;
-  --accent:#7f77dd;--accent-tx:#4b44a8;--accent-bg:#eeedfb;--code:#f1efe8;
+  --bg:#fbfbfd;--card:#ffffff;--text:#1d1d1f;--muted:#6e6e73;--line:#d2d2d7;--soft:#f5f5f7;
+  --accent:#7f77dd;--accent-tx:#4b44a8;--accent-bg:#efedfc;--code:#f5f5f7;
+  --ease:cubic-bezier(.25,.1,.25,1);--top:52px;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root{
-  --bg:#1a1a18;--card:#242422;--text:#ecebe6;--muted:#a3a19a;--line:#3a3935;
-  --accent:#9d96ec;--accent-tx:#c4bff7;--accent-bg:#2c2a45;--code:#2d2c29;
+  --bg:#000000;--card:#161617;--text:#f5f5f7;--muted:#a1a1a6;--line:#38383a;--soft:#1d1d1f;
+  --accent:#9d96ec;--accent-tx:#c4bff7;--accent-bg:#26233f;--code:#1d1d1f;
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai","Noto Sans",sans-serif}
-a{color:var(--accent-tx)}
-a:hover{text-decoration-thickness:2px}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Noto Sans Thai","Noto Sans",sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* Thai sits taller and is never tracked tight. */
+:lang(th) body,body:lang(th){line-height:1.8}
+a{color:var(--accent-tx);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
 
-.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;height:56px;padding:0 24px;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.brand{display:flex;align-items:center;gap:8px;font-weight:650;color:var(--text);text-decoration:none}
+/* The header: frosted, so the page shows through as it scrolls under. */
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;height:var(--top);padding:0 28px;background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:-.01em;color:var(--text);text-decoration:none}
+.brand:hover{text-decoration:none}
 .brand span{font-weight:400;color:var(--muted)}
-.top nav{display:flex;gap:18px;font-size:14px}
-.top nav a{color:var(--muted);text-decoration:none}
-.top nav a:hover{color:var(--text)}
+.top nav{display:flex;align-items:center;gap:20px;font-size:14px}
+.top nav a{color:var(--muted);transition:color .2s var(--ease)}
+.top nav a:hover{color:var(--text);text-decoration:none}
 
-.wrap{display:grid;grid-template-columns:230px minmax(0,1fr);gap:48px;max-width:1180px;margin:0 auto;padding:0 24px}
-.side{position:sticky;top:56px;align-self:start;max-height:calc(100vh - 56px);overflow:auto;padding:28px 0 40px}
-.navsec{margin-bottom:18px}
-.navhead{font-size:12px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:0 0 4px 10px}
-.navsec a{display:block;padding:3px 10px;border-radius:7px;font-size:14px;color:var(--text);text-decoration:none}
-.navsec a:hover{background:var(--card)}
+/* Three columns on a wide screen: the menu, the page, and the page's own outline. */
+.wrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:56px;max-width:1180px;margin:0 auto;padding:0 28px}
+@media (min-width:1240px){.wrap{grid-template-columns:220px minmax(0,1fr) 190px;max-width:1340px}}
+.side,.toc{position:sticky;top:var(--top);align-self:start;max-height:calc(100vh - var(--top));overflow:auto;padding:32px 0 40px;scrollbar-width:thin}
+.navsec{margin-bottom:22px}
+.navhead{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--muted);margin:0 0 6px 10px}
+.navsec a{display:block;padding:4px 10px;border-radius:8px;font-size:14px;color:var(--text);transition:background-color .2s var(--ease),color .2s var(--ease)}
+.navsec a:hover{background:var(--soft);text-decoration:none}
 .navsec a.on{background:var(--accent-bg);color:var(--accent-tx);font-weight:600}
 .menu{display:none}
 
-.doc{min-width:0;max-width:780px;padding:28px 0 64px}
+/* On this page: quiet until it marks where you are. */
+.toc{display:none;font-size:13px}
+@media (min-width:1240px){.toc{display:block}}
+.toc[hidden]{display:none}
+.tochead{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 8px}
+.toc nav{border-left:1px solid var(--line)}
+.toc a{display:block;margin-left:-1px;padding:4px 0 4px 12px;border-left:2px solid transparent;color:var(--muted);line-height:1.4;transition:color .2s var(--ease),border-color .2s var(--ease)}
+.toc a.sub{padding-left:24px}
+.toc a:hover{color:var(--text);text-decoration:none}
+.toc a.on{color:var(--accent-tx);border-left-color:var(--accent)}
+
+/* The page. */
+.doc{min-width:0;max-width:760px;padding:36px 0 72px;view-transition-name:content}
+.doc h1{font-size:44px;line-height:1.1;font-weight:700;letter-spacing:-.025em;margin:8px 0 16px}
+.doc h1:focus{outline:none}
 /* The sentence under the title says what the page is about. */
-.doc h1 + p{font-size:18px;line-height:1.6;color:var(--muted)}
-.doc h1{font-size:34px;line-height:1.2;margin:8px 0 18px;letter-spacing:-.01em}
-.doc h2{font-size:23px;margin:40px 0 10px;padding-top:8px;border-top:1px solid var(--line)}
-.doc h3{font-size:18px;margin:28px 0 8px}
-.doc h2,.doc h3,.doc [id]{scroll-margin-top:72px}
-.doc img{display:block;max-width:100%;height:auto;margin:18px 0;border:1px solid var(--line);border-radius:10px;background:#1a1a18}
-.doc code{font:0.88em/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);padding:1px 5px;border-radius:5px}
-.doc pre{background:var(--code);padding:14px 16px;border-radius:10px;overflow:auto;line-height:1.5}
+.doc h1 + p{font-size:21px;line-height:1.5;color:var(--muted);letter-spacing:-.01em;margin-bottom:28px}
+.doc h2{font-size:28px;line-height:1.2;font-weight:650;letter-spacing:-.015em;margin:60px 0 14px}
+.doc h3{font-size:21px;line-height:1.3;font-weight:600;letter-spacing:-.01em;margin:36px 0 10px}
+.doc:lang(th) h1,.doc:lang(th) h2,.doc:lang(th) h3,.doc:lang(th) h1 + p{letter-spacing:0;line-height:1.45}
+.doc h2,.doc h3,.doc [id]{scroll-margin-top:calc(var(--top) + 20px)}
+.doc p{margin:0 0 16px}
+.doc img{display:block;max-width:100%;height:auto;margin:24px 0;border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:14px;background:#1a1a18;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+.doc code{font:.86em/1.4 ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;background:var(--code);padding:2px 6px;border-radius:6px}
+.doc pre{background:var(--code);padding:16px 18px;border-radius:12px;overflow:auto;line-height:1.55;margin:18px 0}
 .doc pre code{background:none;padding:0;font-size:13.5px}
-.doc ul,.doc ol{padding-left:24px}
-.doc li{margin:4px 0}
-.doc li > ul,.doc li > ol{margin:4px 0}
-/* "Good to know": a side note at the end of a section. */
-.doc blockquote{margin:18px 0;padding:4px 16px;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;background:var(--card)}
-.doc blockquote p{margin:10px 0}
-.table{overflow-x:auto;margin:16px 0}
-.doc table{border-collapse:collapse;font-size:14.5px;min-width:60%}
-.doc th,.doc td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
-.doc th{background:var(--card);font-weight:600}
+.doc ul,.doc ol{padding-left:24px;margin:0 0 16px}
+.doc li{margin:6px 0}
+.doc li > ul,.doc li > ol{margin:6px 0}
+/* "Good to know": a tinted note at the end of a section. */
+.doc blockquote{margin:24px 0;padding:14px 20px;border-radius:14px;background:color-mix(in srgb,var(--accent-bg) 70%,var(--bg));color:var(--text)}
+.doc blockquote p{margin:4px 0}
+.table{overflow-x:auto;margin:20px 0}
+.doc table{border-collapse:collapse;font-size:15px;min-width:60%}
+.doc th,.doc td{border-bottom:1px solid var(--line);padding:9px 14px 9px 0;text-align:left;vertical-align:top}
+.doc th{font-weight:600;color:var(--muted);font-size:13px}
 .doc td code{white-space:nowrap}
-/* A paragraph that is only a link to a live example: a button, not a plain link. */
-.doc p.try a{display:inline-block;padding:6px 14px;border-radius:999px;background:var(--accent);color:#fff;font-weight:600;font-size:14px;text-decoration:none}
-.doc p.try a:hover{filter:brightness(1.08)}
+/* Arriving from a ⚠ card: the kind it is about stands out. */
+.doc tr:has(a:target) td{background:var(--accent-bg)}
+/* A paragraph that is only a link to a live example: a button, opening in a new tab. */
+.doc p.try a{display:inline-flex;align-items:center;padding:9px 18px;border-radius:999px;background:var(--accent);color:#fff;font-weight:600;font-size:15px;transition:transform .2s var(--ease),filter .2s var(--ease)}
+.doc p.try a:hover{text-decoration:none;filter:brightness(1.07);transform:scale(1.02)}
 /* Previous and next page, in the menu's order. */
-.pager{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:48px}
-.pager a{display:block;padding:12px 16px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);text-decoration:none}
-.pager a:hover{border-color:var(--accent)}
-.pager a span{display:block;font-size:12.5px;color:var(--muted)}
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:64px}
+.pager a{display:block;padding:16px 20px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);font-weight:600;transition:transform .25s var(--ease),box-shadow .25s var(--ease),border-color .25s var(--ease)}
+.pager a:hover{text-decoration:none;border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.08)}
+.pager a span{display:block;font-size:13px;font-weight:400;color:var(--muted)}
 .pager .next{grid-column:2;text-align:right}
-.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.foot{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 .foot a{color:var(--muted)}
 
 @media (max-width:860px){
-  .wrap{display:block;padding:0 16px}
+  .wrap{display:block;padding:0 18px}
   .side{display:none}
-  .menu{display:block;margin:12px 0 0;border:1px solid var(--line);border-radius:10px;background:var(--card)}
-  .menu summary{padding:8px 14px;cursor:pointer;font-weight:600}
-  .menu nav{padding:4px 6px 10px}
-  .top{padding:0 16px}
-  .doc{padding-top:16px}
-  .doc h1{font-size:28px}
+  .menu{display:block;margin:14px 0 0;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .menu summary{padding:10px 16px;cursor:pointer;font-weight:600}
+  .menu nav{padding:4px 8px 12px}
+  .top{padding:0 18px}
+  .doc{padding-top:20px}
+  .doc h1{font-size:34px}
+  .doc h1 + p{font-size:19px}
+  .doc h2{font-size:24px;margin-top:48px}
 }
-/* Arriving from a ⚠ card: the kind it is about stands out. */
-.doc tr:has(a:target) td{background:var(--accent-bg)}
-/* Going from page to page: the browser fades between them and the menu stays put, instead of a blank reload. */
+
+/* Moving between pages (assets/site.js swaps the page in place): the header and menu stay still, the page fades
+   across and settles up a few pixels. A full load (the other language) fades too, where the browser can. */
 @view-transition{navigation:auto}
 .side{view-transition-name:side}
 .top{view-transition-name:top}
+::view-transition-group(*){animation-duration:.3s;animation-timing-function:var(--ease)}
+::view-transition-old(content){animation:.15s var(--ease) both wb-out}
+::view-transition-new(content){animation:.32s var(--ease) both wb-in}
+@keyframes wb-out{to{opacity:0}}
+@keyframes wb-in{from{opacity:0;transform:translateY(8px)}}
+/* Without View Transitions: the new page still settles in. */
+.doc.enter{animation:.32s var(--ease) both wb-in}
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}
+  .doc.enter{animation:none}
+  *{transition:none!important}
+}
 
-/* Search (assets/site.js): a button in the header, a box over the page. */
-.searchbtn{display:inline-flex;align-items:center;gap:10px;padding:5px 8px 5px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--muted);font:inherit;font-size:13.5px;cursor:pointer}
+/* Search: a button in the header, a box over the page. */
+.searchbtn{display:inline-flex;align-items:center;gap:10px;padding:5px 8px 5px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--muted);font:inherit;font-size:13.5px;cursor:pointer;transition:border-color .2s var(--ease),color .2s var(--ease)}
 .searchbtn:hover{color:var(--text);border-color:var(--accent)}
-.searchbtn kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:1px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg)}
-.top nav{align-items:center}
-dialog.search{width:min(640px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 120px));margin:80px auto auto;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;display:none;flex-direction:column}
-dialog.search[open]{display:flex}
-dialog.search::backdrop{background:rgba(0,0,0,.45)}
-.searchbox{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
-.searchbox input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:16px;padding:6px 4px}
-.searchbox button{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;padding:2px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--muted);cursor:pointer}
-.results{list-style:none;margin:0;padding:6px;overflow:auto}
-.results a{display:block;padding:8px 10px;border-radius:9px;color:var(--text);text-decoration:none}
-.results a.on,.results a:hover{background:var(--accent-bg)}
-.results .where{display:block;font-weight:600;font-size:14px}
+.searchbtn kbd{font:11px ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;padding:1px 5px;border:1px solid var(--line);border-radius:5px;background:var(--bg)}
+dialog.search{width:min(640px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 120px));margin:80px auto auto;padding:0;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);color:var(--text);box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden;display:none;flex-direction:column}
+dialog.search[open]{display:flex;animation:.22s var(--ease) both wb-pop}
+dialog.search::backdrop{background:rgba(0,0,0,.35);backdrop-filter:blur(2px)}
+@keyframes wb-pop{from{opacity:0;transform:scale(.98) translateY(-6px)}}
+@media (prefers-reduced-motion:reduce){dialog.search[open]{animation:none}}
+.searchbox{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.searchbox input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:18px;padding:6px 4px}
+.searchbox button{font:11px ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;padding:2px 6px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:var(--muted);cursor:pointer}
+.results{list-style:none;margin:0;padding:8px;overflow:auto}
+.results a{display:block;padding:10px 12px;border-radius:10px;color:var(--text);transition:background-color .15s var(--ease)}
+.results a.on,.results a:hover{background:var(--accent-bg);text-decoration:none}
+.results .where{display:block;font-weight:600;font-size:14.5px}
 .results .what{display:block;font-size:13px;color:var(--muted);margin-top:2px}
 .results mark{background:transparent;color:var(--accent-tx);font-weight:700}
-.results .none{padding:14px 10px;color:var(--muted)}
+.results .none{padding:14px 12px;color:var(--muted)}
 @media (max-width:860px){.searchbtn kbd{display:none}.searchbtn{padding:5px 10px}}

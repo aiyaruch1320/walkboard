@@ -505,7 +505,7 @@ function renderAskBar() {
     // The bar fades away first, then the panel opens where the talk goes on.
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return open();
     bar.classList.add("leaving");
-    setTimeout(open, 170);
+    setTimeout(open, 230);
   };
 }
 
@@ -8366,8 +8366,11 @@ function crossPicture(update) {
   const can = document.startViewTransition && !snapshot && !printState && document.visibilityState === "visible" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (!can) return update();
   const tag = () => {
-    const seen = new Set(), boxes = [...document.querySelectorAll("#view [data-id]")];
-    if (boxes.length > 120) return;
+    // Only boxes on screen move: one off screen would not be seen moving, and each named box costs a layer.
+    const seen = new Set(), boxes = [...document.querySelectorAll("#view [data-id]")].filter((b) => {
+      const r = b.getBoundingClientRect();
+      return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+    }).slice(0, 40);
     for (const b of boxes) {
       const n = "wbn-" + b.dataset.id.replace(/[^\w-]/g, "_");
       if (seen.has(n)) continue;

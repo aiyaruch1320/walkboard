@@ -59,9 +59,10 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .conn.chat{color:var(--muted);background:var(--card)}
 .banner,.problems{border:1.5px solid var(--warn-bd);background:var(--warn-bg);color:var(--warn-tx);border-radius:var(--r2);padding:10px 14px;margin:0 0 14px;font-size:var(--fs-4)}
 .drawfail{color:var(--warn-tx);border:1.5px dashed var(--warn-bd);border-radius:var(--r2);padding:10px 14px}
-.problems{position:fixed;left:16px;bottom:16px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:var(--shadow-2);animation:wb-pop var(--t2) var(--ease) both}
+/* Above the chat bar, which floats at the bottom too. */
+.problems{position:fixed;left:16px;bottom:84px;max-width:min(440px,calc(100vw - 32px));max-height:40vh;overflow:auto;margin:0;z-index:20;box-shadow:var(--shadow-2);animation:wb-pop var(--t2) var(--ease) both}
 .bar{position:sticky;top:0;z-index:15;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;padding:8px 0;margin-bottom:4px;background:color-mix(in srgb,var(--bg) 76%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 1px 0 color-mix(in srgb,var(--line) 70%,transparent)}
-.bar button.primary:not(.toast *){font-weight:500}
+.bar button.primary:not(:where(.toast *)){font-weight:500}
 .bar #barExtra{display:contents}
 .brand{display:inline-flex;align-items:center;gap:7px;margin-right:auto;font-size:var(--fs-4);letter-spacing:.2px;order:-2}
 .bar .brand{order:-1;margin-right:auto}
@@ -72,8 +73,9 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .foot{display:flex;justify-content:flex-end;margin-top:28px;padding-top:12px;border-top:1px solid var(--line);font-size:var(--fs-2)}
 .foot a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none}
 .foot a:hover{color:var(--text);text-decoration:underline}
-/* The bar's own buttons; a card that lives in the bar (showCard) keeps its own. */
-.bar button:not(.toast *){font-size:var(--fs-2);padding:2px 10px;border-radius:999px}
+/* The bar's own buttons; a card that lives in the bar (showCard) keeps its own. :where adds no weight, so the
+   round buttons' own rules (.helpbtn) still win. */
+.bar button:not(:where(.toast *)){font-size:var(--fs-2);padding:2px 10px;border-radius:999px}
 .bar .helpbtn{padding:0;border-radius:50%;font-size:var(--fs-3);color:var(--muted)}
 .bar .helpbtn:hover{color:var(--text)}
 .bar .changes{border-color:var(--you-bd);background:var(--you-bg);color:var(--you-tx)}
@@ -81,7 +83,8 @@ h1{font-size:22px;font-weight:500;margin:0;overflow-wrap:anywhere}
 .toast ul{margin:6px 0 8px;padding-left:18px}
 :is(#view,#printout) .changed,.chip.changed{outline:3px solid var(--you-bd);outline-offset:3px}
 .problems ul{margin:4px 0 0;padding-left:20px}
-.problems .pact{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;font:inherit;font-size:var(--fs-3);font-weight:600;padding:4px 12px;border-radius:999px;border:1px solid var(--you-bd);background:var(--you-bg);color:var(--you-tx);cursor:pointer}
+/* The note's button sits on its own line under the words, never against them. */
+.problems .pact{display:flex;width:fit-content;align-items:center;gap:6px;margin:10px 0 2px;font:inherit;font-size:var(--fs-3);font-weight:600;padding:4px 12px;border-radius:999px;border:1px solid var(--you-bd);background:var(--you-bg);color:var(--you-tx);cursor:pointer}
 .problems .pact svg{width:14px;height:14px}
 .problems .pact:hover{filter:brightness(1.1)}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:var(--fs-3);color:var(--muted);margin-bottom:14px}
@@ -381,7 +384,10 @@ body.side-open .side-inner{opacity:1;transform:none}
 .askbar:hover{border-color:color-mix(in srgb,var(--you-bd) 50%,transparent);color:var(--text);box-shadow:var(--shadow-3);transform:translateX(-50%) translateY(-1px)}
 .askbar .asklabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .askbar .askn{font-size:var(--fs-2);font-weight:600;min-width:20px;padding:0 6px;text-align:center;border-radius:999px;background:var(--you-bg);color:var(--you-tx)}
-.askbar.leaving{opacity:0;transform:translateX(-50%) translateY(8px) scale(.97);transition:opacity var(--t1) var(--ease),transform var(--t1) var(--ease);pointer-events:none}
+/* Clicked: it only fades where it is (a moving transform here slid it sideways), then the panel opens. */
+.askbar.leaving{opacity:0;transition:opacity var(--t2) var(--ease);pointer-events:none}
+/* The chat bar is gone while the panel is open: the note sits low again. */
+body.side-open:not(.sketching) .problems{bottom:16px}
 .askbar[hidden],body.side-open .askbar,body.sketching .askbar,body.snapshot .askbar{display:none}
 .firsthint{position:absolute;z-index:16;padding:7px 12px;border-radius:var(--r2);background:var(--you-bd);color:var(--card);font-size:var(--fs-3);font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.3);animation:hintin .25s ease both}
 .firsthint::before{content:"";position:absolute;left:20px;top:-5px;width:11px;height:11px;background:inherit;transform:rotate(45deg)}

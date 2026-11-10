@@ -83,7 +83,7 @@ const STRINGS = {
     usesLegend: "─ เส้นบางสีเทา: ใช้ config / ไฟล์ / ลำดับการ deploy", lk_ok: "อนุญาต / ใช้ได้", lk_todo: "รอเปิด / ยังไม่ทำ", lk_blocked: "ถูก block", lk_standby: "สำรอง (standby)",
     seeBox: (n) => `คลิกเพื่อดู ${n}`, cannotDraw: (k) => `ยังวาด ${k} ไม่ได้`,
     all: "ทั้งหมด", chipTurn: "ถึงตาคุณตรวจขั้นนี้", openIn: (e) => `เปิดใน ${e}`, copy: "คัดลอก", copied: "คัดลอกแล้ว", copyFail: "คัดลอกไม่ได้",
-    codeHere: "โค้ด", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", gStart: "เริ่ม", impHint: "คลิกกล่อง: แดง = ได้รับผลกระทบ · ฟ้า = dependency ของกล่องนี้",
+    codeHere: "โค้ด", loading: "กำลังโหลด…", codeFail: "อ่านโค้ดไม่ได้", noRows: "(ไม่มีแถว)", gStart: "เริ่ม", impHint: "คลิกกล่อง: แดง = ได้รับผลกระทบ · น้ำเงิน = dependency ของกล่องนี้",
     impHit: (x, n, list) => `ถ้า ${x} ล่ม กระทบ ${n} ส่วน: ${list}`, impNone: (x) => `ไม่มีอะไร depend on ${x}`,
     before: "ก่อน", after: "หลัง", dAdd: "+ เพิ่ม", dDel: "− เอาออก", dChg: "~ เปลี่ยน", jPlay: "▶ เล่นเส้นทาง", playShort: "⏵ เล่น", pauseShort: "❚❚ หยุด", jStop: (i, n) => `จุดที่ ${i} / ${n}`, pill_build: "🗺 โหมดวางแผน", pill_explain: "🔍 โหมดอธิบาย", pill_design: "🧭 โหมดออกแบบ",
     pillTip_build: "วางแผนเป็นขั้นเล็กๆ อนุมัติแล้ว agent ลงมือทำทีละขั้น", pillTip_explain: "อธิบายโค้ดที่มีอยู่จากโค้ดจริง ไม่แก้อะไร",

@@ -380,8 +380,9 @@ body.side-open .side-inner{opacity:1;transform:none}
 .viewtools{display:flex;align-items:center;gap:8px;margin-left:auto;min-height:32px}
 .viewtools .ltools{margin:0}
 .viewtools .lhelp{width:26px;height:26px;font-size:var(--fs-3)}
-.askbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:14;display:flex;align-items:center;gap:10px;width:min(680px,calc(100vw - 32px));padding:12px 16px;border-radius:var(--r3);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--muted);font-size:var(--fs-4);text-align:left;box-shadow:var(--shadow-2);transition:box-shadow var(--t2) var(--ease),color var(--t2) var(--ease),transform var(--t2) var(--ease)}
-.askbar:hover{border-color:color-mix(in srgb,var(--you-bd) 50%,transparent);color:var(--text);box-shadow:var(--shadow-3);transform:translateX(-50%) translateY(-1px)}
+.askbar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:14;display:flex;align-items:center;gap:10px;width:min(680px,calc(100vw - 32px));padding:12px 16px;border-radius:var(--r3);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);background:color-mix(in srgb,var(--card) 78%,transparent);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);color:var(--muted);font-size:var(--fs-4);text-align:left;box-shadow:var(--shadow-2);transition:color var(--t2) var(--ease),border-color var(--t2) var(--ease)}
+/* Hover: only its words and edge brighten; it never moves under the pointer. */
+.askbar:hover{border-color:color-mix(in srgb,var(--you-bd) 50%,transparent);color:var(--text)}
 .askbar .asklabel{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .askbar .askn{font-size:var(--fs-2);font-weight:600;min-width:20px;padding:0 6px;text-align:center;border-radius:999px;background:var(--you-bg);color:var(--you-tx)}
 /* Clicked: it only fades where it is (a moving transform here slid it sideways), then the panel opens. */
@@ -895,7 +896,8 @@ details.code summary{display:flex;align-items:center;gap:8px}
 .controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .controls button{font-size:var(--fs-2);padding:3px 10px}
 button{font:inherit;font-size:var(--fs-3);padding:5px 12px;border-radius:var(--r2);border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;transition:background var(--t1) var(--ease),border-color var(--t1) var(--ease),box-shadow var(--t2) var(--ease),transform var(--t1) var(--ease)}
-button:active:not(:disabled){transform:scale(.97)}
+/* A small give when pressed; never for a button placed by its own transform (the chat bar is centred by one). */
+button:active:not(:disabled):not(.askbar){transform:scale(.97)}
 button:hover{border-color:color-mix(in srgb,var(--muted) 60%,transparent);background:color-mix(in srgb,var(--line) 25%,var(--card))}
 .quick button,.send button,.acts button,.xrow button,.commitbox button,.decideform button{min-height:30px;border-radius:var(--r2)}
 button.primary{background:var(--text);color:var(--bg);border-color:var(--text)}

@@ -498,7 +498,8 @@ function renderAskBar() {
   bar.onclick = () => {
     const open = () => {
       openSide(opt ? {kind: "option", id: opt.id} : step ? {kind: "step", id: step.id} : {kind: "plan"});
-      bar.classList.remove("leaving");
+      // Faded until the panel has arrived (it is hidden while the panel is open), so it never shows again on the way.
+      setTimeout(() => bar.classList.remove("leaving"), 600);
       // The panel arrives in a View Transition: type into it once it is there.
       setTimeout(() => document.querySelector("#panel textarea")?.focus({preventScroll: true}), 380);
     };

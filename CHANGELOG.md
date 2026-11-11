@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Agents pick pictures beyond the flow.** Asked in plain words ("plan adding refunds"), agents read none of the picture guide and drew only the flow. SKILL.md now lists which picture answers which question (where it runs → map, who calls whom → sequence, tables → data model, states → state…) and asks for the one or two that fit, in explain mode too. A new eval, `pictures-unasked`, checks it with a request that names no picture.
 - **The flow of the steps is always the first tab.** It used to disappear as soon as the agent drew any picture of its own. Now it is the **Overview** tab, before the others, unless the agent drew a flow itself, the plan is a design, or it has a single step.
 
 ## 0.11.0

@@ -29,14 +29,14 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Fie
 
 - 3-8 **steps**, each reviewable in minutes: `title`, `detail`, `done` (how we know), `nodes`.
 - **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong.
-- **views**: leave out for a plain flow. When a picture explains better, pick one or two from [views.md](references/views.md).
+- **views**: the page draws the steps as a flow, the first tab. Add the one or two pictures that answer what the reader will ask, reading [views.md](references/views.md) and that picture's file first: where it runs → `map`; who calls whom, what if it fails → `sequence`; tables, keys → `datamodel`; states and what moves them → `state`; if this, then what → `decision`; data before and after → `transform`; one record's way → `journey`; retries, timeouts, cron → `timeline`; what breaks if it goes down → `impact`; now and after → `diff`. None only when the order of the steps is all there is.
 - **glossary**: only project terms. No secrets, tokens or real customer data.
 - `WB check <dir>` until ok.
 
 ## 2E. Write the explanation (explain)
 
 1. Read the real path (entry points, middleware, services, data access, external calls, deployment). Do not guess from names.
-2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there.
+2. `"mode": "explain"`, `"root": "<repo>"` (`"roots"` for more), `"start"`. 3-10 stages in order; `done` = what the reader understands there. Pictures as in section 1 (`views`): who calls whom is a `sequence`, where it runs a `map`.
 3. Every code box has `file` = `path:line` or `path:from-to` and `anchor` = a short piece of that code (`"function send("`), so `check` notices when the code moves; the page shows the code, so **never paste code into the plan**. `highlight` only the lines that make the point, with a short note when it helps: `{"152": "returns: this wakes the agent"}`. External systems `"ext"`, the focus `"new"`, missing `"todo"`. Mark guesses "unconfirmed: …". A box that is not code (a user, an outside system, a managed service you only call) has `"status": "ext"` and no `file`: never borrow a line for it.
 4. `WB check <dir>` until ok (it fails when a file or line does not exist).
 
@@ -76,7 +76,7 @@ Answer from the code, reading more when needed; prefer new boxes or stages over 
 ## Keep it cheap
 
 - Write `plan.json` once, compact (no indentation); then `WB set` or a small Edit. Never rewrite or re-read the whole file to change a status.
-- Leave out defaults (`views` for a plain flow, `status`, empty fields, common terms).
+- Leave out defaults (`status`, empty fields, common terms).
 - Point at code with `file:line`; keep replies short; do not repeat in chat what the page shows.
 
 ## Finish

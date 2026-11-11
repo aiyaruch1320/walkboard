@@ -29,7 +29,7 @@ Folder: `~/.walkboard/<project>/<task>/plan.json` unless the user names one. Fie
 
 - 3-8 **steps**, each reviewable in minutes: `title`, `detail`, `done` (how we know), `nodes`.
 - **nodes**: `name` (≤ 4 words), `what` (≤ 6 words), `in` / `out` / `why` one line each, `file`. Icons are guessed from names; set `icon` only when wrong.
-- **views**: the page draws the steps as a flow, the first tab. Add the one or two pictures that answer what the reader will ask, reading [views.md](references/views.md) and that picture's file first: where it runs → `map`; who calls whom, what if it fails → `sequence`; tables, keys → `datamodel`; states and what moves them → `state`; if this, then what → `decision`; data before and after → `transform`; one record's way → `journey`; retries, timeouts, cron → `timeline`; what breaks if it goes down → `impact`; now and after → `diff`. None only when the order of the steps is all there is.
+- **views**: the pictures that explain this work best, as many tabs as the reader needs, each answering its own question. Read [views.md](references/views.md) and each picture's file first: the order of the steps → `flow`; where it runs → `map`; who calls whom, what if it fails → `sequence`; tables, keys → `datamodel`; states and what moves them → `state`; if this, then what → `decision`; data before and after → `transform`; one record's way → `journey`; retries, timeouts, cron → `timeline`; what breaks if it goes down → `impact`; now and after → `diff`. Leave `views` out only when the order of the steps is all there is: the page then draws them as a flow.
 - **glossary**: only project terms. No secrets, tokens or real customer data.
 - `WB check <dir>` until ok.
 

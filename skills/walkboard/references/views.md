@@ -1,10 +1,10 @@
 # Views
 
-Every view has `id`, `kind` and `title`; the `title` is its tab, so give it words a reader knows, not an id. Every box is a node id, so a click opens the same details and chat. One or two pictures that answer the question; more is noise. Use made-up values, never real customer data.
+Every view has `id`, `kind` and `title`; the `title` is its tab, so give it words a reader knows, not an id. Every box is a node id, so a click opens the same details and chat. Each picture answers its own question; two that show the same thing are noise. Use made-up values, never real customer data.
 
 | The reader asks | Picture: read its file before writing it |
 |---|---|
-| What are the steps, in order? | `flow` (default, built from the steps; [file](views/flow.md) only for your own lanes) |
+| What are the steps, in order? | `flow` (built from the steps when there are no `views`; with other pictures, write it ([file](views/flow.md)) only if the order helps) |
 | What sits inside what, on which platform (AWS account › VPC › subnet, cluster › namespace › pods, a host and its containers)? | [`map`](views/map.md), with profile kinds |
 | Who calls whom, in what order, and what if it fails? | [`sequence`](views/sequence.md) |
 | What does the data look like before and after? | [`transform`](views/transform.md) |

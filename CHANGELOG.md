@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **Agents pick pictures beyond the flow.** Asked in plain words ("plan adding refunds"), agents read none of the picture guide and drew only the flow. SKILL.md now lists which picture answers which question (where it runs → map, who calls whom → sequence, tables → data model, states → state…) and asks for the one or two that fit, in explain mode too. A new eval, `pictures-unasked`, checks it with a request that names no picture.
+- **Agents pick pictures beyond the flow.** Asked in plain words ("plan adding refunds"), agents read none of the picture guide and drew only the flow. SKILL.md now lists which picture answers which question (where it runs → map, who calls whom → sequence, tables → data model, states → state…) and asks for the pictures that explain the work best, as many as the reader needs, in explain mode too. A flow alone is for work where the order of the steps is all there is. A new eval, `pictures-unasked`, checks it with a request that names no picture.
 
 ## 0.11.0
 

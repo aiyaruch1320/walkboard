@@ -47,7 +47,7 @@ Want to look before you install? [Open a live example](https://aiyaruch1320.gith
 
 Long plans written by AI are hard to follow, and after a while you stop feeling that the work is yours. Walkboard has the agent show its work as pictures instead, on a page you can click and talk to.
 
-- **Pictures instead of pages of text.** There are eleven kinds, from a simple flow to a map of your cloud network, a sequence of calls or a database model. The agent picks the one that answers your question.
+- **Pictures instead of pages of text.** There are twelve kinds, from a simple flow to a map of your cloud network, a sequence of calls or a database model. The agent picks the ones that answer your question.
 - **Ask where it matters.** Every box, step and comparison cell has its own conversation. You ask on the box, and the answer appears on the box, not somewhere up in a long chat.
 - **You stay in charge.** Nothing is built until you press **Approve plan**. After each step, the agent stops and waits for you to start the next one.
 - **Shows its evidence.** Explanations point at the real file and line. Design scores cite their sources, with the date they were read. Anything the agent had to guess is drawn dashed until you answer it.

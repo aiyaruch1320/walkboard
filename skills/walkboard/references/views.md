@@ -14,6 +14,7 @@ Every view has `id`, `kind` and `title`; the `title` is its tab, so give it word
 | When and how long? (retries, timeouts, cron) | [`timeline`](views/timeline.md) |
 | What are the tables, keys and relations? | [`datamodel`](views/datamodel.md) |
 | If this goes down, what breaks? | [`impact`](views/impact.md) |
+| What is it made of, and what uses what? (layers, modules, services) | [`components`](views/components.md) |
 | What changes between now and after? | [`diff`](views/diff.md) |
 
 The user can arrange map, datamodel, state, decision and impact pictures; the page saves that in `layout` (a box may also carry `sides`, the side each line meets). Never write `layout`. They can also sketch changes on those and on flows (draft mode), kept apart from plan.json; these reach you as `review` ([review.md](review.md)).

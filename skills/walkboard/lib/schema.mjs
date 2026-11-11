@@ -72,6 +72,7 @@ const SHAPES = {
   state: ["states", "transitions", "end"],
   decision: ["nodes", "edges"],
   impact: ["nodes", "edges"],
+  components: ["layers", "layers.*.nodes", "uses"],
   timeline: ["lanes", "lanes.*.events", "marks"],
   datamodel: ["tables", "tables.*.columns", "relations", "groups", "groups.*.tables"],
   transform: ["stages", "stages.*.columns", "stages.*.rows", "stages.*.rows.*", "stages.*.notes"],
@@ -176,6 +177,20 @@ export const KINDS = {
   impact: {
     refs: (v) => [...list(v.nodes), ...list(v.edges).flatMap((x) => [x?.from, x?.to])],
     check: () => [],
+  },
+  // How a system or a codebase is split up: layers side by side, the parts in each, and which part uses which.
+  components: {
+    refs: (v) => [...list(v.layers).flatMap((l) => list(l?.nodes)), ...list(v.uses).flatMap((x) => [x?.from, x?.to])],
+    check: (v) => {
+      const placed = list(v.layers).flatMap((l) => list(l?.nodes));
+      return [
+        ...(!list(v.layers).length ? ['components needs layers: [{"label", "nodes"}]'] : []),
+        ...list(v.layers).filter((l) => !isObj(l) || typeof l.label !== "string" || !l.label.trim()).map(() => 'every layer needs a text "label"'),
+        ...dupes(placed).map((id) => `box "${id}" is in two layers (a box sits in one)`),
+        ...list(v.uses).filter((u) => !isObj(u) || !u.from || !u.to).map(() => 'every use needs "from" and "to"'),
+        ...list(v.uses).filter((u) => isObj(u) && u.from && u.to && !(placed.includes(u.from) && placed.includes(u.to))).map((u) => `use ${u.from}→${u.to}: put both boxes in a layer`),
+      ];
+    },
   },
   timeline: {
     refs: (v) => list(v.lanes).map((l) => l?.node),

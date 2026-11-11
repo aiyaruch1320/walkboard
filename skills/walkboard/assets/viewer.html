@@ -2058,14 +2058,14 @@ function readLine(kind) {
 // Otherwise the picture's own kind (state, decision, impact, flow, datamodel): what its boxes and lines say.
 // Then what draft mode draws, and for pictures with lines, why a line may change its route.
 // It hangs under the button, on the page (not the window), so it scrolls with it.
-const READ_LINES = {state: ["rh_state_label", "rh_state_loop"], decision: ["rh_decision_label"], impact: ["rh_impact_click"], flow: ["rh_flow_lane", "rh_flow_order"], datamodel: ["rh_model_fk", "rh_model_keys", "rh_model_group"]};
+const READ_LINES = {state: ["rh_state_label", "rh_state_loop"], decision: ["rh_decision_label"], impact: ["rh_impact_click"], components: ["rh_components_click"], flow: ["rh_flow_lane", "rh_flow_order"], datamodel: ["rh_model_fk", "rh_model_keys", "rh_model_group"]};
 function readHelp(button, kind, words = []) {
   const row = (sample, text) => {
     const r = el("div", "lhrow");
     r.append(sample, el("span", null, text));
     return r;
   };
-  const arrows = kind === "lines" || ["state", "decision", "impact"].includes(kind);
+  const arrows = kind === "lines" || ["state", "decision", "impact", "components"].includes(kind);
   const key = el("div", "legend");
   key.append(...legendItems(), ...words);
   const parts = [el("div", "dphead", t("readHow")), key];
@@ -2088,7 +2088,8 @@ function readHelp(button, kind, words = []) {
     for (const x of ["question", "step", "end"]) parts.push(row(el("span", "lhshape " + GRAPH_SHAPE[x], t("shape_" + x)), t("shapeTip_" + x)));
     parts.push(el("div", "lhtext", t("rh_decision_how")));
   }
-  if (!snapshot && kind) {
+  // What draft mode draws, on a picture that has it.
+  if (!snapshot && (kind === "lines" || draftable({kind}))) {
     parts.push(el("div", "lhsub", t(kind === "lines" ? "lh_draft" : "rh_draft")));
     if (kind !== "lines") for (const m of ["add", "change", "remove", ...(kind === "flow" || kind === "datamodel" ? ["move"] : [])]) {
       const sign = el("span", "lhsign dr-" + m);
@@ -2099,7 +2100,8 @@ function readHelp(button, kind, words = []) {
   }
   // On a picture whose boxes can be arranged, a line can be told which sides to meet.
   if (["state", "decision", "impact", "lines"].includes(kind) && served && !snapshot) parts.push(el("div", "lhtext", t("rh_sides")));
-  if (arrows) parts.push(el("div", "dhint", t("lh_shape")));
+  // Why a line may change its route: only where boxes move or lines turn round (not a components picture).
+  if (arrows && kind !== "components") parts.push(el("div", "dhint", t("lh_shape")));
   // No pencil on a phone or in a very narrow window: say why, where the pencil would be looked for.
   if (served && !snapshot && !canArrange() && draftable({kind: pictureKind})) parts.push(el("div", "dhint", t("sketchOnComputer")));
   if (pictureKind) parts.push(docLink(`pictures/${pictureKind}.md`, t("readMore") + " ↗"));
@@ -6353,6 +6355,47 @@ function impactGraph(v, extra) {
   return wrap;
 }
 
+// ---------- components: layers side by side (from the user's side to the data), the parts in each, which part uses
+// which. A click shows what a part uses and what uses it, one line away: the picture is about how it is split up.
+function renderComponents(v) {
+  const layers = (v.layers || []).filter((l) => Array.isArray(l?.nodes));
+  const placed = new Set(layers.flatMap((l) => l.nodes));
+  const uses = (v.uses || []).filter((u) => placed.has(u?.from) && placed.has(u?.to));
+  const wrap = el("div");
+  const banner = el("div", "impbar", t("compHint"));
+  const grid = el("div", "comp diagram");
+  for (const l of layers) {
+    const col = el("div", "clayer");
+    col.append(richEl("div", "clayer-title", l.label || ""));
+    if (l.note) col.append(richEl("div", "clayer-note", l.note));
+    const stack = el("div", "cstack");
+    for (const id of l.nodes) stack.append(anchored(id));
+    col.append(stack);
+    grid.append(col);
+  }
+  const scroll = el("div", "scroll");
+  scroll.append(grid);
+  wrap.append(readLine("components"), banner, scroll);
+  viaChips(grid, uses);
+  drawLinks(grid, uses.map((u) => ({from: u.from, to: u.to, state: "flow"})));
+  pictureHook = () => {
+    const boxes = grid.querySelectorAll("[data-id]");
+    const on = !!nodeId && placed.has(nodeId);
+    const need = new Set(on ? uses.filter((u) => u.from === nodeId).map((u) => u.to) : []);
+    const hit = new Set(on ? uses.filter((u) => u.to === nodeId).map((u) => u.from) : []);
+    grid.classList.toggle("imp-on", on);
+    boxes.forEach((d) => {
+      d.classList.toggle("imp-me", on && d.dataset.id === nodeId);
+      d.classList.toggle("imp-need", need.has(d.dataset.id));
+      d.classList.toggle("imp-hit", hit.has(d.dataset.id));
+    });
+    if (!on) return banner.replaceChildren(t("compHint"));
+    const name = (x) => plan.nodes[x]?.name || x, names = (s) => [...s].map(name).join(", ");
+    banner.replaceChildren(t("compUses", name(nodeId), names(need), names(hit)));
+  };
+  return wrap;
+}
+
 // ---------- timeline: lanes on a time axis; points, spans and marks such as a timeout
 function niceStep(range) {
   const raw = range / 8, mag = 10 ** Math.floor(Math.log10(raw || 1));
@@ -8069,7 +8112,7 @@ function renderDiff(v) {
 function edgesOf(v) {
   const pairs = [];
   if (v.kind === "flow") for (const l of v.lanes || []) if (l?.arrows !== false) (l.nodes || []).forEach((x, i, a) => i && pairs.push([a[i - 1], x]));
-  for (const e of [...(v.links || []), ...(v.edges || []), ...(v.transitions || []), ...(v.kind === "sequence" ? (v.messages || []).filter((m) => !m?.reply) : [])]) if (e?.from && e?.to && e.from !== e.to) pairs.push([e.from, e.to]);
+  for (const e of [...(v.links || []), ...(v.edges || []), ...(v.uses || []), ...(v.transitions || []), ...(v.kind === "sequence" ? (v.messages || []).filter((m) => !m?.reply) : [])]) if (e?.from && e?.to && e.from !== e.to) pairs.push([e.from, e.to]);
   for (const w of v.workloads || []) for (const u of w?.uses || []) pairs.push([w.node, u]);
   return new Set(pairs.map(([f, to]) => f + "\u0000" + to));
 }
@@ -8079,6 +8122,7 @@ const VIEWS = {
   state: {render: renderState, after: () => requestAnimationFrame(() => linkDrawer?.())},
   decision: {render: renderDecision, after: () => requestAnimationFrame(() => linkDrawer?.())},
   impact: {render: renderImpact, after: () => requestAnimationFrame(() => linkDrawer?.())},
+  components: {render: renderComponents, after: () => requestAnimationFrame(() => linkDrawer?.())},
   timeline: {render: renderTimeline},
   datamodel: {render: renderDataModel, after: () => requestAnimationFrame(() => linkDrawer?.())},
   diff: {render: renderDiff, after: () => requestAnimationFrame(() => linkDrawer?.())},

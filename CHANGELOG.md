@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **A new picture: components.** How a system or a codebase is split up: layers side by side (from the user's side to the data), the parts in each, and arrows for what uses what, labelled with how (HTTP, SQL). Click a part to see what it uses and what uses it. It answers "what is this made of?", the first question about code you did not write. No draft mode yet. Docs: [Components](https://aiyaruch1320.github.io/walkboard/pictures/components.html).
 - **Agents pick pictures beyond the flow.** Asked in plain words ("plan adding refunds"), agents read none of the picture guide and drew only the flow. SKILL.md now lists which picture answers which question (where it runs → map, who calls whom → sequence, tables → data model, states → state…) and asks for the pictures that explain the work best, as many as the reader needs, in explain mode too. A flow alone is for work where the order of the steps is all there is. A new eval, `pictures-unasked`, checks it with a request that names no picture.
 - **Every box can be seen.** SKILL.md asks the agent to run `check` until it has no warnings, not only until it is ok: agents left a box that was in no picture, so nobody could see it or ask about it. The agent now reads only the file of each picture it draws, not the whole picture guide, which saves a file per plan.
 - **Names in a sequence break between words.** A column is as wide as the widest word of its name next to the icon (a Thai run stays whole), and a narrow window scrolls the picture sideways instead of breaking "Refund" into "Refun d".

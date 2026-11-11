@@ -70,7 +70,13 @@
    {"node": "emaillog", "columns": [{"name": "id", "type": "bigint", "key": "pk"}, {"name": "order_id", "type": "bigint", "key": "fk", "ref": "orders.id"}, {"name": "status", "type": "text"}, {"name": "ses_id", "type": "text"}]}],
    "groups": [{"label": "Email side", "note": "new in this plan", "tables": ["emaillog"]}]},
   {"id": "deps", "kind": "impact", "title": "If it breaks", "edges": [
-   {"from": "api", "to": "db"}, {"from": "api", "to": "queue"}, {"from": "worker", "to": "queue"}, {"from": "worker", "to": "ses"}, {"from": "worker", "to": "db"}, {"from": "alarm", "to": "dlq"}, {"from": "dlq", "to": "queue"}]}
+   {"from": "api", "to": "db"}, {"from": "api", "to": "queue"}, {"from": "worker", "to": "queue"}, {"from": "worker", "to": "ses"}, {"from": "worker", "to": "db"}, {"from": "alarm", "to": "dlq"}, {"from": "dlq", "to": "queue"}]},
+  {"id": "parts", "kind": "components", "title": "How it is split up", "layers": [
+   {"label": "Checkout", "nodes": ["api"]},
+   {"label": "Email sending", "note": "new in this plan", "nodes": ["queue", "worker", "alarm"]},
+   {"label": "Storage", "nodes": ["db", "emaillog", "dlq"]},
+   {"label": "Outside", "nodes": ["ses"]}],
+   "uses": [{"from": "api", "to": "db", "label": "SQL"}, {"from": "api", "to": "queue", "label": "SendMessage"}, {"from": "worker", "to": "queue", "label": "poll"}, {"from": "worker", "to": "emaillog", "label": "SQL"}, {"from": "worker", "to": "ses", "label": "SendEmail"}, {"from": "queue", "to": "dlq", "label": "after 5 tries"}, {"from": "alarm", "to": "dlq"}]}
  ],
  "nodes": {
   "customer": {"name": "Customer", "what": "on the shop site", "status": "ext"},

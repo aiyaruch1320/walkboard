@@ -216,6 +216,20 @@ test("state, decision, timeline, datamodel, impact and diff views are checked", 
   for (const want of [/start "z" is not in states/, /every event needs/, /no column "t1.nope"/, /no view "ghost"/, /shapes: \{"box id"/]) assert.match(out, want);
 });
 
+test("a components picture: layers of boxes, and uses between boxes that are in a layer", () => {
+  const nodes = Object.fromEntries(["ui", "api", "db"].map((k) => [k, {name: k}]));
+  const p = {title: "t", settings: {commit: "auto"}, nodes, views: [
+    {id: "c", kind: "components", layers: [{label: "Web", nodes: ["ui"]}, {label: "Back", nodes: ["api", "db"]}], uses: [{from: "ui", to: "api", label: "HTTP"}, {from: "api", to: "db"}]}]};
+  assert.deepEqual(validate(p), []);
+  assert.deepEqual(lint(p), []);
+  const bad = (v) => validate({...p, views: [{...p.views[0], ...v}]}).join("\n");
+  assert.match(bad({layers: []}), /components needs layers/);
+  assert.match(bad({layers: [{nodes: ["ui"]}, {label: "Back", nodes: ["api", "db"]}]}), /every layer needs a text "label"/);
+  assert.match(bad({layers: [{label: "A", nodes: ["ui", "api"]}, {label: "B", nodes: ["api", "db"]}]}), /box "api" is in two layers/);
+  assert.match(bad({layers: [{label: "A", nodes: ["ui"]}]}), /use ui→api: put both boxes in a layer/);
+  assert.match(bad({uses: "ui"}), /uses must be a list/);
+});
+
 test("shapes the page iterates must be lists", () => {
   const base = {title: "t", settings: {commit: "auto"}, nodes: {a: {name: "A"}}};
   const bad = (v) => validate({...base, views: [{id: "v", ...v}]});

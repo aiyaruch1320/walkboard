@@ -24,7 +24,7 @@ const GITHUB = "https://github.com/aiyaruch1320/walkboard";
 const NAV = [
   ["Getting started", ["README.md", "getting-started.md", "page.md", "modes/plan.md", "modes/explain.md", "modes/design.md"]],
   ["Guides", ["draft.md", "existing.md", "share.md", "other-agents.md"]],
-  ["Pictures", ["pictures/README.md", "pictures/flow.md", "pictures/map.md", "pictures/sequence.md", "pictures/transform.md", "pictures/journey.md", "pictures/state.md", "pictures/decision.md", "pictures/timeline.md", "pictures/datamodel.md", "pictures/impact.md", "pictures/diff.md"]],
+  ["Pictures", ["pictures/README.md", "pictures/flow.md", "pictures/map.md", "pictures/sequence.md", "pictures/transform.md", "pictures/journey.md", "pictures/state.md", "pictures/decision.md", "pictures/timeline.md", "pictures/datamodel.md", "pictures/impact.md", "pictures/components.md", "pictures/diff.md"]],
   ["Platforms", ["platforms/README.md", "platforms/aws.md", "platforms/gcp.md", "platforms/azure.md", "platforms/huawei.md", "platforms/k8s.md", "platforms/container.md", "platforms/onprem.md"]],
   ["Reference", ["reference.md", "faq.md"]],
 ];

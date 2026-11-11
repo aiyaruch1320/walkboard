@@ -1,6 +1,6 @@
 # Pictures
 
-Walkboard draws a plan or an explanation as pictures, one per tab. There are eleven kinds of picture, and each answers a different kind of question. The agent picks the ones that explain your work best, so you do not need to choose: often a few, each showing something the others do not.
+Walkboard draws a plan or an explanation as pictures, one per tab. There are twelve kinds of picture, and each answers a different kind of question. The agent picks the ones that explain your work best, so you do not need to choose: often a few, each showing something the others do not.
 
 This section explains how to read each kind and what you can do on it.
 
@@ -18,6 +18,7 @@ This section explains how to read each kind and what you can do on it.
 | When does it happen, and for how long? | [Timeline](timeline.md) | |
 | What are the tables, keys and relations? | [Data model](datamodel.md) | ✓ |
 | If this goes down, what breaks? | [Impact](impact.md) | ✓ |
+| What is it made of, and what uses what? | [Components](components.md) | |
 | What changes between now and after? | [Before and after](diff.md) | through its two pictures |
 
 You can ask for a particular kind too, for example "show the retries as a timeline".

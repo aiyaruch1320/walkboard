@@ -7,4 +7,4 @@
   {"from":"paid","to":"delivered","label":"received"},{"from":"paid","to":"paid","label":"retry"}]}
 ```
 
-States are node ids; loops are fine.
+States are node ids; loops are fine. Screens of an app work the same way: a screen per state, the action that leads on as the label ("tap Pay").

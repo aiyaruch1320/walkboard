@@ -9,7 +9,7 @@ Every view has `id`, `kind` and `title`; the `title` is its tab, so give it word
 | Who calls whom, in what order, and what if it fails? | [`sequence`](views/sequence.md) |
 | What does the data look like before and after? | [`transform`](views/transform.md) |
 | What happens to one piece of data along the way? | [`journey`](views/journey.md) |
-| Which states can it be in, and what moves it? | [`state`](views/state.md) |
+| Which states can it be in, and what moves it? Which screens, and how do you get between them? | [`state`](views/state.md) |
 | If this, then what? (rules, routing, validation) | [`decision`](views/decision.md) |
 | When and how long? (retries, timeouts, cron) | [`timeline`](views/timeline.md) |
 | What are the tables, keys and relations? | [`datamodel`](views/datamodel.md) |

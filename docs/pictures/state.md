@@ -15,6 +15,8 @@ A line that comes back into the same box means the same thing can happen again, 
 - **start** marks the state that something new begins in. Only one box can be the start.
 - **end** marks a state where it can stop. Lines can still go on from an end, for example a refund after delivery.
 
+> **Good to know:** The screens of an app work the same way. Each screen is a box, and each line is what you do to get to the next one, such as "tap Pay". Ask for "the screens of checkout as a state picture" to get one.
+
 ## Arranging a state picture
 
 Drag boxes to arrange the picture. The rest of the picture holds still while you do.

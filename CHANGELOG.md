@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Agents pick pictures beyond the flow.** Asked in plain words ("plan adding refunds"), agents read none of the picture guide and drew only the flow. SKILL.md now lists which picture answers which question (where it runs → map, who calls whom → sequence, tables → data model, states → state…) and asks for the pictures that explain the work best, as many as the reader needs, in explain mode too. A flow alone is for work where the order of the steps is all there is. A new eval, `pictures-unasked`, checks it with a request that names no picture.
+- **Every box can be seen.** SKILL.md asks the agent to run `check` until it has no warnings, not only until it is ok: agents left a box that was in no picture, so nobody could see it or ask about it. The agent now reads only the file of each picture it draws, not the whole picture guide, which saves a file per plan.
 - **Names in a sequence break between words.** A column is as wide as the widest word of its name next to the icon (a Thai run stays whole), and a narrow window scrolls the picture sideways instead of breaking "Refund" into "Refun d".
 - **The docs say the agent picks the pictures**, one per tab, as many as the work needs, instead of "most plans have a flow".
 

@@ -2194,17 +2194,29 @@ const zoneWords = (z) => z.dataset.name ?? z.dataset.zone;
 // How a map zone is known (draft, layout, page): its id, or its label when it has none. Labels may repeat, ids may not.
 const zoneKey = (z) => z?.id ?? z?.label;
 
+// The widest word among some names, in pixels at a size (the names' weight and font). A word runs from space to space:
+// Thai has no spaces, and the browser's Thai dictionary splits words it does not know (หน้าแอ|ดมิน), so a Thai run
+// is kept whole.
+let measure = null;
+function widestWord(names, px) {
+  measure ||= document.createElement("canvas").getContext("2d");
+  if (!measure) return 0;
+  measure.font = `500 ${px}px ${getComputedStyle(document.body).fontFamily}`;
+  return Math.max(0, ...names.flatMap((s) => s.split(/\s+/)).map((w) => measure.measureText(w).width));
+}
+
 function renderSequence(v) {
   const actors = v.actors || [];
-  // Wide enough for the longest word of a name, so names never break in the middle of a word.
-  const word = Math.max(0, ...actors.flatMap((id) => String(plan.nodes[id]?.name || id).match(/[\w./-]+/g) || []).map((w) => w.length));
   // Many actors: narrower columns and names only, so the whole exchange fits without scrolling sideways.
   const compact = actors.length >= 6;
-  const colMin = compact ? Math.min(180, Math.max(96, word * 7 + 34)) : Math.min(260, Math.max(130, word * 8 + 64));
+  // Wide enough for the widest word of a name next to its icon and mark (66 or 78 px), so a name never breaks in the
+  // middle of a word; a narrow window scrolls the picture sideways instead.
+  const word = widestWord(actors.map((id) => String(plan.nodes[id]?.name || id)), compact ? 12 : 14);
+  const colMin = Math.ceil(compact ? Math.min(200, Math.max(96, word + 66)) : Math.min(280, Math.max(130, word + 78)));
   const cols = `repeat(${actors.length}, minmax(${colMin}px, 1fr))`;
   const scroll = el("div", "scroll");
   const seq = el("div", "seq" + (compact ? " compact" : ""));
-  seq.style.minWidth = actors.length * (compact ? colMin : 150) + "px";
+  seq.style.minWidth = actors.length * colMin + (actors.length - 1) * 12 + 8 + "px";
   const head = el("div", "seq-head");
   head.style.gridTemplateColumns = cols;
   actors.forEach((id) => head.append(nodeBox(id)));

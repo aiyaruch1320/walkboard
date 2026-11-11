@@ -1,6 +1,6 @@
 # Flow
 
-A **flow** shows the steps of the work in order. Most plans have one, built from their steps, and it is often the first picture you see.
+A **flow** shows the steps of the work in order. The page builds it from the plan's steps and puts it on the first tab, **Overview**, before the other pictures the agent drew.
 
 ![The steps of the example plan in lanes: queues, send side, receive side, and a checklist](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/flow.png)
 
@@ -13,6 +13,8 @@ A flow is made of rows called **lanes**. Each lane is a step, or one part of the
 A lane without arrows is a checklist. Its boxes can be done in any order.
 
 When you choose a step in the step bar, the boxes it does not touch fade out.
+
+> **Good to know:** A plan with only one step has no Overview tab when it has other pictures, and an agent that draws a flow of its own lanes puts it there instead.
 
 <a id="sketch"></a>
 

@@ -4,7 +4,7 @@ Every view has `id`, `kind` and `title`; the `title` is its tab, so give it word
 
 | The reader asks | Picture: read its file before writing it |
 |---|---|
-| What are the steps, in order? | `flow` (default, built from the steps; [file](views/flow.md) only for your own lanes) |
+| What are the steps, in order? | `flow`: the page builds it from the steps as the first tab; write one ([file](views/flow.md)) only for lanes of your own, and it replaces that tab |
 | What sits inside what, on which platform (AWS account › VPC › subnet, cluster › namespace › pods, a host and its containers)? | [`map`](views/map.md), with profile kinds |
 | Who calls whom, in what order, and what if it fails? | [`sequence`](views/sequence.md) |
 | What does the data look like before and after? | [`transform`](views/transform.md) |

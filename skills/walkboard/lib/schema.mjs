@@ -223,12 +223,16 @@ function zoneNodes(zones, depth = 0) {
 
 const dupes = (ids) => ids.filter((id, i) => id && ids.indexOf(id) !== i);
 
-// A plan may leave out views: each step becomes a lane of the boxes it touches.
+// The steps as a picture: each step is a lane of the boxes it touches. It is the first tab of a build or explain plan,
+// before the pictures the agent drew, unless the agent drew a flow of its own, the plan is a design (its options own
+// the pictures), or a single step would make a one-lane picture next to the others.
 export function viewsOf(p) {
-  if (list(p?.views).length) return p.views;
+  const own = list(p?.views);
+  if (own.length && (p?.mode === "design" || own.some((v) => v?.kind === "flow" || v?.id === "flow"))) return own;
   // Each lane is a step (its id goes with it, so the page can number it and a draft can name it).
   const lanes = list(p?.steps).filter((s) => list(s?.nodes).length).map((s) => ({title: s.title, nodes: s.nodes, step: s.id}));
-  return lanes.length ? [{id: "flow", kind: "flow", title: langOf(p) === "th" ? "ภาพรวม" : "Overview", lanes}] : [];
+  if (lanes.length < (own.length ? 2 : 1)) return own;
+  return [{id: "flow", kind: "flow", title: langOf(p) === "th" ? "ภาพรวม" : "Overview", lanes}, ...own];
 }
 
 export function validate(p) {
@@ -367,10 +371,10 @@ export function lint(p) {
   const out = [];
   const shown = new Set(viewsOf(p).flatMap((v) => (isObj(v) && has(KINDS, v.kind) ? KINDS[v.kind].refs(v) : [])));
   // With several pictures, the tab shows the title, or else the bare id.
-  if (Array.isArray(p.views) && p.views.length > 1) for (const v of p.views) if (isObj(v) && v.id && !v.title) out.push(`view "${v.id}" has no title (its tab shows the id)`);
+  if (Array.isArray(p.views) && viewsOf(p).length > 1) for (const v of p.views) if (isObj(v) && v.id && !v.title) out.push(`view "${v.id}" has no title (its tab shows the id)`);
   for (const [id, n] of Object.entries(p.nodes)) {
     if (!isObj(n)) continue;
-    if (!shown.has(id)) out.push(`node "${id}" is in no picture: add it to a view${Array.isArray(p.views) ? "" : " or a step's nodes"}, or take it out`);
+    if (!shown.has(id)) out.push(`node "${id}" is in no picture: add it to a view${p.mode === "design" ? "" : " or a step's nodes"}, or take it out`);
     if (String(n.name || "").length > 40) out.push(`node "${id}": name over 40 characters, shorten it`);
     if (p.mode === "explain" && n.status !== "ext" && !n.file && !n.proposal) out.push(`node "${id}" has no file (explain mode points at real code)`);
     if (p.mode === "explain" && n.file && !parseFile(n.file, p)?.line && !/\.(ya?ml|json|toml|md)$/i.test(n.file)) out.push(`node "${id}" file "${n.file}" has no line (path:line)`);

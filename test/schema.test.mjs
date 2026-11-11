@@ -125,6 +125,22 @@ test("a plan without views gets a flow from its steps", async () => {
   assert.match(validate(p).join("\n"), /no views/);
 });
 
+test("the flow of the steps comes first, before the pictures the agent drew", async () => {
+  const {viewsOf} = await import("../skills/walkboard/lib/schema.mjs");
+  const {viewList} = await import("../skills/walkboard/lib/draft.mjs");
+  const seq = {id: "calls", kind: "sequence", title: "Calls", actors: ["a", "b"], messages: [{from: "a", to: "b", label: "hi"}]};
+  const two = {...base(), nodes: {a: {name: "A"}, b: {name: "B"}}, steps: [{id: "s1", title: "one", nodes: ["a"]}, {id: "s2", title: "two", nodes: ["b"]}], views: [seq]};
+  const kinds = (p) => viewsOf(p).map((v) => v.id);
+  assert.deepEqual(kinds(two), ["flow", "calls"]);
+  assert.deepEqual(validate(two), []);
+  // One step would be a one-lane picture; a flow of the agent's own or a design keeps its pictures as they are.
+  assert.deepEqual(kinds({...two, steps: two.steps.slice(0, 1)}), ["calls"]);
+  assert.deepEqual(kinds({...two, views: [{id: "mine", kind: "flow", lanes: [{title: "x", nodes: ["a", "b"]}]}, seq]}), ["mine", "calls"]);
+  assert.deepEqual(kinds({...two, mode: "design"}), ["calls"]);
+  // The draft code keeps its own copy: both say the same.
+  for (const p of [two, {...two, steps: two.steps.slice(0, 1)}, {...two, mode: "design"}, {...two, views: undefined}]) assert.deepEqual(viewList(p).map((v) => v.id), kinds(p));
+});
+
 test("page language comes from lang, else from the title and goal", async () => {
   const {langOf, viewsOf} = await import("../skills/walkboard/lib/schema.mjs");
   assert.equal(langOf({title: "Nightly import"}), "en");

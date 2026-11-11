@@ -61,7 +61,7 @@ No `geometry`. Say what each change means for the schema: migrations, data to mo
 
 `addBox`, `moveBox`, `addLane`, `editLane`, `moveLane` (`to` = its place after the move), `editNode`, `remove`. Lanes and places count from 0 in the JSON (from 1 in `WB draft` and on the page); each change also names its lane (`laneTitle`, and `step` for a step), and `lanesAfter` is the order once all changes are in, so you never count.
 
-In a plan without views the flow is its steps (view `flow`): a lane is a step, so these change `steps` (their order, new steps, which nodes a step touches). A box can be in several lanes; a `moveBox` that changes lanes names the one it left (`fromLaneTitle`, `fromStep`): only that step stops touching it. Before reordering steps, check what each needs from the ones before it and say if the new order breaks that.
+The flow the page builds from the steps (view `flow`) is the steps: a lane is a step, so these change `steps` (their order, new steps, which nodes a step touches). A box can be in several lanes; a `moveBox` that changes lanes names the one it left (`fromLaneTitle`, `fromStep`): only that step stops touching it. Before reordering steps, check what each needs from the ones before it and say if the new order breaks that.
 
 ## State, decision, impact
 

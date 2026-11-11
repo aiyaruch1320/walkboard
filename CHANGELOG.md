@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **The flow of the steps is always the first tab.** It used to disappear as soon as the agent drew any picture of its own. Now it is the **Overview** tab, before the others, unless the agent drew a flow itself, the plan is a design, or it has a single step.
+
 ## 0.11.0
 
 - **A calmer, smoother page, after Apple's.** One rhythm for everything: three durations and one ease that settles, three corner sizes, four type sizes (text stays small: the pictures come first). Apple's neutral greys in light and dark, and calmer box fills (the colours mean what they did). The picture tabs are one segmented control whose pill slides to the picture you pick; steps and guesses are soft fills instead of outlines; the step on screen has a ring in its own colour. The top bar, chat bar, draft toolbar and cards are frosted. Changing picture fades across, and a box found in both pictures moves to its new place; a step on the same picture fades what it does not touch. Boxes lift a shadow on hover; buttons give a little when pressed; keyboard focus is a soft ring. The side panel slides in from the right while the page takes its new width in one step, so nothing is laid out again on every frame. The picture tabs' pill reaches toward the tab you pick, like a drop of water, then gathers there; the tab on screen does nothing when clicked. The settings menu opens from a gear. Everything is still with reduced motion.

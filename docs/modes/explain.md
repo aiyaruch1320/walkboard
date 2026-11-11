@@ -38,7 +38,7 @@ When the agent makes an explanation, it names the folders the plan is about. The
 
 ## Pictures you will see
 
-An explanation often has a [flow](../pictures/flow.md) or a [sequence](../pictures/sequence.md) of what calls what. You may also see a [journey](../pictures/journey.md) that follows one request or record, a [transform](../pictures/transform.md) of how data changes shape, or a [state](../pictures/state.md) picture.
+The agent picks the pictures that explain the code best. Often that is a [sequence](../pictures/sequence.md) of what calls what, or a [flow](../pictures/flow.md) of the stages. You may also see a [journey](../pictures/journey.md) that follows one request or record, a [transform](../pictures/transform.md) of how data changes shape, or a [state](../pictures/state.md) picture.
 
 ## Trying it
 

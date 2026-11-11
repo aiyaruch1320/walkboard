@@ -1,6 +1,6 @@
 # Flow
 
-A **flow** shows the steps of the work in order. Most plans have one, built from their steps, and it is often the first picture you see.
+A **flow** shows the steps of the work in order. The agent draws one when the order of the steps helps you understand the work. A plan without other pictures gets one built from its steps.
 
 ![The steps of the example plan in lanes: queues, send side, receive side, and a checklist](https://raw.githubusercontent.com/aiyaruch1320/walkboard/media/pictures/flow.png)
 

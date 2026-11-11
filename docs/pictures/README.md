@@ -1,6 +1,6 @@
 # Pictures
 
-Walkboard draws a plan or an explanation as one or two pictures. There are eleven kinds of picture, and each answers a different kind of question. The agent picks the kind that fits what you asked, so you do not need to choose.
+Walkboard draws a plan or an explanation as pictures, one per tab. There are eleven kinds of picture, and each answers a different kind of question. The agent picks the ones that explain your work best, so you do not need to choose: often a few, each showing something the others do not.
 
 This section explains how to read each kind and what you can do on it.
 
@@ -51,5 +51,5 @@ To change what a picture says, use [draft mode](../draft.md) instead.
 
 ## Next steps
 
-- [Flow](flow.md): the picture most plans start with.
+- [Flow](flow.md): the steps of the work in order.
 - [Map](map.md): where things run, on a cloud or in a cluster.

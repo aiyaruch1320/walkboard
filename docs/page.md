@@ -10,7 +10,7 @@ From top to bottom, a page has:
 
 - **The top bar.** The button on the right always shows your next step, such as **Approve plan** or **Start next step: …**. Next to it you can see how many steps are done.
 - **The step bar.** Click a step to focus on it. Everything the step does not touch fades out, and the page switches to a picture that shows it. A ✓ means the step is done, and 👉 means it is waiting for you. **⏵ Play** walks through all the steps once.
-- **The picture tabs.** A plan usually has one or two pictures. The same row has **✎ Draft changes**, for [sketching a change yourself](draft.md), and **?**, which explains how to read the picture you are looking at.
+- **The picture tabs.** A plan has one picture per tab, as many as it takes to explain the work. The same row has **✎ Draft changes**, for [sketching a change yourself](draft.md), and **?**, which explains how to read the picture you are looking at.
 - **The picture.** Click any box in it to open its details.
 - **The chat bar**, at the bottom. Click it to talk about the step you have selected. To talk about the whole plan, choose **All** in the step bar first. The conversation opens in the side panel.
 

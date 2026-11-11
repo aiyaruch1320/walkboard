@@ -13,7 +13,7 @@ For example:
 ## How a plan goes
 
 1. **The agent asks first.** If the answer would change the plan, the agent asks up to three short questions. It also asks whether it should commit for you or only suggest commit messages.
-2. **It draws the plan.** A plan has 3 to 8 small steps. Each step says what it does and how you will know it is done. One or two pictures show the steps. Click a step to see what it touches, and everything else fades.
+2. **It draws the plan.** A plan has 3 to 8 small steps. Each step says what it does and how you will know it is done. Pictures, one per tab, show what the steps touch. Click a step to see what it touches, and everything else fades.
 3. **You talk it over.** Ask about any box or step, or say what to add, change or remove. Until you approve, the agent changes the plan directly and shows you what changed with **✎ Plan changed**.
 4. **You approve.** Press **Approve plan** when you are happy with it.
 5. **It builds one step at a time.** The agent builds a step, marks it for review and stops. Look at what it did and ask about it if you like. When you are ready, press **Start next step: …** at the top. On the last step the button says **Finish**.
@@ -37,7 +37,7 @@ If it is easier to draw the change than to describe it, you can [sketch it yours
 
 ## Pictures you will see
 
-Most plans have a [flow](../pictures/flow.md) built from their steps. Depending on the work, you may also see a [map](../pictures/map.md) of where things run, a [sequence](../pictures/sequence.md) of who calls whom, or a [data model](../pictures/datamodel.md) of the tables.
+The agent picks the pictures that explain the work best, one per tab. Depending on the work, you may see a [map](../pictures/map.md) of where things run, a [sequence](../pictures/sequence.md) of who calls whom, a [state](../pictures/state.md) picture of what a record goes through, or a [data model](../pictures/datamodel.md) of the tables. When the order of the steps is what matters, you also get a [flow](../pictures/flow.md).
 
 ## Next steps
 

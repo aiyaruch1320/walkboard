@@ -38,7 +38,7 @@
 
 ## ภาพที่จะได้เห็น
 
-คำอธิบายมักมีภาพ [flow](../pictures/flow.md) หรือ [sequence](../pictures/sequence.md) ว่าอะไรเรียกอะไร คุณอาจได้เห็น [journey](../pictures/journey.md) ที่ตามคำขอหรือข้อมูลหนึ่งชิ้นไปตลอดทาง [transform](../pictures/transform.md) ว่าข้อมูลเปลี่ยนรูปยังไง หรือภาพ [state](../pictures/state.md) ด้วย
+agent จะเลือกภาพที่อธิบายโค้ดได้ดีที่สุด ส่วนใหญ่เป็น [sequence](../pictures/sequence.md) ว่าอะไรเรียกอะไร หรือ [flow](../pictures/flow.md) ของแต่ละช่วง คุณอาจได้เห็น [journey](../pictures/journey.md) ที่ตามคำขอหรือข้อมูลหนึ่งชิ้นไปตลอดทาง [transform](../pictures/transform.md) ว่าข้อมูลเปลี่ยนรูปยังไง หรือภาพ [state](../pictures/state.md) ด้วย
 
 ## ลองดู
 

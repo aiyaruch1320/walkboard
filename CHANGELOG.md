@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.11.1
 
 - **A new picture: components.** How a system or a codebase is split up: layers side by side (from the user's side to the data), the parts in each, and arrows for what uses what, labelled with how (HTTP, SQL). Click a part to see what it uses and what uses it. It answers "what is this made of?", the first question about code you did not write. No draft mode yet. Docs: [Components](https://aiyaruch1320.github.io/walkboard/pictures/components.html).
 - **Screens on a state picture.** SKILL.md and the state docs say an app's screens are drawn as a state picture: a screen per box, the action that leads on as the line ("tap Pay").

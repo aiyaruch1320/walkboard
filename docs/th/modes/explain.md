@@ -38,7 +38,7 @@
 
 ## ภาพที่จะได้เห็น
 
-tab แรก **ภาพรวม** คือภาพ [flow](../pictures/flow.md) ของแต่ละช่วง ถัดไปมักมี [sequence](../pictures/sequence.md) ว่าอะไรเรียกอะไร คุณอาจได้เห็น [journey](../pictures/journey.md) ที่ตามคำขอหรือข้อมูลหนึ่งชิ้นไปตลอดทาง [transform](../pictures/transform.md) ว่าข้อมูลเปลี่ยนรูปยังไง หรือภาพ [state](../pictures/state.md) ด้วย
+คำอธิบายมักมีภาพ [flow](../pictures/flow.md) หรือ [sequence](../pictures/sequence.md) ว่าอะไรเรียกอะไร คุณอาจได้เห็น [journey](../pictures/journey.md) ที่ตามคำขอหรือข้อมูลหนึ่งชิ้นไปตลอดทาง [transform](../pictures/transform.md) ว่าข้อมูลเปลี่ยนรูปยังไง หรือภาพ [state](../pictures/state.md) ด้วย
 
 ## ลองดู
 

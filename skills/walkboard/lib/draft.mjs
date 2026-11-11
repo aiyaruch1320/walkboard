@@ -19,14 +19,11 @@ export const DRAFT_OPS = {
   impact: ["addBox", "addEdge", "removeEdge", "reverseEdge", "editNode", "remove"],
 };
 
-// The pictures, with the flow of the steps first, as viewsOf in lib/schema.mjs draws them (kept here so this file
-// imports nothing; test/schema.test.mjs checks they agree).
+// A plan without views is drawn as one flow of its steps (as in lib/schema.mjs, kept here so this file imports nothing).
 export function viewList(p) {
-  const own = Array.isArray(p?.views) ? p.views : [];
-  if (own.length && (p?.mode === "design" || own.some((v) => v?.kind === "flow" || v?.id === "flow"))) return own;
+  if (Array.isArray(p?.views) && p.views.length) return p.views;
   const lanes = (Array.isArray(p?.steps) ? p.steps : []).filter((s) => Array.isArray(s?.nodes) && s.nodes.length).map((s) => ({title: s.title, nodes: s.nodes, step: s.id}));
-  if (lanes.length < (own.length ? 2 : 1)) return own;
-  return [{id: "flow", kind: "flow", title: p?.lang === "th" ? "ภาพรวม" : "Overview", lanes}, ...own];
+  return lanes.length ? [{id: "flow", kind: "flow", title: p?.lang === "th" ? "ภาพรวม" : "Overview", lanes}] : [];
 }
 export const draftable = (view) => !!DRAFT_OPS[view?.kind];
 export const emptyDraft = () => ({version: 1, views: {}});

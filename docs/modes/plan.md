@@ -37,7 +37,7 @@ If it is easier to draw the change than to describe it, you can [sketch it yours
 
 ## Pictures you will see
 
-The first tab, **Overview**, is a [flow](../pictures/flow.md) built from the plan's steps. Next to it, the agent adds one or two pictures that fit the work: a [map](../pictures/map.md) of where things run, a [sequence](../pictures/sequence.md) of who calls whom, or a [data model](../pictures/datamodel.md) of the tables. Click a tab above the picture to switch.
+Most plans have a [flow](../pictures/flow.md) built from their steps. Depending on the work, you may also see a [map](../pictures/map.md) of where things run, a [sequence](../pictures/sequence.md) of who calls whom, or a [data model](../pictures/datamodel.md) of the tables.
 
 ## Next steps
 

@@ -27,7 +27,7 @@ One JSON object, written compact. `WB check <dir>` validates it with the page's 
 | `links` | Plans started from this page: `[{"title","url"}]` |
 | `glossary` | `{"term": "one-line explanation"}`, only project terms; ~95 common ones ship with Walkboard |
 | `steps` | Ordered steps (build) or stages (explain) |
-| `views` | Pictures as tabs ([views.md](views.md)), after the flow the page builds from the steps (left out when you write a flow yourself, in design mode, or with one step) |
+| `views` | Pictures as tabs ([views.md](views.md)); leave out for a plain flow built from the steps |
 | `nodes` | Required. Every box, keyed by a short id |
 
 ## steps[]

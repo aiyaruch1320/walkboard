@@ -37,7 +37,7 @@
 
 ## ภาพที่จะได้เห็น
 
-tab แรก **ภาพรวม** คือภาพ [flow](../pictures/flow.md) ที่สร้างจากขั้นของแผน ถัดไป agent จะเพิ่มภาพที่เข้ากับงานอีกหนึ่งหรือสองภาพ เช่น [map](../pictures/map.md) ว่าอะไรรันอยู่ที่ไหน [sequence](../pictures/sequence.md) ว่าใครเรียกใคร หรือ [data model](../pictures/datamodel.md) ของตารางใน database คลิก tab เหนือภาพเพื่อสลับดู
+แผนส่วนใหญ่มีภาพ [flow](../pictures/flow.md) ที่สร้างจากขั้นของแผน แล้วแต่งาน คุณอาจได้เห็น [map](../pictures/map.md) ว่าอะไรรันอยู่ที่ไหน [sequence](../pictures/sequence.md) ว่าใครเรียกใคร หรือ [data model](../pictures/datamodel.md) ของตารางใน database ด้วย
 
 ## อ่านต่อ
 

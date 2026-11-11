@@ -51,5 +51,5 @@ To change what a picture says, use [draft mode](../draft.md) instead.
 
 ## Next steps
 
-- [Flow](flow.md): the first tab of every plan with steps.
+- [Flow](flow.md): the picture most plans start with.
 - [Map](map.md): where things run, on a cloud or in a cluster.
